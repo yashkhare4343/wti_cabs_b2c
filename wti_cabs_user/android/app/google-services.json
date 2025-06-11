@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "350350132251",
+    "project_id": "wticabsuserb2c",
+    "storage_bucket": "wticabsuserb2c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350350132251:android:97d1945a8ee9c1dca3a4be",
+        "android_client_info": {
+          "package_name": "com.wti.user.booking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_ersFUK_sIYny13OIybnElH9y0vxLL40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
