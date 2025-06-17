@@ -1,10 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
-import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../utility/constants/colors/app_colors.dart';
+import '../../utility/constants/fonts/common_fonts.dart';
 
 class DateTimePickerTile extends StatefulWidget {
   final String label;
@@ -24,81 +21,50 @@ class DateTimePickerTile extends StatefulWidget {
 
 class _DateTimePickerTileState extends State<DateTimePickerTile> {
   late DateTime selectedDateTime;
-  final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
 
   @override
   void initState() {
     super.initState();
-    _initializeSelectedDateTime();
+    selectedDateTime = widget.initialDateTime;
   }
 
-  @override
-  void didUpdateWidget(DateTimePickerTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialDateTime != oldWidget.initialDateTime) {
-      _initializeSelectedDateTime();
-    }
-  }
-
-  void _initializeSelectedDateTime() {
-    final now = placeSearchController.currentDateTime.value;
-    selectedDateTime = widget.initialDateTime.isBefore(now) ? now : widget.initialDateTime;
-  }
-
-  bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  void _showCupertinoDateTimePicker(BuildContext context) {
-    final DateTime now = placeSearchController.currentDateTime.value;
-
-    DateTime tempPickedDateTime = selectedDateTime.isBefore(now) ? now : selectedDateTime;
-
-    showCupertinoModalPopup(
+  void _showDateTimePicker(BuildContext context) async {
+    final pickedDate = await showDatePicker(
       context: context,
-      builder: (_) => Container(
-        color: Colors.white,
-        height: 300,
-        child: Column(
-          children: [
-            Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: tempPickedDateTime,
-                mode: CupertinoDatePickerMode.dateAndTime,
-                use24hFormat: false,
-                minimumDate: now,
-                onDateTimeChanged: (newDateTime) {
-                  if (_isSameDate(newDateTime, now) && newDateTime.isBefore(now)) {
-                    tempPickedDateTime = now;
-                  } else {
-                    tempPickedDateTime = newDateTime;
-                  }
-                },
-              ),
-            ),
-            CupertinoButton(
-              child: const Text("Done"),
-              onPressed: () {
-                setState(() {
-                  selectedDateTime = tempPickedDateTime;
-                });
-                widget.onDateTimeSelected(selectedDateTime);
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        ),
-      ),
+      initialDate: selectedDateTime,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+
+    if (pickedDate != null) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(selectedDateTime),
+      );
+
+      if (pickedTime != null) {
+        final newDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        setState(() {
+          selectedDateTime = newDateTime;
+        });
+        widget.onDateTimeSelected(newDateTime);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('dd MMM, yyyy').format(selectedDateTime);
-    final formattedTime = DateFormat('hh:mm a').format(selectedDateTime);
+    final localDateTime = selectedDateTime.toLocal();
+    final formattedDateTime = DateFormat('dd MMM yyyy hh:mm a').format(localDateTime);
 
     return GestureDetector(
-      onTap: () => _showCupertinoDateTimePicker(context),
+      onTap: () => _showDateTimePicker(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -114,8 +80,7 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.label, style: CommonFonts.bodyText5Black),
-                Text(formattedDate, style: CommonFonts.bodyText1Black),
-                Text(formattedTime, style: CommonFonts.bodyText1Black),
+                Text(formattedDateTime, style: CommonFonts.bodyText1Black),
               ],
             ),
           ],

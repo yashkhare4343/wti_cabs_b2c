@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../utility/constants/colors/app_colors.dart';
@@ -25,6 +26,7 @@ class TimePickerTile extends StatefulWidget {
 class _TimePickerTileState extends State<TimePickerTile> {
   late DateTime selectedTime;
   final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
+  final BookingRideController choosePickupController = Get.find<BookingRideController>();
 
   @override
   void initState() {
@@ -43,9 +45,45 @@ class _TimePickerTileState extends State<TimePickerTile> {
   void _initializeSelectedTime() {
     final currentDateTime = placeSearchController.currentDateTime.value;
     final isToday = _isSameDate(widget.initialTime, currentDateTime);
+
     selectedTime = isToday && widget.initialTime.isBefore(currentDateTime)
         ? currentDateTime
         : widget.initialTime;
+  }
+
+
+  DateTime? _getUserLocalDateTime() {
+    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
+        ?.userDateTimeObject
+        ?.userDateTime;
+
+    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
+        ?.userDateTimeObject
+        ?.userOffSet;
+
+    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
+  }
+
+  DateTime? _getActualLocalDateTime() {
+    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
+        ?.actualDateTimeObject
+        ?.actualDateTime;
+
+    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
+        ?.actualDateTimeObject
+        ?.actualOffSet;
+
+    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
+  }
+
+  DateTime? _convertUtcWithOffsetToLocal(String? utcIsoString, int? offsetMinutes) {
+    if (utcIsoString == null || offsetMinutes == null) return null;
+    try {
+      final utc = DateTime.parse(utcIsoString).toUtc();
+      return utc.add(Duration(minutes: offsetMinutes));
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _isSameDate(DateTime a, DateTime b) {
@@ -53,11 +91,11 @@ class _TimePickerTileState extends State<TimePickerTile> {
   }
 
   void _showCupertinoTimePicker(BuildContext context) {
-    final currentDateTime = placeSearchController.currentDateTime.value;
-    final isToday = _isSameDate(selectedTime, currentDateTime);
+    final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
+    final isToday = _isSameDate(selectedTime, _getUserLocalDateTime()?? DateTime.now());
 
     final Duration minimumDuration = isToday
-        ? Duration(hours: currentDateTime.hour, minutes: currentDateTime.minute)
+        ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
         : Duration.zero;
 
     final Duration initialDuration = Duration(
@@ -80,7 +118,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
                 mode: CupertinoTimerPickerMode.hm,
                 initialTimerDuration: clampedInitialDuration,
                 onTimerDurationChanged: (Duration newDuration) {
-                  final clampedDuration = isToday && newDuration < minimumDuration
+                  final Duration clampedDuration = isToday && newDuration < minimumDuration
                       ? minimumDuration
                       : newDuration;
 
@@ -109,31 +147,34 @@ class _TimePickerTileState extends State<TimePickerTile> {
 
   @override
   Widget build(BuildContext context) {
-    final formattedTime = DateFormat('hh:mm a').format(selectedTime);
+    return Obx(() {
+      final controllerTime = choosePickupController.localStartTime.value;
+      final formattedTime = DateFormat('hh:mm a').format(controllerTime);
 
-    return GestureDetector(
-      onTap: () => _showCupertinoTimePicker(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.lightBlueBorder, width: 1),
-          borderRadius: BorderRadius.circular(12),
+      return GestureDetector(
+        onTap: () => _showCupertinoTimePicker(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.lightBlueBorder, width: 1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.access_time, color: AppColors.bgGrey3, size: 15),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.label, style: CommonFonts.bodyText5Black),
+                  Text(formattedTime, style: CommonFonts.bodyText1Black),
+                ],
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            const Icon(Icons.access_time, color: AppColors.bgGrey3, size: 15),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.label, style: CommonFonts.bodyText5Black),
-                Text(formattedTime, style: CommonFonts.bodyText1Black),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+      );
+    });
   }
 }

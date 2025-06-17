@@ -48,15 +48,17 @@ class PlaceSearchController extends GetxController {
 
   void updateDateTimeFromApi(FindCntryDateTimeResponse response) {
     try {
-      if (response.actualDateTimeObject?.actualDateTime != null) {
-        final utcDateTime = DateTime.parse(response.actualDateTimeObject!.actualDateTime!);
+      if (response.userDateTimeObject?.userDateTime != null) {
+        final utcDateTime = DateTime.parse(response.userDateTimeObject!.userDateTime!);
         final timezoneName = response.timeZone ?? getCurrentTimeZoneName();
         final location = tz.getLocation(timezoneName);
         currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
 
-        final formattedLocalTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(currentDateTime.value);
-        bookingRideController.localStartTime.value = formattedLocalTime;
+        // ✅ Directly assign DateTime
+        bookingRideController.localStartTime.value = currentDateTime.value;
 
+        // ✅ You can still print formatted string for logs
+        final formattedLocalTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(currentDateTime.value);
         print('Updated currentDateTime: ${currentDateTime.value} in $timezoneName');
         print('Updated local time in BookingRideController: $formattedLocalTime');
       } else {
@@ -165,6 +167,11 @@ class PlaceSearchController extends GetxController {
     }
   }
 
+
+  // abhi time to sahi ja rha hai but wo utc time hi ho rha hai usko local date time mein show karna hai
+  // and wapas usko selected local time ko utc mein convert karke send krna hai.
+
+
   Future<void> findCountryDateTime(
       double sLat,
       double sLng,
@@ -180,6 +187,9 @@ class PlaceSearchController extends GetxController {
     try {
       isLoading.value = true;
       final apiService = ApiService();
+
+      // Use response timezone if available, else fall back to provided timezone
+      final requestTimezone = findCntryDateTimeResponse.value?.timeZone ?? timezone;
 
       final requestData = {
         "sourceLat": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
@@ -202,7 +212,7 @@ class PlaceSearchController extends GetxController {
             : dLng,
         "dateTime": dateTime,
         "offset": offset,
-        "timeZone": timezone,
+        "timeZone": requestTimezone,
         "tripCode": tripCode,
       };
 
@@ -225,3 +235,5 @@ class PlaceSearchController extends GetxController {
     }
   }
 }
+
+
