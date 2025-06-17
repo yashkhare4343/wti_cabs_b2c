@@ -54,10 +54,8 @@ class PlaceSearchController extends GetxController {
         final location = tz.getLocation(timezoneName);
         currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
 
-        // ✅ Directly assign DateTime
         bookingRideController.localStartTime.value = currentDateTime.value;
 
-        // ✅ You can still print formatted string for logs
         final formattedLocalTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(currentDateTime.value);
         print('Updated currentDateTime: ${currentDateTime.value} in $timezoneName');
         print('Updated local time in BookingRideController: $formattedLocalTime');
@@ -75,8 +73,15 @@ class PlaceSearchController extends GetxController {
     return '${utcDateTime.toIso8601String().split('.').first}.000Z';
   }
 
-  int getBackendCompatibleOffset() {
-    return -currentDateTime.value.timeZoneOffset.inMinutes;
+  int getOffsetFromTimeZone(String timeZoneName) {
+    try {
+      final location = tz.getLocation(timeZoneName);
+      final now = tz.TZDateTime.now(location);
+      return -now.timeZoneOffset.inMinutes;
+    } catch (e) {
+      print("Error finding offset from timeZone: $e");
+      return -DateTime.now().timeZoneOffset.inMinutes;
+    }
   }
 
   String getCurrentTimeZoneName() {
@@ -145,6 +150,9 @@ class PlaceSearchController extends GetxController {
         return;
       }
 
+      final timeZone = findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
+      final offset = getOffsetFromTimeZone(timeZone);
+
       await findCountryDateTime(
         getPlacesLatLng.value!.latLong.lat,
         getPlacesLatLng.value!.latLong.lng,
@@ -152,9 +160,9 @@ class PlaceSearchController extends GetxController {
         getPlacesLatLng.value!.country,
         getPlacesLatLng.value!.latLong.lat,
         getPlacesLatLng.value!.latLong.lng,
-        convertDateTimeToUtcString(currentDateTime.value),
-        getBackendCompatibleOffset(),
-        getCurrentTimeZoneName(),
+        convertDateTimeToUtcString(bookingRideController.localStartTime.value),
+        offset,
+        timeZone,
         2,
         context,
       );
@@ -166,11 +174,6 @@ class PlaceSearchController extends GetxController {
       isLoading.value = false;
     }
   }
-
-
-  // abhi time to sahi ja rha hai but wo utc time hi ho rha hai usko local date time mein show karna hai
-  // and wapas usko selected local time ko utc mein convert karke send krna hai.
-
 
   Future<void> findCountryDateTime(
       double sLat,
@@ -188,7 +191,6 @@ class PlaceSearchController extends GetxController {
       isLoading.value = true;
       final apiService = ApiService();
 
-      // Use response timezone if available, else fall back to provided timezone
       final requestTimezone = findCntryDateTimeResponse.value?.timeZone ?? timezone;
 
       final requestData = {
@@ -235,5 +237,3 @@ class PlaceSearchController extends GetxController {
     }
   }
 }
-
-

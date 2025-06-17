@@ -418,24 +418,27 @@ class _OutStationState extends State<OutStation> {
                 // Helper to update localStartTime
                 void updateLocalStartTime(DateTime updatedDateTime) {
                   bookingRideController.localStartTime.value = updatedDateTime;
+                  print('updated selected time: ${bookingRideController
+                      .localStartTime.value}');
                 }
 
                 final initialDateTime = getInitialDateTime();
                 final actualDateTime = getActualLocalDateTime(); // Used as minimum clamp in pickers
 
+                final localStartTime = bookingRideController.localStartTime.value;
+
                 return Column(
                   children: [
                     DatePickerTile(
                       label: 'Pickup Date',
-                      initialDate: actualDateTime,
+                      initialDate: localStartTime, // Use updated localStartTime
                       onDateSelected: (newDate) {
-                        final previousTime = bookingRideController.localStartTime.value;
                         final updatedDateTime = DateTime(
                           newDate.year,
                           newDate.month,
                           newDate.day,
-                          previousTime.hour,
-                          previousTime.minute,
+                          localStartTime.hour,
+                          localStartTime.minute,
                         );
                         updateLocalStartTime(updatedDateTime);
                       },
@@ -443,13 +446,12 @@ class _OutStationState extends State<OutStation> {
                     const SizedBox(height: 16),
                     TimePickerTile(
                       label: 'Pickup Time',
-                      initialTime: actualDateTime,
+                      initialTime: localStartTime, // Use updated localStartTime
                       onTimeSelected: (newTime) {
-                        final previousDate = bookingRideController.localStartTime.value;
                         final updatedDateTime = DateTime(
-                          previousDate.year,
-                          previousDate.month,
-                          previousDate.day,
+                          localStartTime.year,
+                          localStartTime.month,
+                          localStartTime.day,
                           newTime.hour,
                           newTime.minute,
                         );
@@ -459,13 +461,14 @@ class _OutStationState extends State<OutStation> {
                     const SizedBox(height: 16),
                     DateTimePickerTile(
                       label: 'Pickup Date & Time',
-                      initialDateTime: initialDateTime,
+                      initialDateTime: localStartTime, // Use updated localStartTime
                       onDateTimeSelected: (newDateTime) {
                         updateLocalStartTime(newDateTime);
                       },
                     ),
                   ],
                 );
+
               })
               ,
             ),
