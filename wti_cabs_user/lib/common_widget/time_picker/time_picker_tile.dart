@@ -51,7 +51,6 @@ class _TimePickerTileState extends State<TimePickerTile> {
         : widget.initialTime;
   }
 
-
   DateTime? _getUserLocalDateTime() {
     final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
         ?.userDateTimeObject
@@ -90,9 +89,18 @@ class _TimePickerTileState extends State<TimePickerTile> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  Duration roundToNearest30Minutes(Duration duration) {
+    int totalMinutes = duration.inMinutes;
+    int remainder = totalMinutes % 30;
+    if (remainder == 0) return duration;
+    // Round up to next 30-minute slab
+    int roundedMinutes = totalMinutes + (30 - remainder);
+    return Duration(minutes: roundedMinutes);
+  }
+
   void _showCupertinoTimePicker(BuildContext context) {
     final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
-    final isToday = _isSameDate(selectedTime, _getUserLocalDateTime()?? DateTime.now());
+    final isToday = _isSameDate(selectedTime, _getUserLocalDateTime() ?? DateTime.now());
 
     final Duration minimumDuration = isToday
         ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
@@ -103,8 +111,10 @@ class _TimePickerTileState extends State<TimePickerTile> {
       minutes: selectedTime.minute,
     );
 
-    final Duration clampedInitialDuration =
+    final Duration adjustedInitialDuration =
     initialDuration < minimumDuration ? minimumDuration : initialDuration;
+
+    final Duration clampedInitialDuration = roundToNearest30Minutes(adjustedInitialDuration);
 
     showCupertinoModalPopup(
       context: context,
@@ -116,18 +126,17 @@ class _TimePickerTileState extends State<TimePickerTile> {
             Expanded(
               child: CupertinoTimerPicker(
                 mode: CupertinoTimerPickerMode.hm,
+                minuteInterval: 30,
                 initialTimerDuration: clampedInitialDuration,
                 onTimerDurationChanged: (Duration newDuration) {
-                  final Duration clampedDuration = isToday && newDuration < minimumDuration
-                      ? minimumDuration
-                      : newDuration;
+                  final Duration roundedDuration = roundToNearest30Minutes(newDuration);
 
                   final newTime = DateTime(
                     selectedTime.year,
                     selectedTime.month,
                     selectedTime.day,
-                    clampedDuration.inHours,
-                    clampedDuration.inMinutes % 60,
+                    roundedDuration.inHours,
+                    roundedDuration.inMinutes % 60,
                   );
 
                   setState(() => selectedTime = newTime);
