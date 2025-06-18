@@ -178,7 +178,7 @@ class _OutStationState extends State<OutStation> {
   void initState() {
     super.initState();
   }
-// hello yash yaha se new changes honge aage se
+
   // Helper to get DateTime from localStartTime or response
   DateTime getLocalDateTime() {
     final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
@@ -224,12 +224,34 @@ class _OutStationState extends State<OutStation> {
     return getLocalDateTime(); // fallback
   }
 
-  // Helper to update localStartTime
-  void updateLocalStartTime(DateTime newDateTime) {
-    bookingRideController.localStartTime.value = newDateTime;
-    print('Updated localStartTime: $newDateTime');
-  }
+  // // Helper to update localStartTime with timezone consideration
+  // void updateLocalStartTime(DateTime newDateTime) {
+  //   final placeSearchController = Get.find<PlaceSearchController>();
+  //   bookingRideController.localStartTime.value = newDateTime; // Store as local time
+  //   print('Updated localStartTime: $newDateTime');
+  //
+  //   // Update UTC in controller for API usage
+  //   final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
+  //       placeSearchController.getCurrentTimeZoneName();
+  //   final offset = placeSearchController.getOffsetFromTimeZone(timezone);
+  //   final utcDateTime = newDateTime.subtract(Duration(minutes: offset));
+  //   bookingRideController.localStartTime.value = utcDateTime;
+  //   print('Updated utcStartTime: $utcDateTime');
+  // }
 
+  void updateLocalStartTime(DateTime newDateTime) {
+    final placeSearchController = Get.find<PlaceSearchController>();
+    bookingRideController.localStartTime.value = newDateTime; // Store as local time
+    print('Updated localStartTime: $newDateTime');
+
+    // Update UTC in controller for API usage
+    final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
+        placeSearchController.getCurrentTimeZoneName();
+    final offset = placeSearchController.getOffsetFromTimeZone(timezone);
+    final utcDateTime = newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcStartTime.value = utcDateTime; // Use utcStartTime instead
+    print('Updated utcStartTime: $utcDateTime');
+  }
 
   DateTime convertUtcToLocal(String utcIsoString, int offsetMinutes) {
     // Parse the ISO 8601 UTC string
@@ -262,8 +284,6 @@ class _OutStationState extends State<OutStation> {
       return DateTime.now();
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -374,29 +394,10 @@ class _OutStationState extends State<OutStation> {
                 final placeSearchController = Get.find<PlaceSearchController>();
                 final bookingRideController = Get.find<BookingRideController>();
 
-                // Debug log
-                print('Obx: localStartTime = ${bookingRideController.localStartTime.value}');
+                // Always use current value from controller
+                final localStartTime = bookingRideController.localStartTime.value;
 
-                // Get userDateTime (local adjusted) from response
-                DateTime getInitialDateTime() {
-                  final userTimeStr = placeSearchController.findCntryDateTimeResponse.value
-                      ?.userDateTimeObject
-                      ?.userDateTime;
-                  final userOffset = placeSearchController.findCntryDateTimeResponse.value
-                      ?.userDateTimeObject
-                      ?.userOffSet;
-
-                  if (userTimeStr != null && userOffset != null) {
-                    try {
-                      final utcTime = DateTime.parse(userTimeStr).toUtc();
-                      return utcTime.add(Duration(minutes: userOffset));
-                    } catch (_) {}
-                  }
-
-                  return DateTime.now(); // fallback
-                }
-
-                // Get actualDateTime (local adjusted) from response
+                // Used for limiting min selectable date/time (e.g., for Cupertino pickers)
                 DateTime getActualLocalDateTime() {
                   final actualTimeStr = placeSearchController.findCntryDateTimeResponse.value
                       ?.actualDateTimeObject
@@ -415,23 +416,13 @@ class _OutStationState extends State<OutStation> {
                   return DateTime.now(); // fallback
                 }
 
-                // Helper to update localStartTime
-                void updateLocalStartTime(DateTime updatedDateTime) {
-                  bookingRideController.localStartTime.value = updatedDateTime;
-                  print('updated selected time: ${bookingRideController
-                      .localStartTime.value}');
-                }
-
-                final initialDateTime = getInitialDateTime();
-                final actualDateTime = getActualLocalDateTime(); // Used as minimum clamp in pickers
-
-                final localStartTime = bookingRideController.localStartTime.value;
+                final actualDateTime = getActualLocalDateTime();
 
                 return Column(
                   children: [
                     DatePickerTile(
                       label: 'Pickup Date',
-                      initialDate: localStartTime, // Use updated localStartTime
+                      initialDate: localStartTime,
                       onDateSelected: (newDate) {
                         final updatedDateTime = DateTime(
                           newDate.year,
@@ -446,7 +437,7 @@ class _OutStationState extends State<OutStation> {
                     const SizedBox(height: 16),
                     TimePickerTile(
                       label: 'Pickup Time',
-                      initialTime: localStartTime, // Use updated localStartTime
+                      initialTime: localStartTime,
                       onTimeSelected: (newTime) {
                         final updatedDateTime = DateTime(
                           localStartTime.year,
@@ -461,16 +452,14 @@ class _OutStationState extends State<OutStation> {
                     const SizedBox(height: 16),
                     DateTimePickerTile(
                       label: 'Pickup Date & Time',
-                      initialDateTime: localStartTime, // Use updated localStartTime
+                      initialDateTime: localStartTime,
                       onDateTimeSelected: (newDateTime) {
                         updateLocalStartTime(newDateTime);
                       },
                     ),
                   ],
                 );
-
-              })
-              ,
+              }),
             ),
             const SizedBox(height: 28),
             Padding(

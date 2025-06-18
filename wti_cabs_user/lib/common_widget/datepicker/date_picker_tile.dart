@@ -1,10 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:intl/intl.dart';
-
-import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -35,7 +33,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
   }
 
   @override
-  void didUpdateWidget(DatePickerTile oldWidget) {
+  void didUpdateWidget(covariant DatePickerTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialDate != oldWidget.initialDate) {
       _initializeSelectedDate();
@@ -43,71 +41,46 @@ class _DatePickerTileState extends State<DatePickerTile> {
   }
 
   void _initializeSelectedDate() {
-    final now = placeSearchController.currentDateTime.value;
-    selectedDate = widget.initialDate.isBefore(now) ? now : widget.initialDate;
-  }
+    final userDate = placeSearchController.findCntryDateTimeResponse.value
+        ?.userDateTimeObject?.userDateTime;
 
-
-  /// Used in UI — converted user-selected time
-  DateTime? _getUserLocalDateTime() {
-    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userDateTime;
-
-    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userOffSet;
-
-    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
-  }
-
-  /// Used for logic like minDate — actual server time
-  DateTime? _getActualLocalDateTime() {
-    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualDateTime;
-
-    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualOffSet;
-
-    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
-  }
-
-  DateTime? _convertUtcWithOffsetToLocal(String? utcIsoString, int? offsetMinutes) {
-    if (utcIsoString == null || offsetMinutes == null) return null;
-    try {
-      final utc = DateTime.parse(utcIsoString).toUtc();
-      return utc.add(Duration(minutes: offsetMinutes));
-    } catch (e) {
-      print("❌ Error converting UTC to local: $e");
-      return null;
+    if (userDate != null) {
+      selectedDate = DateTime.parse(userDate).toLocal();
+    } else {
+      selectedDate = widget.initialDate;
     }
   }
 
-  void _showCupertinoDatePicker(BuildContext context) {
-    final DateTime now = placeSearchController.currentDateTime.value;
-    final DateTime minDate = _getActualLocalDateTime() ?? now;
+  DateTime _getMinimumSelectableDate() {
+    final actualDate = placeSearchController.findCntryDateTimeResponse.value
+        ?.actualDateTimeObject?.actualDateTime;
 
-    // Use selectedDate, but ensure it's not earlier than minDate
-    final DateTime initialDateTime =
-    selectedDate.isBefore(minDate) ? minDate : selectedDate;
+    if (actualDate != null) {
+      return DateTime.parse(actualDate).toLocal();
+    }
+    return DateTime.now();
+  }
+
+  void _showCupertinoDatePicker(BuildContext context) {
+    final minDate = _getMinimumSelectableDate();
 
     showCupertinoModalPopup(
       context: context,
       builder: (_) => Container(
-        color: Colors.white,
         height: 300,
+        color: Colors.white,
         child: Column(
           children: [
             Expanded(
               child: CupertinoDatePicker(
-                initialDateTime: _getActualLocalDateTime(),
-                mode: CupertinoDatePickerMode.date,
+                mode: CupertinoDatePickerMode.date, // 🔄 Changed to dateAndTime
                 minimumDate: minDate,
-                onDateTimeChanged: (newDate) {
-                  setState(() => selectedDate = newDate);
-                  widget.onDateSelected(newDate);
+                initialDateTime: selectedDate.isBefore(minDate) ? minDate : selectedDate,
+                use24hFormat: true,
+                minuteInterval: 1,
+                onDateTimeChanged: (DateTime newDateTime) {
+                  setState(() => selectedDate = newDateTime);
+                  widget.onDateSelected(newDateTime); // 🔄 Correctly update parent
                 },
               ),
             ),
@@ -123,7 +96,9 @@ class _DatePickerTileState extends State<DatePickerTile> {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('dd MMM, yyyy').format(selectedDate);
+    selectedDate = widget.initialDate; // Ensures always synced
+    final formattedDate = DateFormat('dd MMM yyyy') // 🔄 Show full date + time
+        .format(selectedDate);
 
     return GestureDetector(
       onTap: () => _showCupertinoDatePicker(context),
@@ -136,7 +111,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_month_outlined, color: AppColors.bgGrey3, size: 15),
+            const Icon(Icons.calendar_today, color: AppColors.bgGrey3, size: 15),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

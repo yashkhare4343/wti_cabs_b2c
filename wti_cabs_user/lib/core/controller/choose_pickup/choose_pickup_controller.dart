@@ -69,7 +69,9 @@ class PlaceSearchController extends GetxController {
   }
 
   String convertDateTimeToUtcString(DateTime localDateTime) {
-    final utcDateTime = localDateTime.toUtc();
+    final timezone = findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
+    final offset = getOffsetFromTimeZone(timezone);
+    final utcDateTime = localDateTime.subtract(Duration(minutes: -(offset))); // Adjust to UTC
     return '${utcDateTime.toIso8601String().split('.').first}.000Z';
   }
 
@@ -212,7 +214,7 @@ class PlaceSearchController extends GetxController {
         "destinationLng": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
             ? getPlacesLatLng.value!.latLong.lng
             : dLng,
-        "dateTime": dateTime,
+        "dateTime": convertDateTimeToUtcString(bookingRideController.localStartTime.value),
         "offset": offset,
         "timeZone": requestTimezone,
         "tripCode": tripCode,

@@ -15,7 +15,7 @@ class BookingRideController extends GetxController {
   }
   // ✅ Correct type — DateTime not String
   Rx<DateTime> localStartTime = DateTime.now().obs;
-
+  Rx<DateTime> utcStartTime = DateTime.now().obs;
   RxString prefilled = "".obs;
   RxString prefilledDrop = "".obs;
 

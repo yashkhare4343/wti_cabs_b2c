@@ -1,3 +1,4 @@
+ // All imports unchanged...
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -43,12 +44,14 @@ class _TimePickerTileState extends State<TimePickerTile> {
   }
 
   void _initializeSelectedTime() {
-    final currentDateTime = placeSearchController.currentDateTime.value;
-    final isToday = _isSameDate(widget.initialTime, currentDateTime);
+    final userDateTime = _getUserLocalDateTime();
+    final actualDateTime = _getActualLocalDateTime();
 
-    selectedTime = isToday && widget.initialTime.isBefore(currentDateTime)
-        ? currentDateTime
-        : widget.initialTime;
+    if (userDateTime != null && actualDateTime != null) {
+      selectedTime = userDateTime.isBefore(actualDateTime) ? actualDateTime : userDateTime;
+    } else {
+      selectedTime = widget.initialTime;
+    }
   }
 
   DateTime? _getUserLocalDateTime() {
@@ -79,7 +82,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
     if (utcIsoString == null || offsetMinutes == null) return null;
     try {
       final utc = DateTime.parse(utcIsoString).toUtc();
-      return utc.add(Duration(minutes: offsetMinutes));
+      return utc.add(Duration(minutes: -(offsetMinutes)));
     } catch (_) {
       return null;
     }
@@ -89,19 +92,18 @@ class _TimePickerTileState extends State<TimePickerTile> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Duration roundToNearest30Minutes(Duration duration) {
-    int totalMinutes = duration.inMinutes;
-    int remainder = totalMinutes % 30;
-    if (remainder == 0) return duration;
-    // Round up to next 30-minute slab
-    int roundedMinutes = totalMinutes + (30 - remainder);
+  Duration roundToNearestInterval(Duration duration, int interval) {
+    final minutes = duration.inMinutes;
+    final remainder = minutes % interval;
+    final roundedMinutes = remainder == 0 ? minutes : minutes + (interval - remainder);
     return Duration(minutes: roundedMinutes);
   }
 
   void _showCupertinoTimePicker(BuildContext context) {
     final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
-    final isToday = _isSameDate(selectedTime, _getUserLocalDateTime() ?? DateTime.now());
+    final userDateTime = _getUserLocalDateTime() ?? DateTime.now();
 
+    final isToday = _isSameDate(selectedTime, userDateTime);
     final Duration minimumDuration = isToday
         ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
         : Duration.zero;
@@ -111,10 +113,10 @@ class _TimePickerTileState extends State<TimePickerTile> {
       minutes: selectedTime.minute,
     );
 
-    final Duration adjustedInitialDuration =
-    initialDuration < minimumDuration ? minimumDuration : initialDuration;
-
-    final Duration clampedInitialDuration = roundToNearest30Minutes(adjustedInitialDuration);
+    final Duration clampedInitialDuration = roundToNearestInterval(
+      initialDuration < minimumDuration ? minimumDuration : initialDuration,
+      30,
+    );
 
     showCupertinoModalPopup(
       context: context,
@@ -129,14 +131,19 @@ class _TimePickerTileState extends State<TimePickerTile> {
                 minuteInterval: 30,
                 initialTimerDuration: clampedInitialDuration,
                 onTimerDurationChanged: (Duration newDuration) {
-                  final Duration roundedDuration = roundToNearest30Minutes(newDuration);
+                  final Duration clampedDuration = roundToNearestInterval(
+                    isToday && newDuration < minimumDuration ? minimumDuration : newDuration,
+                    30,
+                  );
+
+                  final currentDate = choosePickupController.localStartTime.value;
 
                   final newTime = DateTime(
-                    selectedTime.year,
-                    selectedTime.month,
-                    selectedTime.day,
-                    roundedDuration.inHours,
-                    roundedDuration.inMinutes % 60,
+                    currentDate.year,
+                    currentDate.month,
+                    currentDate.day,
+                    clampedDuration.inHours,
+                    clampedDuration.inMinutes % 60,
                   );
 
                   setState(() => selectedTime = newTime);
