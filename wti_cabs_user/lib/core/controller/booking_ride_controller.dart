@@ -26,6 +26,4 @@ class BookingRideController extends GetxController {
     }
   }
 
-
-
 }

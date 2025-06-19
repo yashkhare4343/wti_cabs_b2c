@@ -168,7 +168,7 @@ class _SelectDropState extends State<SelectDrop> {
                             onTap: () {
                               dropController.text = place.primaryText;
                               bookingRideController.prefilledDrop.value = place.primaryText;
-                              placeSearchController.placeId.value = place.placeId;
+                              placeSearchController.dropPlaceId.value = place.placeId;
                               placeSearchController.getLatLngDetails(place.placeId, context, 'drop');
 
                               FocusScope.of(context).unfocus();

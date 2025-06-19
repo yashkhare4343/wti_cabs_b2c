@@ -24,6 +24,7 @@ class PlaceSearchController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
   final RxString placeId = ''.obs;
+  final RxString dropPlaceId = ''.obs;
   // differernt place id
 
   final RxBool isPickValid = false.obs;
