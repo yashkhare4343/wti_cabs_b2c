@@ -15,6 +15,8 @@ class PlaceSearchController extends GetxController {
   final BookingRideController bookingRideController = Get.find<BookingRideController>();
 
   var getPlacesLatLng = Rxn<GetLatLngResponse>();
+  var getDropPlacesLatLng = Rxn<GetLatLngResponse>();
+
   var findCntryDateTimeResponse = Rxn<FindCntryDateTimeResponse>();
 
   RxString prefilledDrop = "".obs;
@@ -22,6 +24,11 @@ class PlaceSearchController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
   final RxString placeId = ''.obs;
+  // differernt place id
+
+  final RxBool isPickValid = false.obs;
+  final RxBool isDropValid = false.obs;
+
 
   Timer? _debounce;
 
@@ -134,7 +141,7 @@ class PlaceSearchController extends GetxController {
     });
   }
 
-  Future<void> getLatLngDetails(String placeId, BuildContext context) async {
+  Future<void> getLatLngDetails(String placeId, BuildContext context, String type) async {
     try {
       isLoading.value = true;
       final apiService = ApiService();
@@ -142,12 +149,21 @@ class PlaceSearchController extends GetxController {
       final responseData = await apiService.postRequest(
           'google/getLatLongChauffeur',
           { "place_id": placeId, "isLatLngAvailable": false },
-          context);
+          context
+      );
 
-      getPlacesLatLng.value = GetLatLngResponse.fromJson(responseData);
-      print('Parsed getPlacesLatLng: ${getPlacesLatLng.value}');
+      final parsedResponse = GetLatLngResponse.fromJson(responseData);
 
-      if (getPlacesLatLng.value == null) {
+      // 🔀 Save based on type
+      if (type == 'pickup') {
+        getPlacesLatLng.value = parsedResponse;
+      } else if (type == 'drop') {
+        getDropPlacesLatLng.value = parsedResponse;
+      }
+
+      final usedLatLng = (type == 'pickup') ? getPlacesLatLng.value : getDropPlacesLatLng.value;
+
+      if (usedLatLng == null) {
         print('LatLng is null, skipping findCountryDateTime');
         return;
       }
@@ -156,16 +172,16 @@ class PlaceSearchController extends GetxController {
       final offset = getOffsetFromTimeZone(timeZone);
 
       await findCountryDateTime(
-        getPlacesLatLng.value!.latLong.lat,
-        getPlacesLatLng.value!.latLong.lng,
-        getPlacesLatLng.value!.country,
-        getPlacesLatLng.value!.country,
-        getPlacesLatLng.value!.latLong.lat,
-        getPlacesLatLng.value!.latLong.lng,
+        getPlacesLatLng.value?.latLong.lat ?? 0.0,
+        getPlacesLatLng.value?.latLong.lng ?? 0.0,
+        getPlacesLatLng.value?.country ?? '',
+        getDropPlacesLatLng.value?.country ?? '',
+        getDropPlacesLatLng.value?.latLong.lat ?? 0.0,
+        getDropPlacesLatLng.value?.latLong.lng ?? 0.0,
         convertDateTimeToUtcString(bookingRideController.localStartTime.value),
         offset,
         timeZone,
-        2,
+        0,
         context,
       );
 
@@ -196,24 +212,12 @@ class PlaceSearchController extends GetxController {
       final requestTimezone = findCntryDateTimeResponse.value?.timeZone ?? timezone;
 
       final requestData = {
-        "sourceLat": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lat
-            : sLat,
-        "sourceLng": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lng
-            : sLng,
-        "sourceCountry": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.country
-            : sCountry,
-        "destinationCountry": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.country
-            : dCountry,
-        "destinationLat": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lat
-            : dLat,
-        "destinationLng": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lng
-            : dLng,
+        "sourceLat": getPlacesLatLng.value?.latLong.lat ?? sLat,
+        "sourceLng": getPlacesLatLng.value?.latLong.lng ?? sLng,
+        "sourceCountry": getPlacesLatLng.value?.country ?? sCountry,
+        "destinationCountry": getDropPlacesLatLng.value?.country ?? dCountry,
+        "destinationLat": getDropPlacesLatLng.value?.latLong.lat ?? dLat,
+        "destinationLng": getDropPlacesLatLng.value?.latLong.lng ?? dLng,
         "dateTime": convertDateTimeToUtcString(bookingRideController.localStartTime.value),
         "offset": offset,
         "timeZone": requestTimezone,
@@ -231,6 +235,13 @@ class PlaceSearchController extends GetxController {
       if (findCntryDateTimeResponse.value != null) {
         updateDateTimeFromApi(findCntryDateTimeResponse.value!);
       }
+
+      Future.delayed(Duration(milliseconds: 100), () {
+        isPickValid.value = findCntryDateTimeResponse.value?.sourceInput??false;
+        isDropValid.value = findCntryDateTimeResponse.value?.destinationInputFalse??false;
+        print('isSourceValid : ${isPickValid.value}');
+        print('isDropValid : ${isDropValid.value}');
+      });
 
     } catch (error) {
       print("Error in findCountryDateTime: $error");

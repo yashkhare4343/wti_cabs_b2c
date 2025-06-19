@@ -31,7 +31,7 @@ class AppColors {
   static const prefixAuthText = Color(0xFF2F2F2F);
   static const inputTextPrimary = Color(0xFF2F2F2F);
   static const greyText3 = Color(0xFF333333);
-  static const errorStatusText = Color(0xFFFF2222);
+  static const errorStatusText = Color(0xFFf24d4d);
   static const successStatusText =  Color(0xFF2B2B2B);
   static const buttonTextPrimary1 = Color(0xFF2C3448);
   static const greyText1 = Color(0xFF9A9A9A);

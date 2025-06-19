@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/common_widget/buttons/primary_button.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_picker_tile.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_time_picker.dart';
@@ -12,6 +15,10 @@ import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_contro
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 class BookingRide extends StatefulWidget {
   const BookingRide({super.key});
@@ -330,6 +337,67 @@ class _OutStationState extends State<OutStation> {
     TextEditingController(text: bookingRideController.prefilled.value);
     TextEditingController dropController =
     TextEditingController(text: bookingRideController.prefilledDrop.value);
+    final placeSearchController = Get.find<PlaceSearchController>();
+    
+    // redirect to rohit screen 
+    Future<void> launchCallbackUrl(String jwtToken) async {
+      final url = Uri.parse(
+        'https://aceuat.acumengroup.in/callback?id=A1RM001&token=$jwtToken&sso=true',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication, // Or LaunchMode.inAppWebView
+        );
+      } else {
+        throw 'Could not launch $url';
+      }
+    }
+
+    Future<void> rohitPostData() async {
+      final url = Uri.parse('https://aceuat.acumengroup.in:3002/backend/generate-token-via-app');
+
+      // Headers
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization':
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJnZW5lcmljSWQiOiJob3h4IiwidXNlclR5cGUiOiJhZG1pbiIsImZvclJvdXRlcyI6ImFsbCIsImlhdCI6MTc1MDIzNzk3MCwiZXhwIjo0OTAzODM3OTcwfQ.fWCjl54ULGPs159pZKRGms_5g_5FglsvS4U-FPb_mtM'
+      };
+
+      // Body
+      final body = jsonEncode({
+        "genericId": "A1RM001",
+        "userType": "client"
+      });
+
+      // Custom HttpClient that ignores SSL errors (ONLY FOR DEV)
+      final httpClient = HttpClient()
+        ..badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+
+      final ioClient = IOClient(httpClient);
+
+      try {
+        final response = await ioClient.post(url, headers: headers, body: body);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+
+          final accessToken = data['token'];
+          print('Rohit API Success: ${response.body}');
+
+          launchCallbackUrl(accessToken);
+        } else {
+          print('Failed: ${response.statusCode}');
+          print('Body: ${response.body}');
+        }
+      } catch (e) {
+        print('Error: $e');
+      } finally {
+        ioClient.close();
+      }
+    }
 
     return SingleChildScrollView(
       child: Padding(
@@ -345,26 +413,32 @@ class _OutStationState extends State<OutStation> {
                   height: 120,
                 ),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BookingTextFormField(
-                        hintText: 'Enter Pickup Location',
-                        controller: pickupController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.choosePickup);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      BookingTextFormField(
-                        hintText: 'Enter Drop Location',
-                        controller: dropController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.chooseDrop);
-                        },
-                      ),
-                    ],
-                  ),
+                  child: Obx((){
+                    return  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        BookingTextFormField(
+                          hintText: 'Enter Pickup Location',
+                          controller: pickupController,
+                          onTap: () {
+                            GoRouter.of(context).push(AppRoutes.choosePickup);
+                          },
+                          isError: placeSearchController.findCntryDateTimeResponse.value?.sourceInput??false,
+                          errorText: 'We do not offer service in this region',
+                        ),
+                        const SizedBox(height: 12),
+                        BookingTextFormField(
+                          hintText: 'Enter Drop Location',
+                          controller: dropController,
+                          onTap: () {
+                            GoRouter.of(context).push(AppRoutes.chooseDrop);
+                          },
+                        isError: placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse??false,
+                          errorText: 'We do not offer service in this region',
+                        ),
+                      ],
+                    );
+                  })
                 ),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -468,7 +542,9 @@ class _OutStationState extends State<OutStation> {
                 width: double.infinity,
                 child: PrimaryButton(
                   text: 'Search Now',
-                  onPressed: () {},
+                  onPressed: () {
+                    rohitPostData();
+                  },
                 ),
               ),
             ),

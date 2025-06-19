@@ -44,7 +44,7 @@ class FindCntryDateTimeResponse {
       timeZone: json['timeZone'],
       message: json['message'],
       sourceInput: json['sourceInput'] ?? false,
-      destinationInputFalse: json['destinationInputFalse'] ?? false,
+      destinationInputFalse: json['destinationInput'] ?? false,
     );
   }
 
@@ -75,7 +75,7 @@ class ActualDateTimeObject {
   factory ActualDateTimeObject.fromJson(Map<String, dynamic> json) {
     return ActualDateTimeObject(
       actualDateTime: json['actualDateTime'],
-      actualOffSet: json['actualOffSet'],
+      actualOffSet: json['actualOffset'],
     );
   }
 

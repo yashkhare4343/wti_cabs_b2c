@@ -176,7 +176,7 @@ class _SelectPickupState extends State<SelectPickup> {
                               pickupController.text = place.primaryText;
                               bookingRideController.prefilled.value = place.primaryText;
                               placeSearchController.placeId.value = place.placeId;
-                              placeSearchController.getLatLngDetails(place.placeId, context);
+                              placeSearchController.getLatLngDetails(place.placeId, context, 'pickup');
 
                               FocusScope.of(context).unfocus();
                               GoRouter.of(context).pop();

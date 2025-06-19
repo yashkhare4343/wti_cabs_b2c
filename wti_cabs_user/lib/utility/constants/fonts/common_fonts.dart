@@ -32,6 +32,8 @@ class CommonFonts {
   static final TextStyle labelText = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.greyText3);
 
   static final TextStyle errorTextStatus = base(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.errorStatusText);
+  static final TextStyle errorTextStatusL = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.errorStatusText);
+
   static final TextStyle h5TextHeading = base(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondary);
   static final TextStyle h3TextHeading = base(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.headingColorSecondary);
   static final TextStyle h3TextHeadingPrimary = base(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary);

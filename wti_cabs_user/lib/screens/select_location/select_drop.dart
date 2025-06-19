@@ -7,6 +7,7 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
+import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
 class SelectDrop extends StatefulWidget {
@@ -17,18 +18,14 @@ class SelectDrop extends StatefulWidget {
 }
 
 class _SelectDropState extends State<SelectDrop> {
-  final TextEditingController dropController = TextEditingController();
   final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
   List<String> suggestions = [];
-
-  @override
-  void dispose() {
-    dropController.dispose();
-    super.dispose();
-  }
+  final TextEditingController dropController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    dropController.text = bookingRideController.prefilledDrop.value;
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -39,7 +36,7 @@ class _SelectDropState extends State<SelectDrop> {
           color: AppColors.blue4,
         ),
         title: Text(
-          "Choose Drop Location",
+          "Choose Drop",
           style: CommonFonts.appBarText,
         ),
         centerTitle: false,
@@ -51,13 +48,16 @@ class _SelectDropState extends State<SelectDrop> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GooglePlacesTextField(
-                hintText: "Enter pickup location",
+                hintText: "Enter drop location",
                 controller: dropController,
-                // onSuggestionsChanged: (newSuggestions) {
-                //   setState(() {
-                //     suggestions = newSuggestions;
-                //   });
-                // },
+                onPlaceSelected: (newSuggestion) {
+                  setState(() {
+                    dropController.text = newSuggestion.primaryText;
+                    bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
+                    FocusScope.of(context).unfocus();
+                    GoRouter.of(context).pop();
+                  });
+                },
               ),
             ),
             const SizedBox(height: 16),
@@ -87,7 +87,7 @@ class _SelectDropState extends State<SelectDrop> {
                       icon: Icons.add_location_alt,
                       label: "Add Place",
                       onTap: () {
-                        print("📍 Add Place tapped");
+                        print("📍 Add Location tapped");
                       },
                     ),
                   ],
@@ -135,8 +135,11 @@ class _SelectDropState extends State<SelectDrop> {
                 ),
               ),
             ),
-            if (dropController.text.isNotEmpty)
-              Padding(
+            // Recent Searches
+            Obx(() {
+              final suggestions = placeSearchController.suggestions.value;
+              return suggestions.isNotEmpty
+                  ? Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                 child: Material(
                   color: AppColors.scaffoldBgPrimary1,
@@ -148,42 +151,42 @@ class _SelectDropState extends State<SelectDrop> {
                     itemCount: suggestions.length,
                     itemBuilder: (context, index) {
                       final place = suggestions[index];
-                      return Padding(
-                        padding: EdgeInsets.all(0.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
-                              leading: Icon(Icons.location_on,size: 20,),
-                              title: Text(place.split(',').first.trim(),style: CommonFonts.bodyText1Black,),
-                              subtitle: Text(place,style: CommonFonts.bodyText6Black,),
-                              onTap: () {
-                                dropController.text = place;
-                                setState(() {
-                                  suggestions = [];
-                                });
-                                FocusScope.of(context).unfocus();
-                                bookingRideController.prefilledDrop.value = dropController.text.trim();
-                                GoRouter.of(context).pop();
-                              },
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            leading: const Icon(Icons.location_on, size: 20),
+                            title: Text(
+                              place.primaryText.split(',').first.trim(),
+                              style: CommonFonts.bodyText1Black,
                             ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            subtitle: Text(
+                              place.secondaryText,
+                              style: CommonFonts.bodyText6Black,
+                            ),
+                            onTap: () {
+                              dropController.text = place.primaryText;
+                              bookingRideController.prefilledDrop.value = place.primaryText;
+                              placeSearchController.placeId.value = place.placeId;
+                              placeSearchController.getLatLngDetails(place.placeId, context, 'drop');
 
-                              child: Container(
-                                height: 1,
-                                color: AppColors.bgGrey2,
-
-                              ),
-                            )
-                          ],
-                        ),
+                              FocusScope.of(context).unfocus();
+                              GoRouter.of(context).pop();
+                            },
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Divider(color: AppColors.bgGrey2, height: 1),
+                          ),
+                        ],
                       );
                     },
                   ),
                 ),
-              ),
+              )
+                  : const SizedBox();
+            }),
           ],
         ),
       ),
