@@ -356,10 +356,36 @@ class _OutStationState extends State<OutStation> {
                       label: 'Pickup Date',
                       initialDate: localStartTime,
                       onDateSelected: (newDate) {
-                        updateLocalStartTime(DateTime(newDate.year, newDate.month, newDate.day, localStartTime.hour, localStartTime.minute));
+                        // Update localStartTime with only the new date, keeping old time
+                        updateLocalStartTime(DateTime(
+                          newDate.year,
+                          newDate.month,
+                          newDate.day,
+                          localStartTime.hour,
+                          localStartTime.minute,
+                        ));
+
+                        // 👇 FIX: if selected date is the minimum date, also update the time
+                        final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
+                            ?.actualDateTimeObject?.actualDateTime;
+
+                        if (actualDateTimeStr != null) {
+                          final actualMinDateTime = DateTime.parse(actualDateTimeStr).toLocal();
+                          if (DateUtils.isSameDay(newDate, actualMinDateTime)) {
+                            final updatedTime = DateTime(
+                              newDate.year,
+                              newDate.month,
+                              newDate.day,
+                              actualMinDateTime.hour,
+                              actualMinDateTime.minute,
+                            );
+                            updateLocalStartTime(updatedTime);
+                          }
+                        }
                       },
                       controller: activeController,
                     ),
+
                     const SizedBox(height: 16),
                     TimePickerTile(
                       label: 'Pickup Time',
@@ -370,11 +396,11 @@ class _OutStationState extends State<OutStation> {
                       controller: activeController,
                     ),
                     const SizedBox(height: 16),
-                    DateTimePickerTile(
-                      label: 'Pickup Date & Time',
-                      initialDateTime: localStartTime,
-                      onDateTimeSelected: updateLocalStartTime,
-                    ),
+                    // DateTimePickerTile(
+                    //   label: 'Pickup Date & Time',
+                    //   initialDateTime: localStartTime,
+                    //   onDateTimeSelected: updateLocalStartTime,
+                    // ),
                     if (showDropDateTime) ...[
                       const SizedBox(height: 16),
                       DateTimePickerTile(
