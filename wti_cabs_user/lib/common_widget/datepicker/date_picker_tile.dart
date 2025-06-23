@@ -77,7 +77,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
           children: [
             Expanded(
               child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.dateAndTime,
+                mode: CupertinoDatePickerMode.date,
                 minimumDate: minDate,
                 initialDateTime: selectedDate.isBefore(minDate) ? minDate : selectedDate,
                 use24hFormat: true,
@@ -101,7 +101,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
   @override
   Widget build(BuildContext context) {
     selectedDate = widget.initialDate;
-    final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(selectedDate);
+    final formattedDate = DateFormat('dd MMM yyyy').format(selectedDate);
 
     return GestureDetector(
       onTap: () => _showCupertinoDatePicker(context),
