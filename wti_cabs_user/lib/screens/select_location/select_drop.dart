@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
-
+import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../common_widget/buttons/quick_action_button.dart';
+import '../../common_widget/textformfield/drop_google_place_text_field.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
-import '../../utility/constants/fonts/common_fonts.dart';
+import '../../core/controller/choose_drop/choose_drop_controller.dart';
 
 class SelectDrop extends StatefulWidget {
   const SelectDrop({super.key});
@@ -17,50 +17,48 @@ class SelectDrop extends StatefulWidget {
 }
 
 class _SelectDropState extends State<SelectDrop> {
+  final BookingRideController bookingRideController = Get.find<BookingRideController>();
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   final TextEditingController dropController = TextEditingController();
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
-  List<String> suggestions = [];
-
-  @override
-  void dispose() {
-    dropController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
+    dropController.text = bookingRideController.prefilledDrop.value;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.scaffoldBgPrimary1,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        iconTheme: const IconThemeData(
-          color: AppColors.blue4,
-        ),
-        title: Text(
-          "Choose Drop Location",
-          style: CommonFonts.appBarText,
-        ),
+        iconTheme: const IconThemeData(color: AppColors.blue4),
+        title: Text("Choose Drop", style: CommonFonts.appBarText),
         centerTitle: false,
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 🔍 Drop Search Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GooglePlacesTextField(
-                hintText: "Enter pickup location",
+              child: DropGooglePlacesTextField(
+                hintText: "Enter drop location",
                 controller: dropController,
-                // onSuggestionsChanged: (newSuggestions) {
-                //   setState(() {
-                //     suggestions = newSuggestions;
-                //   });
-                // },
+                onPlaceSelected: (newSuggestion) {
+                  setState(() {
+                    dropController.text = newSuggestion.primaryText;
+                    bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
+                    FocusScope.of(context).unfocus();
+                    GoRouter.of(context).pop();
+                  });
+                },
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // 📍 Quick Actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SingleChildScrollView(
@@ -70,120 +68,88 @@ class _SelectDropState extends State<SelectDrop> {
                     QuickAddLocationTile(
                       icon: Icons.home,
                       label: "Home",
-                      onTap: () {
-                        print("🏠 Home tapped");
-                      },
+                      onTap: () => print("🏠 Home tapped"),
                     ),
                     const SizedBox(width: 12),
                     QuickAddLocationTile(
                       icon: Icons.business,
                       label: "Office",
-                      onTap: () {
-                        print("🏢 Office tapped");
-                      },
+                      onTap: () => print("🏢 Office tapped"),
                     ),
                     const SizedBox(width: 12),
                     QuickAddLocationTile(
                       icon: Icons.add_location_alt,
                       label: "Add Place",
-                      onTap: () {
-                        print("📍 Add Place tapped");
-                      },
+                      onTap: () => print("📍 Add Location tapped"),
                     ),
                   ],
                 ),
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // 🌍 Set on Map
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.location_searching_outlined,
-                      size: 18, color: AppColors.blue4),
+                  Icon(Icons.location_searching_outlined, size: 18, color: AppColors.blue4),
                   const SizedBox(width: 6),
-                  Text(
-                    'Set Location on Map',
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.blue4),
-                  ),
+                  Text('Set Location on Map', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blue4)),
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // 🕘 Recent Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: AppColors.bgGrey1,
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.history_outlined, size: 18, color: Colors.black),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Recent Searches',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black),
-                    ),
-                  ],
-                ),
+              child: Row(
+                children: [
+                  Icon(Icons.history_outlined, size: 18, color: Colors.black),
+                  const SizedBox(width: 6),
+                  Text('Recent Searches', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black)),
+                ],
               ),
             ),
-            if (dropController.text.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                child: Material(
-                  color: AppColors.scaffoldBgPrimary1,
-                  borderRadius: BorderRadius.circular(8),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: suggestions.length,
-                    itemBuilder: (context, index) {
-                      final place = suggestions[index];
-                      return Padding(
-                        padding: EdgeInsets.all(0.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
-                              leading: Icon(Icons.location_on,size: 20,),
-                              title: Text(place.split(',').first.trim(),style: CommonFonts.bodyText1Black,),
-                              subtitle: Text(place,style: CommonFonts.bodyText6Black,),
-                              onTap: () {
-                                dropController.text = place;
-                                setState(() {
-                                  suggestions = [];
-                                });
-                                FocusScope.of(context).unfocus();
-                                bookingRideController.prefilledDrop.value = dropController.text.trim();
-                                GoRouter.of(context).pop();
-                              },
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
 
-                              child: Container(
-                                height: 1,
-                                color: AppColors.bgGrey2,
+            const SizedBox(height: 8),
 
-                              ),
-                            )
-                          ],
-                        ),
-                      );
+            // 📃 Drop Suggestions
+            Obx(() {
+              final suggestions = dropPlaceSearchController.dropSuggestions.value;
+
+              return suggestions.isNotEmpty
+                  ? ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: suggestions.length,
+                separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.bgGrey2),
+                itemBuilder: (context, index) {
+                  final place = suggestions[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    leading: const Icon(Icons.location_on, size: 20),
+                    title: Text(place.primaryText.split(',').first.trim(), style: CommonFonts.bodyText1Black),
+                    subtitle: Text(place.secondaryText, style: CommonFonts.bodyText6Black),
+                    onTap: () {
+                      dropController.text = place.primaryText;
+                      bookingRideController.prefilledDrop.value = place.primaryText;
+                      dropPlaceSearchController.dropPlaceId.value = place.placeId;
+                      dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
+
+                      FocusScope.of(context).unfocus();
+                      GoRouter.of(context).pop();
                     },
-                  ),
-                ),
-              ),
+                  );
+                },
+              )
+                  : const SizedBox();
+            }),
           ],
         ),
       ),

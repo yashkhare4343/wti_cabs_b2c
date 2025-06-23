@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -11,11 +10,15 @@ class DatePickerTile extends StatefulWidget {
   final DateTime initialDate;
   final ValueChanged<DateTime> onDateSelected;
 
+  /// Accepts either PlaceSearchController or DropPlaceSearchController
+  final dynamic controller;
+
   const DatePickerTile({
     super.key,
     required this.label,
     required this.initialDate,
     required this.onDateSelected,
+    required this.controller,
   });
 
   @override
@@ -24,11 +27,12 @@ class DatePickerTile extends StatefulWidget {
 
 class _DatePickerTileState extends State<DatePickerTile> {
   late DateTime selectedDate;
-  final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
+  late dynamic controller;
 
   @override
   void initState() {
     super.initState();
+    controller = widget.controller;
     _initializeSelectedDate();
   }
 
@@ -41,7 +45,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
   }
 
   void _initializeSelectedDate() {
-    final userDate = placeSearchController.findCntryDateTimeResponse.value
+    final userDate = controller.findCntryDateTimeResponse.value
         ?.userDateTimeObject?.userDateTime;
 
     if (userDate != null) {
@@ -52,7 +56,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
   }
 
   DateTime _getMinimumSelectableDate() {
-    final actualDate = placeSearchController.findCntryDateTimeResponse.value
+    final actualDate = controller.findCntryDateTimeResponse.value
         ?.actualDateTimeObject?.actualDateTime;
 
     if (actualDate != null) {
@@ -73,14 +77,14 @@ class _DatePickerTileState extends State<DatePickerTile> {
           children: [
             Expanded(
               child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date, // 🔄 Changed to dateAndTime
+                mode: CupertinoDatePickerMode.dateAndTime,
                 minimumDate: minDate,
                 initialDateTime: selectedDate.isBefore(minDate) ? minDate : selectedDate,
                 use24hFormat: true,
                 minuteInterval: 1,
                 onDateTimeChanged: (DateTime newDateTime) {
                   setState(() => selectedDate = newDateTime);
-                  widget.onDateSelected(newDateTime); // 🔄 Correctly update parent
+                  widget.onDateSelected(newDateTime);
                 },
               ),
             ),
@@ -96,9 +100,8 @@ class _DatePickerTileState extends State<DatePickerTile> {
 
   @override
   Widget build(BuildContext context) {
-    selectedDate = widget.initialDate; // Ensures always synced
-    final formattedDate = DateFormat('dd MMM yyyy') // 🔄 Show full date + time
-        .format(selectedDate);
+    selectedDate = widget.initialDate;
+    final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(selectedDate);
 
     return GestureDetector(
       onTap: () => _showCupertinoDatePicker(context),

@@ -10,6 +10,7 @@ import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -171,153 +172,93 @@ class OutStation extends StatefulWidget {
 
 class _OutStationState extends State<OutStation> {
   String selectedTrip = 'oneWay';
-  final BookingRideController bookingRideController = Get.find<BookingRideController>();
-  final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
+
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final RxString selectedField = ''.obs;
+
 
   @override
   void initState() {
     super.initState();
   }
 
-  // Helper to get DateTime from localStartTime or response
   DateTime getLocalDateTime() {
     final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userDateTime;
-
+        ?.userDateTimeObject?.userDateTime;
     final offset = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userOffSet;
+        ?.userDateTimeObject?.userOffSet;
 
     if (userDateTimeStr != null) {
       try {
         final utc = DateTime.parse(userDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0)); // Convert to local
+        return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
         print("Error parsing userDateTime: $e");
       }
     }
 
-    // fallback to localStartTime
     return bookingRideController.localStartTime.value;
   }
 
-  // Helper to get initial DateTime from response's actualDateTime
   DateTime getInitialDateTime() {
     final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualDateTime;
-
+        ?.actualDateTimeObject?.actualDateTime;
     final offset = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualOffSet;
+        ?.actualDateTimeObject?.actualOffSet;
 
     if (actualDateTimeStr != null) {
       try {
         final utc = DateTime.parse(actualDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0)); // Convert to local
+        return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
         print("Error parsing actualDateTime: $e");
       }
     }
 
-    return getLocalDateTime(); // fallback
+    return getLocalDateTime();
   }
 
-  // // Helper to update localStartTime with timezone consideration
-  // void updateLocalStartTime(DateTime newDateTime) {
-  //   final placeSearchController = Get.find<PlaceSearchController>();
-  //   bookingRideController.localStartTime.value = newDateTime; // Store as local time
-  //   print('Updated localStartTime: $newDateTime');
-  //
-  //   // Update UTC in controller for API usage
-  //   final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
-  //       placeSearchController.getCurrentTimeZoneName();
-  //   final offset = placeSearchController.getOffsetFromTimeZone(timezone);
-  //   final utcDateTime = newDateTime.subtract(Duration(minutes: offset));
-  //   bookingRideController.localStartTime.value = utcDateTime;
-  //   print('Updated utcStartTime: $utcDateTime');
-  // }
+  DateTime getDropLocalDateTime() {
+    final dropDateTimeStr = dropPlaceSearchController.dropDateTimeResponse.value
+        ?.userDateTimeObject?.userDateTime;
+    final dropOffset = dropPlaceSearchController.dropDateTimeResponse.value
+        ?.userDateTimeObject?.userOffSet;
+
+    if (dropDateTimeStr != null) {
+      try {
+        final utc = DateTime.parse(dropDateTimeStr).toUtc();
+        return utc.add(Duration(minutes: dropOffset ?? 0));
+      } catch (_) {}
+    }
+
+    return bookingRideController.localStartTime.value.add(const Duration(hours: 4));
+  }
 
   void updateLocalStartTime(DateTime newDateTime) {
-    final placeSearchController = Get.find<PlaceSearchController>();
-    bookingRideController.localStartTime.value = newDateTime; // Store as local time
-    print('Updated localStartTime: $newDateTime');
-
-    // Update UTC in controller for API usage
     final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
         placeSearchController.getCurrentTimeZoneName();
     final offset = placeSearchController.getOffsetFromTimeZone(timezone);
-    final utcDateTime = newDateTime.subtract(Duration(minutes: offset));
-    bookingRideController.utcStartTime.value = utcDateTime; // Use utcStartTime instead
-    print('Updated utcStartTime: $utcDateTime');
+
+    bookingRideController.localStartTime.value = newDateTime;
+    bookingRideController.utcStartTime.value = newDateTime.subtract(Duration(minutes: offset));
   }
 
-  DateTime convertUtcToLocal(String utcIsoString, int offsetMinutes) {
-    // Parse the ISO 8601 UTC string
-    DateTime utcTime = DateTime.parse(utcIsoString).toUtc();
+  void updateLocalEndTime(DateTime newDateTime) {
+    final timezone = dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ??
+        dropPlaceSearchController.getCurrentTimeZoneName();
+    final offset = dropPlaceSearchController.getOffsetFromTimeZone(timezone);
 
-    // Create Duration based on offsetMinutes
-    Duration offset = Duration(minutes: offsetMinutes);
-
-    // Add the offset to UTC time
-    DateTime localTime = utcTime.add(offset);
-
-    return localTime;
-  }
-
-  DateTime getLocalTimeFromUtc() {
-    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualDateTime;
-
-    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userOffSet;
-
-    if (utcIsoString == null || utcIsoString.isEmpty) return DateTime.now();
-
-    try {
-      final utcTime = DateTime.parse(utcIsoString).toUtc();
-      return utcTime.add(Duration(minutes: offsetMinutes ?? 0));
-    } catch (_) {
-      return DateTime.now();
-    }
+    bookingRideController.localEndTime.value = newDateTime;
+    bookingRideController.utcEndTime.value = newDateTime.subtract(Duration(minutes: offset));
   }
 
   @override
   Widget build(BuildContext context) {
-    getLocalTimeFromUtc();
     return Column(
       children: [
-        Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.7,
-            decoration: BoxDecoration(
-              color: AppColors.lightBlue1,
-              border: Border.all(
-                color: AppColors.lightBlue2,
-                width: 1.0,
-              ),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: _buildOption(
-                      'One Way', 'oneWay', selectedTrip == 'oneWay'),
-                ),
-                _verticalDivider(),
-                _buildOption(
-                    'Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
-              ],
-            ),
-          ),
-        ),
+        _buildTripTypeSelector(context),
         const SizedBox(height: 24),
         if (selectedTrip == 'oneWay') _buildOneWayUI(),
         if (selectedTrip == 'roundTrip') _buildRoundTripUI(),
@@ -325,11 +266,39 @@ class _OutStationState extends State<OutStation> {
     );
   }
 
+  Widget _buildTripTypeSelector(BuildContext context) {
+    return Center(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.7,
+        decoration: BoxDecoration(
+          color: AppColors.lightBlue1,
+          border: Border.all(color: AppColors.lightBlue2),
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildOption('One Way', 'oneWay', selectedTrip == 'oneWay'),
+            _verticalDivider(),
+            _buildOption('Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOneWayUI() {
-    TextEditingController pickupController =
-    TextEditingController(text: bookingRideController.prefilled.value);
-    TextEditingController dropController =
-    TextEditingController(text: bookingRideController.prefilledDrop.value);
+    return _buildPickupDropUI(showDropDateTime: false);
+  }
+
+  Widget _buildRoundTripUI() {
+    return _buildPickupDropUI(showDropDateTime: true);
+  }
+
+  Widget _buildPickupDropUI({required bool showDropDateTime}) {
+    TextEditingController pickupController = TextEditingController(text: bookingRideController.prefilled.value);
+    TextEditingController dropController = TextEditingController(text: bookingRideController.prefilledDrop.value);
 
     return SingleChildScrollView(
       child: Padding(
@@ -338,51 +307,34 @@ class _OutStationState extends State<OutStation> {
           children: [
             Row(
               children: [
-                Image.asset(
-                  'assets/images/circle.png',
-                  fit: BoxFit.contain,
-                  width: 40,
-                  height: 120,
-                ),
+                Image.asset('assets/images/circle.png', width: 40, height: 120),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       BookingTextFormField(
                         hintText: 'Enter Pickup Location',
                         controller: pickupController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.choosePickup);
-                        },
+                        onTap: () => GoRouter.of(context).push(AppRoutes.choosePickup),
                       ),
                       const SizedBox(height: 12),
                       BookingTextFormField(
                         hintText: 'Enter Drop Location',
                         controller: dropController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.chooseDrop);
-                        },
+                        onTap: () => GoRouter.of(context).push(AppRoutes.chooseDrop),
                       ),
                     ],
                   ),
                 ),
                 Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.blue5, size: 20),
-                    SizedBox(height: 10),
+                    Icon(Icons.info_outline, color: AppColors.blue5),
+                    const SizedBox(height: 10),
                     Transform.translate(
-                      offset: Offset(-40, 0),
-                      child: Image.asset(
-                        'assets/images/interchange.png',
-                        fit: BoxFit.contain,
-                        width: 30,
-                        height: 30,
-                      ),
+                      offset: const Offset(-40, 0),
+                      child: Image.asset('assets/images/interchange.png', width: 30, height: 30),
                     ),
-                    SizedBox(height: 10),
-                    Icon(Icons.add_circle_outline,
-                        color: AppColors.blue5, size: 20),
+                    const SizedBox(height: 10),
+                    Icon(Icons.add_circle_outline, color: AppColors.blue5),
                   ],
                 ),
               ],
@@ -391,32 +343,12 @@ class _OutStationState extends State<OutStation> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Obx(() {
-                final placeSearchController = Get.find<PlaceSearchController>();
-                final bookingRideController = Get.find<BookingRideController>();
-
-                // Always use current value from controller
                 final localStartTime = bookingRideController.localStartTime.value;
+                final dropoffDateTime = getDropLocalDateTime();
 
-                // Used for limiting min selectable date/time (e.g., for Cupertino pickers)
-                DateTime getActualLocalDateTime() {
-                  final actualTimeStr = placeSearchController.findCntryDateTimeResponse.value
-                      ?.actualDateTimeObject
-                      ?.actualDateTime;
-                  final actualOffset = placeSearchController.findCntryDateTimeResponse.value
-                      ?.actualDateTimeObject
-                      ?.actualOffSet;
-
-                  if (actualTimeStr != null && actualOffset != null) {
-                    try {
-                      final utcTime = DateTime.parse(actualTimeStr).toUtc();
-                      return utcTime.add(Duration(minutes: actualOffset));
-                    } catch (_) {}
-                  }
-
-                  return DateTime.now(); // fallback
-                }
-
-                final actualDateTime = getActualLocalDateTime();
+                final dynamic activeController = selectedField.value == 'drop'
+                    ? dropPlaceSearchController
+                    : placeSearchController;
 
                 return Column(
                   children: [
@@ -424,200 +356,57 @@ class _OutStationState extends State<OutStation> {
                       label: 'Pickup Date',
                       initialDate: localStartTime,
                       onDateSelected: (newDate) {
-                        final updatedDateTime = DateTime(
-                          newDate.year,
-                          newDate.month,
-                          newDate.day,
-                          localStartTime.hour,
-                          localStartTime.minute,
-                        );
-                        updateLocalStartTime(updatedDateTime);
+                        updateLocalStartTime(DateTime(newDate.year, newDate.month, newDate.day, localStartTime.hour, localStartTime.minute));
                       },
+                      controller: activeController,
                     ),
                     const SizedBox(height: 16),
                     TimePickerTile(
                       label: 'Pickup Time',
                       initialTime: localStartTime,
                       onTimeSelected: (newTime) {
-                        final updatedDateTime = DateTime(
-                          localStartTime.year,
-                          localStartTime.month,
-                          localStartTime.day,
-                          newTime.hour,
-                          newTime.minute,
-                        );
-                        updateLocalStartTime(updatedDateTime);
+                        updateLocalStartTime(DateTime(localStartTime.year, localStartTime.month, localStartTime.day, newTime.hour, newTime.minute));
                       },
+                      controller: activeController,
                     ),
                     const SizedBox(height: 16),
                     DateTimePickerTile(
                       label: 'Pickup Date & Time',
                       initialDateTime: localStartTime,
-                      onDateTimeSelected: (newDateTime) {
-                        updateLocalStartTime(newDateTime);
-                      },
+                      onDateTimeSelected: updateLocalStartTime,
                     ),
-                  ],
-                );
-              }),
-            ),
-            const SizedBox(height: 28),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () {},
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoundTripUI() {
-    TextEditingController pickupController =
-    TextEditingController(text: bookingRideController.prefilled.value);
-    TextEditingController dropController =
-    TextEditingController(text: bookingRideController.prefilledDrop.value);
-
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Image.asset(
-                  'assets/images/circle.png',
-                  fit: BoxFit.contain,
-                  width: 40,
-                  height: 120,
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BookingTextFormField(
-                        hintText: 'Enter Pickup Location',
-                        controller: pickupController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.choosePickup);
+                    if (showDropDateTime) ...[
+                      const SizedBox(height: 16),
+                      DateTimePickerTile(
+                        label: 'Dropoff Date & Time',
+                        initialDateTime: dropoffDateTime,
+                        onDateTimeSelected: (pickedDateTime) {
+                          if (pickedDateTime.isBefore(localStartTime.add(const Duration(hours: 4)))) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              backgroundColor: Colors.redAccent,
+                              content: Text('Dropoff time must be at least 4 hours after pickup time.'),
+                            ));
+                            return;
+                          }
+                          updateLocalEndTime(pickedDateTime);
                         },
-                      ),
-                      const SizedBox(height: 12),
-                      BookingTextFormField(
-                        hintText: 'Enter Drop Location',
-                        controller: dropController,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.chooseDrop);
-                        },
+                        // controller: dropPlaceSearchController,
                       ),
                     ],
-                  ),
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, color: AppColors.blue5, size: 20),
-                    SizedBox(height: 10),
-                    Transform.translate(
-                      offset: Offset(-40, 0),
-                      child: Image.asset(
-                        'assets/images/interchange.png',
-                        fit: BoxFit.contain,
-                        width: 30,
-                        height: 30,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Icon(Icons.add_circle_outline,
-                        color: AppColors.blue5, size: 20),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Obx(() {
-                print('Obx: localStartTime = ${bookingRideController.localStartTime.value}'); // Debug
-                final initialDateTime = getInitialDateTime();
-                final pickupDateTime = getLocalDateTime();
-                final dropoffDateTime = pickupDateTime.add(const Duration(hours: 4));
-                return Column(
-                  children: [
-                    DatePickerTile(
-                      label: 'Pickup Date',
-                      initialDate: initialDateTime,
-                      onDateSelected: (newDate) {
-                        final updatedDateTime = DateTime(
-                          newDate.year,
-                          newDate.month,
-                          newDate.day,
-                          pickupDateTime.hour,
-                          pickupDateTime.minute,
-                        );
-                        updateLocalStartTime(updatedDateTime);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TimePickerTile(
-                      label: 'Pickup Time',
-                      initialTime: initialDateTime,
-                      onTimeSelected: (newTime) {
-                        final updatedDateTime = DateTime(
-                          pickupDateTime.year,
-                          pickupDateTime.month,
-                          pickupDateTime.day,
-                          newTime.hour,
-                          newTime.minute,
-                        );
-                        updateLocalStartTime(updatedDateTime);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DateTimePickerTile(
-                      label: 'Pickup Date & Time',
-                      initialDateTime: initialDateTime,
-                      onDateTimeSelected: (newDateTime) {
-                        updateLocalStartTime(newDateTime);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DateTimePickerTile(
-                      label: 'Dropoff Date & Time',
-                      initialDateTime: dropoffDateTime,
-                      onDateTimeSelected: (pickedDateTime) {
-                        if (pickedDateTime.isBefore(pickupDateTime.add(const Duration(hours: 4)))) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              backgroundColor: Colors.redAccent,
-                              content: Text(
-                                  'Dropoff time must be at least 4 hours after pickup time.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                          return;
-                        }
-                        print('Dropoff DateTime: $pickedDateTime');
-                      },
-                    ),
                   ],
                 );
               }),
             ),
             const SizedBox(height: 28),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
                 child: PrimaryButton(
                   text: 'Search Now',
-                  onPressed: () {},
+                  onPressed: () {
+                    // handle booking action
+                  },
                 ),
               ),
             ),
@@ -629,43 +418,21 @@ class _OutStationState extends State<OutStation> {
 
   Widget _buildOption(String title, String value, bool isSelected) {
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        setState(() {
-          selectedTrip = value;
-        });
-      },
+      onTap: () => setState(() => selectedTrip = value),
       child: Row(
         children: [
           Transform.scale(
             scale: 0.8,
-            child: RadioTheme(
-              data: RadioThemeData(
-                fillColor: MaterialStateProperty.resolveWith<Color>((states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return const Color(0xFF1A1A64);
-                  }
-                  return const Color(0xFFBDBDBD);
-                }),
-              ),
-              child: Radio<String>(
-                value: value,
-                groupValue: selectedTrip,
-                onChanged: (val) {
-                  setState(() {
-                    selectedTrip = val!;
-                  });
-                },
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
+            child: Radio<String>(
+              value: value,
+              groupValue: selectedTrip,
+              onChanged: (val) => setState(() => selectedTrip = val!),
             ),
           ),
           Text(
             title,
             style: TextStyle(
-              color:
-              isSelected ? const Color(0xFF1A1A64) : AppColors.lightGrey1,
+              color: isSelected ? AppColors.primary : AppColors.lightGrey1,
               fontWeight: FontWeight.w500,
               fontSize: 14,
             ),
@@ -675,12 +442,10 @@ class _OutStationState extends State<OutStation> {
     );
   }
 
-  Widget _verticalDivider() {
-    return Container(
-      height: 32,
-      width: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: Colors.grey.withOpacity(0.3),
-    );
-  }
+  Widget _verticalDivider() => Container(
+    height: 32,
+    width: 1,
+    margin: const EdgeInsets.symmetric(horizontal: 4),
+    color: Colors.grey.withOpacity(0.3),
+  );
 }

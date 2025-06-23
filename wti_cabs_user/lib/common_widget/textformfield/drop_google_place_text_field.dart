@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 
-import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
-class GooglePlacesTextField extends StatefulWidget {
+class DropGooglePlacesTextField extends StatefulWidget {
   final String hintText;
   final TextEditingController controller;
   final Function(SuggestionPlacesResponse)? onPlaceSelected;
 
-  GooglePlacesTextField({
+  const DropGooglePlacesTextField({
     super.key,
     required this.hintText,
     required this.controller,
@@ -17,13 +17,12 @@ class GooglePlacesTextField extends StatefulWidget {
   });
 
   @override
-  State<GooglePlacesTextField> createState() => _GooglePlacesTextFieldState();
+  State<DropGooglePlacesTextField> createState() => _DropGooglePlacesTextFieldState();
 }
 
-class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
-  final PlaceSearchController searchController = Get.put(PlaceSearchController());
+class _DropGooglePlacesTextFieldState extends State<DropGooglePlacesTextField> {
+  final DropPlaceSearchController dropSearchController = Get.put(DropPlaceSearchController());
   final BookingRideController bookingRideController = Get.put(BookingRideController());
-
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +36,7 @@ class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
                 ? GestureDetector(
               onTap: () {
                 widget.controller.clear();
-                searchController.suggestions.value = [];
-                // bookingRideController.prefilled.value = '';
+                dropSearchController.dropSuggestions.value = [];
               },
               child: const Icon(Icons.cancel, color: Colors.grey),
             )
@@ -53,7 +51,7 @@ class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
             ),
           ),
           onChanged: (value) {
-            searchController.searchPlaces(value, context);
+            dropSearchController.searchDropPlaces(value, context);
           },
         ),
       ],

@@ -1,23 +1,29 @@
- // All imports unchanged...
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
-import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
-import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
+import '../../core/controller/booking_ride_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
+import '../../utility/constants/fonts/common_fonts.dart';
 
 class TimePickerTile extends StatefulWidget {
   final String label;
   final DateTime initialTime;
   final ValueChanged<DateTime> onTimeSelected;
 
+  /// Accepts either PlaceSearchController or DropPlaceSearchController
+  final dynamic controller;
+
+  /// Optionally override booking controller (pickup/drop separation)
+  final Rx<DateTime>? controllerTime;
+
   const TimePickerTile({
     super.key,
     required this.label,
     required this.initialTime,
     required this.onTimeSelected,
+    required this.controller,
+    this.controllerTime,
   });
 
   @override
@@ -26,12 +32,14 @@ class TimePickerTile extends StatefulWidget {
 
 class _TimePickerTileState extends State<TimePickerTile> {
   late DateTime selectedTime;
-  final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
-  final BookingRideController choosePickupController = Get.find<BookingRideController>();
+  late dynamic timeZoneController;
+  late Rx<DateTime> timeObservable;
 
   @override
   void initState() {
     super.initState();
+    timeZoneController = widget.controller;
+    timeObservable = widget.controllerTime ?? Get.find<BookingRideController>().localStartTime;
     _initializeSelectedTime();
   }
 
@@ -55,25 +63,21 @@ class _TimePickerTileState extends State<TimePickerTile> {
   }
 
   DateTime? _getUserLocalDateTime() {
-    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userDateTime;
+    final utcIsoString = timeZoneController.findCntryDateTimeResponse.value
+        ?.userDateTimeObject?.userDateTime;
 
-    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject
-        ?.userOffSet;
+    final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
+        ?.userDateTimeObject?.userOffSet;
 
     return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
   }
 
   DateTime? _getActualLocalDateTime() {
-    final utcIsoString = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualDateTime;
+    final utcIsoString = timeZoneController.findCntryDateTimeResponse.value
+        ?.actualDateTimeObject?.actualDateTime;
 
-    final offsetMinutes = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject
-        ?.actualOffSet;
+    final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
+        ?.actualDateTimeObject?.actualOffSet;
 
     return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
   }
@@ -136,7 +140,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
                     30,
                   );
 
-                  final currentDate = choosePickupController.localStartTime.value;
+                  final currentDate = timeObservable.value;
 
                   final newTime = DateTime(
                     currentDate.year,
@@ -147,6 +151,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
                   );
 
                   setState(() => selectedTime = newTime);
+                  timeObservable.value = newTime; // Sync with controller
                   widget.onTimeSelected(newTime);
                 },
               ),
@@ -164,8 +169,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final controllerTime = choosePickupController.localStartTime.value;
-      final formattedTime = DateFormat('hh:mm a').format(controllerTime);
+      final formattedTime = DateFormat('hh:mm a').format(timeObservable.value);
 
       return GestureDetector(
         onTap: () => _showCupertinoTimePicker(context),

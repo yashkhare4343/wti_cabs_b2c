@@ -143,7 +143,7 @@ class _SelectPickupState extends State<SelectPickup> {
             ),
             // Recent Searches
 
-                 Obx(() {
+            Obx(() {
               final suggestions = placeSearchController.suggestions.value;
               return suggestions != [] ? Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
