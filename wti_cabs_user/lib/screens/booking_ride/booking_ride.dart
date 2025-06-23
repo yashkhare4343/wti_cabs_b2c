@@ -164,7 +164,7 @@ class _CustomTabBarDemoState extends State<CustomTabBarDemo> {
 }
 
 class OutStation extends StatefulWidget {
-  const OutStation({super.key});
+  const OutStation({Key? key}) : super(key: key);
 
   @override
   State<OutStation> createState() => _OutStationState();
@@ -178,46 +178,9 @@ class _OutStationState extends State<OutStation> {
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   final RxString selectedField = ''.obs;
 
-
   @override
   void initState() {
     super.initState();
-  }
-
-  DateTime getLocalDateTime() {
-    final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject?.userDateTime;
-    final offset = placeSearchController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject?.userOffSet;
-
-    if (userDateTimeStr != null) {
-      try {
-        final utc = DateTime.parse(userDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0));
-      } catch (e) {
-        print("Error parsing userDateTime: $e");
-      }
-    }
-
-    return bookingRideController.localStartTime.value;
-  }
-
-  DateTime getInitialDateTime() {
-    final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject?.actualDateTime;
-    final offset = placeSearchController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject?.actualOffSet;
-
-    if (actualDateTimeStr != null) {
-      try {
-        final utc = DateTime.parse(actualDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0));
-      } catch (e) {
-        print("Error parsing actualDateTime: $e");
-      }
-    }
-
-    return getLocalDateTime();
   }
 
   DateTime getDropLocalDateTime() {
@@ -288,17 +251,14 @@ class _OutStationState extends State<OutStation> {
     );
   }
 
-  Widget _buildOneWayUI() {
-    return _buildPickupDropUI(showDropDateTime: false);
-  }
-
-  Widget _buildRoundTripUI() {
-    return _buildPickupDropUI(showDropDateTime: true);
-  }
+  Widget _buildOneWayUI() => _buildPickupDropUI(showDropDateTime: false);
+  Widget _buildRoundTripUI() => _buildPickupDropUI(showDropDateTime: true);
 
   Widget _buildPickupDropUI({required bool showDropDateTime}) {
-    TextEditingController pickupController = TextEditingController(text: bookingRideController.prefilled.value);
-    TextEditingController dropController = TextEditingController(text: bookingRideController.prefilledDrop.value);
+    TextEditingController pickupController =
+    TextEditingController(text: bookingRideController.prefilled.value);
+    TextEditingController dropController =
+    TextEditingController(text: bookingRideController.prefilledDrop.value);
 
     return SingleChildScrollView(
       child: Padding(
@@ -355,25 +315,17 @@ class _OutStationState extends State<OutStation> {
                     DatePickerTile(
                       label: 'Pickup Date',
                       initialDate: localStartTime,
-                      onDateSelected: (newDate) {
-                        updateLocalStartTime(DateTime(newDate.year, newDate.month, newDate.day, localStartTime.hour, localStartTime.minute));
-                      },
+                      onDateSelected: updateLocalStartTime,
                       controller: activeController,
+                      controllerDate: bookingRideController.localStartTime,
                     ),
                     const SizedBox(height: 16),
                     TimePickerTile(
                       label: 'Pickup Time',
                       initialTime: localStartTime,
-                      onTimeSelected: (newTime) {
-                        updateLocalStartTime(DateTime(localStartTime.year, localStartTime.month, localStartTime.day, newTime.hour, newTime.minute));
-                      },
+                      onTimeSelected: updateLocalStartTime,
                       controller: activeController,
-                    ),
-                    const SizedBox(height: 16),
-                    DateTimePickerTile(
-                      label: 'Pickup Date & Time',
-                      initialDateTime: localStartTime,
-                      onDateTimeSelected: updateLocalStartTime,
+                      controllerTime: bookingRideController.localStartTime,
                     ),
                     if (showDropDateTime) ...[
                       const SizedBox(height: 16),
@@ -390,7 +342,6 @@ class _OutStationState extends State<OutStation> {
                           }
                           updateLocalEndTime(pickedDateTime);
                         },
-                        // controller: dropPlaceSearchController,
                       ),
                     ],
                   ],

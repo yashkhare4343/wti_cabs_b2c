@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -9,9 +10,10 @@ class DatePickerTile extends StatefulWidget {
   final String label;
   final DateTime initialDate;
   final ValueChanged<DateTime> onDateSelected;
-
-  /// Accepts either PlaceSearchController or DropPlaceSearchController
   final dynamic controller;
+
+  /// Accepts a shared Rx<DateTime> so both date and time are synced
+  final Rx<DateTime>? controllerDate;
 
   const DatePickerTile({
     super.key,
@@ -19,6 +21,7 @@ class DatePickerTile extends StatefulWidget {
     required this.initialDate,
     required this.onDateSelected,
     required this.controller,
+    this.controllerDate,
   });
 
   @override
@@ -26,37 +29,18 @@ class DatePickerTile extends StatefulWidget {
 }
 
 class _DatePickerTileState extends State<DatePickerTile> {
-  late DateTime selectedDate;
-  late dynamic controller;
+  late dynamic timeZoneController;
+  late Rx<DateTime> dateObservable;
 
   @override
   void initState() {
     super.initState();
-    controller = widget.controller;
-    _initializeSelectedDate();
-  }
-
-  @override
-  void didUpdateWidget(covariant DatePickerTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialDate != oldWidget.initialDate) {
-      _initializeSelectedDate();
-    }
-  }
-
-  void _initializeSelectedDate() {
-    final userDate = controller.findCntryDateTimeResponse.value
-        ?.userDateTimeObject?.userDateTime;
-
-    if (userDate != null) {
-      selectedDate = DateTime.parse(userDate).toLocal();
-    } else {
-      selectedDate = widget.initialDate;
-    }
+    timeZoneController = widget.controller;
+    dateObservable = widget.controllerDate ?? Rx<DateTime>(widget.initialDate);
   }
 
   DateTime _getMinimumSelectableDate() {
-    final actualDate = controller.findCntryDateTimeResponse.value
+    final actualDate = timeZoneController.findCntryDateTimeResponse.value
         ?.actualDateTimeObject?.actualDateTime;
 
     if (actualDate != null) {
@@ -67,6 +51,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
 
   void _showCupertinoDatePicker(BuildContext context) {
     final minDate = _getMinimumSelectableDate();
+    final currentDate = dateObservable.value;
 
     showCupertinoModalPopup(
       context: context,
@@ -77,14 +62,21 @@ class _DatePickerTileState extends State<DatePickerTile> {
           children: [
             Expanded(
               child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.dateAndTime,
+                mode: CupertinoDatePickerMode.date,
                 minimumDate: minDate,
-                initialDateTime: selectedDate.isBefore(minDate) ? minDate : selectedDate,
+                initialDateTime: currentDate.isBefore(minDate) ? minDate : currentDate,
                 use24hFormat: true,
                 minuteInterval: 1,
-                onDateTimeChanged: (DateTime newDateTime) {
-                  setState(() => selectedDate = newDateTime);
-                  widget.onDateSelected(newDateTime);
+                onDateTimeChanged: (DateTime newDate) {
+                  final updatedDateTime = DateTime(
+                    newDate.year,
+                    newDate.month,
+                    newDate.day,
+                    currentDate.hour,
+                    currentDate.minute,
+                  );
+                  dateObservable.value = updatedDateTime;
+                  widget.onDateSelected(updatedDateTime);
                 },
               ),
             ),
@@ -100,32 +92,33 @@ class _DatePickerTileState extends State<DatePickerTile> {
 
   @override
   Widget build(BuildContext context) {
-    selectedDate = widget.initialDate;
-    final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(selectedDate);
+    return Obx(() {
+      final formattedDate = DateFormat('dd MMM yyyy').format(dateObservable.value);
 
-    return GestureDetector(
-      onTap: () => _showCupertinoDatePicker(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.lightBlueBorder, width: 1),
-          borderRadius: BorderRadius.circular(12),
+      return GestureDetector(
+        onTap: () => _showCupertinoDatePicker(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.lightBlueBorder, width: 1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today, color: AppColors.bgGrey3, size: 15),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.label, style: CommonFonts.bodyText5Black),
+                  Text(formattedDate, style: CommonFonts.bodyText1Black),
+                ],
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, color: AppColors.bgGrey3, size: 15),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.label, style: CommonFonts.bodyText5Black),
-                Text(formattedDate, style: CommonFonts.bodyText1Black),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+      );
+    });
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+
 import '../../core/controller/booking_ride_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
@@ -31,93 +32,55 @@ class TimePickerTile extends StatefulWidget {
 }
 
 class _TimePickerTileState extends State<TimePickerTile> {
-  late DateTime selectedTime;
-  late dynamic timeZoneController;
+  late dynamic controller;
   late Rx<DateTime> timeObservable;
 
   @override
   void initState() {
     super.initState();
-    timeZoneController = widget.controller;
+    controller = widget.controller;
     timeObservable = widget.controllerTime ?? Get.find<BookingRideController>().localStartTime;
-    _initializeSelectedTime();
-  }
-
-  @override
-  void didUpdateWidget(TimePickerTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialTime != oldWidget.initialTime) {
-      _initializeSelectedTime();
-    }
-  }
-
-  void _initializeSelectedTime() {
-    final userDateTime = _getUserLocalDateTime();
-    final actualDateTime = _getActualLocalDateTime();
-
-    if (userDateTime != null && actualDateTime != null) {
-      selectedTime = userDateTime.isBefore(actualDateTime) ? actualDateTime : userDateTime;
-    } else {
-      selectedTime = widget.initialTime;
-    }
-  }
-
-  DateTime? _getUserLocalDateTime() {
-    final utcIsoString = timeZoneController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject?.userDateTime;
-
-    final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
-        ?.userDateTimeObject?.userOffSet;
-
-    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
   }
 
   DateTime? _getActualLocalDateTime() {
-    final utcIsoString = timeZoneController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject?.actualDateTime;
-
-    final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
-        ?.actualDateTimeObject?.actualOffSet;
-
-    return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
-  }
-
-  DateTime? _convertUtcWithOffsetToLocal(String? utcIsoString, int? offsetMinutes) {
-    if (utcIsoString == null || offsetMinutes == null) return null;
-    try {
-      final utc = DateTime.parse(utcIsoString).toUtc();
-      return utc.add(Duration(minutes: -(offsetMinutes)));
-    } catch (_) {
-      return null;
+    final actualTimeStr = controller.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
+    final offset = controller.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
+    if (actualTimeStr != null && offset != null) {
+      try {
+        final utc = DateTime.parse(actualTimeStr).toUtc();
+        return utc.add(Duration(minutes: -offset));
+      } catch (e) {
+        debugPrint('Error parsing actualDateTime: $e');
+      }
     }
+    return null;
   }
 
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Duration roundToNearestInterval(Duration duration, int interval) {
+  Duration _roundToNearestInterval(Duration duration, int interval) {
     final minutes = duration.inMinutes;
-    final remainder = minutes % interval;
-    final roundedMinutes = remainder == 0 ? minutes : minutes + (interval - remainder);
+    final roundedMinutes = ((minutes + interval ~/ 2) ~/ interval) * interval;
     return Duration(minutes: roundedMinutes);
   }
 
   void _showCupertinoTimePicker(BuildContext context) {
-    final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
-    final userDateTime = _getUserLocalDateTime() ?? DateTime.now();
+    final actualLocal = _getActualLocalDateTime() ?? DateTime.now();
+    final current = timeObservable.value;
 
-    final isToday = _isSameDate(selectedTime, userDateTime);
+    final isToday = _isSameDate(current, actualLocal);
     final Duration minimumDuration = isToday
-        ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
+        ? Duration(hours: actualLocal.hour, minutes: actualLocal.minute)
         : Duration.zero;
 
     final Duration initialDuration = Duration(
-      hours: selectedTime.hour,
-      minutes: selectedTime.minute,
+      hours: current.hour,
+      minutes: current.minute,
     );
 
-    final Duration clampedInitialDuration = roundToNearestInterval(
+    final Duration clampedInitialDuration = _roundToNearestInterval(
       initialDuration < minimumDuration ? minimumDuration : initialDuration,
       30,
     );
@@ -135,24 +98,21 @@ class _TimePickerTileState extends State<TimePickerTile> {
                 minuteInterval: 30,
                 initialTimerDuration: clampedInitialDuration,
                 onTimerDurationChanged: (Duration newDuration) {
-                  final Duration clampedDuration = roundToNearestInterval(
-                    isToday && newDuration < minimumDuration ? minimumDuration : newDuration,
+                  final Duration clamped = _roundToNearestInterval(
+                    newDuration < minimumDuration ? minimumDuration : newDuration,
                     30,
                   );
 
-                  final currentDate = timeObservable.value;
-
-                  final newTime = DateTime(
-                    currentDate.year,
-                    currentDate.month,
-                    currentDate.day,
-                    clampedDuration.inHours,
-                    clampedDuration.inMinutes % 60,
+                  final DateTime updated = DateTime(
+                    current.year,
+                    current.month,
+                    current.day,
+                    clamped.inHours,
+                    clamped.inMinutes % 60,
                   );
 
-                  setState(() => selectedTime = newTime);
-                  timeObservable.value = newTime; // Sync with controller
-                  widget.onTimeSelected(newTime);
+                  timeObservable.value = updated;
+                  widget.onTimeSelected(updated);
                 },
               ),
             ),
