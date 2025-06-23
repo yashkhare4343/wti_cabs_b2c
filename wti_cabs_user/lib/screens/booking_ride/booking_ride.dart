@@ -356,21 +356,12 @@ class _OutStationState extends State<OutStation> {
                       label: 'Pickup Date',
                       initialDate: localStartTime,
                       onDateSelected: (newDate) {
-                        // Update localStartTime with only the new date, keeping old time
-                        updateLocalStartTime(DateTime(
-                          newDate.year,
-                          newDate.month,
-                          newDate.day,
-                          localStartTime.hour,
-                          localStartTime.minute,
-                        ));
-
-                        // 👇 FIX: if selected date is the minimum date, also update the time
                         final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value
                             ?.actualDateTimeObject?.actualDateTime;
 
                         if (actualDateTimeStr != null) {
                           final actualMinDateTime = DateTime.parse(actualDateTimeStr).toLocal();
+
                           if (DateUtils.isSameDay(newDate, actualMinDateTime)) {
                             final updatedTime = DateTime(
                               newDate.year,
@@ -379,8 +370,33 @@ class _OutStationState extends State<OutStation> {
                               actualMinDateTime.hour,
                               actualMinDateTime.minute,
                             );
-                            updateLocalStartTime(updatedTime);
+
+                            if (!updatedTime.isAtSameMomentAs(bookingRideController.localStartTime.value)) {
+                              updateLocalStartTime(updatedTime);
+                            } else {
+                              bookingRideController.localStartTime.refresh(); // ⏱ force rebuild
+                            }
+                          } else {
+                            // 👇 If not same day, just update date with old time
+                            final newDateTime = DateTime(
+                              newDate.year,
+                              newDate.month,
+                              newDate.day,
+                              localStartTime.hour,
+                              localStartTime.minute,
+                            );
+                            updateLocalStartTime(newDateTime);
                           }
+                        } else {
+                          // 👇 Fallback: update just the date with old time
+                          final newDateTime = DateTime(
+                            newDate.year,
+                            newDate.month,
+                            newDate.day,
+                            localStartTime.hour,
+                            localStartTime.minute,
+                          );
+                          updateLocalStartTime(newDateTime);
                         }
                       },
                       controller: activeController,
