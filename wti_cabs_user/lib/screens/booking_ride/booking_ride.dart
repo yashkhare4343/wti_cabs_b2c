@@ -179,6 +179,8 @@ class _OutStationState extends State<OutStation> {
   final RxString selectedField = ''.obs;
 
 
+
+
   @override
   void initState() {
     super.initState();
@@ -269,19 +271,30 @@ class _OutStationState extends State<OutStation> {
   Widget _buildTripTypeSelector(BuildContext context) {
     return Center(
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.7,
+        width: MediaQuery.of(context).size.width * 0.8,
         decoration: BoxDecoration(
           color: AppColors.lightBlue1,
           border: Border.all(color: AppColors.lightBlue2),
           borderRadius: BorderRadius.circular(8.0),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildOption('One Way', 'oneWay', selectedTrip == 'oneWay'),
+            Row(
+              children: [
+                _buildOption('One Way', 'oneWay', selectedTrip == 'oneWay'),
+                SizedBox(width: 16,)
+              ],
+            ),
             _verticalDivider(),
-            _buildOption('Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
+            Row(
+              children: [
+                _buildOption('Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
+                SizedBox(width: 16,)
+
+              ],
+            ),
           ],
         ),
       ),
@@ -309,21 +322,59 @@ class _OutStationState extends State<OutStation> {
               children: [
                 Image.asset('assets/images/circle.png', width: 40, height: 120),
                 Expanded(
-                  child: Column(
+                  child: Obx(() => Column(
                     children: [
-                      BookingTextFormField(
-                        hintText: 'Enter Pickup Location',
-                        controller: pickupController,
-                        onTap: () => GoRouter.of(context).push(AppRoutes.choosePickup),
-                      ),
+                    BookingTextFormField(
+                    hintText: 'Enter Pickup Location',
+                    controller: pickupController,
+                    errorText: (() {
+                      final placeId = placeSearchController.placeId.value;
+                      final dropId = dropPlaceSearchController.dropPlaceId.value;
+
+                      // 1. Check if pickup and drop are the same
+                      if (placeId.isNotEmpty && dropId.isNotEmpty && placeId == dropId) {
+                        return "Pickup and Drop cannot be the same";
+                      }
+
+                      // 2. Check if pickup is in unsupported region
+                      if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+                          dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true) {
+                        return "We don't offer services from this region";
+                      }
+
+                      return null;
+                    })(),
+                        onTap: () async {
+                          await GoRouter.of(context).push(AppRoutes.choosePickup);
+                        }
+
+                    ),
                       const SizedBox(height: 12),
                       BookingTextFormField(
                         hintText: 'Enter Drop Location',
                         controller: dropController,
+                        errorText: (() {
+                          final pickupId = placeSearchController.placeId.value;
+                          final dropId = dropPlaceSearchController.dropPlaceId.value;
+
+                          // 1. Check if pickup and drop are the same
+                          if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) {
+                            return "Pickup and Drop cannot be the same";
+                          }
+
+                          // 2. Check if drop is in unsupported region
+                          if (placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+                              dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true) {
+                            return "We don't offer services from this region";
+                          }
+
+                          return null;
+                        })(),
                         onTap: () => GoRouter.of(context).push(AppRoutes.chooseDrop),
                       ),
                     ],
-                  ),
+                  ))
+
                 ),
                 Column(
                   children: [
@@ -444,12 +495,54 @@ class _OutStationState extends State<OutStation> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () {
-                    // handle booking action
-                  },
-                ),
+                child: Obx(() {
+                  final pickupId = placeSearchController.placeId.value;
+                  final dropId = dropPlaceSearchController.dropPlaceId.value;
+
+                  final samePlace = pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId;
+
+                  final hasSourceError =
+                      placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+                          dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true;
+
+                  final hasDestinationError =
+                      placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+                          dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true;
+
+                  final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
+
+                  final canProceed = !samePlace &&
+                      !hasSourceError &&
+                      !hasDestinationError &&
+                      !isPlaceMissing &&
+                      (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true || placeSearchController.findCntryDateTimeResponse.value?.sameCountry == true || dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry == true ||
+                          dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage == true);
+
+                  final forceDisable = samePlace || hasSourceError || hasDestinationError;
+
+                  return Opacity(
+                    opacity: forceDisable ? 0.6 : canProceed ? 1.0 : 0.6,
+                    child: PrimaryButton(
+                      text: 'Search Now',
+                      onPressed: forceDisable || !canProceed
+                          ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            backgroundColor: Colors.redAccent,
+                            content: Text("Selected drop location is not available for this pickup."),
+                          ),
+                        );
+                      } // 🔒 do nothing
+                          : () {
+
+                        // ✅ Proceed with booking
+                      },
+                    ),
+                  );
+                })
+
+
+
               ),
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../common_widget/buttons/quick_action_button.dart';
@@ -19,6 +20,7 @@ class SelectDrop extends StatefulWidget {
 class _SelectDropState extends State<SelectDrop> {
   final BookingRideController bookingRideController = Get.find<BookingRideController>();
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
   final TextEditingController dropController = TextEditingController();
 
   @override
@@ -141,7 +143,7 @@ class _SelectDropState extends State<SelectDrop> {
                       bookingRideController.prefilledDrop.value = place.primaryText;
                       dropPlaceSearchController.dropPlaceId.value = place.placeId;
                       dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
-
+                      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
                       FocusScope.of(context).unfocus();
                       GoRouter.of(context).pop();
                     },

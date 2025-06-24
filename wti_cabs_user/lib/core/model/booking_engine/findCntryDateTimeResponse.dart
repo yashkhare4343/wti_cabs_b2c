@@ -44,7 +44,7 @@ class FindCntryDateTimeResponse {
       timeZone: json['timeZone'],
       message: json['message'],
       sourceInput: json['sourceInput'] ?? false,
-      destinationInputFalse: json['destinationInputFalse'] ?? false,
+      destinationInputFalse: json['destinationInput'] ?? false,
     );
   }
 

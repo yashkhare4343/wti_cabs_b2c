@@ -5,12 +5,17 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_it/get_it.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
 import 'config/enviornment_config.dart';
+import 'core/controller/choose_drop/choose_drop_controller.dart';
+import 'core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'core/route_management/app_page.dart';
 import 'firebase_options.dart';
 
@@ -51,6 +56,9 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   EnvironmentConfig.setEnvironment(EnvironmentType.dev);
+  Get.put(BookingRideController()); // 1️⃣ Must come first
+  Get.put(PlaceSearchController()); // 2️⃣ Register Pickup controller before Drop
+  Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController()); // 3️⃣ Drop controller is safe to lazy-load
 
   runApp(const MyApp());
 }

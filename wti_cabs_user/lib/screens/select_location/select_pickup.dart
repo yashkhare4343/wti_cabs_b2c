@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../common_widget/buttons/quick_action_button.dart';
@@ -20,6 +21,7 @@ class SelectPickup extends StatefulWidget {
 class _SelectPickupState extends State<SelectPickup> {
   final BookingRideController bookingRideController = Get.put(BookingRideController());
   final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   List<String> suggestions = [];
   final TextEditingController pickupController = TextEditingController();
 
@@ -179,6 +181,8 @@ class _SelectPickupState extends State<SelectPickup> {
                               placeSearchController.getLatLngDetails(place.placeId, context);
 
                               FocusScope.of(context).unfocus();
+                              dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
+
                               GoRouter.of(context).pop();
                             },
                           ),

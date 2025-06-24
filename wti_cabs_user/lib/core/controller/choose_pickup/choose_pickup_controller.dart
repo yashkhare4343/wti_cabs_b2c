@@ -10,12 +10,16 @@ import '../../model/booking_engine/suggestions_places_response.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../choose_drop/choose_drop_controller.dart'; // import is required
+
 class PlaceSearchController extends GetxController {
   final RxList<SuggestionPlacesResponse> suggestions = <SuggestionPlacesResponse>[].obs;
   final BookingRideController bookingRideController = Get.find<BookingRideController>();
 
   var getPlacesLatLng = Rxn<GetLatLngResponse>();
   var findCntryDateTimeResponse = Rxn<FindCntryDateTimeResponse>();
+
+  DropPlaceSearchController? dropController; // ✅ SAFE
 
   RxString prefilledDrop = "".obs;
   final Rx<DateTime> currentDateTime = Rx<DateTime>(DateTime.now());
@@ -29,6 +33,11 @@ class PlaceSearchController extends GetxController {
   void onInit() {
     super.onInit();
     _initializeCurrentDateTime();
+
+    // ✅ Safely access DropPlaceSearchController if it exists
+    if (Get.isRegistered<DropPlaceSearchController>()) {
+      dropController = Get.find<DropPlaceSearchController>();
+    }
   }
 
   void _initializeCurrentDateTime() {
@@ -38,10 +47,7 @@ class PlaceSearchController extends GetxController {
       final location = tz.getLocation(timezoneName);
       final utcDateTime = DateTime.now().toUtc();
       currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
-
-      print('Initialized currentDateTime: ${currentDateTime.value} in $timezoneName');
     } catch (e) {
-      print('Error initializing currentDateTime: $e, using device time');
       currentDateTime.value = DateTime.now();
     }
   }
@@ -53,17 +59,9 @@ class PlaceSearchController extends GetxController {
         final timezoneName = response.timeZone ?? getCurrentTimeZoneName();
         final location = tz.getLocation(timezoneName);
         currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
-
         bookingRideController.localStartTime.value = currentDateTime.value;
-
-        final formattedLocalTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(currentDateTime.value);
-        print('Updated currentDateTime: ${currentDateTime.value} in $timezoneName');
-        print('Updated local time in BookingRideController: $formattedLocalTime');
-      } else {
-        print('No valid actualDateTimeObject in API response, retaining current time');
       }
     } catch (e) {
-      print('Error updating currentDateTime from API: $e');
       errorMessage.value = 'Failed to update time: $e';
     }
   }
@@ -71,7 +69,7 @@ class PlaceSearchController extends GetxController {
   String convertDateTimeToUtcString(DateTime localDateTime) {
     final timezone = findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
     final offset = getOffsetFromTimeZone(timezone);
-    final utcDateTime = localDateTime.subtract(Duration(minutes: -(offset))); // Adjust to UTC
+    final utcDateTime = localDateTime.subtract(Duration(minutes: -(offset)));
     return '${utcDateTime.toIso8601String().split('.').first}.000Z';
   }
 
@@ -81,7 +79,6 @@ class PlaceSearchController extends GetxController {
       final now = tz.TZDateTime.now(location);
       return -now.timeZoneOffset.inMinutes;
     } catch (e) {
-      print("Error finding offset from timeZone: $e");
       return -DateTime.now().timeZoneOffset.inMinutes;
     }
   }
@@ -95,7 +92,6 @@ class PlaceSearchController extends GetxController {
       final location = tz.getLocation(entry.key);
       final now = tz.TZDateTime.now(location);
       if (now.timeZoneOffset == localOffset) {
-        print("Matched timezone: ${entry.key}");
         return entry.key;
       }
     }
@@ -115,17 +111,16 @@ class PlaceSearchController extends GetxController {
         isLoading.value = true;
         final apiService = ApiService();
         final responseData = await apiService.postRequest(
-            'google/ind/$searchedText?isMobileView=false',
-            {},
-            context);
+          'google/ind/$searchedText?isMobileView=false',
+          {},
+          context,
+        );
 
         final results = responseData['result'] as List?;
         if (results == null) throw Exception('No "result" key in response');
 
         suggestions.value = results.map((e) => SuggestionPlacesResponse.fromJson(e)).toList();
-        print('Suggestions: ${suggestions.map((s) => s.toJson()).toList()}');
       } catch (e) {
-        print("Error fetching suggestions: $e");
         errorMessage.value = e.toString();
         suggestions.clear();
       } finally {
@@ -140,17 +135,13 @@ class PlaceSearchController extends GetxController {
       final apiService = ApiService();
 
       final responseData = await apiService.postRequest(
-          'google/getLatLongChauffeur',
-          { "place_id": placeId, "isLatLngAvailable": false },
-          context);
+        'google/getLatLongChauffeur',
+        { "place_id": placeId, "isLatLngAvailable": false },
+        context,
+      );
 
       getPlacesLatLng.value = GetLatLngResponse.fromJson(responseData);
-      print('Parsed getPlacesLatLng: ${getPlacesLatLng.value}');
-
-      if (getPlacesLatLng.value == null) {
-        print('LatLng is null, skipping findCountryDateTime');
-        return;
-      }
+      if (getPlacesLatLng.value == null) return;
 
       final timeZone = findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
@@ -159,9 +150,9 @@ class PlaceSearchController extends GetxController {
         getPlacesLatLng.value!.latLong.lat,
         getPlacesLatLng.value!.latLong.lng,
         getPlacesLatLng.value!.country,
-        getPlacesLatLng.value!.country,
-        getPlacesLatLng.value!.latLong.lat,
-        getPlacesLatLng.value!.latLong.lng,
+        dropController?.dropLatLng.value?.country ?? getPlacesLatLng.value!.country,
+        dropController?.dropLatLng.value?.latLong.lat ?? getPlacesLatLng.value!.latLong.lat,
+        dropController?.dropLatLng.value?.latLong.lng ?? getPlacesLatLng.value!.latLong.lng,
         convertDateTimeToUtcString(bookingRideController.localStartTime.value),
         offset,
         timeZone,
@@ -170,7 +161,6 @@ class PlaceSearchController extends GetxController {
       );
 
     } catch (error) {
-      print("Error fetching lat/lng details: $error");
       errorMessage.value = error.toString();
     } finally {
       isLoading.value = false;
@@ -188,50 +178,35 @@ class PlaceSearchController extends GetxController {
       int offset,
       String timezone,
       int tripCode,
-      BuildContext context) async {
+      BuildContext context,
+      ) async {
     try {
       isLoading.value = true;
       final apiService = ApiService();
 
-      final requestTimezone = findCntryDateTimeResponse.value?.timeZone ?? timezone;
-
       final requestData = {
-        "sourceLat": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lat
-            : sLat,
-        "sourceLng": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lng
-            : sLng,
-        "sourceCountry": bookingRideController.prefilled.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.country
-            : sCountry,
-        "destinationCountry": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.country
-            : dCountry,
-        "destinationLat": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lat
-            : dLat,
-        "destinationLng": prefilledDrop.value.isNotEmpty && getPlacesLatLng.value != null
-            ? getPlacesLatLng.value!.latLong.lng
-            : dLng,
-        "dateTime": convertDateTimeToUtcString(bookingRideController.localStartTime.value),
+        "sourceLat": sLat,
+        "sourceLng": sLng,
+        "sourceCountry": sCountry,
+        "destinationLat": dLat,
+        "destinationLng": dLng,
+        "destinationCountry": dCountry,
+        "dateTime": dateTime,
         "offset": offset,
-        "timeZone": requestTimezone,
+        "timeZone": timezone,
         "tripCode": tripCode,
       };
 
-      print('Request data: $requestData');
-
       final responseData = await apiService.postRequest(
-          'globalSearch/findCountryAndDateTime', requestData, context);
+        'globalSearch/findCountryAndDateTime',
+        requestData,
+        context,
+      );
 
       findCntryDateTimeResponse.value = FindCntryDateTimeResponse.fromJson(responseData);
-      print('API response: ${findCntryDateTimeResponse.value?.toJson()}');
-
       if (findCntryDateTimeResponse.value != null) {
         updateDateTimeFromApi(findCntryDateTimeResponse.value!);
       }
-
     } catch (error) {
       print("Error in findCountryDateTime: $error");
     } finally {
