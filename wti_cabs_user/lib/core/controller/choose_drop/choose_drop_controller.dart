@@ -10,6 +10,7 @@ import '../../model/booking_engine/get_lat_lng_response.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../services/storage_services.dart';
 import '../choose_pickup/choose_pickup_controller.dart';
 
 class DropPlaceSearchController extends GetxController {
@@ -126,6 +127,10 @@ class DropPlaceSearchController extends GetxController {
 
       final timeZone = dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
+
+      await StorageServices.instance.save('destinationLat', dropLatLng.value!.latLong.lat.toString());
+      await StorageServices.instance.save('destinationLng', dropLatLng.value!.latLong.lng.toString());
+      await StorageServices.instance.save('destinationCountry', dropLatLng.value!.country);
 
       await findCountryDateTimeForDrop(
         dropLatLng.value!.latLong.lat,

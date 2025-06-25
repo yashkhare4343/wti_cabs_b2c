@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -9,8 +11,10 @@ import 'package:wti_cabs_user/common_widget/textformfield/booking_textformfield.
 import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -176,9 +180,8 @@ class _OutStationState extends State<OutStation> {
   final BookingRideController bookingRideController = Get.put(BookingRideController());
   final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
   final RxString selectedField = ''.obs;
-
-
 
 
   @override
@@ -533,8 +536,127 @@ class _OutStationState extends State<OutStation> {
                           ),
                         );
                       } // 🔒 do nothing
-                          : () {
+                          : () async{
+                       // final typesJson = await StorageServices.instance.read('sourceTypes');
+                       // final List<String> types = typesJson != null && typesJson.isNotEmpty
+                       //     ? List<String>.from(jsonDecode(typesJson))
+                       //     : [];
+                       //
+                       // final termsJson = await StorageServices.instance.read('sourceTerms');
+                       // final List<Map<String, dynamic>> terms = termsJson != null && termsJson.isNotEmpty
+                       //     ? List<Map<String, dynamic>>.from(jsonDecode(termsJson))
+                       //     : [];
 
+                       // current date, time and offset
+                       final now = DateTime.now();
+//
+// // ✅ Format date and time
+                        final String searchDate = now.toIso8601String().split('T').first; // "YYYY-MM-DD"
+                        final String searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+// ✅ Get timezone offset in minutes (e.g., 330 for +05:30)
+                        final int offset = now.timeZoneOffset.inMinutes;
+//
+//                         final int tripCode = (selectedTrip == 'oneWay') ? 0 : 1;
+//                         print('storage trip code : $tripCode');
+//
+// // ✅ Save all
+//                        print('storage $searchDate, $searchTime, $offset');
+//
+//                        // print('✅ Stored Source Data:');
+//                        // print('📌 types     : $types');
+//                        // print('📌 terms     : $terms');
+//                        // for (var term in terms) {
+//                        //   print('🔸 term => offset: ${term['offset']}, value: ${term['value']}');
+//                        // }
+//
+
+
+                        final country =  await StorageServices.instance.read('country');
+                        final userOffset =  await StorageServices.instance.read('userOffset');
+                        final userDateTime =  await StorageServices.instance.read('userDateTime');
+                        final sourceTitle =  await StorageServices.instance.read('sourceTitle');
+                        final sourcePlaceId =  await StorageServices.instance.read('sourcePlaceId');
+                        final sourceCity=  await StorageServices.instance.read('sourceCity');
+                        final sourceState=  await StorageServices.instance.read('sourceState');
+                        final sourceCountry=  await StorageServices.instance.read('sourceCountry');
+                        final sourceLat=  await StorageServices.instance.read('sourceLat');
+                        final sourceLng=  await StorageServices.instance.read('sourceLng');
+                        // source type and terms
+                        final typesJson = await StorageServices.instance.read('sourceTypes');
+                        final List<String> sourceTypes = typesJson != null && typesJson.isNotEmpty
+                            ? List<String>.from(jsonDecode(typesJson))
+                            : [];
+
+                        final termsJson = await StorageServices.instance.read('sourceTerms');
+                        final List<Map<String, dynamic>> sourceTerms = termsJson != null && termsJson.isNotEmpty
+                            ? List<Map<String, dynamic>>.from(jsonDecode(termsJson))
+                            : [];
+
+                        //destination type and terms
+                        final destinationPlaceId = await StorageServices.instance.read('destinationPlaceId');
+                        final destinationTitle = await StorageServices.instance.read('destinationTitle');
+                        final destinationCity = await StorageServices.instance.read('destinationCity');
+                        final destinationState = await StorageServices.instance.read('destinationState');
+                        final destinationCountry = await StorageServices.instance.read('destinationCountry');
+
+                        final destinationTypesJson = await StorageServices.instance.read('destinationTypes');
+                        final destinationTermsJson = await StorageServices.instance.read('destinationTerms');
+
+// Decode JSON strings to actual List or Map types (if applicable)
+                        final List<String> destinationType = destinationTypesJson != null &&  destinationTypesJson.isNotEmpty
+                            ? List<String>.from(jsonDecode(destinationTypesJson))
+                            : [];
+                        final List<Map<String, dynamic>> destinationTerms = destinationTermsJson != null && destinationTermsJson.isNotEmpty
+                            ? List<Map<String, dynamic>>.from(jsonDecode(destinationTermsJson))
+                            : [];
+                      final destinationLat = await StorageServices.instance.read('destinationLat');
+                       final destinationLng = await StorageServices.instance.read('destinationLng');
+
+                        final Map<String, dynamic> requestData = {
+                          "timeOffSet": int.parse(userOffset??''),
+                          "countryName": country,
+                          "searchDate": searchDate,
+                          "searchTime": searchTime,
+                          "offset": offset,
+                          "pickupDateAndTime": userDateTime,
+                          "returnDateAndTime": "",
+                         if(selectedTrip == 'oneWay') "tripCode": "0",
+                         if(selectedTrip == 'roundTrip') "tripCode": "1",
+                         if(selectedTrip == 'Rides') "tripCode": "2",
+                         if(selectedTrip == 'Rentals') "tripCode": "3",
+                          "source": {
+                            "sourceTitle": sourceTitle,
+                            "sourcePlaceId": sourcePlaceId,
+                            "sourceCity": sourceCity,
+                            "sourceState": sourceState,
+                            "sourceCountry": sourceCountry,
+                            "sourceType": sourceTypes,
+                            "sourceLat": sourceLat,
+                            "sourceLng": sourceLng,
+                            "terms": sourceTerms
+                          },
+                          "destination": {
+                            "destinationTitle": destinationTitle,
+                            "destinationPlaceId": destinationPlaceId,
+                            "destinationCity": destinationCity,
+                            "destinationState": destinationState,
+                            "destinationCountry": destinationCountry,
+                            "destinationType": destinationType,
+                            "destinationLat": destinationLat,
+                            "destinationLng": destinationLng,
+                            "terms": destinationTerms
+                          },
+                          "packageSelected": {
+                            "km": "",
+                            "hours": ""
+                          },
+                          "stopsArray": [],
+                          "isGlobal": (country?.toLowerCase() == 'india') ? false : true
+                        };
+
+
+                        searchCabInventoryController.fetchBookingData(country: country!, requestData: requestData, context: context);
                         // ✅ Proceed with booking
                       },
                     ),
@@ -553,7 +675,9 @@ class _OutStationState extends State<OutStation> {
 
   Widget _buildOption(String title, String value, bool isSelected) {
     return InkWell(
-      onTap: () => setState(() => selectedTrip = value),
+      onTap: () async{
+        setState(() => selectedTrip = value);
+      },
       child: Row(
         children: [
           Transform.scale(

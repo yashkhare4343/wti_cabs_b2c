@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -9,6 +11,7 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
+import '../../core/services/storage_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
 class SelectPickup extends StatefulWidget {
@@ -174,15 +177,33 @@ class _SelectPickupState extends State<SelectPickup> {
                               place.secondaryText,
                               style: CommonFonts.bodyText6Black,
                             ),
-                            onTap: () {
+                            onTap: () async{
                               pickupController.text = place.primaryText;
                               bookingRideController.prefilled.value = place.primaryText;
                               placeSearchController.placeId.value = place.placeId;
                               placeSearchController.getLatLngDetails(place.placeId, context);
+                              // store values
+                              await StorageServices.instance.save('sourcePlaceId', place.placeId);
+                              await StorageServices.instance.save('sourceTitle', place.primaryText);
+                              await StorageServices.instance.save('sourceCity', place.city);
+                              await StorageServices.instance.save('sourceState', place.state);
+                              await StorageServices.instance.save('sourceCountry', place.country);
+                              if (place.types.isNotEmpty) {
+                                await StorageServices.instance.save('sourceTypes', jsonEncode(place.types));
+                              }
+                              if (place.terms.isNotEmpty) {
+                                await StorageServices.instance.save('sourceTerms', jsonEncode(place.terms));
+                              }
+
+
+
 
                               FocusScope.of(context).unfocus();
-                              dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
-
+                              if(dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+                                dropPlaceSearchController.getLatLngForDrop(
+                                    dropPlaceSearchController.dropPlaceId.value,
+                                    context);
+                              }
                               GoRouter.of(context).pop();
                             },
                           ),
@@ -200,7 +221,6 @@ class _SelectPickupState extends State<SelectPickup> {
                 ),
               ): SizedBox();
             })
-
           ],
         ),
       ),

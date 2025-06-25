@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/drop_google_place_text_field.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/services/storage_services.dart';
 
 class SelectDrop extends StatefulWidget {
   const SelectDrop({super.key});
@@ -138,12 +141,23 @@ class _SelectDropState extends State<SelectDrop> {
                     leading: const Icon(Icons.location_on, size: 20),
                     title: Text(place.primaryText.split(',').first.trim(), style: CommonFonts.bodyText1Black),
                     subtitle: Text(place.secondaryText, style: CommonFonts.bodyText6Black),
-                    onTap: () {
+                    onTap: () async{
                       dropController.text = place.primaryText;
                       bookingRideController.prefilledDrop.value = place.primaryText;
                       dropPlaceSearchController.dropPlaceId.value = place.placeId;
                       dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
-                      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+                      if(placeSearchController.placeId.value.isNotEmpty){
+                      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);}
+
+                      await StorageServices.instance.save('destinationPlaceId', place.placeId);
+                      await StorageServices.instance.save('destinationTitle', place.primaryText);
+                      await StorageServices.instance.save('destinationCity', place.city);
+                      await StorageServices.instance.save('destinationState', place.state);
+                      await StorageServices.instance.save('destinationCountry', place.country);
+                      await StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
+                      await StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+
+
                       FocusScope.of(context).unfocus();
                       GoRouter.of(context).pop();
                     },

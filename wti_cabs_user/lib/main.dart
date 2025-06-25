@@ -17,6 +17,7 @@ import 'config/enviornment_config.dart';
 import 'core/controller/choose_drop/choose_drop_controller.dart';
 import 'core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'core/route_management/app_page.dart';
+import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
 
 final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -51,6 +52,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await StorageServices.instance.init();
   serviceLocator(); // Register your services
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -62,7 +64,6 @@ void main() async {
 
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

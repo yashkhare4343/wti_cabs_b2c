@@ -10,6 +10,7 @@ import '../../model/booking_engine/suggestions_places_response.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../services/storage_services.dart';
 import '../choose_drop/choose_drop_controller.dart'; // import is required
 
 class PlaceSearchController extends GetxController {
@@ -160,6 +161,11 @@ class PlaceSearchController extends GetxController {
         context,
       );
 
+      await StorageServices.instance.save('sourceLat', getPlacesLatLng.value!.latLong.lat.toString());
+      await StorageServices.instance.save('sourceLng', getPlacesLatLng.value!.latLong.lng.toString());
+      await StorageServices.instance.save('country', getPlacesLatLng.value!.country);
+
+
     } catch (error) {
       errorMessage.value = error.toString();
     } finally {
@@ -207,6 +213,10 @@ class PlaceSearchController extends GetxController {
       if (findCntryDateTimeResponse.value != null) {
         updateDateTimeFromApi(findCntryDateTimeResponse.value!);
       }
+      await StorageServices.instance.save('userDateTime', findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime??'');
+      await StorageServices.instance.save('userOffset', findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet.toString()??'');
+
+
     } catch (error) {
       print("Error in findCountryDateTime: $error");
     } finally {

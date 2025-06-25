@@ -1,0 +1,83 @@
+request payload = {
+"timeOffSet": -330,
+"countryName": "india",
+"searchDate": "2025-06-24",
+"searchTime": "15:39",
+"offset": 330,
+"pickupDateAndTime": "2025-06-24T12:30:00.000Z",
+"returnDateAndTime": "",
+"tripCode": "2",
+"source": {
+"sourceTitle": "Indira Gandhi International Airport (DEL), Terminal 3, Delhi",
+"sourcePlaceId": "ChIJ30iik5kbDTkRZ_0X9stU-Sg",
+"sourceCity": "New Delhi",
+"sourceState": "Delhi",
+"sourceCountry": "india",
+"sourceType": [
+"geocode",
+"premise"
+],
+"sourceLat": 28.5550838,
+"sourceLng": 77.0844015,
+"terms": [
+{
+"offset": 0,
+"value": "Indira Gandhi International Airport (DEL)"
+},
+{
+"offset": 43,
+"value": "Terminal 3"
+},
+{
+"offset": 55,
+"value": "Delhi"
+}
+]
+},
+"destination": {
+"destinationTitle": "Agra, Uttar Pradesh, India",
+"destinationPlaceId": "ChIJ2UEvfIUNdDkRQjtSqTjvSng",
+"destinationCity": "Agra",
+"destinationState": "Uttar Pradesh",
+"destinationCountry": "India",
+"destinationType": [
+"political",
+"locality",
+"geocode"
+],
+"destinationLat": 27.1766701,
+"destinationLng": 78.00807449999999,
+"terms": [
+{
+"offset": 0,
+"value": "Agra"
+},
+{
+"offset": 6,
+"value": "Uttar Pradesh"
+},
+{
+"offset": 21,
+"value": "India"
+}
+]
+},
+"packageSelected": {
+"km": "",
+"hours": ""
+},
+"stopsArray": [],
+"pickUpTime": {
+"time": "2025-06-24T18:00:00.000+05:30",
+"offset": 330,
+"timeZone": "Asia_Kolkata"
+},
+"dropTime": {},
+"mindate": {
+"date": "2025-06-24T18:00:00.000+05:30",
+"time": "2025-06-24T18:00:00.000+05:30",
+"offset": -330,
+"timeZone": "Asia_Kolkata"
+},
+"isGlobal": false
+}
