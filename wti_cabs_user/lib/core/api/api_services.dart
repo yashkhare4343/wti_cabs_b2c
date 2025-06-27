@@ -67,6 +67,48 @@ class ApiService {
     }
   }
 
+  // new get request
+  Future<T> getRequestNew<T>(
+      String endpoint,
+      T Function(Map<String, dynamic>) fromJson,
+      ) async {
+    final url = Uri.parse('$baseUrl/$endpoint');
+    final token = await _getToken();
+    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': basicAuth,
+    };
+
+    if (kDebugMode) {
+      debugPrint('🌐 GET Request: $url');
+      debugPrint('🧾 Headers: $headers');
+    }
+
+    try {
+      final response = await http.get(url, headers: headers);
+
+      if (kDebugMode) {
+        debugPrint("✅ Response Status: ${response.statusCode}");
+        debugPrint("📥 Response Body:\n${response.body}");
+      }
+
+      final Map<String, dynamic> jsonData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return fromJson(jsonData); // ✅ deserialize with parser
+      } else {
+        final errorMessage = jsonData['message'] ?? 'Unknown error occurred';
+        throw Exception("❌ Failed: $errorMessage");
+      }
+    } catch (e) {
+      debugPrint("❌ Network error: $e");
+      throw Exception("❌ Exception: $e");
+    }
+  }
+
+
   Future<Map<String, dynamic>> currencyConverter(String currency) async {
     final url = Uri.parse('http://3.222.206.52:4000/global/app/v1/currency/currencyConversion/$currency');
     final headers = {
@@ -88,20 +130,38 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> postRequest(String endpoint, Map<String, dynamic> data, BuildContext context) async {
+  Future<Map<String, dynamic>> postRequest(
+      String endpoint,
+      Map<String, dynamic> data,
+      BuildContext context,
+      ) async {
     final url = Uri.parse('$baseUrl/$endpoint');
-    final token = await _getToken();
+    final token = await _getToken(); // (if needed, or remove if unused)
     final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
     };
 
+    // 🔍 Pretty print request body
+    if (kDebugMode) {
+      final encoder = JsonEncoder.withIndent('  ');
+      debugPrint('📤 POST Request to: $url');
+      debugPrint('🧾 Headers: $headers');
+      debugPrint('📦 Request Body:\n${encoder.convert(data)}');
+    }
+
     try {
-      final response = await http.post(url, headers: headers, body: json.encode(data));
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: json.encode(data),
+      );
+
       if (kDebugMode) {
-        print("Response status code: ${response.statusCode}");
-        print("Response body: ${response.body}");
+        debugPrint("✅ Response Status: ${response.statusCode}");
+        debugPrint("📥 Response Body:\n${response.body}");
       }
 
       final responseData = json.decode(response.body);
@@ -120,12 +180,11 @@ class ApiService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print("Network error: $e");
+        debugPrint("❌ Network error: $e");
       }
       throw Exception("Failed to connect to the server.");
     }
   }
-
   Future<Map<String, dynamic>> postPriceRequest(String endpoint, Map<String, dynamic> data, BuildContext context) async {
     final url = Uri.parse('$priceBaseUrl/$endpoint');
     final token = await _getToken();
@@ -162,6 +221,66 @@ class ApiService {
       throw Exception("Failed to connect to the server.");
     }
   }
+
+
+  Future<T> postRequestNew<T>(
+      String endpoint,
+      Map<String, dynamic> data,
+      T Function(Map<String, dynamic>) fromJson,
+      BuildContext context,
+      ) async {
+    final url = Uri.parse('$baseUrl/$endpoint');
+    final token = await _getToken();
+    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': basicAuth,
+    };
+
+    if (kDebugMode) {
+      final encoder = JsonEncoder.withIndent('  ');
+      debugPrint('📤 POST Request to: $url');
+      debugPrint('🧾 Headers: $headers');
+      debugPrint('📦 Request Body:\n${encoder.convert(data)}');
+    }
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: json.encode(data),
+      );
+
+      if (kDebugMode) {
+        debugPrint("✅ Response Status: ${response.statusCode}");
+        debugPrint("📥 Response Body:\n${response.body}");
+      }
+
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return fromJson(responseData); // ✅ deserialize with generic parser
+      } else {
+        final errorMessage = responseData['message'] ?? "An unexpected error occurred.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage, style: CommonFonts.primaryButtonText),
+            backgroundColor: Colors.red,
+          ),
+        );
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("❌ Network error: $e");
+      }
+      throw Exception("Failed to connect to the server.");
+    }
+  }
+
+
+
 
   // Future<UploadImageResponse?> postMultipart(File imageFile) async {
   //   final String uploadUrl = "https://global.wticabs.com:4001/0auth/v1/AwsRoutes/upload/driverApp";

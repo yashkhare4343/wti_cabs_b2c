@@ -1,4 +1,3 @@
-// controllers/booking_response_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -20,18 +19,28 @@ class SearchCabInventoryController extends GetxController {
     isLoading.value = true;
 
     try {
-      final response = await ApiService().postRequest('globalSearch/searchSwitchBasedOnCountry', requestData, context);
       print('fetch cab inventory $requestData');
 
       if (country.toLowerCase() == 'india') {
-        indiaData.value = IndiaResponse.fromJson(response);
+        final response = await ApiService().postRequestNew<IndiaResponse>(
+          'globalSearch/searchSwitchBasedOnCountry',
+          requestData,
+          IndiaResponse.fromJson,
+          context,
+        );
+        indiaData.value = response;
         globalData.value = null;
-        print('response india body is : $indiaData');
+        print('✅ India response parsed: ${indiaData.value}');
       } else {
-        globalData.value = GlobalResponse.fromJson(response);
+        final response = await ApiService().postRequestNew<GlobalResponse>(
+          'globalSearch/searchSwitchBasedOnCountry',
+          requestData,
+          GlobalResponse.fromJson,
+          context,
+        );
+        globalData.value = response;
         indiaData.value = null;
-        print('response global body is : $globalData');
-
+        print('✅ Global response parsed: ${globalData.value}');
       }
     } catch (e) {
       print("❌ Error fetching booking data: $e");

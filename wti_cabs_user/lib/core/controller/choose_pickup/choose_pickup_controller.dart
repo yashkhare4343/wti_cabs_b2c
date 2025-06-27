@@ -53,6 +53,23 @@ class PlaceSearchController extends GetxController {
     }
   }
 
+  // convert utc to ISO
+  String convertToIsoWithOffset(String time, int offsetInMinutes) {
+    final utcTime = DateTime.parse(time); // already UTC
+    final localTime = utcTime.add(Duration(minutes: offsetInMinutes));
+
+    final sign = offsetInMinutes >= 0 ? '+' : '-';
+    final hours = offsetInMinutes.abs() ~/ 60;
+    final minutes = offsetInMinutes.abs() % 60;
+    final formattedOffset = '$sign${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+
+    final isoTime = localTime.toIso8601String().split('.').first;
+
+    return '$isoTime$formattedOffset';
+  }
+
+
+
   void updateDateTimeFromApi(FindCntryDateTimeResponse response) {
     try {
       if (response.userDateTimeObject?.userDateTime != null) {
@@ -209,12 +226,25 @@ class PlaceSearchController extends GetxController {
         context,
       );
 
+      debugPrint('request data :  $requestData');
+
       findCntryDateTimeResponse.value = FindCntryDateTimeResponse.fromJson(responseData);
       if (findCntryDateTimeResponse.value != null) {
         updateDateTimeFromApi(findCntryDateTimeResponse.value!);
       }
+      debugPrint('response data :  $responseData');
+      await StorageServices.instance.save('actualDateTime', findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime??'');
+      await StorageServices.instance.save('actualOffset', findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet.toString()??'');
+
       await StorageServices.instance.save('userDateTime', findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime??'');
       await StorageServices.instance.save('userOffset', findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet.toString()??'');
+      await StorageServices.instance.save('timeZone', findCntryDateTimeResponse.value?.timeZone??'');
+
+      String actualTimeWithOffset = convertToIsoWithOffset(findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime??'', -(findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet??0));
+      String userTimeWithOffset = convertToIsoWithOffset(findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime??'', -(findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet??0));
+
+      await StorageServices.instance.save('actualTimeWithOffset', actualTimeWithOffset);
+      await StorageServices.instance.save('userTimeWithOffset', userTimeWithOffset);
 
 
     } catch (error) {

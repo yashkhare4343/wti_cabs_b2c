@@ -31,7 +31,7 @@ class Result {
 }
 
 class Inventory {
-  final int? distanceBooked;
+  final num? distanceBooked;
   final bool? isInstantSearch;
   final bool? isInstantAvailable;
   final DateTime? startTime;
@@ -77,7 +77,7 @@ class CarType {
   final String? combustionType;
   final bool? carrier;
   final String? makeYearType;
-  final int? baseKm;
+  final num? baseKm;
   final List<String>? flags;
   final String? cancellationRule;
   final String? model;
@@ -86,12 +86,12 @@ class CarType {
   final FareDetails? fareDetails;
   final List<Extra>? extrasIdArray;
   final Rating? rating;
-  final int? seats;
+  final num? seats;
   final String? luggageCapacity;
   final bool? isActive;
   final bool? pet;
   final String? carTagLine;
-  final int? fakePercentageOff;
+  final num? fakePercentageOff;
 
   CarType({
     this.routeId,
@@ -161,13 +161,13 @@ class TripType {
   final DateTime? startTime;
   final DateTime? endTime;
   final List<String>? searchTags;
-  final int? oneWayDistance;
+  final num? oneWayDistance;
   final bool? isInstantSearch;
   final TripTypeDetails? tripTypeDetails;
   final String? previousTripCode;
   final String? currentTripCode;
   final String? searchId;
-  final int? distanceBooked;
+  final num? distanceBooked;
 
   TripType({
     this.source,
@@ -214,8 +214,8 @@ class TripType {
 
 class Location {
   final String? address;
-  final double? latitude;
-  final double? longitude;
+  final num? latitude;
+  final num? longitude;
   final String? city;
 
   Location({this.address, this.latitude, this.longitude, this.city});
@@ -263,11 +263,11 @@ class Features {
 }
 
 class FareDetails {
-  final int? sellerDiscount;
-  final int? perKmCharge;
-  final int? perKmExtraCharge;
-  final int? totalDriverCharges;
-  final int? baseFare;
+  final num? sellerDiscount;
+  final num? perKmCharge;
+  final num? perKmExtraCharge;
+  final num? totalDriverCharges;
+  final num? baseFare;
   final ExtraTimeFare? extraTimeFare;
   final ExtraCharges? extraCharges;
 
@@ -299,8 +299,8 @@ class FareDetails {
 }
 
 class ExtraTimeFare {
-  final int? rate;
-  final int? applicableTime;
+  final num? rate;
+  final num? applicableTime;
 
   ExtraTimeFare({this.rate, this.applicableTime});
 
@@ -339,11 +339,11 @@ class ExtraCharges {
 }
 
 class ChargeDetail {
-  final int? amount;
+  final num? amount;
   final bool? isIncludedInBaseFare;
   final bool? isIncludedInGrandTotal;
-  final int? applicableTimeFrom;
-  final int? applicableTimeTill;
+  final num? applicableTimeFrom;
+  final num? applicableTimeTill;
   final bool? isApplicable;
 
   ChargeDetail({
@@ -368,11 +368,11 @@ class ChargeDetail {
 }
 
 class WaitingCharges extends ChargeDetail {
-  final int? freeWaitingTime;
-  final int? applicableTime;
+  final num? freeWaitingTime;
+  final num? applicableTime;
 
   WaitingCharges({
-    int? amount,
+    num? amount,
     bool? isIncludedInBaseFare,
     bool? isIncludedInGrandTotal,
     bool? isApplicable,
@@ -435,8 +435,8 @@ class Extra {
 }
 
 class Price {
-  final int? daily;
-  final int? maximum;
+  final num? daily;
+  final num? maximum;
 
   Price({this.daily, this.maximum});
 
@@ -450,7 +450,7 @@ class Price {
 
 class Rating {
   final String? tag;
-  final double? ratePoints;
+  final num? ratePoints;
 
   Rating({this.tag, this.ratePoints});
 

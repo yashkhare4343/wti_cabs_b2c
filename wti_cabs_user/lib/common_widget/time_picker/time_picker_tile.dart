@@ -55,11 +55,17 @@ class _TimePickerTileState extends State<TimePickerTile> {
     final userDateTime = _getUserLocalDateTime();
     final actualDateTime = _getActualLocalDateTime();
 
+    print("🟡 _initializeSelectedTime() called");
+    print("➡️ userDateTime: $userDateTime");
+    print("➡️ actualDateTime: $actualDateTime");
+
     if (userDateTime != null && actualDateTime != null) {
       selectedTime = userDateTime.isBefore(actualDateTime) ? actualDateTime : userDateTime;
     } else {
       selectedTime = widget.initialTime;
     }
+
+    print("✅ selectedTime set to: $selectedTime");
   }
 
   DateTime? _getUserLocalDateTime() {
@@ -86,8 +92,11 @@ class _TimePickerTileState extends State<TimePickerTile> {
     if (utcIsoString == null || offsetMinutes == null) return null;
     try {
       final utc = DateTime.parse(utcIsoString).toUtc();
-      return utc.add(Duration(minutes: -(offsetMinutes)));
-    } catch (_) {
+      final local = utc.add(Duration(minutes: -offsetMinutes));
+      print("🌐 Converting UTC ($utcIsoString) with offset ($offsetMinutes) to local: $local");
+      return local;
+    } catch (e) {
+      print("❌ Error converting time: $e");
       return null;
     }
   }
@@ -105,10 +114,15 @@ class _TimePickerTileState extends State<TimePickerTile> {
 
   void _showCupertinoTimePicker(BuildContext context) {
     final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
-    final userDateTime = _getUserLocalDateTime() ?? DateTime.now();
 
-    final isToday = _isSameDate(selectedTime, userDateTime);
-    final Duration minimumDuration = isToday
+    print("🕓 Showing CupertinoTimePicker...");
+    print("🕒 actualDateTime: $actualDateTime");
+    print("📅 timeObservable.value (selected date): ${timeObservable.value}");
+
+    final isSameDayAsActual = _isSameDate(timeObservable.value, actualDateTime);
+    print("📍 isSameDayAsActual: $isSameDayAsActual");
+
+    final Duration minimumDuration = isSameDayAsActual
         ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
         : Duration.zero;
 
@@ -117,10 +131,15 @@ class _TimePickerTileState extends State<TimePickerTile> {
       minutes: selectedTime.minute,
     );
 
+    print("🔢 initialDuration: $initialDuration");
+    print("🔢 minimumDuration: $minimumDuration");
+
     final Duration clampedInitialDuration = roundToNearestInterval(
       initialDuration < minimumDuration ? minimumDuration : initialDuration,
       30,
     );
+
+    print("✅ clampedInitialDuration: $clampedInitialDuration");
 
     showCupertinoModalPopup(
       context: context,
@@ -136,7 +155,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
                 initialTimerDuration: clampedInitialDuration,
                 onTimerDurationChanged: (Duration newDuration) {
                   final Duration clampedDuration = roundToNearestInterval(
-                    isToday && newDuration < minimumDuration ? minimumDuration : newDuration,
+                    isSameDayAsActual && newDuration < minimumDuration ? minimumDuration : newDuration,
                     30,
                   );
 
@@ -149,6 +168,9 @@ class _TimePickerTileState extends State<TimePickerTile> {
                     clampedDuration.inHours,
                     clampedDuration.inMinutes % 60,
                   );
+
+                  print("🕹️ User selected time duration: $newDuration");
+                  print("✅ Final clamped time: $newTime");
 
                   setState(() => selectedTime = newTime);
                   timeObservable.value = newTime; // Sync with controller
