@@ -1,29 +1,30 @@
-
-
-// Update with the correct path
-
 import 'package:get/get.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+import 'package:flutter/material.dart';
 
 class BookingRideController extends GetxController {
   var isLoading = false.obs;
   var errorMessage = ''.obs;
 
-  @override
-  void onInit() {
-    super.onInit();// Initialize timezone data
-  }
-  // ✅ Correct type — DateTime not String
+  // Core datetime values
   Rx<DateTime> localStartTime = DateTime.now().obs;
   Rx<DateTime> utcStartTime = DateTime.now().obs;
   Rx<DateTime> localEndTime = DateTime.now().obs;
   Rx<DateTime> utcEndTime = DateTime.now().obs;
+
+  // Prefilled text
   RxString prefilled = "".obs;
   RxString prefilledDrop = "".obs;
 
+  // New: pickup & drop
+  Rx<DateTime?> pickupDateTime = Rx<DateTime?>(null);
+  Rx<DateTime?> dropDateTime = Rx<DateTime?>(null);
 
+  @override
+  void onInit() {
+    super.onInit();
+  }
 
-  // ✅ Always parse string when assigning
+  // ✅ Update local start time from string
   void updateLocalStartTimeFromString(String dateTimeString) {
     try {
       localStartTime.value = DateTime.parse(dateTimeString);
@@ -32,6 +33,45 @@ class BookingRideController extends GetxController {
     }
   }
 
+  // ✅ Set or update pickup datetime
+  void updatePickupDateTime(DateTime newPickupDateTime) {
+    pickupDateTime.value = newPickupDateTime;
 
+    final currentDrop = dropDateTime.value;
+    final minValidDrop = newPickupDateTime.add(const Duration(hours: 4));
 
+    // Reset drop only if it's invalid
+    if (currentDrop != null && currentDrop.isBefore(minValidDrop)) {
+      dropDateTime.value = minValidDrop;
+    }
+
+    // First-time set
+    if (dropDateTime.value == null) {
+      dropDateTime.value = minValidDrop;
+    }
+  }
+
+  // // ✅ Update drop date, keeping time
+  // void updateDropDate(DateTime newDate) {
+  //   final oldDrop = dropDateTime.value ?? pickupDateTime.value?.add(Duration(hours: 4)) ?? DateTime.now();
+  //   final updatedDrop = DateTime(newDate.year, newDate.month, newDate.day, oldDrop.hour, oldDrop.minute);
+  //   updateDropDateTime(updatedDrop);
+  // }
+  //
+  // // ✅ Update drop time, keeping date
+  // void updateDropTime(TimeOfDay newTime) {
+  //   final oldDrop = dropDateTime.value ?? pickupDateTime.value?.add(Duration(hours: 4)) ?? DateTime.now();
+  //   final updatedDrop = DateTime(oldDrop.year, oldDrop.month, oldDrop.day, newTime.hour, newTime.minute);
+  //   updateDropDateTime(updatedDrop);
+  // }
+  //
+  // // ✅ Final drop datetime validation
+  // void updateDropDateTime(DateTime newDropDateTime) {
+  //   final pickup = pickupDateTime.value;
+  //   if (pickup != null && newDropDateTime.isBefore(pickup.add(Duration(hours: 4)))) {
+  //     errorMessage.value = "Drop must be at least 4 hours after pickup";
+  //     return;
+  //   }
+  //   dropDateTime.value = newDropDateTime;
+  // }
 }
