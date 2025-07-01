@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -25,6 +26,29 @@ class DateTimePickerTile extends StatefulWidget {
 class _DateTimePickerTileState extends State<DateTimePickerTile> {
   late DateTime selectedDateTime;
 
+  String formatDateTimeWithOffset(DateTime dt) {
+    final offset = dt.timeZoneOffset;
+    final sign = offset.isNegative ? '-' : '+';
+    final hours = offset.inHours.abs().toString().padLeft(2, '0');
+    final minutes = (offset.inMinutes.abs() % 60).toString().padLeft(2, '0');
+
+    final formatted =
+        '${dt.year.toString().padLeft(4, '0')}-'
+        '${dt.month.toString().padLeft(2, '0')}-'
+        '${dt.day.toString().padLeft(2, '0')}T'
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}:'
+        '${dt.second.toString().padLeft(2, '0')}'
+        '$sign$hours:$minutes';
+
+    return formatted;
+  }
+
+
+  String formatUtcIso(DateTime dt) {
+    return dt.toUtc().toIso8601String();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +58,12 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
     } else {
       selectedDateTime = widget.initialDateTime;
     }
+
+    debugPrint('[initState] Store ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
+     StorageServices.instance.save('drop_round_trip_iso', formatDateTimeWithOffset(selectedDateTime));
+     StorageServices.instance.save('drop_round_trip_utc', formatUtcIso(selectedDateTime));
+    debugPrint('[initState] Store Utc: ${formatUtcIso(selectedDateTime)}');
+
   }
 
   @override
@@ -43,17 +73,20 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
     final min = widget.minimumDate;
     final newInitial = widget.initialDateTime;
 
-    // ✅ Update only if changed from outside
     if (newInitial != selectedDateTime) {
       if (min != null && newInitial.isBefore(min)) {
         selectedDateTime = min;
       } else {
         selectedDateTime = newInitial;
       }
-    }
+
+      debugPrint('[initState] Store ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
+      StorageServices.instance.save('drop_round_trip_iso', formatDateTimeWithOffset(selectedDateTime));
+      StorageServices.instance.save('drop_round_trip_utc', formatUtcIso(selectedDateTime));
+      debugPrint('[initState] Store Utc: ${formatUtcIso(selectedDateTime)}');    }
   }
 
-  void _showCupertinoDateTimePicker(BuildContext context) {
+  void _showCupertinoPicker(BuildContext context, CupertinoDatePickerMode mode) {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => Container(
@@ -63,14 +96,43 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
           children: [
             Expanded(
               child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.dateAndTime,
+                mode: mode,
                 use24hFormat: false,
                 minimumDate: widget.minimumDate ?? DateTime.now(),
                 initialDateTime: selectedDateTime,
                 onDateTimeChanged: (DateTime newDateTime) {
-                  setState(() => selectedDateTime = newDateTime);
-                  widget.onDateTimeSelected(newDateTime);
+                  // ✅ Clamp minutes to nearest 00 or 30
+                  int clampedMinute = newDateTime.minute < 15
+                      ? 0
+                      : newDateTime.minute < 45
+                      ? 30
+                      : 0;
+
+                  int clampedHour = newDateTime.minute >= 45
+                      ? (newDateTime.hour + 1) % 24
+                      : newDateTime.hour;
+
+                  final clampedDateTime = DateTime(
+                    newDateTime.year,
+                    newDateTime.month,
+                    newDateTime.day,
+                    clampedHour,
+                    clampedMinute,
+                  );
+
+                  setState(() => selectedDateTime = clampedDateTime);
+                  widget.onDateTimeSelected(clampedDateTime);
+
+                  final isoWithOffset = formatDateTimeWithOffset(clampedDateTime);
+                  final utcIso = formatUtcIso(clampedDateTime);
+
+                  debugPrint('[onDateTimeChanged] ISO with offset: $isoWithOffset');
+                  debugPrint('[onDateTimeChanged] UTC ISO:          $utcIso');
+
+                  StorageServices.instance.save('drop_round_trip_iso', isoWithOffset);
+                  StorageServices.instance.save('drop_round_trip_utc', utcIso);
                 },
+
               ),
             ),
             CupertinoButton(
@@ -90,11 +152,11 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
     final formattedTime =
     DateFormat('hh:mm a').format(selectedDateTime);
 
-    return GestureDetector(
-      onTap: () => _showCupertinoDateTimePicker(context),
-      child: Column(
-        children: [
-          Container(
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.date),
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -110,17 +172,17 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Drop Date', style: CommonFonts.bodyText5Black),
-                    Text('$formattedDate',
-                        style: CommonFonts.bodyText1Black),
+                    Text(formattedDate, style: CommonFonts.bodyText1Black),
                   ],
                 ),
               ],
             ),
           ),
-          SizedBox(
-            height: 16,
-          ),
-          Container(
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.time),
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -136,15 +198,14 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Drop Time', style: CommonFonts.bodyText5Black),
-                    Text('$formattedTime',
-                        style: CommonFonts.bodyText1Black),
+                    Text(formattedTime, style: CommonFonts.bodyText1Black),
                   ],
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
