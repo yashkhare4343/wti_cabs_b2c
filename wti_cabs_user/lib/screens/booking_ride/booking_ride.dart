@@ -186,8 +186,6 @@ class OutStation extends StatefulWidget {
 class _OutStationState extends State<OutStation> {
   String selectedTrip = 'oneWay';
 
-
-
   final BookingRideController bookingRideController =
       Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
@@ -200,6 +198,56 @@ class _OutStationState extends State<OutStation> {
 
   late final TextEditingController pickupController;
   late final TextEditingController dropController;
+
+  void switchPickupAndDrop({
+    required BuildContext context,
+    required TextEditingController pickupController,
+    required TextEditingController dropController,
+  }) async {
+    print('switch button hit ho gya hai');
+    // Step 1: Swap place IDs
+    final oldPickupId = placeSearchController.placeId.value;
+    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
+    placeSearchController.placeId.value = oldDropId;
+    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+
+    // Step 2: Swap prefilled values (shown in UI + used in controllers)
+    final oldPickupText = bookingRideController.prefilled.value;
+    final oldDropText = bookingRideController.prefilledDrop.value;
+    bookingRideController.prefilled.value = oldDropText;
+    bookingRideController.prefilledDrop.value = oldPickupText;
+
+    // Step 3: Update text controllers (if used in text fields)
+    pickupController.text = bookingRideController.prefilled.value;
+    dropController.text = bookingRideController.prefilledDrop.value;
+
+    // Step 4: Re-fetch lat/lng details based on new placeIds
+    if (placeSearchController.placeId.value.isNotEmpty) {
+      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+    }
+    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+      dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
+    }
+
+    // Swap stored values (local storage)
+    final sourceKeys = [
+      'sourcePlaceId', 'sourceTitle', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceTypes', 'sourceTerms'
+    ];
+    final destinationKeys = [
+      'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms'
+    ];
+
+    for (int i = 0; i < sourceKeys.length; i++) {
+      final srcKey = sourceKeys[i];
+      final destKey = destinationKeys[i];
+
+      final srcVal = await StorageServices.instance.read(srcKey);
+      final destVal = await StorageServices.instance.read(destKey);
+
+      await StorageServices.instance.save(srcKey, destVal ?? '');
+      await StorageServices.instance.save(destKey, srcVal ?? '');
+    }
+  }
 
   @override
   void initState() {
@@ -313,6 +361,7 @@ class _OutStationState extends State<OutStation> {
 
   Rx<DateTime?> dropDateTime = Rx<DateTime?>(null);
 
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -377,11 +426,6 @@ class _OutStationState extends State<OutStation> {
   }
 
   Widget _buildPickupDropUI({required bool showDropDateTime}) {
-
-
-
-
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: SingleChildScrollView(
@@ -463,10 +507,15 @@ class _OutStationState extends State<OutStation> {
                   children: [
                     Icon(Icons.info_outline, color: AppColors.blue5),
                     const SizedBox(height: 10),
-                    Transform.translate(
-                      offset: const Offset(-40, 0),
-                      child: Image.asset('assets/images/interchange.png',
-                          width: 30, height: 30),
+                    GestureDetector(
+                      onTap: (){
+                        switchPickupAndDrop(context: context, pickupController: pickupController, dropController: dropController);
+                      },
+                      child: Transform.translate(
+                        offset: const Offset(0, 0),
+                        child: Image.asset('assets/images/interchange.png',
+                            width: 30, height: 30),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Icon(Icons.add_circle_outline, color: AppColors.blue5),
@@ -960,6 +1009,56 @@ class _RidesState extends State<Rides> {
   late TextEditingController ridePickupController;
   late TextEditingController rideDropController;
 
+  void switchPickupAndDrop({
+    required BuildContext context,
+    required TextEditingController pickupController,
+    required TextEditingController dropController,
+  }) async {
+    print('switch button hit ho gya hai');
+    // Step 1: Swap place IDs
+    final oldPickupId = placeSearchController.placeId.value;
+    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
+    placeSearchController.placeId.value = oldDropId;
+    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+
+    // Step 2: Swap prefilled values (shown in UI + used in controllers)
+    final oldPickupText = bookingRideController.prefilled.value;
+    final oldDropText = bookingRideController.prefilledDrop.value;
+    bookingRideController.prefilled.value = oldDropText;
+    bookingRideController.prefilledDrop.value = oldPickupText;
+
+    // Step 3: Update text controllers (if used in text fields)
+    pickupController.text = bookingRideController.prefilled.value;
+    dropController.text = bookingRideController.prefilledDrop.value;
+
+    // Step 4: Re-fetch lat/lng details based on new placeIds
+    if (placeSearchController.placeId.value.isNotEmpty) {
+      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+    }
+    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+      dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
+    }
+
+    // Swap stored values (local storage)
+    final sourceKeys = [
+      'sourcePlaceId', 'sourceTitle', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceTypes', 'sourceTerms'
+    ];
+    final destinationKeys = [
+      'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms'
+    ];
+
+    for (int i = 0; i < sourceKeys.length; i++) {
+      final srcKey = sourceKeys[i];
+      final destKey = destinationKeys[i];
+
+      final srcVal = await StorageServices.instance.read(srcKey);
+      final destVal = await StorageServices.instance.read(destKey);
+
+      await StorageServices.instance.save(srcKey, destVal ?? '');
+      await StorageServices.instance.save(destKey, srcVal ?? '');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1155,10 +1254,15 @@ class _RidesState extends State<Rides> {
                   children: [
                     Icon(Icons.info_outline, color: AppColors.blue5),
                     const SizedBox(height: 10),
-                    Transform.translate(
-                      offset: const Offset(-40, 0),
-                      child: Image.asset('assets/images/interchange.png',
-                          width: 30, height: 30),
+                    GestureDetector(
+                      onTap: (){
+                        switchPickupAndDrop(context: context, pickupController: ridePickupController, dropController: rideDropController);
+                      },
+                      child: Transform.translate(
+                        offset: const Offset(0, 0),
+                        child: Image.asset('assets/images/interchange.png',
+                            width: 30, height: 30),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Icon(Icons.add_circle_outline, color: AppColors.blue5),
@@ -1576,6 +1680,56 @@ class _RentalState extends State<Rental> {
   // Declare TextEditingControllers as class-level variables
   late TextEditingController ridePickupController;
   late TextEditingController rideDropController;
+
+  void switchPickupAndDrop({
+    required BuildContext context,
+    required TextEditingController pickupController,
+    required TextEditingController dropController,
+  }) async {
+    print('switch button hit ho gya hai');
+    // Step 1: Swap place IDs
+    final oldPickupId = placeSearchController.placeId.value;
+    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
+    placeSearchController.placeId.value = oldDropId;
+    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+
+    // Step 2: Swap prefilled values (shown in UI + used in controllers)
+    final oldPickupText = bookingRideController.prefilled.value;
+    final oldDropText = bookingRideController.prefilledDrop.value;
+    bookingRideController.prefilled.value = oldDropText;
+    bookingRideController.prefilledDrop.value = oldPickupText;
+
+    // Step 3: Update text controllers (if used in text fields)
+    pickupController.text = bookingRideController.prefilled.value;
+    dropController.text = bookingRideController.prefilledDrop.value;
+
+    // Step 4: Re-fetch lat/lng details based on new placeIds
+    if (placeSearchController.placeId.value.isNotEmpty) {
+      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+    }
+    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+      dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
+    }
+
+    // Swap stored values (local storage)
+    final sourceKeys = [
+      'sourcePlaceId', 'sourceTitle', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceTypes', 'sourceTerms'
+    ];
+    final destinationKeys = [
+      'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms'
+    ];
+
+    for (int i = 0; i < sourceKeys.length; i++) {
+      final srcKey = sourceKeys[i];
+      final destKey = destinationKeys[i];
+
+      final srcVal = await StorageServices.instance.read(srcKey);
+      final destVal = await StorageServices.instance.read(destKey);
+
+      await StorageServices.instance.save(srcKey, destVal ?? '');
+      await StorageServices.instance.save(destKey, srcVal ?? '');
+    }
+  }
 
   String selectPackage = '';
 
