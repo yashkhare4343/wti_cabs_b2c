@@ -44,7 +44,7 @@ class _BookingRideState extends State<BookingRide> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
@@ -348,9 +348,9 @@ class _OutStationState extends State<OutStation> {
     TextEditingController dropController =
         TextEditingController(text: bookingRideController.prefilledDrop.value);
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: SingleChildScrollView(
         child: Column(
           children: [
             Row(
@@ -367,13 +367,13 @@ class _OutStationState extends State<OutStation> {
                                   placeSearchController.placeId.value;
                               final dropId =
                                   dropPlaceSearchController.dropPlaceId.value;
-
+            
                               if (pickupId.isNotEmpty &&
                                   dropId.isNotEmpty &&
                                   pickupId == dropId) {
                                 return "Pickup and Drop cannot be the same";
                               }
-
+            
                               if (placeSearchController
                                           .findCntryDateTimeResponse
                                           .value
@@ -384,7 +384,7 @@ class _OutStationState extends State<OutStation> {
                                       true) {
                                 return "We don't offer services from this region";
                               }
-
+            
                               return null;
                             })(),
                             onTap: () => GoRouter.of(context)
@@ -399,13 +399,13 @@ class _OutStationState extends State<OutStation> {
                                   placeSearchController.placeId.value;
                               final dropId =
                                   dropPlaceSearchController.dropPlaceId.value;
-
+            
                               if (pickupId.isNotEmpty &&
                                   dropId.isNotEmpty &&
                                   pickupId == dropId) {
                                 return "Pickup and Drop cannot be the same";
                               }
-
+            
                               if (placeSearchController
                                           .findCntryDateTimeResponse
                                           .value
@@ -416,7 +416,7 @@ class _OutStationState extends State<OutStation> {
                                       true) {
                                 return "We don't offer services from this region";
                               }
-
+            
                               return null;
                             })(),
                             onTap: () =>
@@ -446,7 +446,7 @@ class _OutStationState extends State<OutStation> {
               child: Obx(() {
                 final localStart = bookingRideController.localStartTime.value;
                 final localEnd = bookingRideController.localEndTime.value;
-
+            
                 return Column(
                   children: [
                     DatePickerTile(
@@ -461,7 +461,7 @@ class _OutStationState extends State<OutStation> {
                           localStart.minute,
                         );
                         updateLocalStartTime(updated);
-
+            
                         // If drop is same day and violates 4hr rule, auto adjust
                         final minDrop = updated.add(const Duration(hours: 4));
                         final drop = bookingRideController.localEndTime.value;
@@ -470,7 +470,7 @@ class _OutStationState extends State<OutStation> {
                           updateLocalEndTime(minDrop);
                           bookingRideController.localEndTime.refresh();
                         }
-
+            
                         bookingRideController.localStartTime.refresh();
                       },
                       controller: placeSearchController,
@@ -487,20 +487,20 @@ class _OutStationState extends State<OutStation> {
                           pickedTime.hour,
                           pickedTime.minute,
                         );
-
+            
                         updateLocalStartTime(updatedPickup);
                         bookingRideController.localStartTime.refresh();
-
+            
                         final minAllowedDrop =
                             updatedPickup.add(const Duration(hours: 4));
                         final existingDrop =
                             bookingRideController.localEndTime.value;
-
+            
                         final isSameDay =
                             DateUtils.isSameDay(updatedPickup, existingDrop);
                         final isDropBeforeMin =
                             existingDrop.isBefore(minAllowedDrop);
-
+            
                         if (isSameDay && isDropBeforeMin) {
                           updateLocalEndTime(minAllowedDrop);
                           bookingRideController.localEndTime.refresh();
@@ -521,10 +521,10 @@ class _OutStationState extends State<OutStation> {
                           final minDrop = bookingRideController
                               .localStartTime.value
                               .add(const Duration(hours: 4));
-
+            
                           final updated =
                               picked.isBefore(minDrop) ? minDrop : picked;
-
+            
                           updateLocalEndTime(updated);
                           bookingRideController.localEndTime.refresh();
                         },
@@ -533,6 +533,277 @@ class _OutStationState extends State<OutStation> {
                   ],
                 );
               }),
+            ),
+            SizedBox(height: 28,),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: Obx(() {
+                    final pickupId = placeSearchController.placeId.value;
+                    final dropId = dropPlaceSearchController.dropPlaceId.value;
+            
+                    final samePlace = pickupId.isNotEmpty &&
+                        dropId.isNotEmpty &&
+                        pickupId == dropId;
+            
+                    final hasSourceError = placeSearchController
+                        .findCntryDateTimeResponse.value?.sourceInput ==
+                        true ||
+                        dropPlaceSearchController
+                            .dropDateTimeResponse.value?.sourceInput ==
+                            true;
+            
+                    final hasDestinationError = placeSearchController
+                        .findCntryDateTimeResponse
+                        .value
+                        ?.destinationInputFalse ==
+                        true ||
+                        dropPlaceSearchController.dropDateTimeResponse.value
+                            ?.destinationInputFalse ==
+                            true;
+            
+                    final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
+            
+                    final canProceed =
+                        !samePlace &&
+                            !hasSourceError &&
+                            !hasDestinationError &&
+                            !isPlaceMissing &&
+                            (placeSearchController.findCntryDateTimeResponse
+                                .value?.goToNextPage ==
+                                true ||
+                                placeSearchController.findCntryDateTimeResponse
+                                    .value?.sameCountry ==
+                                    true ||
+                                dropPlaceSearchController.dropDateTimeResponse
+                                    .value?.sameCountry ==
+                                    true ||
+                                dropPlaceSearchController.dropDateTimeResponse
+                                    .value?.goToNextPage ==
+                                    true);
+            
+                    final forceDisable =
+                        samePlace || hasSourceError || hasDestinationError;
+            
+                    return Opacity(
+                      opacity: forceDisable
+                          ? 0.6
+                          : canProceed
+                          ? 1.0
+                          : 0.6,
+                      child: PrimaryButton(
+                        text: 'Search Now',
+                        onPressed: forceDisable || !canProceed
+                            ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: Colors.redAccent,
+                              content: Text(
+                                  "Selected drop location is not available for this pickup."),
+                            ),
+                          );
+                        } // 🔒 do nothing
+                            : () async {
+                          // final typesJson = await StorageServices.instance.read('sourceTypes');
+                          // final List<String> types = typesJson != null && typesJson.isNotEmpty
+                          //     ? List<String>.from(jsonDecode(typesJson))
+                          //     : [];
+                          //
+                          // final termsJson = await StorageServices.instance.read('sourceTerms');
+                          // final List<Map<String, dynamic>> terms = termsJson != null && termsJson.isNotEmpty
+                          //     ? List<Map<String, dynamic>>.from(jsonDecode(termsJson))
+                          //     : [];
+            
+                          // current date, time and offset
+                          final now = DateTime.now();
+            //
+            // // ✅ Format date and time
+                          final String searchDate = now
+                              .toIso8601String()
+                              .split('T')
+                              .first; // "YYYY-MM-DD"
+                          final String searchTime =
+                              '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+            
+            // ✅ Get timezone offset in minutes (e.g., 330 for +05:30)
+                          final int offset = now.timeZoneOffset.inMinutes;
+            //
+            //                         final int tripCode = (selectedTrip == 'oneWay') ? 0 : 1;
+            //                         print('storage trip code : $tripCode');
+            //
+            // // ✅ Save all
+            //                        print('storage $searchDate, $searchTime, $offset');
+            //
+            //                        // print('✅ Stored Source Data:');
+            //                        // print('📌 types     : $types');
+            //                        // print('📌 terms     : $terms');
+            //                        // for (var term in terms) {
+            //                        //   print('🔸 term => offset: ${term['offset']}, value: ${term['value']}');
+            //                        // }
+            //
+            
+                          final country = await StorageServices.instance
+                              .read('country');
+                          final userOffset = await StorageServices
+                              .instance
+                              .read('userOffset');
+                          final userDateTime = await StorageServices
+                              .instance
+                              .read('userDateTime');
+                          final userTimeWithOffset = await StorageServices
+                              .instance
+                              .read('userTimeWithOffset');
+                          final actualTimeWithOffset =
+                          await StorageServices.instance
+                              .read('actualTimeWithOffset');
+                          final actualOffset = await StorageServices
+                              .instance
+                              .read('actualOffset');
+                          final timeZone = await StorageServices.instance
+                              .read('timeZone');
+                          final sourceTitle = await StorageServices
+                              .instance
+                              .read('sourceTitle');
+                          final sourcePlaceId = await StorageServices
+                              .instance
+                              .read('sourcePlaceId');
+                          final sourceCity = await StorageServices
+                              .instance
+                              .read('sourceCity');
+                          final sourceState = await StorageServices
+                              .instance
+                              .read('sourceState');
+                          final sourceCountry = await StorageServices
+                              .instance
+                              .read('sourceCountry');
+                          final sourceLat = await StorageServices.instance
+                              .read('sourceLat');
+                          final sourceLng = await StorageServices.instance
+                              .read('sourceLng');
+                          // source type and terms
+                          final typesJson = await StorageServices.instance
+                              .read('sourceTypes');
+                          final List<String> sourceTypes = typesJson !=
+                              null &&
+                              typesJson.isNotEmpty
+                              ? List<String>.from(jsonDecode(typesJson))
+                              : [];
+            
+                          final termsJson = await StorageServices.instance
+                              .read('sourceTerms');
+                          final List<Map<String, dynamic>> sourceTerms =
+                          termsJson != null && termsJson.isNotEmpty
+                              ? List<Map<String, dynamic>>.from(
+                              jsonDecode(termsJson))
+                              : [];
+            
+                          //destination type and terms
+                          final destinationPlaceId = await StorageServices
+                              .instance
+                              .read('destinationPlaceId');
+                          final destinationTitle = await StorageServices
+                              .instance
+                              .read('destinationTitle');
+                          final destinationCity = await StorageServices
+                              .instance
+                              .read('destinationCity');
+                          final destinationState = await StorageServices
+                              .instance
+                              .read('destinationState');
+                          final destinationCountry = await StorageServices
+                              .instance
+                              .read('destinationCountry');
+            
+                          final destinationTypesJson =
+                          await StorageServices.instance
+                              .read('destinationTypes');
+                          final destinationTermsJson =
+                          await StorageServices.instance
+                              .read('destinationTerms');
+            
+            // Decode JSON strings to actual List or Map types (if applicable)
+                          final List<String> destinationType =
+                          destinationTypesJson != null &&
+                              destinationTypesJson.isNotEmpty
+                              ? List<String>.from(
+                              jsonDecode(destinationTypesJson))
+                              : [];
+                          final List<Map<String, dynamic>>
+                          destinationTerms =
+                          destinationTermsJson != null &&
+                              destinationTermsJson.isNotEmpty
+                              ? List<Map<String, dynamic>>.from(
+                              jsonDecode(destinationTermsJson))
+                              : [];
+                          final destinationLat = await StorageServices
+                              .instance
+                              .read('destinationLat');
+                          final destinationLng = await StorageServices
+                              .instance
+                              .read('destinationLng');
+            
+                          final Map<String, dynamic> requestData = {
+                            "timeOffSet": -offset,
+                            "countryName": country,
+                            "searchDate": searchDate,
+                            "searchTime": searchTime,
+                            "offset": int.parse(userOffset ?? ''),
+                            "pickupDateAndTime": userDateTime,
+                            "returnDateAndTime": "",
+                            "tripCode": "0",
+                            "source": {
+                              "sourceTitle": sourceTitle,
+                              "sourcePlaceId": sourcePlaceId,
+                              "sourceCity": sourceCity,
+                              "sourceState": sourceState,
+                              "sourceCountry": sourceCountry,
+                              "sourceType": sourceTypes,
+                              "sourceLat": sourceLat,
+                              "sourceLng": sourceLng,
+                              "terms": sourceTerms
+                            },
+                            "destination": {
+                              "destinationTitle": destinationTitle,
+                              "destinationPlaceId": destinationPlaceId,
+                              "destinationCity": destinationCity,
+                              "destinationState": destinationState,
+                              "destinationCountry": destinationCountry,
+                              "destinationType": destinationType,
+                              "destinationLat": destinationLat,
+                              "destinationLng": destinationLng,
+                              "terms": destinationTerms
+                            },
+                            "packageSelected": {"km": "", "hours": ""},
+                            "stopsArray": [],
+                            "pickUpTime": {
+                              "time": actualTimeWithOffset,
+                              "offset": actualOffset,
+                              "timeZone": timeZone
+                            },
+                            "dropTime": {},
+                            "mindate": {
+                              "date": userTimeWithOffset,
+                              "time": userTimeWithOffset,
+                              "offset": userOffset,
+                              "timeZone": timeZone
+                            },
+                            "isGlobal":
+                            (country?.toLowerCase() == 'india')
+                                ? false
+                                : true
+                          };
+            
+                          searchCabInventoryController.fetchBookingData(
+                              country: country!,
+                              requestData: requestData,
+                              context: context);
+                          // ✅ Proceed with booking
+                        },
+                      ),
+                    );
+                  })),
             ),
           ],
         ),
