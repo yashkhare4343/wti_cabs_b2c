@@ -14,6 +14,11 @@ class SearchCabInventoryController extends GetxController {
   Rx<GlobalResponse?> globalData = Rx<GlobalResponse?>(null);
   RxBool isLoading = false.obs;
 
+  var tripCode = ''.obs;
+
+  Future<void> loadTripCode() async {
+    tripCode.value = await StorageServices.instance.read('currentTripCode') ?? '';
+  }
   /// Fetch booking data based on the given country and request body
   Future<void> fetchBookingData({
     required String country,

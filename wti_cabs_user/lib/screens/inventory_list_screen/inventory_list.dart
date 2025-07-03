@@ -450,19 +450,9 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    getCurrentTripCode();
+    searchCabInventoryController.loadTripCode();
   }
-
-  String? tripCode;
-
-  void getCurrentTripCode() async{
-
-     tripCode =  await StorageServices.instance.read(
-        'currentTripCode');
-     setState(() {
-     });
-     print('yash trip code : $tripCode');
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -480,7 +470,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
             width: double.infinity, // almost full screen
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
+              child: Obx(()=>Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -495,23 +485,23 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                         if(tripCode == '0') Text('OutStation One Way', style: CommonFonts.greyText3Bold,),
-                         if(tripCode == '1') Text('OutStation Round Way', style: CommonFonts.greyText3Bold,),
-                         if(tripCode == '2') Text('Airport', style: CommonFonts.greyText3Bold,),
-                         if(tripCode == '3') Text('Rental', style: CommonFonts.greyText3Bold,),
+                          if(searchCabInventoryController.tripCode.value == '0') Text('OutStation One Way', style: CommonFonts.greyText3Bold,),
+                          if(searchCabInventoryController.tripCode.value == '1') Text('OutStation Round Way', style: CommonFonts.greyText3Bold,),
+                          if(searchCabInventoryController.tripCode.value == '2') Text('Airport', style: CommonFonts.greyText3Bold,),
+                          if(searchCabInventoryController.tripCode.value == '3') Text('Rental', style: CommonFonts.greyText3Bold,),
                         ],
                       ),
                     ],
                   ),
                   SizedBox(height: 16,),
-                  if(tripCode == '0') OutStation(),
-                  if(tripCode == '1') OutStation(),
-                  if(tripCode == '2') Rides(),
-                  if(tripCode == '3') Rental(),
+                  if(searchCabInventoryController.tripCode.value == '0') OutStation(),
+                  if(searchCabInventoryController.tripCode.value == '1') OutStation(),
+                  if(searchCabInventoryController.tripCode.value == '2') Rides(),
+                  if(searchCabInventoryController.tripCode.value == '3') Rental(),
                   SizedBox(height: 8,),
 
                 ],
-              ),
+              ),)
             ),
           ),
         ),
