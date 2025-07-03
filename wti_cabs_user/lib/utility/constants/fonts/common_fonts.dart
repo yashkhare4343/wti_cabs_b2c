@@ -25,6 +25,7 @@ class CommonFonts {
   static final TextStyle h1Purple = base(fontSize: 20, fontWeight: FontWeight.w500, color: AppColors.primary);
   static final TextStyle headline2 = base(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headingColorSecondary);
   static final TextStyle bodyText1 = base(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.bodyTextPrimary);
+  static final TextStyle bodyText1Bold = base(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.bodyTextPrimary);
   static final TextStyle bodyText1Black = base(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black);
 
   static final TextStyle bodyTextSpan1 = base(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.primary);
@@ -84,14 +85,18 @@ class CommonFonts {
   static final TextStyle bodyText6Black = base(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.black);
 
   static final TextStyle bodyText5tertiary = base(fontSize: 10, fontWeight: FontWeight.w400, color: AppColors.secondary);
+  static final TextStyle bodyTextXS = base(fontSize: 10, fontWeight: FontWeight.w400, color: AppColors.greyText3);
 
   static final TextStyle bodyText2 = base(fontSize: 14);
   static final TextStyle caption = base(fontSize: 12, color: AppColors.bodyTextPrimary);
   static final TextStyle buttonTextSecondary = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.buttonPrimaryText);
   static final TextStyle whiteTextBold = base(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white);
   static final TextStyle whiteTextMedium = base(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white);
-
-
+  static final TextStyle greyText3Light = base(fontSize: 16, fontWeight: FontWeight.w300, color: AppColors.bodyTextPrimary);
+  static final TextStyle greyText3Bold = base(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.bodyTextPrimary);
+  static final TextStyle organgeText1 = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.organge1);
+  static final TextStyle greyText3 = base(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.greyText4);
+  static final TextStyle mainButtonText = base(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white);
 
 
 

@@ -1,6 +1,6 @@
 class GlobalResponse {
   final List<List<GlobalResult>> result;
-  final TripTypeDetails tripTypeDetails;
+  final TripTypeDetails? tripTypeDetails;
 
   GlobalResponse({
     required this.result,
@@ -14,13 +14,14 @@ class GlobalResponse {
           .map((item) => GlobalResult.fromJson(item))
           .toList())
           .toList(),
-      tripTypeDetails: TripTypeDetails.fromJson(json['tripTypeDetails']),
-    );
+      tripTypeDetails: json?['tripTypeDetails'] != null
+          ? TripTypeDetails.fromJson(json!['tripTypeDetails'])
+          : null,    );
   }
 
   Map<String, dynamic> toJson() => {
     'result': result.map((inner) => inner.map((e) => e.toJson()).toList()).toList(),
-    'tripTypeDetails': tripTypeDetails.toJson(),
+    'tripTypeDetails': tripTypeDetails?.toJson(),
   };
 }
 
@@ -113,50 +114,52 @@ class GlobalTripDetails {
 }
 
 class GlobalFareDetails {
-  final String id;
-  final String fuelType;
-  final String vehicleCategory;
-  final String destination;
-  final String source;
-  final String tripType;
-  final num airportDropCharge;
-  final num airportPickCharge;
-  final List<AirportWaitingCharge> airportWaitingCharges;
-  final num baseFare;
-  final num baseKm;
-  final num congestionCharge;
-  final String createdAt;
-  final num duration;
-  final num extraFare;
-  final num freeWaitingTime;
-  final bool isActive;
-  final num perKmCharge;
-  final String updatedAt;
-  final num waitingCharge;
-  final num waitingInterval;
+  final String? id;
+  final String? fuelType;
+  final String? vehicleCategory;
+  final String? destination;
+  final String? source;
+  final String? tripType;
+  final num? airportDropCharge;
+  final num? airportPickCharge;
+  final List<AirportWaitingCharge>? airportWaitingCharges;
+  final num? baseFare;
+  final num? baseKm;
+  final num? congestionCharge;
+  final String? createdAt;
+  final num? duration;
+  final num? extraFare;
+  final num? freeWaitingTime;
+  final bool? isActive;
+  final num? perKmCharge;
+  final String? updatedAt;
+  final num? waitingCharge;
+  final num? waitingInterval;
+  final List<Slab>? slab;
 
   GlobalFareDetails({
-    required this.id,
-    required this.fuelType,
-    required this.vehicleCategory,
-    required this.destination,
-    required this.source,
-    required this.tripType,
-    required this.airportDropCharge,
-    required this.airportPickCharge,
-    required this.airportWaitingCharges,
-    required this.baseFare,
-    required this.baseKm,
-    required this.congestionCharge,
-    required this.createdAt,
-    required this.duration,
-    required this.extraFare,
-    required this.freeWaitingTime,
-    required this.isActive,
-    required this.perKmCharge,
-    required this.updatedAt,
-    required this.waitingCharge,
-    required this.waitingInterval,
+    this.id,
+    this.fuelType,
+    this.vehicleCategory,
+    this.destination,
+    this.source,
+    this.tripType,
+    this.airportDropCharge,
+    this.airportPickCharge,
+    this.airportWaitingCharges,
+    this.baseFare,
+    this.baseKm,
+    this.congestionCharge,
+    this.createdAt,
+    this.duration,
+    this.extraFare,
+    this.freeWaitingTime,
+    this.isActive,
+    this.perKmCharge,
+    this.updatedAt,
+    this.waitingCharge,
+    this.waitingInterval,
+    this.slab,
   });
 
   factory GlobalFareDetails.fromJson(Map<String, dynamic> json) {
@@ -169,9 +172,11 @@ class GlobalFareDetails {
       tripType: json['tripType'],
       airportDropCharge: (json['airportDropCharge'] ?? 0).toDouble(),
       airportPickCharge: (json['airportPickCharge'] ?? 0).toDouble(),
-      airportWaitingCharges: (json['airportWaitingCharges'] as List)
+      airportWaitingCharges: json['airportWaitingCharges'] != null
+          ? (json['airportWaitingCharges'] as List)
           .map((e) => AirportWaitingCharge.fromJson(e))
-          .toList(),
+          .toList()
+          : null,
       baseFare: (json['baseFare'] ?? 0).toDouble(),
       baseKm: json['baseKm'],
       congestionCharge: (json['congestionCharge'] ?? 0).toDouble(),
@@ -184,33 +189,76 @@ class GlobalFareDetails {
       updatedAt: json['updatedAt'],
       waitingCharge: (json['waitingCharge'] ?? 0).toDouble(),
       waitingInterval: json['waitingInterval'],
+      slab: json['slab'] != null
+          ? (json['slab'] as List).map((e) => Slab.fromJson(e)).toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {
+      "_id": id,
+      "fuelType": fuelType,
+      "vehicleCategory": vehicleCategory,
+      "destination": destination,
+      "source": source,
+      "tripType": tripType,
+      "airportDropCharge": airportDropCharge,
+      "airportPickCharge": airportPickCharge,
+      "airportWaitingCharges": airportWaitingCharges?.map((e) => e.toJson()).toList(),
+      "baseFare": baseFare,
+      "baseKm": baseKm,
+      "congestionCharge": congestionCharge,
+      "createdAt": createdAt,
+      "duration": duration,
+      "extraFare": extraFare,
+      "freeWaitingTime": freeWaitingTime,
+      "isActive": isActive,
+      "perKmCharge": perKmCharge,
+      "updatedAt": updatedAt,
+      "waitingCharge": waitingCharge,
+      "waitingInterval": waitingInterval,
+    };
+
+    if (slab != null) {
+      data['slab'] = slab!.map((e) => e.toJson()).toList();
+    }
+
+    return data;
+  }
+}
+
+class Slab {
+  final String? id;
+  final num? maxKm;
+  final num? minKm;
+  final num? ratePerKM;
+
+  Slab({
+    this.id,
+    this.maxKm,
+    this.minKm,
+    this.ratePerKM,
+  });
+
+  factory Slab.fromJson(Map<String, dynamic> json) {
+    return Slab(
+      id: json['_id'],
+      maxKm: json['maxKm'],
+      minKm: json['minKm'],
+      ratePerKM: (json['ratePerKM'] ?? 0).toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    "_id": id,
-    "fuelType": fuelType,
-    "vehicleCategory": vehicleCategory,
-    "destination": destination,
-    "source": source,
-    "tripType": tripType,
-    "airportDropCharge": airportDropCharge,
-    "airportPickCharge": airportPickCharge,
-    "airportWaitingCharges": airportWaitingCharges.map((e) => e.toJson()).toList(),
-    "baseFare": baseFare,
-    "baseKm": baseKm,
-    "congestionCharge": congestionCharge,
-    "createdAt": createdAt,
-    "duration": duration,
-    "extraFare": extraFare,
-    "freeWaitingTime": freeWaitingTime,
-    "isActive": isActive,
-    "perKmCharge": perKmCharge,
-    "updatedAt": updatedAt,
-    "waitingCharge": waitingCharge,
-    "waitingInterval": waitingInterval,
+    '_id': id,
+    'maxKm': maxKm,
+    'minKm': minKm,
+    'ratePerKM': ratePerKM,
   };
 }
+
+
 
 class AirportWaitingCharge {
   final num minTime;

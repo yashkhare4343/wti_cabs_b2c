@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
+import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/select_location/airport/airport_select_pickup.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
@@ -35,6 +36,10 @@ class AppPages{
         GoRoute(
           path: AppRoutes.airportChooseDrop,
           builder: (context, state) => AirportSelectPickup(),
+        ),
+        GoRoute(
+          path: AppRoutes.inventoryList,
+          builder: (context, state) => InventoryList(),
         ),
       ],
    );

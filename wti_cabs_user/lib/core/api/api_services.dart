@@ -230,7 +230,7 @@ class ApiService {
       BuildContext context,
       ) async {
     final url = Uri.parse('$baseUrl/$endpoint');
-    final token = await _getToken();
+    final token = await _getToken(); // if unused, you may safely remove it
     final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
 
     final headers = {
@@ -257,12 +257,27 @@ class ApiService {
         debugPrint("📥 Response Body:\n${response.body}");
       }
 
-      final responseData = json.decode(response.body);
+      if (response.body.isEmpty) {
+        debugPrint("❗ Empty response body");
+        throw Exception("Server returned an empty response.");
+      }
+
+      final decodedBody = json.decode(response.body);
+
+      if (decodedBody == null) {
+        debugPrint("❗ Decoded response is null");
+        throw Exception("Failed to decode response.");
+      }
+
+      if (decodedBody is! Map<String, dynamic>) {
+        debugPrint("❗ Response is not a Map<String, dynamic>: $decodedBody");
+        throw Exception("Unexpected response format from server.");
+      }
 
       if (response.statusCode == 200) {
-        return fromJson(responseData); // ✅ deserialize with generic parser
+        return fromJson(decodedBody);
       } else {
-        final errorMessage = responseData['message'] ?? "An unexpected error occurred.";
+        final errorMessage = decodedBody['message'] ?? "An unexpected error occurred.";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: CommonFonts.primaryButtonText),
@@ -271,9 +286,10 @@ class ApiService {
         );
         throw Exception(errorMessage);
       }
-    } catch (e) {
+    } catch (e, stack) {
       if (kDebugMode) {
         debugPrint("❌ Network error: $e");
+        debugPrint("🪵 Stack trace: $stack");
       }
       throw Exception("Failed to connect to the server.");
     }

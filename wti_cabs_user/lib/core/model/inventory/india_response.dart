@@ -8,6 +8,12 @@ class IndiaResponse {
       result: json['result'] != null ? Result.fromJson(json['result']) : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'result': result?.toJson(),
+    };
+  }
 }
 
 class Result {
@@ -27,6 +33,14 @@ class Result {
           ? OfferObject.fromJson(json['offerObject'])
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'inventory': inventory?.toJson(),
+      'tripType': tripType?.toJson(),
+      'offerObject': offerObject?.toJson(),
+    };
   }
 }
 
@@ -66,6 +80,19 @@ class Inventory {
           .toList(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'distance_booked': distanceBooked,
+      'is_instant_search': isInstantSearch,
+      'is_instant_available': isInstantAvailable,
+      'start_time': startTime?.toIso8601String(),
+      'is_part_payment_allowed': isPartPaymentAllowed,
+      'communication_type': communicationType,
+      'verification_type': verificationType,
+      'car_types': carTypes?.map((e) => e.toJson()).toList(),
+    };
+  }
 }
 
 class CarType {
@@ -92,6 +119,9 @@ class CarType {
   final bool? pet;
   final String? carTagLine;
   final num? fakePercentageOff;
+  final String? carImageUrl;
+
+
 
   CarType({
     this.routeId,
@@ -117,6 +147,7 @@ class CarType {
     this.pet,
     this.carTagLine,
     this.fakePercentageOff,
+    this.carImageUrl,
   });
 
   factory CarType.fromJson(Map<String, dynamic> json) {
@@ -150,7 +181,37 @@ class CarType {
       pet: json['pet'],
       carTagLine: json['carTagLine'],
       fakePercentageOff: json['fakePercentageOff'],
+      carImageUrl: json['carImageUrl'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'route_id': routeId,
+      'sku_id': skuId,
+      'source': source?.toJson(),
+      'type': type,
+      'subcategory': subcategory,
+      'combustion_type': combustionType,
+      'carrier': carrier,
+      'make_year_type': makeYearType,
+      'base_km': baseKm,
+      'flags': flags,
+      'cancellation_rule': cancellationRule,
+      'model': model,
+      'trip_type': tripType,
+      'amenities': amenities?.toJson(),
+      'fare_details': fareDetails?.toJson(),
+      'extrasIdArray': extrasIdArray?.map((e) => e.toJson()).toList(),
+      'rating': rating?.toJson(),
+      'seats': seats,
+      'luggageCapacity': luggageCapacity,
+      'isActive': isActive,
+      'pet': pet,
+      'carTagLine': carTagLine,
+      'fakePercentageOff': fakePercentageOff,
+      'carImageUrl': carImageUrl
+    };
   }
 }
 
@@ -161,6 +222,7 @@ class TripType {
   final DateTime? startTime;
   final DateTime? endTime;
   final List<String>? searchTags;
+  final String? packageId;
   final num? oneWayDistance;
   final bool? isInstantSearch;
   final TripTypeDetails? tripTypeDetails;
@@ -176,6 +238,7 @@ class TripType {
     this.startTime,
     this.endTime,
     this.searchTags,
+    this.packageId,
     this.oneWayDistance,
     this.isInstantSearch,
     this.tripTypeDetails,
@@ -199,6 +262,7 @@ class TripType {
       json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
       searchTags:
       (json['search_tags'] as List?)?.map((e) => e.toString()).toList(),
+      packageId: json['package_id'],
       oneWayDistance: json['one_way_distance'],
       isInstantSearch: json['is_instant_search'],
       tripTypeDetails: json['trip_type_details'] != null
@@ -209,6 +273,25 @@ class TripType {
       searchId: json['search_id'],
       distanceBooked: json['distance_booked'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'source': source?.toJson(),
+      'destination': destination?.toJson(),
+      'trip_type': tripType,
+      'start_time': startTime?.toIso8601String(),
+      'end_time': endTime?.toIso8601String(),
+      'search_tags': searchTags,
+      if (packageId != null) 'package_id': packageId,
+      'one_way_distance': oneWayDistance,
+      'is_instant_search': isInstantSearch,
+      'trip_type_details': tripTypeDetails?.toJson(),
+      'previousTripCode': previousTripCode,
+      'currentTripCode': currentTripCode,
+      'search_id': searchId,
+      'distance_booked': distanceBooked,
+    };
   }
 }
 
@@ -228,6 +311,15 @@ class Location {
       city: json['city'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'city': city,
+    };
+  }
 }
 
 class Amenities {
@@ -240,6 +332,12 @@ class Amenities {
       features:
       json['features'] != null ? Features.fromJson(json['features']) : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'features': features?.toJson(),
+    };
   }
 }
 
@@ -259,6 +357,15 @@ class Features {
       driver: (json['driver'] as List?)?.map((e) => e.toString()).toList(),
       services: (json['services'] as List?)?.map((e) => e.toString()).toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'vehicle_icons': vehicleIcons,
+      'vehicle': vehicle,
+      'driver': driver,
+      'services': services,
+    };
   }
 }
 
@@ -296,6 +403,18 @@ class FareDetails {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'seller_discount': sellerDiscount,
+      'per_km_charge': perKmCharge,
+      'per_km_extra_charge': perKmExtraCharge,
+      'total_driver_charges': totalDriverCharges,
+      'base_fare': baseFare,
+      'extra_time_fare': extraTimeFare?.toJson(),
+      'extra_charges': extraCharges?.toJson(),
+    };
+  }
 }
 
 class ExtraTimeFare {
@@ -309,6 +428,13 @@ class ExtraTimeFare {
       rate: json['rate'],
       applicableTime: json['applicable_time'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'rate': rate,
+      'applicable_time': applicableTime,
+    };
   }
 }
 
@@ -329,12 +455,22 @@ class ExtraCharges {
 
   factory ExtraCharges.fromJson(Map<String, dynamic> json) {
     return ExtraCharges(
-      nightCharges: ChargeDetail.fromJson(json['night_charges']),
-      tollCharges: ChargeDetail.fromJson(json['toll_charges']),
-      stateTax: ChargeDetail.fromJson(json['state_tax']),
-      parkingCharges: ChargeDetail.fromJson(json['parking_charges']),
-      waitingCharges: WaitingCharges.fromJson(json['waiting_charges']),
+      nightCharges: json['night_charges'] != null ? ChargeDetail.fromJson(json['night_charges']) : null,
+      tollCharges: json['toll_charges'] != null ? ChargeDetail.fromJson(json['toll_charges']) : null,
+      stateTax: json['state_tax'] != null ? ChargeDetail.fromJson(json['state_tax']) : null,
+      parkingCharges: json['parking_charges'] != null ? ChargeDetail.fromJson(json['parking_charges']) : null,
+      waitingCharges: json['waiting_charges'] != null ? WaitingCharges.fromJson(json['waiting_charges']) : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'night_charges': nightCharges?.toJson(),
+      'toll_charges': tollCharges?.toJson(),
+      'state_tax': stateTax?.toJson(),
+      'parking_charges': parkingCharges?.toJson(),
+      'waiting_charges': waitingCharges?.toJson(),
+    };
   }
 }
 
@@ -365,6 +501,17 @@ class ChargeDetail {
       isApplicable: json['is_applicable'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'amount': amount,
+      'is_included_in_base_fare': isIncludedInBaseFare,
+      'is_included_in_grand_total': isIncludedInGrandTotal,
+      'applicable_time_from': applicableTimeFrom,
+      'applicable_time_till': applicableTimeTill,
+      'is_applicable': isApplicable,
+    };
+  }
 }
 
 class WaitingCharges extends ChargeDetail {
@@ -379,10 +526,11 @@ class WaitingCharges extends ChargeDetail {
     this.freeWaitingTime,
     this.applicableTime,
   }) : super(
-      amount: amount,
-      isIncludedInBaseFare: isIncludedInBaseFare,
-      isIncludedInGrandTotal: isIncludedInGrandTotal,
-      isApplicable: isApplicable);
+    amount: amount,
+    isIncludedInBaseFare: isIncludedInBaseFare,
+    isIncludedInGrandTotal: isIncludedInGrandTotal,
+    isApplicable: isApplicable,
+  );
 
   factory WaitingCharges.fromJson(Map<String, dynamic> json) {
     return WaitingCharges(
@@ -393,6 +541,15 @@ class WaitingCharges extends ChargeDetail {
       freeWaitingTime: json['free_waiting_time'],
       applicableTime: json['applicable_time'],
     );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      ...super.toJson(),
+      'free_waiting_time': freeWaitingTime,
+      'applicable_time': applicableTime,
+    };
   }
 }
 
@@ -432,6 +589,20 @@ class Extra {
       baseCurrency: json['baseCurrency'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'price': price?.toJson(),
+      '_id': id,
+      'countryName': countryName,
+      'name': name,
+      'title': title,
+      'img': img,
+      'description': description,
+      'isActive': isActive,
+      'baseCurrency': baseCurrency,
+    };
+  }
 }
 
 class Price {
@@ -445,6 +616,13 @@ class Price {
       daily: json['daily'],
       maximum: json['maximum'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'daily': daily,
+      'maximum': maximum,
+    };
   }
 }
 
@@ -460,6 +638,13 @@ class Rating {
       ratePoints: (json['ratePoints'] as num?)?.toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'tag': tag,
+      'ratePoints': ratePoints,
+    };
+  }
 }
 
 class TripTypeDetails {
@@ -474,6 +659,13 @@ class TripTypeDetails {
       airportType: json['airport_type'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'basic_trip_type': basicTripType,
+      'airport_type': airportType,
+    };
+  }
 }
 
 class OfferObject {
@@ -487,5 +679,12 @@ class OfferObject {
       applicable: json['applicable'],
       message: json['message'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'applicable': applicable,
+      'message': message,
+    };
   }
 }

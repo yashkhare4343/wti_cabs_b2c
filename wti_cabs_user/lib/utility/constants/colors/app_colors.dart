@@ -22,10 +22,8 @@ class AppColors {
   static const lightBlue2 = Color(0xFFE9E9F6);
   static const lightGrey1 = Color(0xFFB2B2B2);
 
-
-
   //Text Color
-  static const bodyTextPrimary = Color(0xFF939393);
+  static const bodyTextPrimary = Color(0xFF373737);
   static const buttonPrimaryText = Color(0xFFFFFFFF);
   static const formHintText = Color(0xFFB2B2B2);
   static const prefixAuthText = Color(0xFF2F2F2F);
@@ -35,6 +33,7 @@ class AppColors {
   static const successStatusText =  Color(0xFF2B2B2B);
   static const buttonTextPrimary1 = Color(0xFF2C3448);
   static const greyText1 = Color(0xFF9A9A9A);
+  static const greyText4 = Color(0xFF9A9A9A);
   static const redText1 = Color(0xFF9D0505);
   static const kmsText = Color(0xFF616161);
   static const greyText2 = Color(0xFF555555);
@@ -44,9 +43,8 @@ class AppColors {
   static const blue3 = Color(0xFF162558);
   static const blue4 = Color(0xFF2C2C6F);
   static const blue5 = Color(0xFF5377EF);
-
-
-
+  static const organge1 = Color(0xFFED7700);
+  static const yellow1 = Color(0xFFFEC200);
 
   static const headingColorSecondary = Color(0xFF313131);
   static const h3ColorPrimary= Color(0xFF848484);
@@ -57,6 +55,9 @@ class AppColors {
   static const buttonBgPrimary= Color(0xFF5D3FD3);
   static const buttonBgSecondary = Color(0xFFE9F2F9);
   static const buttonColorPrimary= Color(0xFFFE690B);
+  static const mainButtonBg= Color(0xFF002CC0);
+  static const greyText5= Color(0xFF717171);
+
 
   //Status Color
   //Border Color
@@ -66,6 +67,7 @@ class AppColors {
  static const borderColor3 = Color(0xFFEBEBEB);
  static const borderolor4 = Color(0xFFE0E0E0);
  static const lightBlueBorder = Color(0xFFDFDFF2);
+ static const greyBorder1 = Color(0xFFDADADA);
 
  // polyline color
   static const polylineGrey = Color(0xFF5D5959);
@@ -77,8 +79,7 @@ class AppColors {
   
   //icon color
   static const iconColorPrimary = Color(0xFF878787);
-
-
+  static const greyIconPrimary = Color(0xFF767676);
 
 // Additional colors can be added here...
 }

@@ -188,6 +188,7 @@ class _SelectPickupState extends State<SelectPickup> {
                               await StorageServices.instance.save('sourceCity', place.city);
                               await StorageServices.instance.save('sourceState', place.state);
                               await StorageServices.instance.save('sourceCountry', place.country);
+                              print('akash country: ${place.country}');
                               if (place.types.isNotEmpty) {
                                 await StorageServices.instance.save('sourceTypes', jsonEncode(place.types));
                               }

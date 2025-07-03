@@ -8,6 +8,7 @@ import 'package:wti_cabs_user/common_widget/buttons/primary_button.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_picker_tile.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_time_picker.dart';
 import 'package:wti_cabs_user/common_widget/dropdown/common_dropdown.dart';
+import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/booking_textformfield.dart';
 import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
@@ -198,6 +199,18 @@ class _OutStationState extends State<OutStation> {
 
   late final TextEditingController pickupController;
   late final TextEditingController dropController;
+  late Worker _pickupWorker;
+  late Worker _dropWorker;
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    _pickupWorker.dispose();
+    _dropWorker.dispose();
+    pickupController.dispose();
+    dropController.dispose();
+    super.dispose();
+  }
 
   void switchPickupAndDrop({
     required BuildContext context,
@@ -258,14 +271,14 @@ class _OutStationState extends State<OutStation> {
     dropController =
         TextEditingController(text: bookingRideController.prefilledDrop.value);
 
-    // Use ever to listen for changes and update the controllers
-    ever(bookingRideController.prefilled, (String value) {
+
+    _pickupWorker = ever<String>(bookingRideController.prefilled, (value) {
       if (pickupController.text != value) {
         pickupController.text = value;
       }
     });
 
-    ever(bookingRideController.prefilledDrop, (String value) {
+    _dropWorker = ever<String>(bookingRideController.prefilledDrop, (value) {
       if (dropController.text != value) {
         dropController.text = value;
       }
@@ -676,7 +689,7 @@ class _OutStationState extends State<OutStation> {
                           : canProceed
                           ? 1.0
                           : 0.6,
-                      child: PrimaryButton(
+                      child:  PrimaryButton(
                         text: 'Search Now',
                         onPressed: forceDisable || !canProceed
                             ? () {
@@ -689,6 +702,11 @@ class _OutStationState extends State<OutStation> {
                           );
                         } // 🔒 do nothing
                             : () async {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const PopupLoader(),
+                          );
                           // final typesJson = await StorageServices.instance.read('sourceTypes');
                           // final List<String> types = typesJson != null && typesJson.isNotEmpty
                           //     ? List<String>.from(jsonDecode(typesJson))
@@ -760,7 +778,7 @@ class _OutStationState extends State<OutStation> {
                               .read('sourceState');
                           final sourceCountry = await StorageServices
                               .instance
-                              .read('sourceCountry');
+                              .read('country');
                           final sourceLat = await StorageServices.instance
                               .read('sourceLat');
                           final sourceLng = await StorageServices.instance
@@ -939,6 +957,9 @@ class _OutStationState extends State<OutStation> {
                               requestData: requestData,
                               context: context);
                           // ✅ Proceed with booking
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
                         },
                       ),
                     );
@@ -1008,6 +1029,8 @@ class _RidesState extends State<Rides> {
   // Declare TextEditingControllers as class-level variables
   late TextEditingController ridePickupController;
   late TextEditingController rideDropController;
+  late Worker _ridePickupWorker;
+  late Worker _rideDropWorker;
 
   void switchPickupAndDrop({
     required BuildContext context,
@@ -1068,13 +1091,14 @@ class _RidesState extends State<Rides> {
     rideDropController =
         TextEditingController(text: bookingRideController.prefilledDrop.value);
 
+
     // Listen to changes in prefilled and prefilledDrop to update controllers
-    ever(bookingRideController.prefilled, (String value) {
+    _ridePickupWorker = ever(bookingRideController.prefilled, (String value) {
       if (ridePickupController.text != value) {
         ridePickupController.text = value;
       }
     });
-    ever(bookingRideController.prefilledDrop, (String value) {
+    _rideDropWorker = ever(bookingRideController.prefilledDrop, (String value) {
       if (rideDropController.text != value) {
         rideDropController.text = value;
       }
@@ -1084,6 +1108,8 @@ class _RidesState extends State<Rides> {
   @override
   void dispose() {
     // Dispose controllers to prevent memory leaks
+    _ridePickupWorker.dispose();
+    _rideDropWorker.dispose();
     ridePickupController.dispose();
     rideDropController.dispose();
     super.dispose();
@@ -1455,6 +1481,11 @@ class _RidesState extends State<Rides> {
                         );
                       }
                           : () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const PopupLoader(),
+                        );
                         // final typesJson = await StorageServices.instance.read('sourceTypes');
                         // final List<String> types = typesJson != null && typesJson.isNotEmpty
                         //     ? List<String>.from(jsonDecode(typesJson))
@@ -1522,7 +1553,7 @@ class _RidesState extends State<Rides> {
                             .read('sourceState');
                         final sourceCountry = await StorageServices
                             .instance
-                            .read('sourceCountry');
+                            .read('country');
                         final sourceLat = await StorageServices.instance
                             .read('sourceLat');
                         final sourceLng = await StorageServices.instance
@@ -1643,6 +1674,9 @@ class _RidesState extends State<Rides> {
                             requestData: requestData,
                             context: context);
                         // ✅ Proceed with booking
+                        if (Navigator.of(context, rootNavigator: true).canPop()) {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        }
                       },
                     ),
                   );
@@ -1732,6 +1766,8 @@ class _RentalState extends State<Rental> {
   }
 
   String selectPackage = '';
+  late Worker rentalPickupWorker;
+  late Worker rentalDropWorker;
 
   @override
   void initState() {
@@ -1743,12 +1779,12 @@ class _RentalState extends State<Rental> {
         TextEditingController(text: bookingRideController.prefilledDrop.value);
 
     // Listen to changes in prefilled and prefilledDrop to update controllers
-    ever(bookingRideController.prefilled, (String value) {
+    rentalPickupWorker =  ever(bookingRideController.prefilled, (String value) {
       if (ridePickupController.text != value) {
         ridePickupController.text = value;
       }
     });
-    ever(bookingRideController.prefilledDrop, (String value) {
+   rentalDropWorker = ever(bookingRideController.prefilledDrop, (String value) {
       if (rideDropController.text != value) {
         rideDropController.text = value;
       }
@@ -1758,6 +1794,8 @@ class _RentalState extends State<Rental> {
   @override
   void dispose() {
     // Dispose controllers to prevent memory leaks
+    rentalPickupWorker.dispose();
+    rentalDropWorker.dispose();
     ridePickupController.dispose();
     rideDropController.dispose();
     super.dispose();
@@ -2089,6 +2127,11 @@ class _RentalState extends State<Rental> {
                               );
                             }
                           : () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const PopupLoader(),
+                        );
                               // final typesJson = await StorageServices.instance.read('sourceTypes');
                               // final List<String> types = typesJson != null && typesJson.isNotEmpty
                               //     ? List<String>.from(jsonDecode(typesJson))
@@ -2157,7 +2200,7 @@ class _RentalState extends State<Rental> {
                                   .read('sourceState');
                               final sourceCountry = await StorageServices
                                   .instance
-                                  .read('sourceCountry');
+                                  .read('country');
                               final sourceLat = await StorageServices.instance
                                   .read('sourceLat');
                               final sourceLng = await StorageServices.instance
@@ -2280,6 +2323,9 @@ class _RentalState extends State<Rental> {
                                   requestData: requestData,
                                   context: context);
                               // ✅ Proceed with booking
+                        if (Navigator.of(context, rootNavigator: true).canPop()) {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        }
                             },
                     ),
                   );

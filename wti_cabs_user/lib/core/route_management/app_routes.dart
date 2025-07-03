@@ -5,6 +5,7 @@ class AppRoutes{
   static const String chooseDrop = '/chooseDrop';
   static const String airportChoosePick = '/airportChoosePick';
   static const String airportChooseDrop = '/airportChooseDrop';
+  static const String inventoryList = '/inventoryList';
 
 
 }
