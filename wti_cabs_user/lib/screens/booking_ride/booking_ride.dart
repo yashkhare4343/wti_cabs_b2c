@@ -955,7 +955,7 @@ class _OutStationState extends State<OutStation> {
                           searchCabInventoryController.fetchBookingData(
                               country: country!,
                               requestData: requestData,
-                              context: context);
+                              context: context, isSecondPage: false);
                           // ✅ Proceed with booking
                           if (Navigator.of(context, rootNavigator: true).canPop()) {
                             Navigator.of(context, rootNavigator: true).pop();
@@ -1672,7 +1672,7 @@ class _RidesState extends State<Rides> {
                         searchCabInventoryController.fetchBookingData(
                             country: country!,
                             requestData: requestData,
-                            context: context);
+                            context: context, isSecondPage: false);
                         // ✅ Proceed with booking
                         if (Navigator.of(context, rootNavigator: true).canPop()) {
                           Navigator.of(context, rootNavigator: true).pop();
@@ -2321,7 +2321,7 @@ class _RentalState extends State<Rental> {
                               searchCabInventoryController.fetchBookingData(
                                   country: country!,
                                   requestData: requestData,
-                                  context: context);
+                                  context: context, isSecondPage: false);
                               // ✅ Proceed with booking
                         if (Navigator.of(context, rootNavigator: true).canPop()) {
                           Navigator.of(context, rootNavigator: true).pop();

@@ -181,6 +181,8 @@ class PlaceSearchController extends GetxController {
       await StorageServices.instance.save('sourceLat', getPlacesLatLng.value!.latLong.lat.toString());
       await StorageServices.instance.save('sourceLng', getPlacesLatLng.value!.latLong.lng.toString());
       await StorageServices.instance.save('country', getPlacesLatLng.value!.country);
+      await StorageServices.instance.save('sourceCity', getPlacesLatLng.value!.city);
+
 
 
     } catch (error) {

@@ -15,15 +15,19 @@ class SearchCabInventoryController extends GetxController {
   RxBool isLoading = false.obs;
 
   var tripCode = ''.obs;
+  var previousTripCode = ''.obs;
 
   Future<void> loadTripCode() async {
     tripCode.value = await StorageServices.instance.read('currentTripCode') ?? '';
+    previousTripCode.value = await StorageServices.instance.read('previousTripCode') ?? '';
+
   }
   /// Fetch booking data based on the given country and request body
   Future<void> fetchBookingData({
     required String country,
     required Map<String, dynamic> requestData,
     required BuildContext context,
+    isSecondPage
   }) async {
     isLoading.value = true;
 
@@ -45,6 +49,7 @@ class SearchCabInventoryController extends GetxController {
         indiaData.value = response;
         globalData.value = null;
         await StorageServices.instance.save('currentTripCode', indiaData.value?.result?.tripType?.currentTripCode??'');
+        await StorageServices.instance.save('previousTripCode', indiaData.value?.result?.tripType?.previousTripCode??'');
 
 
       }
@@ -71,8 +76,27 @@ class SearchCabInventoryController extends GetxController {
             if (currentTripCode.isNotEmpty) break;
           }
         }
-        // ✅ Store it
         await StorageServices.instance.save('currentTripCode', currentTripCode ?? '');
+
+        // get prevoius trip code
+        String previousTripCode = '';
+        final result = globalData.value?.result;
+        if (result != null && result.isNotEmpty) {
+          for (var outer in result) {
+            for (var item in outer) {
+              final code = item.tripDetails?.currentTripCode;
+              if (code != null && code.toString().isNotEmpty) {
+                previousTripCode = code.toString();
+                break;
+              }
+            }
+            if (previousTripCode.isNotEmpty) break;
+          }
+        }
+
+        // ✅ Store it
+        await StorageServices.instance.save('previousTripCode', previousTripCode ?? '');
+
       }
       // ✅ Safely dismiss loader
       if (Navigator.of(context, rootNavigator: true).canPop()) {
@@ -81,8 +105,13 @@ class SearchCabInventoryController extends GetxController {
       }
 
       // ✅ Navigate
-      if (context.mounted) {
-        GoRouter.of(context).push(AppRoutes.inventoryList);
+      if(isSecondPage==false) {
+        if (context.mounted) {
+          GoRouter.of(context).push(AppRoutes.inventoryList);
+        }
+      }
+      else{
+        GoRouter.of(context).pop();
       }
     } catch (e) {
       print("❌ Error fetching booking data: $e");

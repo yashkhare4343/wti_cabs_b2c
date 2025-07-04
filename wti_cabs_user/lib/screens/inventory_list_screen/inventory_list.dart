@@ -34,6 +34,65 @@ class _InventoryListState extends State<InventoryList> {
     _country = await StorageServices.instance.read('country');
     final tripCode = searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode;
     final packageId = searchCabInventoryController.indiaData.value?.result?.tripType?.packageId;
+    final previousTripCode = searchCabInventoryController.indiaData.value?.result?.tripType?.previousTripCode;
+
+    final Map<String, String> tripMessages = {
+      '0': 'Your selected trip type has changed to Outstation One Way Trip.',
+      '1': 'Your selected trip type has changed to Outstation Round Trip.',
+      '2': 'Your selected trip type has changed to Airport.',
+      '3': 'Your selected trip type has changed to Local.',
+    };
+    // Check and show popup if trip code changed
+    if (tripCode != null && previousTripCode != null && tripCode != previousTripCode) {
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final message = tripMessages[tripCode] ?? 'Your selected trip type has changed.';
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            insetPadding: EdgeInsets.symmetric(horizontal: 12.0,vertical: 0.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 10,
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            title: Row(
+              children: [
+                const Icon(Icons.update_outlined, color: Colors.blueAccent, size: 16,),
+                const SizedBox(width: 10),
+                Text(
+                  'Trip Updated',
+                  style: CommonFonts.greyText3Bold,
+                ),
+              ],
+            ),
+            content: Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: MainButton(text: 'Okay', onPressed: (){
+                  Navigator.pop(context);
+                })
+              ),
+            ],
+          ),
+        );
+
+      });
+    }
 
     if (tripCode == '3' && packageId != null) {
       try {
@@ -146,8 +205,20 @@ class _InventoryListState extends State<InventoryList> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Image.asset('assets/images/inventory_car.png', width: 66, height: 66),
-                  const SizedBox(width: 16),
+                  Image.network(
+                    carType.carImageUrl??'',
+                    width: 66,
+                    height: 66,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/inventory_car.png',
+                        width: 66,
+                        height: 66,
+                        fit: BoxFit.contain,
+                      );
+                    },
+                  ),                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,8 +300,20 @@ class _InventoryListState extends State<InventoryList> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Image.asset('assets/images/inventory_car.png', width: 66, height: 66),
-                  const SizedBox(width: 16),
+                  Image.network(
+                    vehicleDetails?.vehicleImageLink??'',
+                    width: 66,
+                    height: 66,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/inventory_car.png',
+                        width: 66,
+                        height: 66,
+                        fit: BoxFit.contain,
+                      );
+                    },
+                  ),                    const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

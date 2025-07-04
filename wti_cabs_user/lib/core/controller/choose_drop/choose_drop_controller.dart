@@ -131,6 +131,7 @@ class DropPlaceSearchController extends GetxController {
       await StorageServices.instance.save('destinationLat', dropLatLng.value!.latLong.lat.toString());
       await StorageServices.instance.save('destinationLng', dropLatLng.value!.latLong.lng.toString());
       await StorageServices.instance.save('destinationCountry', dropLatLng.value!.country);
+      await StorageServices.instance.save('destinationCity', dropLatLng.value!.country);
 
       await findCountryDateTimeForDrop(
         dropLatLng.value!.latLong.lat,
