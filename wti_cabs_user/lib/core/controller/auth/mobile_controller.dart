@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
 import '../../api/api_services.dart';
+import '../../services/storage_services.dart';
 
 class MobileController extends GetxController {
   Rx<MobileResponse?> mobileData = Rx<MobileResponse?>(null);
@@ -25,6 +26,8 @@ class MobileController extends GetxController {
         );
         mobileData.value = response;
         print('print mobile data : ${mobileData.value}');
+        await StorageServices.instance.save('mobileNo', mobile);
+
     } finally {
       isLoading.value = false;
     }
