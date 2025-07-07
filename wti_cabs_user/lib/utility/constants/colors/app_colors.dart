@@ -45,10 +45,14 @@ class AppColors {
   static const blue5 = Color(0xFF5377EF);
   static const organge1 = Color(0xFFED7700);
   static const yellow1 = Color(0xFFFEC200);
+  static const grey5 = Color(0xFF6D6D6D);
+  static const blueSecondary = Color(0xFF3563FF);
 
   static const headingColorSecondary = Color(0xFF313131);
   static const h3ColorPrimary= Color(0xFF848484);
   static const bodyText2Primary = Color(0xFFEFEFEF);
+  static const grey4 = Color(0xFFA8A8A8);
+  static const grey4Light = Color(0xFF9C9C9C);
 
 
   //Button color

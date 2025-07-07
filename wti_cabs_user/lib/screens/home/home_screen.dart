@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     fetchCurrentLocationAndAddress();
     _setStatusBarColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showBottomSheet();
+      // _showBottomSheet();
     });
   }
 

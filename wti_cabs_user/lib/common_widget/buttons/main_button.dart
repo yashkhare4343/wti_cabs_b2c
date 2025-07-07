@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wti_cabs_user/common_widget/loader/custom_loader.dart';
 
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
@@ -9,41 +10,48 @@ class MainButton extends StatelessWidget {
   final Color backgroundColor;
   final bool? isIcon;
   final IconData? icon;
+  final bool isLoading;
 
-  // Constructor with default values for backgroundColor and borderRadius
   const MainButton({
     super.key,
     required this.text,
     required this.onPressed,
-    this.backgroundColor = AppColors.mainButtonBg,  // Default to blue if no color is provided
-    this.isIcon, this.icon,  // Default border radius
+    this.backgroundColor = AppColors.mainButtonBg,
+    this.isIcon,
+    this.icon,
+    this.isLoading = false, // ✅ Optional, default false
   });
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: onPressed,
+      onPressed: isLoading ? null : onPressed, // ✅ Disable when loading
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor,  // Set background color
+        backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),  // Set border radius
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        padding: EdgeInsets.symmetric(vertical: 2, horizontal: 12),  // Adjust padding
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
       ),
-      child:isIcon== true?
-      Row(
+      child: isLoading
+          ? const SizedBox(
+        width: 20,
+        height: 20,
+        child: CustomLoader(),
+      )
+          : isIcon == true
+          ? Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-
-          Text(text, style: CommonFonts.mainButtonText,),
+          Text(text, style: CommonFonts.mainButtonText),
           Icon(
             icon,
             color: Colors.white,
             size: 20.0,
           ),
-
         ],
-      ): Text(text, style: CommonFonts.mainButtonText,)
+      )
+          : Text(text, style: CommonFonts.mainButtonText),
     );
   }
 }

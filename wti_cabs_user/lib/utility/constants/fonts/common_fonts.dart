@@ -97,6 +97,16 @@ class CommonFonts {
   static final TextStyle organgeText1 = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.organge1);
   static final TextStyle greyText3 = base(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.greyText4);
   static final TextStyle mainButtonText = base(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white);
+  static final TextStyle heading1Bold = base(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.greyText3);
+  static final TextStyle heading1Medium = base(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black);
+  static final TextStyle bodyText6 = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.greyText3);
+  static final TextStyle bodyText6Medium = base(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.grey4Light);
+  static final TextStyle bodyText6Bold = base(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.greyText3);
+  static final TextStyle bodyText7Bold = base(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.greyText3);
+  static final TextStyle bodyText7Light = base(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black);
+  static final TextStyle bodyText3Medium = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.grey4);
+  static final TextStyle bodyText3MediumBlue = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.blueSecondary);
+
 
 
 
