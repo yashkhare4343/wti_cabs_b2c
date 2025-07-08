@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/auth/mobile_controller.dart';
@@ -72,6 +74,7 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
 
 
 
+
   void _showBottomSheet() {
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController phoneController = TextEditingController();
@@ -79,6 +82,58 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
     final MobileController mobileController = Get.put(MobileController());
     final OtpController otpController = Get.put(OtpController());
     final ResendOtpController resendOtpController = Get.put(ResendOtpController());
+    bool isGoogleLoading = false;
+
+
+
+    Future<UserCredential?> signInWithGoogle() async {
+      try {
+        final GoogleSignIn _googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          clientId: '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+        );
+
+        // Start the sign-in flow
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) {
+          print("User cancelled the sign-in flow");
+          return null;
+        }
+
+        // Obtain the auth tokens
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+        // Create a Firebase credential
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        print("✅ Signed in as: ${userCredential.user?.displayName}");
+        return userCredential;
+      } catch (e) {
+        print("❌ Google sign-in failed: $e");
+        return null;
+      }
+    }
+
+    void _handleGoogleLogin(StateSetter setModalState) async {
+      setModalState(() => isGoogleLoading = true);
+
+      final result = await signInWithGoogle();
+
+      setModalState(() => isGoogleLoading = false);
+
+      if (result != null) {
+        print("✅ User signed in: ${result.user?.email}");
+
+        Navigator.of(context).pop(); // close the bottom sheet
+      } else {
+        print("❌ Google Sign-In cancelled or failed");
+      }
+    }
 
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
     bool hasError = false;
@@ -325,25 +380,40 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
                                       const SizedBox(height: 16),
 
                                       // Google Login
-                                      if(!showOtpField)  Center(
-                                        child: Column(
-                                          children: [
-                                            Container(
-                                              width: 48,
-                                              height: 48,
-                                              padding: const EdgeInsets.all(1),
-                                              decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
-                                              child: CircleAvatar(
-                                                radius: 20,
-                                                backgroundColor: Colors.white,
-                                                child: Image.asset('assets/images/google_icon.png', fit: BoxFit.contain, width: 29, height: 29),
-                                              ),
+                                      if (!showOtpField)
+                                        GestureDetector(
+                                          onTap: isGoogleLoading ? null : () => _handleGoogleLogin(setModalState),
+                                          child: Center(
+                                            child: Column(
+                                              children: [
+                                                Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  padding: const EdgeInsets.all(1),
+                                                  decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
+                                                  child: CircleAvatar(
+                                                    radius: 20,
+                                                    backgroundColor: Colors.white,
+                                                    child: isGoogleLoading
+                                                        ? const SizedBox(
+                                                      width: 20,
+                                                      height: 20,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    )
+                                                        : Image.asset(
+                                                      'assets/images/google_icon.png',
+                                                      fit: BoxFit.contain,
+                                                      width: 29,
+                                                      height: 29,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                const Text("Google", style: TextStyle(fontSize: 13)),
+                                              ],
                                             ),
-                                            const SizedBox(height: 4),
-                                            const Text("Google", style: TextStyle(fontSize: 13)),
-                                          ],
+                                          ),
                                         ),
-                                      ),
 
                                       const SizedBox(height: 20),
 

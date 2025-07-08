@@ -60,11 +60,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCRU3VVcNJFU97NFbMT8kaf2loHxBxfhM8',
-    appId: '1:350350132251:ios:b322625590bb8d06a3a4be',
+    appId: '1:350350132251:ios:618d5f26dcf980cda3a4be',
     messagingSenderId: '350350132251',
     projectId: 'wticabsuserb2c',
     storageBucket: 'wticabsuserb2c.firebasestorage.app',
-    iosBundleId: 'com.wti.user.booking',
+    iosClientId: '350350132251-oqnm5kahh5daerh0sob5rm49voeu2mpa.apps.googleusercontent.com',
+    iosBundleId: 'com.wti.user.wtiCabsUser',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,6 +74,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '350350132251',
     projectId: 'wticabsuserb2c',
     storageBucket: 'wticabsuserb2c.firebasestorage.app',
+    iosClientId: '350350132251-r6l30e84f570g5ggp9hht1phq3n1lflf.apps.googleusercontent.com',
     iosBundleId: 'com.example.wtiCabsUser',
   );
 

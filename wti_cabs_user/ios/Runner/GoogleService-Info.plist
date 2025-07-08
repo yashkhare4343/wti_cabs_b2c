@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>350350132251-oqnm5kahh5daerh0sob5rm49voeu2mpa.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.350350132251-oqnm5kahh5daerh0sob5rm49voeu2mpa</string>
 	<key>API_KEY</key>
 	<string>AIzaSyCRU3VVcNJFU97NFbMT8kaf2loHxBxfhM8</string>
 	<key>GCM_SENDER_ID</key>
@@ -9,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.wti.user.booking</string>
+	<string>com.wti.user.wtiCabsUser</string>
 	<key>PROJECT_ID</key>
 	<string>wticabsuserb2c</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:350350132251:ios:b322625590bb8d06a3a4be</string>
+	<string>1:350350132251:ios:618d5f26dcf980cda3a4be</string>
 </dict>
 </plist>
