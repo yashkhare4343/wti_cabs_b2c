@@ -12,7 +12,12 @@
           "package_name": "com.wti.user.booking"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB_ersFUK_sIYny13OIybnElH9y0vxLL40"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "350350132251-iq8792d726r8mrsa95d5n5tss8u90v83.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.wti.user.booking"
+              }
+            }
+          ]
         }
       }
     }
