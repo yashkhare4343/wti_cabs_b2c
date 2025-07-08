@@ -1,0 +1,37 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
+import '../../api/api_services.dart';
+import '../../services/storage_services.dart';
+
+class ResendOtpController extends GetxController {
+  Rx<MobileResponse?> mobileData = Rx<MobileResponse?>(null);
+  RxBool isLoading = false.obs;
+
+  /// Fetch booking data based on the given country and request body
+  Future<void> verifyResendOtp({
+    required String mobile,
+    required BuildContext context,
+  }) async {
+    final Map<String, dynamic> requestData = {
+      "contact": mobile
+    };
+    isLoading.value = true;
+    try {
+      final response = await ApiService().postRequestNew<MobileResponse>(
+        'user/resendOtpViaSms',
+        requestData,
+        MobileResponse.fromJson,
+        context,
+      );
+      mobileData.value = response;
+      print('print mobile data : ${mobileData.value}');
+      await StorageServices.instance.save('mobileNo', mobile);
+
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+
+}

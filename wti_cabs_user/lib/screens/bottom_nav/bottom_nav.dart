@@ -9,6 +9,7 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/auth/mobile_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/otp_controller.dart';
+import 'package:wti_cabs_user/core/controller/auth/resend_otp_controller.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
 
 import '../../utility/constants/colors/app_colors.dart';
@@ -77,12 +78,14 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
     final TextEditingController otpTextEditingController = TextEditingController();
     final MobileController mobileController = Get.put(MobileController());
     final OtpController otpController = Get.put(OtpController());
+    final ResendOtpController resendOtpController = Get.put(ResendOtpController());
 
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
     bool hasError = false;
     String? errorMessage;
     bool isButtonEnabled = false;
     bool showOtpField = false;
+
 
     showModalBottomSheet(
       context: context,
@@ -244,7 +247,7 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
 
 
                                         if (showOtpField)
-                                         OtpTextField(otpController: otpTextEditingController,),
+                                         OtpTextField(otpController: otpTextEditingController, mobileNo: phoneController.text.trim(), ),
 
                                         if (errorMessage != null) ...[
                                           const SizedBox(height: 8),
@@ -267,40 +270,41 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
                                         isLoading: mobileController.isLoading.value,
                                         onPressed: isButtonEnabled
                                             ? () async {
+                                          mobileController.isLoading.value = true;
+                                          await Future.delayed(const Duration(seconds: 2));
+
                                           if (showOtpField) {
-                                            await otpController.verifyOtp(mobile: phoneController.text.trim(),otp: otpTextEditingController.text.trim(), context: context).then((value){
+                                            await otpController.verifyOtp(
+                                              mobile: phoneController.text.trim(),
+                                              otp: otpTextEditingController.text.trim(),
+                                              context: context,
+                                            ).then((value) {
                                               GoRouter.of(context).pop();
                                             });
-                                            // TODO: Verify OTP API
                                           } else {
                                             await mobileController.verifyMobile(
                                               mobile: phoneController.text.trim(),
                                               context: context,
                                             );
-                                            if (mobileController.mobileData.value != null) {
+                                            if ((mobileController.mobileData.value != null) &&
+                                                (mobileController.mobileData.value?.userAssociated == true)) {
                                               showOtpField = true;
                                               errorMessage = null;
-                                              isButtonEnabled = false;
-                                          otpTextEditingController.clear();
+                                              isButtonEnabled = true;
+                                              otpTextEditingController.clear();
                                               setModalState(() {});
                                             }
                                           }
+
+                                          mobileController.isLoading.value = false;
                                         }
-                                            : () async{
-                                          if (showOtpField) {
-                                            await otpController.verifyOtp(mobile: phoneController.text.trim(),otp: otpTextEditingController.text.trim(), context: context).then((value){
-                                              GoRouter.of(context).pop();
-                                            });
-                                            // TODO: Verify OTP API
-                                          }
-                                        },
+                                            : () {},
+
                                       ),
                                     ),
                                   )),
 
                                   const SizedBox(height: 16),
-
-
 
                                   Column(
                                     children: [
@@ -476,8 +480,8 @@ class _BottomNavScreenState extends State<BottomNavScreen> with WidgetsBindingOb
 
 class OtpTextField extends StatefulWidget {
   final TextEditingController otpController;
-
-  OtpTextField({super.key, required this.otpController});
+  final String mobileNo;
+  OtpTextField({super.key, required this.otpController, required this.mobileNo});
   @override
   State<OtpTextField> createState() => _OtpTextFieldState();
 }
@@ -488,6 +492,7 @@ class _OtpTextFieldState extends State<OtpTextField> {
   int secondsRemaining = 20;
   bool enableResend = false;
   Timer? _timer;
+  final ResendOtpController resendOtpController = Get.put(ResendOtpController());
 
   @override
   void initState() {
@@ -516,9 +521,11 @@ class _OtpTextFieldState extends State<OtpTextField> {
     });
   }
 
-  void _resendOtp() {
-    print("Resending OTP...");
-    _startCountdown(); // Restart timer
+  void _resendOtp() async{
+    widget.otpController.clear();
+    await resendOtpController.verifyResendOtp(mobile: widget.mobileNo, context: context).then((value){
+      _startCountdown(); // Restart timer
+    });
   }
 
   void _validateOtp(String value) {
