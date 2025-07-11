@@ -121,8 +121,6 @@ class CarType {
   final num? fakePercentageOff;
   final String? carImageUrl;
 
-
-
   CarType({
     this.routeId,
     this.skuId,

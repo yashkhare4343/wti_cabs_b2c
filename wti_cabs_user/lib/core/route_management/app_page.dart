@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
@@ -41,6 +42,10 @@ class AppPages{
         GoRoute(
           path: AppRoutes.inventoryList,
           builder: (context, state) => InventoryList(),
+        ),
+        GoRoute(
+          path: AppRoutes.bookingDetailsFinal,
+          builder: (context, state) => BookingDetailsFinal(),
         ),
       ],
    );

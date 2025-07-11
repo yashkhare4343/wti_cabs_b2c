@@ -8,6 +8,7 @@ import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 
+import '../../core/controller/cab_booking/cab_booking_controller.dart';
 import '../../core/model/inventory/india_response.dart';
 import '../../core/services/storage_services.dart';
 
@@ -188,6 +189,8 @@ class _InventoryListState extends State<InventoryList> {
 
   Widget _buildIndiaCard(CarType carType) {
     final tripCode = searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode;
+    final CabBookingController cabBookingController = Get.put(CabBookingController());
+    final tripTypeDetails = searchCabInventoryController.indiaData.value?.result?.tripType;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -273,7 +276,50 @@ class _InventoryListState extends State<InventoryList> {
                       ),
                     ],
                   ),
-                  MainButton(text: 'Book Now', onPressed: () {}),
+                  MainButton(text: 'Book Now', onPressed: () async{
+                    final country = await StorageServices.instance
+                        .read('country');
+
+                    Future<bool> isGlobal() async {
+                      final country = await StorageServices.instance.read('country');
+                      return country?.toLowerCase() != 'india';
+                    }
+
+                    print("inventory start time and endtime : ${tripTypeDetails?.startTime?.toIso8601String()??''}, ${tripTypeDetails?.endTime?.toIso8601String()??''}");
+
+                  final Map<String, dynamic> requestData = {
+                    "isGlobal": false,
+                    "country": country,
+                    "routeInventoryId": carType.routeId,
+                    "vehicleId": null,
+                    "trip_type": carType.tripType,
+                    "pickUpDateTime": tripTypeDetails?.startTime?.toIso8601String()??'',
+                    "dropDateTime": tripTypeDetails?.endTime?.toIso8601String()??'',
+                    "totalKilometers": tripTypeDetails?.distanceBooked??0,
+                    "package_id": tripTypeDetails?.packageId??'',
+                    "source": {
+                      "address": tripTypeDetails?.source?.address??'',
+                      "latitude": tripTypeDetails?.source?.latitude,
+                      "longitude": tripTypeDetails?.source?.longitude,
+                      "city": tripTypeDetails?.source?.city
+                    },
+                    "destination": {
+                      "address": tripTypeDetails?.destination?.address??'',
+                      "latitude": tripTypeDetails?.destination?.latitude,
+                      "longitude": tripTypeDetails?.destination?.longitude,
+                      "city": tripTypeDetails?.destination?.city
+                    },
+                    "tripCode": tripCode,
+                    // Conditional key based on global/india
+                    "trip_type_details": {
+                    "basic_trip_type": tripTypeDetails?.tripTypeDetails?.basicTripType??'',
+                    "airport_type": tripTypeDetails?.tripTypeDetails?.airportType??''
+                    },
+                  };
+
+
+                    cabBookingController.fetchBookingData(country: country??'', requestData: requestData, context: context);
+                  }),
                 ],
               ),
             ],
@@ -363,7 +409,31 @@ class _InventoryListState extends State<InventoryList> {
                       ),
                     ],
                   ),
-                  MainButton(text: 'Book Now', onPressed: () {}),
+                  MainButton(text: 'Book Now', onPressed: () async{
+                    final country = await StorageServices.instance
+                        .read('country');
+                    final CabBookingController cabBookingController = Get.put(CabBookingController());
+                    final Map<String, dynamic> requestData = {
+                      "isGlobal": false,
+                      "country": country,
+                      "routeInventoryId": fareDetails.id,
+                      "vehicleId": vehicleDetails.id,
+                      "trip_type": fareDetails.tripType,
+                      "pickUpDateTime": tripDetails?.pickupDateTime??'',
+                      "dropDateTime": tripDetails.dropDateTime??'',
+                      "totalKilometers": tripDetails.totalDistance??0,
+                      "package_id": null,
+                      "source": {},
+                      "destination": {},
+                      "tripCode": tripDetails.currentTripCode,
+                      // Conditional key based on global/india
+                      "trip_type_details": {
+                        "basic_trip_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.basicTripType??'',
+                        "airport_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.airportType??''
+                      },
+                    };
+                    cabBookingController.fetchBookingData(country: country??'', requestData: requestData, context: context);
+                  }),
                 ],
               ),
             ],
