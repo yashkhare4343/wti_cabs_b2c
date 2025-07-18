@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import '../../config/enviornment_config.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../response/api_response.dart';
+import '../services/storage_services.dart';
 
 class ApiService {
   // Private constructor for singleton
@@ -31,19 +32,13 @@ class ApiService {
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
   Future<String?> _getToken() async {
-    if (Platform.isIOS) {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('token');
-    } else {
-      final secureStorage = FlutterSecureStorage();
-      return await secureStorage.read(key: 'token');
-    }
+   return await StorageServices.instance.read('token');
   }
 
   Future<Map<String, dynamic>> getRequest(String endpoint) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
-    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
@@ -108,7 +103,6 @@ class ApiService {
       throw Exception("❌ Exception: $e");
     }
   }
-
 
   Future<Map<String, dynamic>> currencyConverter(String currency) async {
     final url = Uri.parse('http://3.222.206.52:4000/global/app/v1/currency/currencyConversion/$currency');

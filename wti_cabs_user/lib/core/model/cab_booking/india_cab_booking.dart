@@ -82,6 +82,7 @@ class CarTypes {
   final num? fakePercentageOff;
   final FareDetails? fareDetails;
   final String? fleetId;
+  final String? packageId;
   final bool? isActive;
   final String? luggageCapacity;
   final String? makeYearType;
@@ -107,6 +108,7 @@ class CarTypes {
     this.fakePercentageOff,
     this.fareDetails,
     this.fleetId,
+    this.packageId,
     this.isActive,
     this.luggageCapacity,
     this.makeYearType,
@@ -136,6 +138,7 @@ class CarTypes {
       fakePercentageOff: json['fakePercentageOff'] as num?,
       fareDetails: json['fare_details'] != null ? FareDetails.fromJson(json['fare_details']) : null,
       fleetId: json['fleet_id'] as String?,
+      packageId: json['package_id'] as String?,
       isActive: json['isActive'] as bool?,
       luggageCapacity: json['luggageCapacity'] as String?,
       makeYearType: json['make_year_type'] as String?,
@@ -164,6 +167,7 @@ class CarTypes {
       'fakePercentageOff': fakePercentageOff,
       'fare_details': fareDetails?.toJson(),
       'fleet_id': fleetId,
+      'package_id': packageId,
       'isActive': isActive,
       'luggageCapacity': luggageCapacity,
       'make_year_type': makeYearType,

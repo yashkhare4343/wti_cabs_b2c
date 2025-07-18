@@ -93,7 +93,7 @@ class DropPlaceSearchController extends GetxController {
         isLoading.value = true;
         final apiService = ApiService();
         final responseData = await apiService.postRequest(
-          'google/ind/$searchedText?isMobileView=false',
+          'google/ind/$searchedText?isMobileApp=true',
           {},
           context,
         );
@@ -117,7 +117,7 @@ class DropPlaceSearchController extends GetxController {
       final apiService = ApiService();
 
       final response = await apiService.postRequest(
-        'google/getLatLongChauffeur',
+        'google/getLatLongChauffeur?isMobileApp=true',
         {"place_id": placeId, "isLatLngAvailable": false},
         context,
       );

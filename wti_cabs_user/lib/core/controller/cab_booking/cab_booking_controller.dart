@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
@@ -11,7 +12,94 @@ import '../../route_management/app_routes.dart';
 class CabBookingController extends GetxController {
   Rx<IndiaCabBooking?> indiaData = Rx<IndiaCabBooking?>(null);
   Rx<GlobalBookingFlat?> globalData = Rx<GlobalBookingFlat?>(null);
+  final ApplyCouponController applyCouponController = Get.put(ApplyCouponController());
   RxBool isLoading = false.obs;
+
+  // NEW: Extra selected facilities (label -> price)
+  RxMap<String, double> selectedExtras = <String, double>{}.obs;
+
+  // Assume country is stored separately
+  String? country;
+
+  double get baseFare =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.baseFare?.toDouble() ?? 0.0) : (globalData.value?.fareBreakUpDetails?.baseFare ?? 0.0);
+
+  double get nightCharges =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+
+  double get tollCharges =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+
+  double get waitingCharges =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+
+  double get parkingCharges =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+
+  double get stateTax =>
+      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+
+
+  double get extraFacilityCharges => selectedExtras.values.fold(0.0, (sum, item) => sum + item);
+
+  double get actualFare {
+    final subtotal = baseFare +
+        nightCharges +
+        tollCharges +
+        waitingCharges +
+        parkingCharges +
+        stateTax +
+        extraFacilityCharges;
+
+    return subtotal;
+  }
+
+  //including Tax
+  double get totalFare {
+
+    final subtotal = (applyCouponController.isCouponApplied == false) ? baseFare +
+        nightCharges +
+        tollCharges +
+        waitingCharges +
+        parkingCharges +
+        stateTax +
+        extraFacilityCharges : ((applyCouponController.applyCouponResponse.value?.newTotalAmount??0) + (extraFacilityCharges)).toDouble() ??0.0;
+
+    return isIndia ? subtotal + (subtotal * 0.05) : baseFare;
+  }
+
+  double get partFare => totalFare * 0.20;
+  double get amountTobeCollected => totalFare - partFare;
+
+
+  bool get isIndia => (country?.toLowerCase() ?? '') == 'india';
+
+  void toggleExtraFacility(String label, double amount, bool isSelected) {
+    if (isSelected) {
+      selectedExtras[label] = amount;
+    } else {
+      selectedExtras.remove(label);
+    }
+  }
+
+  // store choose extras id in array
+  RxList<String> selectedExtrasIds = <String>[].obs;
+
+  void toggleExtraId(String id, bool isSelected) {
+    if (isSelected) {
+      if (!selectedExtrasIds.contains(id)) {
+        selectedExtrasIds.add(id);
+      }
+    } else {
+      selectedExtrasIds.remove(id);
+    }
+    print("🆔 Selected Extras: $selectedExtrasIds");
+  }
+
+  // Optional: clear all
+  void clearSelectedExtras() {
+    selectedExtrasIds.clear();
+  }
 
   Future<void> fetchBookingData({
     required String country,
