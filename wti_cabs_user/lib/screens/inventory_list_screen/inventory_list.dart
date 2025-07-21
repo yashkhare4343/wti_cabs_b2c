@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
@@ -210,13 +211,13 @@ class _InventoryListState extends State<InventoryList> {
                 children: [
                   Image.network(
                     carType.carImageUrl??'',
-                    width: 66,
+                    width: 96,
                     height: 66,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return Image.asset(
                         'assets/images/inventory_car.png',
-                        width: 66,
+                        width: 96,
                         height: 66,
                         fit: BoxFit.contain,
                       );
@@ -510,7 +511,11 @@ class _BookingTopBarState extends State<BookingTopBar> {
       child: ListTile(
         contentPadding:
         const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-        leading: const Icon(Icons.arrow_back, size: 20),
+        leading: GestureDetector(
+            onTap: (){
+              GoRouter.of(context).pop();
+            },
+            child: Icon(Icons.arrow_back, size: 20)),
         title: Row(
           children: [
             Expanded(

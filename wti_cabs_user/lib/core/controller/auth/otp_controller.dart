@@ -30,6 +30,7 @@ class OtpController extends GetxController {
       otpData.value = response;
       print('print otp data : ${otpData.value}');
        await StorageServices.instance.save('refreshToken', otpData.value?.refreshToken??'');
+       await StorageServices.instance.save('token', otpData.value?.accessToken??'');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

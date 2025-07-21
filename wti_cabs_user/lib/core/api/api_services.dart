@@ -38,6 +38,7 @@ class ApiService {
   Future<Map<String, dynamic>> getRequest(String endpoint) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
+    print('yash token : $token');
     final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     final headers = {
       'Content-Type': 'application/json',
@@ -70,7 +71,7 @@ class ApiService {
       ) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
-    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
 
     final headers = {
       'Content-Type': 'application/json',

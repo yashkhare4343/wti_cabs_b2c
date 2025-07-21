@@ -13,6 +13,7 @@ class IndiaPaymentController extends GetxController {
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
   Map<String, dynamic>? paymentVerification;
+  RxString passengerId = ''.obs;
 
   @override
   void onInit() {
@@ -49,11 +50,14 @@ class IndiaPaymentController extends GetxController {
 
       if (res.statusCode == 200) {
         registeredUser = jsonDecode(res.body);
-        print("✅ Signup success: $registeredUser");
         await StorageServices.instance.save('userObjId', registeredUser?['user_obj_id']);
+        print("✅ Signup success: $registeredUser");
+        print('signup passenger id : ${passengerId.value.toString()}');
+        await Future.delayed(Duration(milliseconds: 1000));
+
         await provisionalBookingMethod(
           requestData: provisionalRequestData,
-          context: context,
+          context: context, passengerId: registeredUser?['user_obj_id'],
         );
       } else {
         print("❌ Signup failed: ${res.statusCode} ${res.body}");
@@ -68,11 +72,22 @@ class IndiaPaymentController extends GetxController {
   Future<void> provisionalBookingMethod({
     required Map<String, dynamic> requestData,
     required BuildContext context,
+    required String passengerId
   }) async {
     isLoading.value = true;
     try {
-      print("📤 Provisional booking request: $requestData");
+      // Build request map with preserved order
+      // First: insert passenger at the top (or wherever you want)
+      requestData['reservation']['passenger'] = passengerId;
 
+      // Then: insert all other fields in order
+      requestData.forEach((key, value) {
+        requestData[key] = value;
+      });
+
+      print('📦 Ordered Request Body: ${jsonEncode(requestData)}');
+      final encoder = JsonEncoder.withIndent('  ');
+      debugPrint('📦Provisional Request Body:\n${encoder.convert(requestData)}');
       final res = await http.post(
         Uri.parse('https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
         headers: {
