@@ -5,8 +5,7 @@ class PopupLoader extends StatelessWidget {
   final String message;
 
   const PopupLoader({
-    super.key,
-    this.message = "Searching for rides near you...",
+    super.key, required this.message,
   });
 
   @override

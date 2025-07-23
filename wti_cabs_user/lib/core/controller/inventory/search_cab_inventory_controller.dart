@@ -35,7 +35,9 @@ class SearchCabInventoryController extends GetxController {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const PopupLoader(),
+      builder: (_) => const PopupLoader(
+        message: 'Search Rides for you',
+      ),
     );
 
     try {

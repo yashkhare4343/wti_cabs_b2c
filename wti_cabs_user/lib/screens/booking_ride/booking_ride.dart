@@ -705,7 +705,9 @@ class _OutStationState extends State<OutStation> {
                           showDialog(
                             context: context,
                             barrierDismissible: false,
-                            builder: (_) => const PopupLoader(),
+                            builder: (_) => const PopupLoader(
+                              message: 'Search Rides for you',
+                            ),
                           );
                           // final typesJson = await StorageServices.instance.read('sourceTypes');
                           // final List<String> types = typesJson != null && typesJson.isNotEmpty
@@ -1484,7 +1486,8 @@ class _RidesState extends State<Rides> {
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder: (_) => const PopupLoader(),
+                          builder: (_) => const PopupLoader(
+                          message: 'Search Rides for you',)
                         );
                         // final typesJson = await StorageServices.instance.read('sourceTypes');
                         // final List<String> types = typesJson != null && typesJson.isNotEmpty
@@ -2130,7 +2133,9 @@ class _RentalState extends State<Rental> {
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder: (_) => const PopupLoader(),
+                          builder: (_) => const PopupLoader(
+                            message: 'Search Rides for you',
+                          ),
                         );
                               // final typesJson = await StorageServices.instance.read('sourceTypes');
                               // final List<String> types = typesJson != null && typesJson.isNotEmpty

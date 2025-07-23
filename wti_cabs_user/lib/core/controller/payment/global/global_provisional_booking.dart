@@ -5,7 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart'; // ✅ Required for launching browser
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
+import '../../../../common_widget/loader/popup_loader.dart';
+
 class GlobalPaymentController extends GetxController {
+
   RxBool isLoading = false.obs;
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? createCustomer;
@@ -29,7 +32,9 @@ class GlobalPaymentController extends GetxController {
     required BuildContext context,
   }) async {
     isLoading.value = true;
+    showLoader(context);
     try {
+
       print("📤 Signup request: $requestData");
 
       final res = await http.post(
@@ -66,14 +71,10 @@ class GlobalPaymentController extends GetxController {
     required BuildContext context,
   }) async {
     Map<String, dynamic> requestData = {
-      "name": "yash",
-      "phone": 9179419377,
-      "email": "yash.khare@aaveg.com",
-      "address": {
-        "line1": "125 mudchute",
-        "postal_code": 1111,
-        "city": "london"
-      }
+      "name": registeredUser?['name'],
+      "phone": registeredUser?['number'],
+      "email": registeredUser?['email'],
+      "address": ""
     };
 
     isLoading.value = true;
@@ -103,11 +104,13 @@ class GlobalPaymentController extends GetxController {
       }
     } catch (e) {
       print("❌ create customer exception: $e");
+
     } finally {
       isLoading.value = false;
     }
   }
 
+  // add passenger from here
   Future<void> provisionalBookingMethod(
       Map<String, dynamic> requestData,
       Map<String, dynamic> checkoutRequestData,
@@ -115,6 +118,11 @@ class GlobalPaymentController extends GetxController {
       ) async {
     isLoading.value = true;
     try {
+
+      requestData['reservation']['passenger'] = registeredUser?['user_obj_id'];
+      requestData.forEach((key, value) {
+        requestData[key] = value;
+      });
       print("📤 Provisional booking request: $requestData");
 
       final res = await http.post(
@@ -140,6 +148,7 @@ class GlobalPaymentController extends GetxController {
       }
     } catch (e) {
       print("❌ Provisional booking exception: $e");
+
     } finally {
       isLoading.value = false;
     }
@@ -152,7 +161,16 @@ class GlobalPaymentController extends GetxController {
     isLoading.value = true;
     try {
       print("📤 stripe checkout request: $requestData");
+      requestData['order_reference_number'] = provisionalBooking?['order_reference_number'];
+      requestData['customerId'] = createCustomer?['customerID'];
+      requestData['userID'] = registeredUser?['user_obj_id'];
 
+
+
+      // Then: insert all other fields in order
+      requestData.forEach((key, value) {
+        requestData[key] = value;
+      });
       final res = await http.post(
         Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/checkout'),
         headers: {
@@ -179,15 +197,34 @@ class GlobalPaymentController extends GetxController {
       print("❌ Stripe exception: $e");
     } finally {
       isLoading.value = false;
+      hideLoader(context);
+
     }
   }
 
   Future<void> _launchStripeCheckout(String checkoutUrl) async {
     final uri = Uri.parse(checkoutUrl);
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.inAppWebView);
     } else {
       throw Exception('❌ Could not launch Stripe Checkout URL');
     }
   }
+  void showLoader(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopupLoader(
+        message: "Go to Payment Page",
+      ),
+    );
+  }
+
+  void hideLoader(BuildContext context) {
+    if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
 }
+

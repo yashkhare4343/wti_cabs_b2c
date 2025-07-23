@@ -104,13 +104,15 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                   ),
                   ExtrasSelectionCard(),
                   SizedBox(
-                    height: 16,
+                    height: 8,
                   ),
-                  CouponScreen(),
-                  SizedBox(
-                    height: 16,
-                  ),
+                  // CouponScreen(),
+                  // SizedBox(
+                  //   height: 16,
+                  // ),
                   TravelerDetailsForm(),
+
+                  DiscountCouponsCard()
 
                 ],
               ),
@@ -647,9 +649,13 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   final TextEditingController contactController = TextEditingController();
   final TextEditingController sourceController = TextEditingController();
   final TextEditingController destinationController = TextEditingController();
+  final TextEditingController flightNoController = TextEditingController();
+  final TextEditingController remarkController = TextEditingController();
+  final TextEditingController gstController = TextEditingController();
   final BookingRideController bookingRideController =
       Get.put(BookingRideController());
-
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  bool isGstSelected = false;
   @override
   void initState() {
     super.initState();
@@ -677,6 +683,8 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
     print('Contact: $contact');
     print('Contact Code: $contactCode');
     print('Email: $email');
+    print('yash current trip code for fight no is : ${searchCabInventoryController
+        .indiaData.value?.result?.tripType?.currentTripCode}');
 
     setState(() {}); // to trigger rebuild once _country is loaded
   }
@@ -685,7 +693,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.white,
-      margin: EdgeInsets.only(bottom: 40),
+      margin: EdgeInsets.only(bottom: 20),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -820,6 +828,54 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                 tag: "",
                 controller: destinationController),
 
+            // flight no for airport trips
+            searchCabInventoryController
+                .indiaData.value?.result?.tripType?.currentTripCode == '2' ? _buildTextField(
+                hint: "Enter Flight Number", controller: flightNoController) : SizedBox(),
+            // optional remarks
+            _buildTextField(
+                hint: "Remarks", controller: remarkController),
+            SizedBox(
+              height: 8,
+            ),
+
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  isGstSelected = !isGstSelected;
+                });
+              },
+              child: Row(
+                children: [
+                  CustomCheckbox(
+                    value: isGstSelected,
+                    onChanged: (val) {
+                      setState(() {
+                        isGstSelected = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'I have a GST number (Optional)',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(
+              height: 16,
+            ),
+
+            isGstSelected ?  _buildTextField(
+                hint: "Enter GST Number",
+                tag: "",
+                controller: gstController) : SizedBox(),
+
+
             SizedBox(
               height: 40,
             )
@@ -868,6 +924,17 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                 bookingRideController.prefilledDrop.value = value;
                 await StorageServices.instance.save('dropAddress', value);
                 print("🏁 Drop Address updated: $value");
+              } else if (controller == flightNoController) {
+                await StorageServices.instance.save('flightNo', value);
+                print("🏁 Flight no updated: $value");
+              }
+              else if (controller == remarkController) {
+                await StorageServices.instance.save('remark', value);
+                print("🏁 remark updated: $value");
+              }
+              else if (controller == gstController) {
+                await StorageServices.instance.save('gstValue', value);
+                print("🏁 gst updated: $value");
               }
 
               setState(() {}); // Trigger rebuild if needed
@@ -1245,11 +1312,16 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
       Get.put(IndiaPaymentController());
   final GlobalPaymentController globalPaymentController =
   Get.put(GlobalPaymentController());
+  final SearchCabInventoryController searchCabInventoryController =
+  Get.put(SearchCabInventoryController());
   String? token;
   String? firstName;
   String? email;
   String? contact;
   String? contactCode;
+  String? flightNo;
+  String? remark;
+  String? gstValue;
 
   @override
   void initState() {
@@ -1271,6 +1343,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
     contact = await StorageServices.instance.read('contact');
     contactCode = await StorageServices.instance.read('contactCode');
     email = await StorageServices.instance.read('emailId');
+    flightNo = await StorageServices.instance.read('flightNo');
+    remark = await StorageServices.instance.read('remark');
+    gstValue = await StorageServices.instance.read('gstValue');
+
 
     setState(() {}); // to trigger rebuild once _country is loaded
   }
@@ -1329,7 +1405,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
               child: MainButton(
                   text: 'Pay Now',
                   onPressed:
-                  // _country?.toLowerCase() == 'india' ?
+                  _country?.toLowerCase() == 'india' ?
                       () async {
 
                         showRazorpaySkeletonLoader(context);
@@ -1416,9 +1492,9 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                     };
                     final Map<String, dynamic> provisionalRequestData = {
                       "reservation": {
-                        "flightNumber": "",
-                        "remarks": "",
-                        "gst_number": "",
+                        "flightNumber": flightNo ?? "",
+                        "remarks": remark ?? "",
+                        "gst_number":  gstValue ?? "",
                         "payment_gateway_used": 1,
                         "countryName": _country,
                         "search_id": "",
@@ -1600,216 +1676,231 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                         provisionalRequestData: provisionalRequestData,
                         context: context);
                   }
-//                       : () async{
-//                     print(
-//                         'yash amountToBeCollected ids : ${double.parse(cabBookingController.amountTobeCollected.toStringAsFixed(2))}');
-//                     print(
-//                         'yash fare details : ${cabBookingController.indiaData.value?.inventory?.carTypes?.fareDetails?.toJson()}');
-//                     final timeZone =
-//                     await StorageServices.instance.read('timeZone');
-//                     final sourceTitle =
-//                     await StorageServices.instance.read('sourceTitle');
-//                     final sourcePlaceId =
-//                     await StorageServices.instance.read('sourcePlaceId');
-//                     final sourceCity =
-//                     await StorageServices.instance.read('sourceCity');
-//                     final sourceState =
-//                     await StorageServices.instance.read('sourceState');
-//                     final sourceCountry =
-//                     await StorageServices.instance.read('country');
-//                     final sourceLat =
-//                     await StorageServices.instance.read('sourceLat');
-//                     final sourceLng =
-//                     await StorageServices.instance.read('sourceLng');
-//                     // source type and terms
-//                     final typesJson =
-//                     await StorageServices.instance.read('sourceTypes');
-//                     final List<String> sourceTypes =
-//                     typesJson != null && typesJson.isNotEmpty
-//                         ? List<String>.from(jsonDecode(typesJson))
-//                         : [];
-//
-//                     final termsJson =
-//                     await StorageServices.instance.read('sourceTerms');
-//                     final List<Map<String, dynamic>> sourceTerms = termsJson !=
-//                         null &&
-//                         termsJson.isNotEmpty
-//                         ? List<Map<String, dynamic>>.from(jsonDecode(termsJson))
-//                         : [];
-//
-//                     //destination type and terms
-//                     final destinationPlaceId = await StorageServices.instance
-//                         .read('destinationPlaceId');
-//                     final destinationTitle =
-//                     await StorageServices.instance.read('destinationTitle');
-//                     final destinationCity =
-//                     await StorageServices.instance.read('destinationCity');
-//                     final destinationState =
-//                     await StorageServices.instance.read('destinationState');
-//                     final destinationCountry = await StorageServices.instance
-//                         .read('destinationCountry');
-//
-//                     final destinationTypesJson =
-//                     await StorageServices.instance.read('destinationTypes');
-//                     final destinationTermsJson =
-//                     await StorageServices.instance.read('destinationTerms');
-//
-// // Decode JSON strings to actual List or Map types (if applicable)
-//                     final List<String> destinationType = destinationTypesJson !=
-//                         null &&
-//                         destinationTypesJson.isNotEmpty
-//                         ? List<String>.from(jsonDecode(destinationTypesJson))
-//                         : [];
-//                     final List<Map<String, dynamic>> destinationTerms =
-//                     destinationTermsJson != null &&
-//                         destinationTermsJson.isNotEmpty
-//                         ? List<Map<String, dynamic>>.from(
-//                         jsonDecode(destinationTermsJson))
-//                         : [];
-//                     final destinationLat =
-//                     await StorageServices.instance.read('destinationLat');
-//                     final destinationLng =
-//                     await StorageServices.instance.read('destinationLng');
-//
-//                     final Map<String, dynamic> requestData = {
-//                       "firstName": "Yash Khare",
-//                       "contactCode": "91",
-//                       "contact": 9179419377,
-//                       "countryName": "India",
-//                       "userType": "CUSTOMER",
-//                       "gender": "MALE",
-//                       "emailID": "yash.khare@aaveg.com"
-//                     };
-//                     final Map<String, dynamic> provisionalRequestData = {
-//                       "receiptData": {
-//                         "countryName": "LONDON",
-//                         "currency": {
-//                           "currencyName": "INR",
-//                           "currencyRate": 85.765
-//                         },
-//                         "baseCurrency": "USD",
-//                         "addon_charges": 0,
-//                         "freeWaitingTime": 15,
-//                         "waitingInterval": 15,
-//                         "normalWaitingCharge": 10,
-//                         "airportWaitingChargeSlab": [],
-//                         "congestion_charges": 0,
-//                         "extra_global_charge": 0,
-//                         "fare_details": {
-//                           "actual_fare": 101,
-//                           "seller_discount": 0,
-//                           "base_fare": 101,
-//                           "total_driver_charges": 0,
-//                           "state_tax": 0,
-//                           "toll_charges": 0,
-//                           "night_charges": 0,
-//                           "holiday_charges": 0,
-//                           "total_tax": 0,
-//                           "amount_paid": 0,
-//                           "amount_to_be_collected": 0,
-//                           "total_fare": 101,
-//                           "per_km_charge": 0.09900990099009901,
-//                           "extra_time_fare": {
-//                             "rate": 10,
-//                             "applicable_time": 15
-//                           },
-//                           "extra_charges": {}
-//                         }
-//                       },
-//                       "reservation": {
-//                         "flightNumber": "",
-//                         "remarks": "",
-//                         "payment_gateway_used": 0,
-//                         "countryName": "LONDON",
-//                         "partnername": "wti",
-//                         "start_time": "2125-07-21T19:00:00.000Z",
-//                         "end_time": "2125-07-21T19:21:00.000Z",
-//                         "platform_fee": 0,
-//                         "booking_gst": 0,
-//                         "one_way_distance": 5,
-//                         "distance": 0,
-//                         "package": "",
-//                         "flags": [
-//                           "B2C"
-//                         ],
-//                         "base_km": 10,
-//                         "vehicle_details": {
-//                           "fleet_id": "67ff3e76282e5219a791276a",
-//                           "sku_id": null,
-//                           "type": "sedan",
-//                           "subcategory": null,
-//                           "combustion_type": "petrol",
-//                           "model": "sedan",
-//                           "carrier": null,
-//                           "make_year_type": null,
-//                           "make_year": "",
-//                           "title": "Toyota prius or similar"
-//                         },
-//                         "source": {
-//                           "address": "London, UK",
-//                           "latitude": 51.5072178,
-//                           "longitude": -0.1275862,
-//                           "city": "London",
-//                           "place_id": "ChIJdd4hrwug2EcRmSrV3Vo6llI",
-//                           "types": [
-//                             "political",
-//                             "geocode",
-//                             "locality"
-//                           ],
-//                           "state": "England",
-//                           "country": "United Kingdom"
-//                         },
-//                         "destination": {
-//                           "address": "Islington, London, UK",
-//                           "latitude": 51.538621,
-//                           "longitude": -0.1028346,
-//                           "city": "Islington",
-//                           "place_id": "ChIJbYmzrW4bdkgRrKWuY-3_qFo",
-//                           "types": [
-//                             "political",
-//                             "sublocality",
-//                             "geocode",
-//                             "sublocality_level_1"
-//                           ],
-//                           "state": "England",
-//                           "country": "United Kingdom"
-//                         },
-//                         "stopovers": [],
-//                         "trip_type_details": {
-//                           "basic_trip_type": "LOCAL",
-//                           "trip_type": "ONE_WAY",
-//                           "airport_type": "NONE"
-//                         },
-//                         "paid": false,
-//                         "passenger": "6746bc63d602cf82adf329c3",
-//                         "extrasSelected": [],
-//                         "total_fare": 101,
-//                         "amount_to_be_collected": 0,
-//                         "cancelled_by": null,
-//                         "cancellation_reason": null,
-//                         "canceltime": null,
-//                         "couponCodeUsed": null,
-//                         "offerUsed": null,
-//                         "stripe_cust_id": "cus_Si64rruaBXtZsi",
-//                         "timezone": "Europe/London",
-//                         "userType": "CUSTOMER",
-//                         "guest_id": null
-//                       }
-//                     };
-//                     final Map<String, dynamic> checkoutRequestData = {
-//                       "amount": 8662.265,
-//                       "currency": "INR",
-//                       "order_reference_number": "ORD1753025551261",
-//                       "userID": "6746bc63d602cf82adf329c3",
-//                       "carType": "sedan",
-//                       "description": "sedan",
-//                       "userType": "CUSTOMER",
-//                       "customerId": "cus_Se9xiBiseIzwCl"
-//                     };
-//
-//                     GoRouter.of(context).pop();
-//                     await globalPaymentController.verifySignup(requestData: requestData, provisionalRequestData: provisionalRequestData, checkoutRequestData: checkoutRequestData, context: context);
-//                   }
+                      : () async{
+                    globalPaymentController.showLoader(context);
+
+                    print(
+                        'yash amountToBeCollected ids : ${double.parse(cabBookingController.amountTobeCollected.toStringAsFixed(2))}');
+                    print(
+                        'yash fare details : ${cabBookingController.indiaData.value?.inventory?.carTypes?.fareDetails?.toJson()}');
+                    final timeZone =
+                    await StorageServices.instance.read('timeZone');
+                    final sourceTitle =
+                    await StorageServices.instance.read('sourceTitle');
+                    final sourcePlaceId =
+                    await StorageServices.instance.read('sourcePlaceId');
+                    final sourceCity =
+                    await StorageServices.instance.read('sourceCity');
+                    final sourceState =
+                    await StorageServices.instance.read('sourceState');
+                    final sourceCountry =
+                    await StorageServices.instance.read('country');
+                    final sourceLat =
+                    await StorageServices.instance.read('sourceLat');
+                    final sourceLng =
+                    await StorageServices.instance.read('sourceLng');
+                    // source type and terms
+                    final typesJson =
+                    await StorageServices.instance.read('sourceTypes');
+                    final List<String> sourceTypes =
+                    typesJson != null && typesJson.isNotEmpty
+                        ? List<String>.from(jsonDecode(typesJson))
+                        : [];
+
+                    final termsJson =
+                    await StorageServices.instance.read('sourceTerms');
+                    final List<Map<String, dynamic>> sourceTerms = termsJson !=
+                        null &&
+                        termsJson.isNotEmpty
+                        ? List<Map<String, dynamic>>.from(jsonDecode(termsJson))
+                        : [];
+
+                    //destination type and terms
+                    final destinationPlaceId = await StorageServices.instance
+                        .read('destinationPlaceId');
+                    final destinationTitle =
+                    await StorageServices.instance.read('destinationTitle');
+                    final destinationCity =
+                    await StorageServices.instance.read('destinationCity');
+                    final destinationState =
+                    await StorageServices.instance.read('destinationState');
+                    final destinationCountry = await StorageServices.instance
+                        .read('destinationCountry');
+
+                    final destinationTypesJson =
+                    await StorageServices.instance.read('destinationTypes');
+                    final destinationTermsJson =
+                    await StorageServices.instance.read('destinationTerms');
+
+// Decode JSON strings to actual List or Map types (if applicable)
+                    final List<String> destinationType = destinationTypesJson !=
+                        null &&
+                        destinationTypesJson.isNotEmpty
+                        ? List<String>.from(jsonDecode(destinationTypesJson))
+                        : [];
+                    final List<Map<String, dynamic>> destinationTerms =
+                    destinationTermsJson != null &&
+                        destinationTermsJson.isNotEmpty
+                        ? List<Map<String, dynamic>>.from(
+                        jsonDecode(destinationTermsJson))
+                        : [];
+                    final destinationLat =
+                    await StorageServices.instance.read('destinationLat');
+                    final destinationLng =
+                    await StorageServices.instance.read('destinationLng');
+
+                    final Map<String, dynamic> requestData = {
+                      "firstName":
+                      await StorageServices.instance.read('firstName'),
+                      "contactCode":
+                      await StorageServices.instance.read('contactCode'),
+                      "contact": await StorageServices.instance.read('contact'),
+                      "countryName": _country,
+                      "userType": "CUSTOMER",
+                      "gender": 'MALE',
+                      "emailID": await StorageServices.instance.read('emailId')
+                    };
+
+                    final Map<String, dynamic> provisionalRequestData = {
+                      "reservation": {
+                        "flightNumber": "",
+                        "remarks": "",
+                        "gst_number": "",
+                        "payment_gateway_used": 0,
+                        "countryName": _country,
+                        "search_id": "",
+                        "partnername": "wti",
+                        "start_time": await StorageServices
+                            .instance
+                            .read('userDateTime'),
+                        "end_time":await StorageServices.instance.read('currentTripCode') == '4' ? await StorageServices.instance.read('drop_round_trip_utc') : null,
+                        "platform_fee": 0,
+                        "booking_gst": 0,
+                        "one_way_distance": cabBookingController
+                            .globalData.value?.fareBreakUpDetails?.baseKm?.toInt(),
+                        "distance": 0,
+                        "package": null,
+                        "flags": [],
+                        "base_km": cabBookingController
+                            .globalData.value?.fareBreakUpDetails?.baseKm?.toInt(),
+                        "vehicle_details": {
+                          // abhi global m nhi aa rhi hai
+                          "sku_id": null,
+                          "fleet_id": cabBookingController.globalData.value?.vehicleDetails?.id ??
+                              '',
+                          "type": cabBookingController.globalData.value?.fareBreakUpDetails?.vehicleCategory ??
+                              '',
+                          "subcategory": null,
+                          "combustion_type": cabBookingController.globalData.value?.vehicleDetails?.fuelType ??
+                              '',
+                          "model": cabBookingController.globalData.value?.vehicleDetails?.carCategoryName ??
+                              '',
+                          "carrier": null,
+                          "make_year_type": null,
+                          "make_year": "",
+                          "title": cabBookingController.globalData.value?.vehicleDetails?.title??''
+
+                        },
+                        "source": {
+                          "sourceTitle": sourceTitle,
+                          "sourcePlaceId": sourcePlaceId,
+                          "sourceCity": sourceCity,
+                          "sourceState": sourceState,
+                          "sourceCountry": sourceCountry,
+                          "sourceType": sourceTypes,
+                          "sourceLat": sourceLat,
+                          "sourceLng": sourceLng,
+                          "terms": sourceTerms
+                        },
+                        "destination": {
+                          "destinationTitle": destinationTitle,
+                          "destinationPlaceId": destinationPlaceId,
+                          "destinationCity": destinationCity,
+                          "destinationState": destinationState,
+                          "destinationCountry": destinationCountry,
+                          "destinationType": destinationType,
+                          "destinationLat": destinationLat,
+                          "destinationLng": destinationLng,
+                          "terms": destinationTerms
+                        },
+                        "stopovers": [],
+                        "trip_type_details": searchCabInventoryController.globalData.value?.tripTypeDetails?.toJson(),
+                        "paid": false,
+                        "extrasSelected":
+                        cabBookingController.selectedExtrasIds,
+                        "total_fare": cabBookingController.totalFare,
+                        "amount_to_be_collected": double.parse(
+                            cabBookingController.amountTobeCollected
+                                .toStringAsFixed(2)),
+                        "cancelled_by": null,
+                        "cancellation_reason": null,
+                        "canceltime": null,
+                        "couponCodeUsed": null,
+                        "offerUsed": null,
+                        "userType": "CUSTOMER",
+                        "timezone":
+                        await StorageServices.instance.read('timeZone'),
+                        "guest_id": null
+                      },
+                      "order": {"currency": "USD", "amount": selectedOption == 0 ? cabBookingController.partFare : cabBookingController.totalFare, //(part payment or full paymenmt)
+                      },
+                      "receiptData": {
+                        "countryName": sourceCountry,
+                        "currency": {
+                          "currencyName": "USD",
+                          "currencyRate": 1
+                        },
+                        "baseCurrency": "USD",
+                        "addon_charges": cabBookingController.extraFacilityCharges,
+                        "freeWaitingTime": cabBookingController
+                            .globalData.value?.fareBreakUpDetails?.freeWaitingTime,
+                        "waitingInterval": cabBookingController
+                            .globalData.value?.fareBreakUpDetails?.waitingInterval,
+                        "normalWaitingCharge": cabBookingController
+                            .globalData.value?.fareBreakUpDetails?.waitingCharge,
+                        "airportWaitingChargeSlab": [],
+                        "congestion_charges": 0,
+                        "extra_global_charge": 0,
+                        "fare_details": {
+                          "actual_fare": cabBookingController.actualFare,
+                          "seller_discount": 0,
+                          "base_fare": cabBookingController.baseFare,
+                          "total_driver_charges": 0,
+                          "state_tax": 0,
+                          "toll_charges": 0,
+                          "night_charges": 0,
+                          "holiday_charges": 0,
+                          "total_tax": 0,
+                          "amount_paid": 0,
+                          "amount_to_be_collected": 0,
+                          "total_fare": cabBookingController.actualFare,
+                          "per_km_charge": cabBookingController
+                              .globalData.value?.fareBreakUpDetails?.perKmCharge??0,
+                          "extra_time_fare": {
+                            "rate": cabBookingController
+                                .globalData.value?.fareBreakUpDetails?.waitingCharge,
+                            "applicable_time": cabBookingController
+                                .globalData.value?.fareBreakUpDetails?.waitingInterval
+                          },
+                          "extra_charges": {}
+                        }
+                      }
+                    };
+
+                    final Map<String, dynamic> checkoutRequestData = {
+                      "amount": cabBookingController.totalFare,
+                      "currency": "USD",
+                      "carType": cabBookingController.globalData.value?.fareBreakUpDetails?.vehicleCategory,
+                      "description": cabBookingController.globalData.value?.vehicleDetails?.extraArray?.first.description,
+                      "userType": "CUSTOMER",
+                    };
+
+
+
+                    await globalPaymentController.verifySignup(requestData: requestData, provisionalRequestData: provisionalRequestData, checkoutRequestData: checkoutRequestData, context: context).then((value){
+                      GoRouter.of(context).pop();
+                    });
+                  }
                   )
 
           )
@@ -1903,4 +1994,110 @@ void showRazorpaySkeletonLoader(BuildContext context) {
       );
     },
   );
+}
+
+class DiscountCouponsCard extends StatelessWidget {
+  const DiscountCouponsCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.white,
+      elevation: 0,
+      margin: EdgeInsets.only(bottom: 50),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.greyBorder1, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Discounts Coupons',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'WTFIRST20',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(50, 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      side: const BorderSide(color: Colors.grey),
+                    ),
+                    backgroundColor: Colors.grey[100],
+                  ),
+                  child: const Text(
+                    'CLEAR',
+                    style: TextStyle(fontSize: 12, color: Colors.black),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Congratulations! Your First Cab Discount of Rs. 240 has been applied successfully.',
+              style: TextStyle(fontSize: 13, color: Colors.green),
+            ),
+            const SizedBox(height: 16),
+            _buildCouponOption(
+              selected: true,
+              title: 'WTFIRST20',
+              subtitle: 'WTFIRST20 Get Up to Rs. 300 off',
+            ),
+            const Divider(height: 24),
+            _buildCouponOption(
+              selected: false,
+              title: 'WTIIND30',
+              subtitle: 'WTIIND30 Get Up to Rs. 300 off',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCouponOption({
+    required bool selected,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      children: [
+        Radio<bool>(
+          value: true,
+          groupValue: selected,
+          onChanged: (_) {},
+          activeColor: Colors.blue,
+        ),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

@@ -7,6 +7,7 @@ import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 
+import '../../model/inventory/global_response.dart';
 import '../../route_management/app_routes.dart';
 
 class CabBookingController extends GetxController {
@@ -21,26 +22,62 @@ class CabBookingController extends GetxController {
   // Assume country is stored separately
   String? country;
 
-  double get baseFare =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.baseFare?.toDouble() ?? 0.0) : (globalData.value?.fareBreakUpDetails?.baseFare ?? 0.0);
+              double get baseFare {
+                final value = isIndia
+                    ? (indiaData.value?.inventory?.carTypes?.fareDetails?.baseFare?.toDouble() ?? 0.0)
+                    : (globalData.value?.totalFare ?? 0.0);
+                debugPrint('baseFare: $value');
+                return value;
+              }
 
-  double get nightCharges =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+  double get nightCharges {
+    final included = indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.isIncludedInGrandTotal == true;
+    final amount = included ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.nightCharges?.amount?.toDouble() ?? 0.0) : 0.0;
+    debugPrint('nightCharges (included: $included): $amount');
+    return isIndia ? amount : 0.0;
+  }
 
-  double get tollCharges =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+  double get tollCharges {
+    final included = indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.isIncludedInGrandTotal == true;
+    final amount = included ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.tollCharges?.amount?.toDouble() ?? 0.0) : 0.0;
+    debugPrint('tollCharges (included: $included): $amount');
+    return isIndia ? amount : 0.0;
+  }
 
-  double get waitingCharges =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+  double get waitingCharges {
+    final included = indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.isIncludedInGrandTotal == true;
+    final amount = included ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.waitingCharges?.amount?.toDouble() ?? 0.0) : 0.0;
+    debugPrint('waitingCharges (included: $included): $amount');
+    return isIndia ? amount : 0.0;
+  }
 
-  double get parkingCharges =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+  double get parkingCharges {
+    final included = indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.isIncludedInGrandTotal == true;
+    final amount = included ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.parkingCharges?.amount?.toDouble() ?? 0.0) : 0.0;
+    debugPrint('parkingCharges (included: $included): $amount');
+    return isIndia ? amount : 0.0;
+  }
 
-  double get stateTax =>
-      isIndia ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.isIncludedInGrandTotal == true) ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.amount?.toDouble() ?? 0.0) : 0.0 : 0.0;
+  double get stateTax {
+    final included = indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.isIncludedInGrandTotal == true;
+    final amount = included ? (indiaData.value?.inventory?.carTypes?.fareDetails?.extraCharges?.stateTax?.amount?.toDouble() ?? 0.0) : 0.0;
+    debugPrint('stateTax (included: $included): $amount');
+    return isIndia ? amount : 0.0;
+  }
 
+  double get driverCharge {
+    final value = isIndia
+        ? (indiaData.value?.inventory?.carTypes?.fareDetails?.totalDriverCharges?.toDouble() ?? 0.0)
+        : 0.0;
+    debugPrint('baseFare: $value');
+    return value;
+  }
 
-  double get extraFacilityCharges => selectedExtras.values.fold(0.0, (sum, item) => sum + item);
+  double get extraFacilityCharges {
+    final value = selectedExtras.values.fold(0.0, (sum, item) => sum + item);
+    debugPrint('extraFacilityCharges: $value');
+    return value;
+  }
 
   double get actualFare {
     final subtotal = baseFare +
@@ -49,27 +86,49 @@ class CabBookingController extends GetxController {
         waitingCharges +
         parkingCharges +
         stateTax +
+        driverCharge+
         extraFacilityCharges;
 
+    debugPrint('actualFare subtotal: $subtotal');
     return subtotal;
   }
 
-  //including Tax
   double get totalFare {
+    double subtotal;
 
-    final subtotal = (applyCouponController.isCouponApplied == false) ? baseFare +
-        nightCharges +
-        tollCharges +
-        waitingCharges +
-        parkingCharges +
-        stateTax +
-        extraFacilityCharges : ((applyCouponController.applyCouponResponse.value?.newTotalAmount??0) + (extraFacilityCharges)).toDouble() ??0.0;
+    if (applyCouponController.isCouponApplied == false) {
+      subtotal = baseFare +
+          nightCharges +
+          tollCharges +
+          waitingCharges +
+          parkingCharges +
+          stateTax +
+          driverCharge +
+          extraFacilityCharges;
+      debugPrint('Coupon not applied. Subtotal: $subtotal');
+    } else {
+      final couponAmount = applyCouponController.applyCouponResponse.value?.newTotalAmount ?? 0;
+      subtotal = couponAmount.toDouble() + extraFacilityCharges;
+      debugPrint('Coupon applied. New total after coupon: $couponAmount, with extras: $subtotal');
+    }
 
-    return isIndia ? subtotal + (subtotal * 0.05) : baseFare;
+    final total = isIndia ? subtotal + (subtotal * 0.05) : subtotal;
+    debugPrint('Total Fare (with 5% tax if India): $total');
+    return total;
   }
 
-  double get partFare => totalFare * 0.20;
-  double get amountTobeCollected => totalFare - partFare;
+  double get partFare {
+    final value = totalFare * 0.20;
+    debugPrint('Part fare (20% of totalFare): $value');
+    return value;
+  }
+
+  double get amountTobeCollected {
+    final value = totalFare - partFare;
+    debugPrint('Amount to be collected (totalFare - partFare): $value');
+    return value;
+  }
+
 
 
   bool get isIndia => (country?.toLowerCase() ?? '') == 'india';
@@ -112,7 +171,7 @@ class CabBookingController extends GetxController {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const PopupLoader(),
+      builder: (_) => const PopupLoader(message: 'Fetching Booking Data',),
     );
 
     print('📤 Booking request: $requestData');
