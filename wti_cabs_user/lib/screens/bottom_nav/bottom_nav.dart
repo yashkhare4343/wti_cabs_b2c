@@ -1098,7 +1098,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                   const TextStyle(fontWeight: FontWeight.w400),
               type: BottomNavigationBarType.fixed,
               items: [
-                _buildBarItem(Icons.home_outlined, 'Home', 0),
+                _buildBarItem(Icons.house, 'Home', 0),
                 _buildBarItem(Icons.local_offer_outlined, 'Offers', 1),
                 _buildBarItem(Icons.work_outline, 'Bookings', 2),
                 _buildBarItem(Icons.person_outline, 'My Profile', 3),

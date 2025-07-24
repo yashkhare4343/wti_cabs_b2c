@@ -30,6 +30,7 @@ class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
     return Column(
       children: [
         TextFormField(
+          autofocus: true,
           controller: widget.controller,
           decoration: InputDecoration(
             hintText: widget.hintText,

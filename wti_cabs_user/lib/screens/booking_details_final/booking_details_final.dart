@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/cab_booking/cab_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
@@ -81,7 +82,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                   GetBuilder<CabBookingController>(
                     builder: (cabBookingController) {
                       if (_country == null) {
-                        return const Center(child: CircularProgressIndicator());
+                        return Center(child: buildShimmer());
                       }
 
                       if (_country!.toLowerCase() == 'india') {
@@ -121,6 +122,68 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       bottomSheet: BottomPaymentBar(),
     );
   }
+
+  Widget buildShimmer() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade300, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 96,
+                  height: 66,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: double.infinity,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 14,
+                        width: 80,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(height: 12, width: 40, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Container(height: 12, width: 40, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Container(height: 12, width: 60, color: Colors.white),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(width: 16, height: 16, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
 
 Widget _buildIndiaCard(IndiaCabBooking data) {
@@ -310,6 +373,7 @@ Widget _buildGlobalCard() {
     );
   });
 }
+
 
 class BookingTopBar extends StatefulWidget {
   @override
@@ -514,7 +578,7 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
   @override
   Widget build(BuildContext context) {
     if (isLoading || _country == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: buildShimmer());
     }
 
     final isIndia = _country!.toLowerCase() == 'india';
@@ -523,6 +587,7 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
 
     return _buildExtrasCard(title: title, extras: extras);
   }
+
 
   Widget _buildExtrasCard({
     required String title,
@@ -556,53 +621,72 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
                 itemBuilder: (context, index) {
                   final item = extras[index];
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Row(
-                      children: [
-                        CustomCheckbox(
-                          value: item.isSelected,
-                          onChanged: (val) {
-                            setState(() {
-                              extras[index].isSelected = val;
+                  return InkWell(
+                    splashColor: Colors.white,
+                    onTap: () {
+                      setState(() {
+                        final newVal = !item.isSelected;
+                        extras[index].isSelected = newVal;
 
-                              // Store selected IDs in controller
-                              cabBookingController.toggleExtraId(item.id, val);
+                        // Store selected IDs in controller
+                        cabBookingController.toggleExtraId(item.id, newVal);
 
-                              // Existing logic
-                              cabBookingController.toggleExtraFacility(
-                                item.label,
-                                item.price.toDouble(),
-                                val,
-                              );
-                            });
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.label,
+                        // Existing logic
+                        cabBookingController.toggleExtraFacility(
+                          item.label,
+                          item.price.toDouble(),
+                          newVal,
+                        );
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Row(
+                        children: [
+                          CustomCheckbox(
+                            value: item.isSelected,
+                            onChanged: (val) {
+                              setState(() {
+                                extras[index].isSelected = val;
+
+                                // Store selected IDs in controller
+                                cabBookingController.toggleExtraId(item.id, val);
+
+                                // Existing logic
+                                cabBookingController.toggleExtraFacility(
+                                  item.label,
+                                  item.price.toDouble(),
+                                  val,
+                                );
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.label,
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.black87),
+                            ),
+                          ),
+                          Text(
+                            _country?.toLowerCase() == 'india'
+                                ? '₹ ${item.price.toStringAsFixed(0)}'
+                                : 'USD ${item.price.toStringAsFixed(0)}',
                             style: const TextStyle(
-                                fontSize: 14, color: Colors.black87),
+                                fontSize: 14, fontWeight: FontWeight.w600),
                           ),
-                        ),
-                        Text(
-                          _country?.toLowerCase() == 'india'
-                              ? '₹ ${item.price.toStringAsFixed(0)}'
-                              : 'USD ${item.price.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        const Padding(
-                          padding: EdgeInsets.only(right: 8.0),
-                          child: Text(
-                            'per day',
-                            style:
-                                TextStyle(fontSize: 12, color: Colors.black54),
+                          const SizedBox(width: 4),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 8.0),
+                            child: Text(
+                              'per day',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.black54),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -612,6 +696,7 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
       ),
     );
   }
+
 }
 
 class ExtraItem {
@@ -1199,7 +1284,7 @@ class _CouponScreenState extends State<CouponScreen> {
           final Map<String, dynamic> requestData = {
             "userID": null,
             "couponID": coupon.id,
-            "totalAmount": 1200,
+            "totalAmount": cabBookingController.actualFare,
             "sourceLocation": bookingRideController.prefilled.value,
             "destinationLocation": bookingRideController.prefilledDrop.value,
             "serviceType": null,
@@ -1208,7 +1293,7 @@ class _CouponScreenState extends State<CouponScreen> {
             "bookingDateTime":
                 await StorageServices.instance.read('userDateTime'),
             "appliedCoupon": token != null ? 1 : 0,
-            "payNow": cabBookingController.actualFare,
+            "payNow": token != null ? 1 : 0,
             "tripType": searchCabInventoryController
                 .indiaData.value?.result?.tripType?.currentTripCode,
             "vehicleType": cabBookingController
@@ -2525,4 +2610,65 @@ class _CouponCardState extends State<CouponCard> {
       ),
     );
   }
+}
+
+Widget buildShimmer() {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16.0),
+    child: Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 96,
+                height: 66,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 16,
+                      width: double.infinity,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 14,
+                      width: 80,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(height: 12, width: 40, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Container(height: 12, width: 40, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Container(height: 12, width: 60, color: Colors.white),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(width: 16, height: 16, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

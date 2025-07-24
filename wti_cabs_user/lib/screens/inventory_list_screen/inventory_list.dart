@@ -222,7 +222,8 @@ class _InventoryListState extends State<InventoryList> {
                         fit: BoxFit.contain,
                       );
                     },
-                  ),                  const SizedBox(width: 16),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

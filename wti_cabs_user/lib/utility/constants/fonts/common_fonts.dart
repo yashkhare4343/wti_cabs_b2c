@@ -90,8 +90,9 @@ class CommonFonts {
   static final TextStyle bodyText2 = base(fontSize: 14);
   static final TextStyle caption = base(fontSize: 12, color: AppColors.bodyTextPrimary);
   static final TextStyle buttonTextSecondary = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.buttonPrimaryText);
-  static final TextStyle whiteTextBold = base(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white);
-  static final TextStyle whiteTextMedium = base(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white);
+  static final TextStyle HomeTextBold = base(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.greyText3);
+  static final TextStyle greyTextMedium = base(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.greyText6);
+  static final TextStyle greyTextMedium2 = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.greyText3);
   static final TextStyle greyText3Light = base(fontSize: 16, fontWeight: FontWeight.w300, color: AppColors.bodyTextPrimary);
   static final TextStyle greyText3Bold = base(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.bodyTextPrimary);
   static final TextStyle organgeText1 = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.organge1);

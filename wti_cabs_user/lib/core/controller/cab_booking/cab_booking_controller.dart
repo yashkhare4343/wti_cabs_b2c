@@ -112,7 +112,7 @@ class CabBookingController extends GetxController {
       debugPrint('Coupon applied. New total after coupon: $couponAmount, with extras: $subtotal');
     }
 
-    final total = isIndia ? applyCouponController.isCouponApplied == false? subtotal + (subtotal * 0.05) : subtotal: subtotal;
+    final total = isIndia ?  subtotal + (subtotal * 0.05) : subtotal;
     debugPrint('Total Fare (with 5% tax if India): $total');
     return total;
   }

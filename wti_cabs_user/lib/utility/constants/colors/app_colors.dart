@@ -8,6 +8,7 @@ class AppColors {
 
   //Background color
   static const scaffoldBgPrimary=Color(0xFFFFFFFF);
+  static const homebg=Color(0xFFE9E9ED);
   static const errorStatusBg = Color(0xFFFEF0E8);
   static const successStatusBg = Color(0xFFF0F0F0);
   static const scaffoldBgPrimary1 = Color(0xFFF5F5F7);
@@ -29,6 +30,7 @@ class AppColors {
   static const prefixAuthText = Color(0xFF2F2F2F);
   static const inputTextPrimary = Color(0xFF2F2F2F);
   static const greyText3 = Color(0xFF333333);
+  static const greyText6 = Color(0xFF4F4F4F);
   static const errorStatusText = Color(0xFFFF2222);
   static const successStatusText =  Color(0xFF2B2B2B);
   static const buttonTextPrimary1 = Color(0xFF2C3448);
