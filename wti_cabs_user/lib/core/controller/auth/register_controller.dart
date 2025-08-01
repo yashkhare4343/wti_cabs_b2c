@@ -24,6 +24,8 @@ class RegisterController extends GetxController {
         context,
       );
       registerResponse.value = response;
+      await StorageServices.instance.save('userObjId', registerResponse.value?.userObjId??'');
+
       print('print mobile data : ${registerResponse.value}');
 
     } finally {

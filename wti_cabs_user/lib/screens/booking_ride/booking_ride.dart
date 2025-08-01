@@ -1951,7 +1951,7 @@ class _RentalState extends State<Rental> {
                     ? dropPlaceSearchController
                     : placeSearchController;
 
-                return Column(
+                return Row(
                   children: [
                     DatePickerTile(
                       label: 'Pickup Date',

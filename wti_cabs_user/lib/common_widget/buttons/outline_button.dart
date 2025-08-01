@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../utility/constants/colors/app_colors.dart';
+
 class CommonOutlineButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
@@ -12,10 +14,10 @@ class CommonOutlineButton extends StatelessWidget {
     Key? key,
     required this.text,
     required this.onPressed,
-    this.borderColor = Colors.blue,
-    this.textColor = Colors.blue,
-    this.borderRadius = 8.0,
-    this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    this.borderColor = AppColors.mainButtonBg,
+    this.textColor = AppColors.mainButtonBg,
+    this.borderRadius = 24.0,
+    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
   }) : super(key: key);
 
   @override
@@ -23,7 +25,7 @@ class CommonOutlineButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        backgroundColor: Color(0xFFF7F7FA),
+        backgroundColor: Colors.white,
         side: BorderSide(color: borderColor),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
@@ -32,7 +34,7 @@ class CommonOutlineButton extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: textColor),
+        style: TextStyle(fontSize:12, fontWeight: FontWeight.w500, color: textColor),
       ),
     );
   }

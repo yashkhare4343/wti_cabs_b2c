@@ -13,6 +13,7 @@ import 'package:wti_cabs_user/core/controller/auth/otp_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/register_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/resend_otp_controller.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
+import 'package:wti_cabs_user/screens/offers/offers.dart';
 
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
@@ -1022,7 +1023,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
   final List<Widget> _screens = [
     HomeScreen(),
-    Center(child: Text("Offers")),
+    Offers(),
     Center(child: Text("Bookings")),
     Center(child: Text("My Profile")),
   ];
@@ -1032,6 +1033,8 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       _selectedIndex = index;
     });
   }
+
+
 
   BottomNavigationBarItem _buildBarItem(
       IconData icon, String label, int index) {

@@ -7,6 +7,9 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
+import '../../../../common_widget/loader/popup_loader.dart';
+import '../../fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
+
 class IndiaPaymentController extends GetxController {
   RxBool isLoading = false.obs;
 
@@ -17,6 +20,7 @@ class IndiaPaymentController extends GetxController {
   Map<String, dynamic>? provisionalBooking;
   Map<String, dynamic>? paymentVerification;
   RxString passengerId = ''.obs;
+  final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
 
   @override
   void onInit() {
@@ -93,11 +97,22 @@ class IndiaPaymentController extends GetxController {
         body: jsonEncode(requestData),
       );
 
+      print("📤 provision request: $requestData");
+
+
       if (res.statusCode == 201) {
         provisionalBooking = jsonDecode(res.body);
         final order = provisionalBooking?['order'];
 
         if (order?['id'] != null && order?['amount'] != null) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const PopupLoader(
+              message: ''
+                  'Please wait...Do not close!',
+            ),
+          );
           _openRazorpayCheckout(order);
         } else {
           print("⚠️ Missing Razorpay order ID or amount");
@@ -149,13 +164,16 @@ class IndiaPaymentController extends GetxController {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         GoRouter.of(_currentContext).push(AppRoutes.paymentSuccess);
       });
+    }).then((value){
+      fetchReservationBookingData.fetchReservationData();
+
     });
   }
 
   // ✅ FIXED: No context in method signature, using stored _currentContext
   void _handlePaymentError(PaymentFailureResponse response) {
     print("❌ Payment Error: ${response.code} - ${response.message}");
-
+    fetchReservationBookingData.fetchReservationData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
     });
@@ -184,6 +202,8 @@ class IndiaPaymentController extends GetxController {
 
       if (res.statusCode == 200) {
         paymentVerification = jsonDecode(res.body);
+        await StorageServices.instance.save('reservationId', paymentVerification?['isUpdated']['reservationId']);
+
         print("✅ Payment Verified: $paymentVerification");
       }
     } catch (e) {

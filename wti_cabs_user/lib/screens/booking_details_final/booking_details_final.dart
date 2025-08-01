@@ -17,6 +17,7 @@ import 'package:wti_cabs_user/core/model/fetch_coupon/fetch_coupon_response.dart
 
 import '../../core/api/api_services.dart';
 import '../../core/controller/booking_ride_controller.dart';
+import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import '../../core/controller/inventory/search_cab_inventory_controller.dart';
 import '../../core/model/cab_booking/india_cab_booking.dart';
 import '../../core/services/storage_services.dart';
@@ -1396,6 +1397,8 @@ class BottomPaymentBar extends StatefulWidget {
 
 class _BottomPaymentBarState extends State<BottomPaymentBar> {
   final CabBookingController cabBookingController = Get.find(); // ✅ FIXED
+  final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
+
   int selectedOption = 0;
   String? _country;
   final IndiaPaymentController indiaPaymentController =

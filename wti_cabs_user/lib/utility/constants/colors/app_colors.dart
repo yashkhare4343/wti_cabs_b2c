@@ -12,6 +12,7 @@ class AppColors {
   static const errorStatusBg = Color(0xFFFEF0E8);
   static const successStatusBg = Color(0xFFF0F0F0);
   static const scaffoldBgPrimary1 = Color(0xFFF5F5F7);
+  static const scaffoldBgPrimary2 = Color(0xFFE9E9ED);
   static const bgGrey1 =  Color(0xFFEEEEEE);
   static const bgGrey2 = Color(0xFFE8E8E8);
   static const bgGrey3 = Color(0xFF8B8B8B);

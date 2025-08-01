@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -19,6 +20,8 @@ import 'core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'core/route_management/app_page.dart';
 import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
@@ -61,7 +64,11 @@ void main() async {
   Get.put(BookingRideController()); // 1️⃣ Must come first
   Get.put(PlaceSearchController()); // 2️⃣ Register Pickup controller before Drop
   Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController()); // 3️⃣ Drop controller is safe to lazy-load
-
+  tz.initializeTimeZones();
+  await FlutterDownloader.initialize(
+    debug: true, // set to false in production
+    ignoreSsl: true,
+  );
   runApp(const MyApp());
 }
 

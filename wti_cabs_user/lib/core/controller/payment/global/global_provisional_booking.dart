@@ -55,6 +55,8 @@ class GlobalPaymentController extends GetxController {
           context: context,
           checkoutRequestData: checkoutRequestData,
         );
+        await StorageServices.instance.save('userObjId', registeredUser?['user_obj_id']);
+
       } else {
         print("❌ Signup failed: ${res.statusCode} ${res.body}");
       }

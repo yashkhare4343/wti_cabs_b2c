@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 // import 'package:wti_cabs/core/model/upload_image/upload_image.dart';
+import '../../common_widget/loader/popup_loader.dart';
 import '../../config/enviornment_config.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../response/api_response.dart';
@@ -32,17 +36,18 @@ class ApiService {
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
   Future<String?> _getToken() async {
-   return await StorageServices.instance.read('token');
+    return await StorageServices.instance.read('token');
   }
 
   Future<Map<String, dynamic>> getRequest(String endpoint) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
     print('yash token : $token');
-    final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    // final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': basicAuth,
+      'Authorization': 'Basic aGFyc2g6MTIz',
     };
 
     print('url is : $baseUrl/$endpoint');
@@ -71,11 +76,11 @@ class ApiService {
       ) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
-    final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    // final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
 
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': basicAuth,
+      'Authorization': 'Basic aGFyc2g6MTIz',
     };
 
     if (kDebugMode) {
@@ -291,35 +296,6 @@ class ApiService {
     }
   }
 
-
-
-
-  // Future<UploadImageResponse?> postMultipart(File imageFile) async {
-  //   final String uploadUrl = "https://global.wticabs.com:4001/0auth/v1/AwsRoutes/upload/driverApp";
-  //   final token = await _getToken();
-  //   final headers = {
-  //     'Authorization': token != null ? 'Bearer $token' : '',
-  //   };
-  //
-  //   var request = http.MultipartRequest('POST', Uri.parse(uploadUrl))
-  //     ..headers.addAll(headers)
-  //     ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-  //
-  //   try {
-  //     final response = await request.send();
-  //     final responseData = await response.stream.bytesToString();
-  //     final jsonResponse = json.decode(responseData);
-  //
-  //     if (response.statusCode == 200) {
-  //       return UploadImageResponse.fromJson(jsonResponse);
-  //     } else {
-  //       throw Exception("Failed to upload image: ${jsonResponse['message'] ?? 'Unknown error'}");
-  //     }
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
-
   Future<Map<String, dynamic>> patchRequest(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
@@ -344,56 +320,84 @@ class ApiService {
     }
   }
 
-  Future<bool> requestStoragePermissionForPDF() async {
-    if (Platform.isAndroid) {
-      try {
-        final versionMatch = RegExp(r'(\d+)').firstMatch(Platform.operatingSystemVersion);
-        final androidVersion = versionMatch != null ? int.parse(versionMatch.group(0)!) : 0;
+  Future<void> downloadPdfWithHttp({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required Map<String, String> headers,
+    required String filePath,
+  }) async {
+    final url = Uri.parse("https://test.wticabs.com:5001/global/app/v1/$endpoint");
 
-        if (androidVersion >= 13) {
-          final storageStatus = await Permission.manageExternalStorage.status;
-          if (!storageStatus.isGranted) {
-            final result = await Permission.manageExternalStorage.request();
-            return result.isGranted;
-          }
-          return true;
-        } else {
-          final storagePermission = await Permission.storage.status;
-          if (!storagePermission.isGranted) {
-            final result = await Permission.storage.request();
-            return result.isGranted;
-          }
-          return true;
-        }
-      } catch (e) {
-        return false;
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    print('yash download reciept body : ${jsonEncode(body)}');
+
+    if (response.statusCode == 200) {
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+    } else {
+      throw Exception("Failed to download PDF. Status: ${response.statusCode}");
+    }
+  }
+
+  Future<void> downloadPdfFromGetApi({
+    required BuildContext context,
+    required String endpoint,
+    required String fileName,
+    required Map<String, String> headers,
+  }) async {
+    try {
+      // ✅ Permission check for Android
+      // if (Platform.isAndroid) {
+      //   final androidInfo = await DeviceInfoPlugin().androidInfo;
+      //   final sdkInt = androidInfo.version.sdkInt;
+      //
+      //   PermissionStatus permissionStatus;
+      //
+      //   if (sdkInt >= 30) {
+      //     permissionStatus = await Permission.manageExternalStorage.request();
+      //   } else {
+      //     permissionStatus = await Permission.storage.request();
+      //   }
+      //
+      //   if (!permissionStatus.isGranted) {
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(
+      //         content: Text("❌ Storage permission denied."),
+      //         backgroundColor: Colors.red,
+      //       ),
+      //     );
+      //     return;
+      //   }
+      // }
+
+      final url = Uri.parse('$baseUrl/$endpoint');
+
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final dir = await getApplicationDocumentsDirectory();
+        final filePath = "${dir.path}/$fileName";
+
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        GoRouter.of(context).pop();
+
+        await OpenFile.open(filePath);
+      } else {
+        throw Exception("Failed to download PDF. Status: ${response.statusCode}");
       }
-    } else if (Platform.isIOS) {
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> shareFile(String fileName) async {
-    final directory = await getDownloadDirectory();
-    final filePath = '${directory.path}/$fileName';
-
-    final file = File(filePath);
-    if (await file.exists()) {
-      final xFile = XFile(filePath);
-      await Share.shareXFiles([xFile], text: "Check out this invoice!");
-    } else {
-      throw Exception("File does not exist: $filePath");
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please wait to complete bookings'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Future<Directory> getDownloadDirectory() async {
-    if (Platform.isAndroid) {
-      return await getExternalStorageDirectory() ?? Directory('/storage/emulated/0/Download');
-    } else if (Platform.isIOS) {
-      return await getApplicationDocumentsDirectory();
-    } else {
-      throw Exception("Unsupported platform.");
-    }
-  }
 }
