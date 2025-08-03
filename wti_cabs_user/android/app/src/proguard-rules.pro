@@ -31,3 +31,12 @@
 
 # Optional: Prevent warnings for any unknown annotations (extra safe)
 -dontwarn **.annotation.**
+
+# ==== Stripe ProGuard Rules ====
+
+# Stripe Payment Sheet warnings suppression
+-dontwarn com.stripe.android.pushProvisioning.PushProvisioningActivity$g
+-dontwarn com.stripe.android.pushProvisioning.PushProvisioningActivityStarter$Args
+-dontwarn com.stripe.android.pushProvisioning.PushProvisioningActivityStarter$Error
+-dontwarn com.stripe.android.pushProvisioning.PushProvisioningActivityStarter
+-dontwarn com.stripe.android.pushProvisioning.PushProvisioningEphemeralKeyProvider

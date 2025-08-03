@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -47,29 +48,51 @@ void serviceLocator() {
 }
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 🟢 Always comes first
+  WidgetsFlutterBinding.ensureInitialized();
+  print('🟢 Starting main');
 
-  await dotenv.load(fileName: ".env"); // 🟢 Now it's safe to use dotenv
+  try {
+    print('🌱 Loading .env');
+    await dotenv.load(fileName: ".env");
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+    print('🔥 Initializing Firebase');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  await StorageServices.instance.init();
-  serviceLocator(); // Register your services
+    print('📦 Initializing StorageServices');
+    await StorageServices.instance.init();
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    print('🔧 Registering services');
+    serviceLocator();
 
-  EnvironmentConfig.setEnvironment(EnvironmentType.dev);
-  Get.put(BookingRideController()); // 1️⃣ Must come first
-  Get.put(PlaceSearchController()); // 2️⃣ Register Pickup controller before Drop
-  Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController()); // 3️⃣ Drop controller is safe to lazy-load
-  tz.initializeTimeZones();
-  await FlutterDownloader.initialize(
-    debug: true, // set to false in production
-    ignoreSsl: true,
-  );
-  runApp(const MyApp());
+    print('📨 Configuring background FCM handler');
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    print('⚙️ Setting EnvironmentConfig');
+    EnvironmentConfig.setEnvironment(EnvironmentType.dev);
+
+    print('🚕 Registering controllers');
+    Get.put(BookingRideController());
+    Get.put(PlaceSearchController());
+    Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController());
+
+    print('🌍 Initializing Time Zones');
+    tz.initializeTimeZones();
+
+    print('💳 Setting Stripe key');
+    Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
+    await Stripe.instance.applySettings();
+
+    print('📥 Initializing FlutterDownloader');
+    await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+
+    print('🏁 Running App');
+    runApp(const MyApp());
+  } catch (e, stack) {
+    print('❌ Caught exception in main: $e');
+    print('🪵 StackTrace:\n$stack');
+  }
 }
 
 class MyApp extends StatefulWidget {

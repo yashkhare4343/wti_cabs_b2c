@@ -1,5 +1,7 @@
-package com.wti.user.wti_cabs_user
+package com.example.divenApp
 
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity: FlutterActivity()
+class MainActivity: FlutterFragmentActivity() {
+}

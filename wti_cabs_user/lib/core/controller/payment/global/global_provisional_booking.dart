@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart'; // ✅ Required for launching browser
@@ -167,14 +168,12 @@ class GlobalPaymentController extends GetxController {
       requestData['customerId'] = createCustomer?['customerID'];
       requestData['userID'] = registeredUser?['user_obj_id'];
 
-
-
       // Then: insert all other fields in order
       requestData.forEach((key, value) {
         requestData[key] = value;
       });
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/checkout'),
+        Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/checkOutSessionForMobileSDK'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -186,9 +185,25 @@ class GlobalPaymentController extends GetxController {
         stripeCheckout = jsonDecode(res.body);
         print("✅ stripe checkout success: $stripeCheckout");
 
-        final url = stripeCheckout?['sessionURL'];
-        if (url != null && url.toString().isNotEmpty) {
-          await _launchStripeCheckout(url);
+        final String clientSecret = stripeCheckout?['clientSecret'];
+        if (clientSecret.toString().isNotEmpty) {
+          await Stripe.instance.initPaymentSheet(
+            paymentSheetParameters: SetupPaymentSheetParameters(
+              paymentIntentClientSecret: clientSecret,
+              merchantDisplayName: 'WTI CABS',
+              style: ThemeMode.light, // or ThemeMode.dark
+              appearance: PaymentSheetAppearance(
+                colors: PaymentSheetAppearanceColors(
+                  background: Colors.white,
+                  primary: Colors.green,
+                  componentText: Colors.black,
+                ),
+              ),
+              allowsDelayedPaymentMethods: false,
+            ),
+          );
+
+          await Stripe.instance.presentPaymentSheet();
         } else {
           print("⚠️ Missing checkout_url");
         }
