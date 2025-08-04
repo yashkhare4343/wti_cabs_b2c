@@ -82,7 +82,7 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                       bookingDetailRow('Pickup', booking.source?.address ?? ''),
                       bookingDetailRow('Drop', booking.destination?.address ?? ''),
                       bookingDetailRow('Pickup Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.startTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
-                      bookingDetailRow('Drop Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.endTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
+                      (booking.tripTypeDetails?.basicTripType == 'LOCAL') ? SizedBox() :  bookingDetailRow('Drop Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.endTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
 
                       SizedBox(height: 24),
                       SizedBox(

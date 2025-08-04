@@ -2,14 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart'; // ✅ Required for launching browser
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../../common_widget/loader/popup_loader.dart';
 
 class GlobalPaymentController extends GetxController {
-
   RxBool isLoading = false.obs;
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? createCustomer;
@@ -35,11 +36,11 @@ class GlobalPaymentController extends GetxController {
     isLoading.value = true;
     showLoader(context);
     try {
-
       print("📤 Signup request: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/user/createUser'),
+        Uri.parse(
+            'https://test.wticabs.com:5001/global/app/v1/user/createUser'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -56,8 +57,8 @@ class GlobalPaymentController extends GetxController {
           context: context,
           checkoutRequestData: checkoutRequestData,
         );
-        await StorageServices.instance.save('userObjId', registeredUser?['user_obj_id']);
-
+        await StorageServices.instance
+            .save('userObjId', registeredUser?['user_obj_id']);
       } else {
         print("❌ Signup failed: ${res.statusCode} ${res.body}");
       }
@@ -85,7 +86,8 @@ class GlobalPaymentController extends GetxController {
       print("📤 create customer request: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/createCustomer'),
+        Uri.parse(
+            'https://test.wticabs.com:5001/global/app/v1/stripe/createCustomer'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -107,7 +109,6 @@ class GlobalPaymentController extends GetxController {
       }
     } catch (e) {
       print("❌ create customer exception: $e");
-
     } finally {
       isLoading.value = false;
     }
@@ -115,13 +116,12 @@ class GlobalPaymentController extends GetxController {
 
   // add passenger from here
   Future<void> provisionalBookingMethod(
-      Map<String, dynamic> requestData,
-      Map<String, dynamic> checkoutRequestData,
-      BuildContext context,
-      ) async {
+    Map<String, dynamic> requestData,
+    Map<String, dynamic> checkoutRequestData,
+    BuildContext context,
+  ) async {
     isLoading.value = true;
     try {
-
       requestData['reservation']['passenger'] = registeredUser?['user_obj_id'];
       requestData.forEach((key, value) {
         requestData[key] = value;
@@ -129,7 +129,8 @@ class GlobalPaymentController extends GetxController {
       print("📤 Provisional booking request: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
+        Uri.parse(
+            'https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -151,7 +152,6 @@ class GlobalPaymentController extends GetxController {
       }
     } catch (e) {
       print("❌ Provisional booking exception: $e");
-
     } finally {
       isLoading.value = false;
     }
@@ -162,16 +162,16 @@ class GlobalPaymentController extends GetxController {
     required BuildContext context,
   }) async {
     isLoading.value = true;
+    print("🔄 Starting openStripeCheckout...");
+
     try {
-      print("📤 stripe checkout request: $requestData");
+      print("📤 Sending stripe checkout request with data: $requestData");
+
       requestData['order_reference_number'] = provisionalBooking?['order_reference_number'];
+      await StorageServices.instance.save('orderReferenceNo', requestData['order_reference_number']);
       requestData['customerId'] = createCustomer?['customerID'];
       requestData['userID'] = registeredUser?['user_obj_id'];
 
-      // Then: insert all other fields in order
-      requestData.forEach((key, value) {
-        requestData[key] = value;
-      });
       final res = await http.post(
         Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/checkOutSessionForMobileSDK'),
         headers: {
@@ -181,17 +181,21 @@ class GlobalPaymentController extends GetxController {
         body: jsonEncode(requestData),
       );
 
+      print("📥 Received response: ${res.statusCode} ${res.body}");
+
       if (res.statusCode == 200) {
         stripeCheckout = jsonDecode(res.body);
-        print("✅ stripe checkout success: $stripeCheckout");
+        print("✅ Stripe checkout response decoded: $stripeCheckout");
 
-        final String clientSecret = stripeCheckout?['clientSecret'];
-        if (clientSecret.toString().isNotEmpty) {
+        final String clientSecret = stripeCheckout?['clientSecret'] ?? '';
+        if (clientSecret.isNotEmpty) {
+          print("🔐 Initializing payment sheet with clientSecret: $clientSecret");
+
           await Stripe.instance.initPaymentSheet(
             paymentSheetParameters: SetupPaymentSheetParameters(
               paymentIntentClientSecret: clientSecret,
               merchantDisplayName: 'WTI CABS',
-              style: ThemeMode.light, // or ThemeMode.dark
+              style: ThemeMode.light,
               appearance: PaymentSheetAppearance(
                 colors: PaymentSheetAppearanceColors(
                   background: Colors.white,
@@ -203,21 +207,48 @@ class GlobalPaymentController extends GetxController {
             ),
           );
 
-          await Stripe.instance.presentPaymentSheet();
+          try {
+            print("🧾 Presenting payment sheet...");
+            await Stripe.instance.presentPaymentSheet();
+
+            print("✅ Payment successful. Navigating to success page...");
+            Future.delayed(Duration(milliseconds: 1000), () {
+              GoRouter.of(context).push(AppRoutes.paymentSuccess);
+            });// replace with your page
+
+          } on StripeException catch (e) {
+            print("❌ StripeException occurred: ${e.error.localizedMessage}");
+            Future.delayed(Duration(milliseconds: 1000), () {
+              GoRouter.of(context).push(AppRoutes.paymentFailure);
+            });
+          } catch (e) {
+            print("❌ Unknown error presenting payment sheet: $e");
+            Future.delayed(Duration(milliseconds: 1000), () {
+              GoRouter.of(context).push(AppRoutes.paymentFailure);
+            });          }
+
         } else {
-          print("⚠️ Missing checkout_url");
-        }
+          print("⚠️ clientSecret is empty or null!");
+          Future.delayed(Duration(milliseconds: 1000), () {
+            GoRouter.of(context).push(AppRoutes.paymentFailure);
+          });        }
+
       } else {
-        print("❌ Stripe failed: ${res.statusCode} ${res.body}");
+        print("❌ Stripe API call failed with status: ${res.statusCode}, body: ${res.body}");
+        GoRouter.of(context).push(AppRoutes.paymentFailure);
       }
+
     } catch (e) {
-      print("❌ Stripe exception: $e");
-    } finally {
+      print("❌ Exception during Stripe checkout: $e");
+      Future.delayed(Duration(milliseconds: 1000), () {
+        GoRouter.of(context).push(AppRoutes.paymentFailure);
+      });    } finally {
       isLoading.value = false;
       hideLoader(context);
-
+      print("✅ Finished openStripeCheckout");
     }
   }
+
 
   Future<void> _launchStripeCheckout(String checkoutUrl) async {
     final uri = Uri.parse(checkoutUrl);
@@ -227,6 +258,7 @@ class GlobalPaymentController extends GetxController {
       throw Exception('❌ Could not launch Stripe Checkout URL');
     }
   }
+
   void showLoader(BuildContext context) {
     showDialog(
       context: context,
@@ -242,6 +274,4 @@ class GlobalPaymentController extends GetxController {
       Navigator.of(context, rootNavigator: true).pop();
     }
   }
-
 }
-

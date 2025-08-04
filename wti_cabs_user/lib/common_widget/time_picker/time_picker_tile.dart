@@ -112,80 +112,45 @@ class _TimePickerTileState extends State<TimePickerTile> {
     return Duration(minutes: roundedMinutes);
   }
 
-  void _showCupertinoTimePicker(BuildContext context) {
+  Future<void> _showMaterialTimePicker(BuildContext context) async {
     final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
+    final currentDate = timeObservable.value;
+    final isSameDay = _isSameDate(currentDate, actualDateTime);
 
-    print("🕓 Showing CupertinoTimePicker...");
-    print("🕒 actualDateTime: $actualDateTime");
-    print("📅 timeObservable.value (selected date): ${timeObservable.value}");
+    final TimeOfDay initial = TimeOfDay.fromDateTime(selectedTime);
 
-    final isSameDayAsActual = _isSameDate(timeObservable.value, actualDateTime);
-    print("📍 isSameDayAsActual: $isSameDayAsActual");
-
-    final Duration minimumDuration = isSameDayAsActual
-        ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
-        : Duration.zero;
-
-    final Duration initialDuration = Duration(
-      hours: selectedTime.hour,
-      minutes: selectedTime.minute,
-    );
-
-    print("🔢 initialDuration: $initialDuration");
-    print("🔢 minimumDuration: $minimumDuration");
-
-    final Duration clampedInitialDuration = roundToNearestInterval(
-      initialDuration < minimumDuration ? minimumDuration : initialDuration,
-      30,
-    );
-
-    print("✅ clampedInitialDuration: $clampedInitialDuration");
-
-    showCupertinoModalPopup(
+    final TimeOfDay? picked = await showTimePicker(
       context: context,
-      builder: (_) => Container(
-        height: 300,
-        color: Colors.white,
-        child: Column(
-          children: [
-            Expanded(
-              child: CupertinoTimerPicker(
-                mode: CupertinoTimerPickerMode.hm,
-                minuteInterval: 30,
-                initialTimerDuration: clampedInitialDuration,
-                onTimerDurationChanged: (Duration newDuration) {
-                  final Duration clampedDuration = roundToNearestInterval(
-                    isSameDayAsActual && newDuration < minimumDuration ? minimumDuration : newDuration,
-                    30,
-                  );
-
-                  final currentDate = timeObservable.value;
-
-                  final newTime = DateTime(
-                    currentDate.year,
-                    currentDate.month,
-                    currentDate.day,
-                    clampedDuration.inHours,
-                    clampedDuration.inMinutes % 60,
-                  );
-
-                  print("🕹️ User selected time duration: $newDuration");
-                  print("✅ Final clamped time: $newTime");
-
-                  setState(() => selectedTime = newTime);
-                  timeObservable.value = newTime; // Sync with controller
-                  widget.onTimeSelected(newTime);
-                },
-              ),
-            ),
-            CupertinoButton(
-              child: const Text("Done"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
-      ),
+      initialTime: initial,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
+
+    if (picked != null) {
+      final pickedDateTime = DateTime(
+        currentDate.year,
+        currentDate.month,
+        currentDate.day,
+        picked.hour,
+        picked.minute,
+      );
+
+      // Restrict time selection
+      if (isSameDay && pickedDateTime.isBefore(actualDateTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please select a time after ${DateFormat('hh:mm a').format(actualDateTime)}")),
+        );
+        return;
+      }
+
+      setState(() => selectedTime = pickedDateTime);
+      timeObservable.value = pickedDateTime;
+      widget.onTimeSelected(pickedDateTime);
+    }
   }
 
   @override
@@ -194,7 +159,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
       final formattedTime = DateFormat('hh:mm a').format(timeObservable.value);
 
       return GestureDetector(
-        onTap: () => _showCupertinoTimePicker(context),
+        onTap: () => _showMaterialTimePicker(context),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(

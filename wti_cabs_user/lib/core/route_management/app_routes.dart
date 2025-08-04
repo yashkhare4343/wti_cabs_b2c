@@ -11,6 +11,7 @@ class AppRoutes{
   static const String paymentFailure = '/paymentFailure';
   static const String offers = '/offers';
   static const String profile = '/profile';
+  static const String manageBookings = '/manageBookings';
 
 
 

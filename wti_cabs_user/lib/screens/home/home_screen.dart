@@ -10,6 +10,7 @@ import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfiel
 
 import '../../common_widget/drawer/custom_drawer.dart';
 import '../../core/route_management/app_routes.dart';
+import '../../core/services/trip_history_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -30,9 +31,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // Fetch location and show bottom sheet
     fetchCurrentLocationAndAddress();
+    _loadRecentTrips();
     _setStatusBarColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // _showBottomSheet();
+    });
+  }
+
+  List<String> _topRecentTrips = [];
+
+  Future<void> _loadRecentTrips() async {
+    final trips = await TripHistoryService.getTop2Trips();
+    setState(() {
+      _topRecentTrips = trips;
     });
   }
 
@@ -178,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    _loadRecentTrips();
     final double drawerWidth = MediaQuery.of(context).size.width * 0.8;
 
     return WillPopScope(
@@ -391,10 +403,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ],
                       ),
                     ),
-                    Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        height: 170,
-                        child: BorderedListView()),
+                    // Container(
+                    //     padding: EdgeInsets.symmetric(horizontal: 8),
+                    //     height: 170,
+                    //     child: BorderedListView()),
+
+                    SizedBox(
+                      height: 12,
+                    ),
+                    ..._topRecentTrips.map((trip) {
+                      final parts = trip.split(','); // e.g. ["jaipur", "rajasthan", "india"]
+                      final title = parts.first.trim(); // jaipur
+                      final subtitle = parts.length >= 2 ? parts[1].trim() : ''; // rajasthan
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(
+                            color: const Color.fromRGBO(44, 44, 111, 0.15),
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.only(left: 16),
+                          dense: true,
+                          minVerticalPadding: 0,
+                          leading: Container(
+                            padding: const EdgeInsets.all(10.0),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(51, 51, 51, 0.05),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/images/history.svg',
+                              height: 16,
+                              width: 16,
+                            ),
+                          ),
+                          title: Text(
+                            title, // main city
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          subtitle: Text(
+                            subtitle, // state or 2nd part
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF4F4F4F),
+                            ),
+                          ),
+                          tileColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }),
 
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1167,7 +1237,28 @@ class TravelOfferCard extends StatelessWidget {
   }
 }
 
-class BorderedListView extends StatelessWidget {
+class BorderedListView extends StatefulWidget {
+
+  @override
+  State<BorderedListView> createState() => _BorderedListViewState();
+}
+
+class _BorderedListViewState extends State<BorderedListView> {
+  List<String> _topRecentTrips = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentTrips();
+  }
+
+  Future<void> _loadRecentTrips() async {
+    final trips = await TripHistoryService.getTop2Trips();
+    setState(() {
+      _topRecentTrips = trips;
+    });
+  }
+
   final List<Map<String, String>> items = [
     {
       "title": "Indira Gandhi International Airport",
@@ -1185,7 +1276,7 @@ class BorderedListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(8.0),
-      itemCount: items.length,
+      itemCount: _topRecentTrips.length,
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),

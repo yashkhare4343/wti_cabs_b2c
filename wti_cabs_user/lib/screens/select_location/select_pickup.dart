@@ -12,6 +12,7 @@ import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../core/services/storage_services.dart';
+import '../../core/services/trip_history_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
 class SelectPickup extends StatefulWidget {
@@ -27,6 +28,20 @@ class _SelectPickupState extends State<SelectPickup> {
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   List<String> suggestions = [];
   final TextEditingController pickupController = TextEditingController();
+  List<String> _topRecentTrips = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentTrips();
+  }
+
+  Future<void> _loadRecentTrips() async {
+    final trips = await TripHistoryService.getTop2Trips();
+    setState(() {
+      _topRecentTrips = trips;
+    });
+  }
 
   // @override
   // void dispose() {
@@ -195,6 +210,8 @@ class _SelectPickupState extends State<SelectPickup> {
                               if (place.terms.isNotEmpty) {
                                 await StorageServices.instance.save('sourceTerms', jsonEncode(place.terms));
                               }
+
+
 
 
 

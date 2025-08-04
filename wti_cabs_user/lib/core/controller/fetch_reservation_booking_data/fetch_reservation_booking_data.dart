@@ -14,8 +14,8 @@ class FetchReservationBookingData extends GetxController {
   Future<void> fetchReservationData() async {
     isLoading.value = true;
     final gatewayUsed = await StorageServices.instance.read('country');
-    gatewayCode.value =  gatewayUsed?.toLowerCase() != 'india' ? 1 : 0;
-    String reservationID = await StorageServices.instance.read('reservationId') ?? '';
+    gatewayCode.value =  gatewayUsed?.toLowerCase() == 'india' ? 1 : 0;
+    String reservationID = await StorageServices.instance.read(gatewayUsed?.toLowerCase() != 'india'? 'orderReferenceNo': 'reservationId') ?? '';
 
     try {
       final result = await ApiService().getRequestNew<ChauffeurReservationsResponse>(

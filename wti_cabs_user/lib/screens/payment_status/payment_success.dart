@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
 class PaymentSuccessPage extends StatefulWidget {
   @override
@@ -82,7 +84,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                       bookingDetailRow('Pickup', booking.source?.address ?? ''),
                       bookingDetailRow('Drop', booking.destination?.address ?? ''),
                       bookingDetailRow('Pickup Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.startTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
-                      bookingDetailRow('Drop Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.endTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
+                    (booking.tripTypeDetails?.basicTripType == 'LOCAL') ? SizedBox() : bookingDetailRow('Drop Date', convertUtcToLocal(fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.endTime??'', fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.timezone??'')),
 
                       SizedBox(height: 24),
                       SizedBox(
@@ -90,6 +92,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                         height: 50,
                         child: MainButton(text: 'See My Bookings', onPressed: () {
                           // Navigate or do something
+                          GoRouter.of(context).push(AppRoutes.manageBookings);
                         }),
                       )
                     ],

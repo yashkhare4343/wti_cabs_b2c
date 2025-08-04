@@ -12,6 +12,7 @@ import '../../common_widget/textformfield/drop_google_place_text_field.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/services/storage_services.dart';
+import '../../core/services/trip_history_services.dart';
 
 class SelectDrop extends StatefulWidget {
   const SelectDrop({super.key});
@@ -25,6 +26,20 @@ class _SelectDropState extends State<SelectDrop> {
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
   final TextEditingController dropController = TextEditingController();
+  List<String> _topRecentTrips = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentTrips();
+  }
+
+  Future<void> _loadRecentTrips() async {
+    final trips = await TripHistoryService.getTop2Trips();
+    setState(() {
+      _topRecentTrips = trips;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +172,8 @@ class _SelectDropState extends State<SelectDrop> {
                       await StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
                       await StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
 
+                      await TripHistoryService.recordTrip('', dropController.text);
+                      await _loadRecentTrips();
 
                       FocusScope.of(context).unfocus();
                       GoRouter.of(context).pop();
