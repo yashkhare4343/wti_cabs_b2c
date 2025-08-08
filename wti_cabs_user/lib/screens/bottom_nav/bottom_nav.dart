@@ -12,9 +12,13 @@ import 'package:wti_cabs_user/core/controller/auth/mobile_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/otp_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/register_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/resend_otp_controller.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/contact/contact.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
+import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
 import 'package:wti_cabs_user/screens/offers/offers.dart';
 
+import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -1021,11 +1025,13 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     );
   }
 
+
+
   final List<Widget> _screens = [
     HomeScreen(),
     Offers(),
-    Center(child: Text("Bookings")),
-    Center(child: Text("My Profile")),
+    ManageBookings(),
+    Contact(),
   ];
 
   void _onItemTapped(int index) {
@@ -1033,6 +1039,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       _selectedIndex = index;
     });
   }
+
 
 
 
@@ -1102,9 +1109,9 @@ class _BottomNavScreenState extends State<BottomNavScreen>
               type: BottomNavigationBarType.fixed,
               items: [
                 _buildBarItem(Icons.house, 'Home', 0),
-                _buildBarItem(Icons.local_offer_outlined, 'Offers', 1),
+                _buildBarItem(Icons.local_offer_outlined, 'Services', 1),
                 _buildBarItem(Icons.work_outline, 'Bookings', 2),
-                _buildBarItem(Icons.person_outline, 'My Profile', 3),
+                _buildBarItem(Icons.phone, 'Contact', 3),
               ],
             ),
           ),

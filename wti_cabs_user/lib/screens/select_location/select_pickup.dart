@@ -6,14 +6,17 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
+import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
+import '../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
+import '../map_picker/map_picker.dart';
 
 class SelectPickup extends StatefulWidget {
   const SelectPickup({super.key});
@@ -28,20 +31,16 @@ class _SelectPickupState extends State<SelectPickup> {
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   List<String> suggestions = [];
   final TextEditingController pickupController = TextEditingController();
+ final SourceLocationController sourceController = Get.put(SourceLocationController());
+
   List<String> _topRecentTrips = [];
 
   @override
   void initState() {
     super.initState();
-    _loadRecentTrips();
   }
 
-  Future<void> _loadRecentTrips() async {
-    final trips = await TripHistoryService.getTop2Trips();
-    setState(() {
-      _topRecentTrips = trips;
-    });
-  }
+
 
   // @override
   // void dispose() {
@@ -121,22 +120,40 @@ class _SelectPickupState extends State<SelectPickup> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.location_searching_outlined,
-                      size: 18, color: AppColors.blue4),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Set Location on Map',
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.blue4),
+            InkWell(
+              splashColor:Colors.transparent,
+              onTap: () async{
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => MapPickerScreen(
+                        onLocationSelected: (double lat, double lng, String address) {
+                        if(pickupController.text.isEmpty){
+                          pickupController.text = address;
+                        }
+                      },
+                      )
                   ),
-                ],
+                );
+              },
+
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_searching_outlined,
+                        size: 18, color: AppColors.blue4),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Set Location on Map',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.blue4),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -192,38 +209,53 @@ class _SelectPickupState extends State<SelectPickup> {
                               place.secondaryText,
                               style: CommonFonts.bodyText6Black,
                             ),
-                            onTap: () async{
-                              pickupController.text = place.primaryText;
-                              bookingRideController.prefilled.value = place.primaryText;
-                              placeSearchController.placeId.value = place.placeId;
-                              placeSearchController.getLatLngDetails(place.placeId, context);
-                              // store values
-                              await StorageServices.instance.save('sourcePlaceId', place.placeId);
-                              await StorageServices.instance.save('sourceTitle', place.primaryText);
-                              await StorageServices.instance.save('sourceCity', place.city);
-                              await StorageServices.instance.save('sourceState', place.state);
-                              await StorageServices.instance.save('sourceCountry', place.country);
-                              print('akash country: ${place.country}');
-                              if (place.types.isNotEmpty) {
-                                await StorageServices.instance.save('sourceTypes', jsonEncode(place.types));
+                              onTap: () {
+                                // 🚀 1. Immediate UI update only
+                                pickupController.text = place.primaryText;
+                                bookingRideController.prefilled.value = place.primaryText;
+                                placeSearchController.placeId.value = place.placeId;
+
+                                // 🚀 2. Immediate navigation (unfocus + close current screen)
+                                FocusScope.of(context).unfocus();
+                                GoRouter.of(context).pop();
+
+                                // 🧠 3. Background processing (does not block navigation)
+                                Future.microtask(() {
+                                  // Fire-and-forget — don't await unless required later
+                                  placeSearchController.getLatLngDetails(place.placeId, context);
+
+                                  dropPlaceSearchController.dropPlaceId.value.isNotEmpty
+                                      ? dropPlaceSearchController.getLatLngForDrop(
+                                      dropPlaceSearchController.dropPlaceId.value, context)
+                                      : null;
+
+                                  // Storage & controller update (no await — fastest possible)
+                                  StorageServices.instance.save('sourcePlaceId', place.placeId);
+                                  StorageServices.instance.save('sourceTitle', place.primaryText);
+                                  StorageServices.instance.save('sourceCity', place.city);
+                                  StorageServices.instance.save('sourceState', place.state);
+                                  StorageServices.instance.save('sourceCountry', place.country);
+                                  if (place.types.isNotEmpty) {
+                                    StorageServices.instance.save('sourceTypes', jsonEncode(place.types));
+                                  }
+                                  if (place.terms.isNotEmpty) {
+                                    StorageServices.instance.save('sourceTerms', jsonEncode(place.terms));
+                                  }
+
+                                  sourceController.setPlace(
+                                    placeId: place.placeId,
+                                    title: place.primaryText,
+                                    city: place.city,
+                                    state: place.state,
+                                    country: place.country,
+                                    types: place.types,
+                                    terms: place.terms,
+                                  );
+
+                                  print('akash country: ${place.country}');
+                                });
                               }
-                              if (place.terms.isNotEmpty) {
-                                await StorageServices.instance.save('sourceTerms', jsonEncode(place.terms));
-                              }
 
-
-
-
-
-
-                              FocusScope.of(context).unfocus();
-                              if(dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-                                dropPlaceSearchController.getLatLngForDrop(
-                                    dropPlaceSearchController.dropPlaceId.value,
-                                    context);
-                              }
-                              GoRouter.of(context).pop();
-                            },
                           ),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16.0),

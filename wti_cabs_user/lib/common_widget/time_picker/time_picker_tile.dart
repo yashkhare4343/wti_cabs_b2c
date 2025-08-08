@@ -34,6 +34,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
   late DateTime selectedTime;
   late dynamic timeZoneController;
   late Rx<DateTime> timeObservable;
+  bool isInvalidTime = false;
 
   @override
   void initState() {
@@ -112,45 +113,91 @@ class _TimePickerTileState extends State<TimePickerTile> {
     return Duration(minutes: roundedMinutes);
   }
 
-  Future<void> _showMaterialTimePicker(BuildContext context) async {
+  void _showCupertinoTimePicker(BuildContext context) {
     final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
-    final currentDate = timeObservable.value;
-    final isSameDay = _isSameDate(currentDate, actualDateTime);
+    final isSameDayAsActual = _isSameDate(timeObservable.value, actualDateTime);
 
-    final TimeOfDay initial = TimeOfDay.fromDateTime(selectedTime);
+    final Duration minimumDuration = isSameDayAsActual
+        ? Duration(hours: actualDateTime.hour, minutes: actualDateTime.minute)
+        : Duration.zero;
 
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initial,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
+    final Duration initialDuration = Duration(
+      hours: selectedTime.hour,
+      minutes: selectedTime.minute,
     );
 
-    if (picked != null) {
-      final pickedDateTime = DateTime(
-        currentDate.year,
-        currentDate.month,
-        currentDate.day,
-        picked.hour,
-        picked.minute,
-      );
+    final Duration clampedInitialDuration = roundToNearestInterval(
+      initialDuration < minimumDuration ? minimumDuration : initialDuration,
+      30,
+    );
 
-      // Restrict time selection
-      if (isSameDay && pickedDateTime.isBefore(actualDateTime)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please select a time after ${DateFormat('hh:mm a').format(actualDateTime)}")),
-        );
-        return;
-      }
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => Container(
+        height: 300,
+        color: Colors.white,
+        child: Column(
+          children: [
+            Expanded(
+              child: CupertinoTimerPicker(
+                mode: CupertinoTimerPickerMode.hm,
+                minuteInterval: 30,
+                initialTimerDuration: clampedInitialDuration,
+                  onTimerDurationChanged: (Duration newDuration) {
+                    final actualDateTime = _getActualLocalDateTime() ?? DateTime.now();
+                    final selectedDate = timeObservable.value;
 
-      setState(() => selectedTime = pickedDateTime);
-      timeObservable.value = pickedDateTime;
-      widget.onTimeSelected(pickedDateTime);
-    }
+                    // Selected date + selected time from picker
+                    final selectedDateTime = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      newDuration.inHours,
+                      newDuration.inMinutes % 60,
+                    );
+
+                    final bool isSameDay = _isSameDate(selectedDateTime, actualDateTime);
+
+                    /// 👇 Truncate seconds and milliseconds from actualDateTime to ensure fair comparison
+                    final actualComparable = DateTime(
+                      actualDateTime.year,
+                      actualDateTime.month,
+                      actualDateTime.day,
+                      actualDateTime.hour,
+                      actualDateTime.minute,
+                    );
+
+                    setState(() {
+                      isInvalidTime = isSameDay && selectedDateTime.isBefore(actualComparable);
+
+                    });
+
+
+                    // Round to nearest 30 min as per your logic
+                    final clampedDuration = roundToNearestInterval(newDuration, 30);
+
+                    final adjustedDateTime = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      clampedDuration.inHours,
+                      clampedDuration.inMinutes % 60,
+                    );
+
+                    setState(() => selectedTime = adjustedDateTime);
+                    timeObservable.value = adjustedDateTime;
+                    widget.onTimeSelected(adjustedDateTime);
+                  }
+              ),
+            ),
+            CupertinoButton(
+              child: const Text("Done"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -159,23 +206,23 @@ class _TimePickerTileState extends State<TimePickerTile> {
       final formattedTime = DateFormat('hh:mm a').format(timeObservable.value);
 
       return GestureDetector(
-        onTap: () => _showMaterialTimePicker(context),
+        onTap: () => _showCupertinoTimePicker(context),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: AppColors.lightBlueBorder, width: 1),
+            border: Border.all(color:(isInvalidTime == true)? Colors.redAccent : AppColors.lightBlueBorder, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Icon(Icons.access_time, color: AppColors.bgGrey3, size: 15),
+              Icon(Icons.access_time, color: (isInvalidTime == true) ? Colors.redAccent : AppColors.bgGrey3, size: 15),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.label, style: CommonFonts.bodyText5Black),
-                  Text(formattedTime, style: CommonFonts.bodyText1Black),
+                  (isInvalidTime == true) ? Text(widget.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.redAccent)) :  Text(widget.label, style: CommonFonts.bodyText5Black),
+                  (isInvalidTime == true) ? Text(formattedTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.redAccent)) : Text(formattedTime, style: CommonFonts.bodyText1Black),
                 ],
               ),
             ],

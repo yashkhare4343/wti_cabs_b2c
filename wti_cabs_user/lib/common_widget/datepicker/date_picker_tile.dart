@@ -114,15 +114,29 @@ class _DatePickerTileState extends State<DatePickerTile> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today, color: AppColors.bgGrey3, size: 15),
+            const Icon(Icons.calendar_month_outlined, color: AppColors.bgGrey3, size: 20),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.label, style: CommonFonts.bodyText5Black),
-                Text(formattedDate, style: CommonFonts.bodyText1Black),
+                Text(
+                  'Pickup Date',
+                  style: CommonFonts.bodyText5Black,
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    // "Fri 08 Aug"
+
+                    Text(
+                      formattedDate,
+                      style: CommonFonts.bodyText1Black,
+                    ),
+                  ],
+                ),
               ],
-            ),
+            )
           ],
         ),
       ),

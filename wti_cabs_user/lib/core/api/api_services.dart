@@ -43,11 +43,11 @@ class ApiService {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
     print('yash token : $token');
-    // final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
-    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    // final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Basic aGFyc2g6MTIz',
+      'Authorization': basicAuth,
     };
 
     print('url is : $baseUrl/$endpoint');
@@ -299,7 +299,7 @@ class ApiService {
   Future<Map<String, dynamic>> patchRequest(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
-    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final basicAuth = 'Basic $token';
 
     final headers = {
       'Content-Type': 'application/json',

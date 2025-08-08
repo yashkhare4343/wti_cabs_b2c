@@ -81,7 +81,7 @@ class CommonFonts {
   static final TextStyle bodyText3ternanory = base(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.kmsText);
 
   static final TextStyle bodyText5 = base(fontSize: 10, fontWeight: FontWeight.w400, color: AppColors.greyText2);
-  static final TextStyle bodyText5Black = base(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black);
+  static final TextStyle bodyText5Black = base(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.black);
   static final TextStyle bodyText6Black = base(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.black);
 
   static final TextStyle bodyText5tertiary = base(fontSize: 10, fontWeight: FontWeight.w400, color: AppColors.secondary);
@@ -94,9 +94,9 @@ class CommonFonts {
   static final TextStyle greyTextMedium = base(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.greyText6);
   static final TextStyle greyTextMedium2 = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.greyText3);
   static final TextStyle greyText3Light = base(fontSize: 16, fontWeight: FontWeight.w300, color: AppColors.bodyTextPrimary);
-  static final TextStyle greyText3Bold = base(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.bodyTextPrimary);
+  static final TextStyle greyText3Bold = base(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.bodyTextPrimary);
   static final TextStyle organgeText1 = base(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.organge1);
-  static final TextStyle greyText3 = base(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.greyText4);
+  static final TextStyle greyText3 = base(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.greyText4);
   static final TextStyle mainButtonText = base(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white);
   static final TextStyle heading1Bold = base(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.greyText3);
   static final TextStyle heading1Medium = base(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black);

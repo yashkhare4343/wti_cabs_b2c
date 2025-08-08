@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
 import 'package:wti_cabs_user/core/model/auth/otp/otp_response.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
@@ -29,8 +30,10 @@ class OtpController extends GetxController {
       );
       otpData.value = response;
       print('print otp data : ${otpData.value}');
+      decodeRefreshToken(otpData.value?.refreshToken??'');
        await StorageServices.instance.save('refreshToken', otpData.value?.refreshToken??'');
        await StorageServices.instance.save('token', otpData.value?.accessToken??'');
+
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,6 +65,27 @@ class OtpController extends GetxController {
     finally {
       isLoading.value = false;
     }
+  }
+
+
+  void decodeRefreshToken(String refreshToken) async{
+    // 1. Get all decoded details as Map
+    Map<String, dynamic> decodedToken = JwtDecoder.decode(refreshToken);
+
+    print("Decoded Refresh Token: $decodedToken");
+
+    // 2. Get specific claim values
+    print("User obj id: ${decodedToken['user_obj_id']}");
+
+    await StorageServices.instance.save('userObjId', decodedToken['user_obj_id']);
+
+    // 3. Check expiry
+    bool isExpired = JwtDecoder.isExpired(refreshToken);
+    print("Refresh Token Expired? $isExpired");
+
+    // 4. Get remaining time
+    Duration timeLeft = JwtDecoder.getRemainingTime(refreshToken);
+    print("Time Left: $timeLeft");
   }
 
 

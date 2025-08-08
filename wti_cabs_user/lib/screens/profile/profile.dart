@@ -4,12 +4,15 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/custom_loader.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/update_profile_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
+import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
+import '../../core/services/storage_services.dart';
 
 class Profile extends StatefulWidget {
    Profile({super.key});
@@ -101,7 +104,7 @@ void _successLoader(String message, BuildContext outerContext) {
   );
 }
 
-bool isEdit = false;
+bool isEdit = true;
 String ? selectedGender;
 
 class _ProfileState extends State<Profile> {
@@ -110,19 +113,18 @@ class _ProfileState extends State<Profile> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneNoController = TextEditingController();
+  final TextEditingController cityController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-
-
+    profileController.fetchData();
   }
 
   @override
   Widget build(BuildContext context) {
-    profileController.fetchData();
     firstNameController.text = profileController.profileResponse.value?.result?.firstName??'';
     emailController.text = profileController.profileResponse.value?.result?.emailID??'';
     countryController.text = profileController.profileResponse.value?.result?.countryName??'';
@@ -156,240 +158,164 @@ class _ProfileState extends State<Profile> {
         ),
       ),
       body: SingleChildScrollView(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-              child: Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(top: 28),
-                padding: const EdgeInsets.only(top: 20, bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+        child:Obx((){
+          if(profileController.isLoading==true){
+            return PopupLoader(message: 'Loading...');
+          }
+         return Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 28),
+                  padding: const EdgeInsets.only(top: 20, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(height: 32,),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding:  EdgeInsets.only(left: 16.0, bottom: isEdit != true ? 12 : 2),
+                          child: Text(
+                            "General Details",
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(padding: EdgeInsets.only(left: 16, right: 16,),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text('Fields marked with * are mandatory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF6D6D6D)),),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16,),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            EditableTextField(label: "Full name *", value: profileController.profileResponse.value?.result?.firstName??'', controller: firstNameController,),
+                            const SizedBox(height: 12),
+                            EditableTextField(label: "Email ID *", value: profileController.profileResponse.value?.result?.emailID??'', controller: emailController,) ,
+                            const SizedBox(height: 12) ,
+                            EditableTextField(label: "Mobile No *", value: "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}", controller: phoneNoController,),
+                            const SizedBox(height: 12) ,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child:
+                                  EditableTextField(label: "City", value: "", controller: cityController,),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child:
+                                  EditableTextField(label: "State", value: "",),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            EditableTextField(label: "Nationality", value: profileController.profileResponse.value?.result?.countryName??'',controller: countryController, readOnly: isEdit == false ? true : false,),
+                            SizedBox(height: 20,),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: const Color(0xFF000088),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 13),
+                                ),
+                                onPressed: () async{
+                                  // Close loader
+                                  _showLoader('Loading..', context);
+                                  final Map<String, dynamic> requestData = {
+                                    "firstName":
+                                    firstNameController.text.trim(),
+                                    "contact":
+                                    phoneNoController.text.trim()??'0000000000',
+                                    "contactCode": "91",
+                                    "countryName": "India",
+                                    "gender": selectedGender,
+                                    "emailID": emailController.text.trim()
+                                  };
+                                  await updateProfileController.updateProfile(requestData: requestData, context: context).then((value){
+                                    _successLoader('Profile Updated Successfully', context);
+                                  });
+
+                                  // / GoRouter.of(context).pop();
+                                },
+                                child: const Text(
+                                  "Save Details",
+                                  style: TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 16
+                                  ),
+                                ),
+                              ) ,
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
+              ),
+              Positioned(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(height: isEdit == true ? 32 : 24,),
-                    isEdit != true ?   Text(
-                      profileController.profileResponse.value?.result?.firstName??'',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black
-                      ),
-                    ) : SizedBox(),
-                    // const SizedBox(height: 4),
-                    isEdit != true ?  Text(
-                      "${profileController.profileResponse.value?.result?.contactCode}-${profileController.profileResponse.value?.result?.contact}",
-                      style: TextStyle(fontSize: 14, color: Color(0xFF444444), fontWeight: FontWeight.w400),
-                    ) : SizedBox(),
-                    isEdit != true ?  const SizedBox(height: 2) : SizedBox(),
-                    isEdit != true ?  Text(
-                      profileController.profileResponse.value?.result?.emailID??'',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF525252),fontWeight: FontWeight.w400),
-                    ) : SizedBox(),
-                    isEdit != true ?  const SizedBox(height: 12) : SizedBox(),
-                    isEdit != true ? ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: const Color(0xFFF2F5FF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
-                      ),
-                      onPressed: () {
-                        firstNameController.text = profileController.profileResponse.value?.result?.firstName??'';
-                        emailController.text = profileController.profileResponse.value?.result?.emailID??'';
-                        countryController.text = profileController.profileResponse.value?.result?.countryName??'';
-                        phoneNoController.text = profileController.profileResponse.value?.result?.contact.toString()??'';
-                        _showLoader('Edit profile...',context);
-
-                        setState(() {
-                          isEdit = true;
-                        });
-                      },
-                      child: const Text(
-                        "Edit Profile",
-                        style: TextStyle(
-                          color: Color(0xFF002CC0),
-                          fontWeight: FontWeight.w400,
-                          fontSize: 14
-                        ),
-                      ),
-                    ) : SizedBox(),
-                    isEdit != true ?  const SizedBox(height: 9) : SizedBox(),
-                    isEdit != true ? Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: const Divider(thickness: 1, color: Color(0xFFC2C2C2))) : SizedBox(),
-                    isEdit != true ?  const SizedBox(height: 12) : SizedBox(),
-                     Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding:  EdgeInsets.only(left: 16.0, bottom: isEdit != true ? 12 : 2),
-                        child: Text(
-                          "General Details",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black
+                    Stack(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: CircleAvatar(
+                              radius: 40,
+                              child: Image.asset('assets/images/profile_pic.png', width: 80, height: 80,)
                           ),
                         ),
-                      ),
-                    ),
-                    isEdit == true ? Container(padding: EdgeInsets.only(left: 16, right: 16,),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Text('Fields marked with * are mandatory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF6D6D6D)),),
-                        ],
-                      ),
-                    ) : SizedBox(),
-                    isEdit == true ?  SizedBox(height: 16,): SizedBox(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          isEdit == true ?    EditableTextField(label: "Full name *", value: profileController.profileResponse.value?.result?.firstName??'', controller: firstNameController,) : SizedBox(),
-                          isEdit == true ?  const SizedBox(height: 12) : SizedBox(),
-                          isEdit == true ?  EditableTextField(label: "Email ID *", value: profileController.profileResponse.value?.result?.emailID??'') : SizedBox(),
-                          isEdit == true ?  const SizedBox(height: 12) : SizedBox(),
-                          isEdit == true ?  EditableTextField(label: "Mobile No *", value: "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}") : SizedBox(),
-                          isEdit == true ?  const SizedBox(height: 12) : SizedBox(),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: EditableTextField(
-                                    label: "Date of Birth*",value:  "", readOnly: isEdit == false ? true : false,),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child:
-                              isEdit != true ?  EditableTextField(
-                                    label: "Gender", value: profileController.profileResponse.value?.result?.gender??'',readOnly: isEdit == false ? true : false,) :
-                                CustomDropdownField(
-                                  label: "Gender",
-                                  value: selectedGender ?? '',
-                                  options: ["Male", "Female", "Other"],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedGender = value;
-                                    });
-                                  },
-                                ),
-
-                              ),
-                            ],
+                        isEdit == true ?  Positioned(
+                          bottom: 5,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 28,
+                            width: 28,
+                            padding: EdgeInsets.all(4.0),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF002CC0),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey.shade300, width: 2),
+                            ),
+                            child: Icon(Icons.camera_alt, color: Colors.white, size: 16,),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child:
-                                    EditableTextField(label: "City", value: "", readOnly: isEdit == false ? true : false,),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child:
-                                    EditableTextField(label: "State", value: "", readOnly: isEdit == false ? true : false,),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          EditableTextField(label: "Nationality", value: profileController.profileResponse.value?.result?.countryName??'',controller: countryController, readOnly: isEdit == false ? true : false,),
-                          SizedBox(height: 20,),
-                          isEdit == true ?  SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor: const Color(0xFF000088),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 13),
-                              ),
-                              onPressed: () async{
-                                setState(() {
-                                  isEdit = false;
-                                });
-                               // Close loader
-                               final Map<String, dynamic> requestData = {
-                                  "firstName":
-                                  firstNameController.text.trim(),
-                                  "contact":
-                                  phoneNoController.text.trim()??'0000000000',
-                                  "contactCode": "91",
-                                  "countryName": "India",
-                                  "gender": selectedGender,
-                                  "emailId": emailController.text.trim()
-                                };
-                                await updateProfileController.updateProfile(requestData: requestData, context: context).then((value){
-                                  // _successLoader('Profile Updated Successfully', context);
+                        ) : SizedBox(),
 
-                                });
 
-                                // / GoRouter.of(context).pop();
-                              },
-                              child: const Text(
-                                "Save Details",
-                                style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 16
-                                ),
-                              ),
-                            ) ,
-                          ) : SizedBox()
-                        ],
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-            Positioned(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.only(bottom: 16),
-                        child: CircleAvatar(
-                            radius: 40,
-                            child: Image.asset('assets/images/profile_pic.png', width: 80, height: 80,)
-                        ),
-                      ),
-                      isEdit == true ?  Positioned(
-                        bottom: 5,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 28,
-                          width: 28,
-                          padding: EdgeInsets.all(4.0),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF002CC0),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
-                          ),
-                          child: Icon(Icons.camera_alt, color: Colors.white, size: 16,),
-                        ),
-                      ) : SizedBox(),
 
+            ],
+          );
+        })
 
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          ],
-        ),
+        ,
       ),
     );
   }
@@ -645,3 +571,64 @@ class _EditableTextFieldState extends State<EditableTextField> {
   }
 }
 
+Widget buildShimmer() {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16.0),
+    child: Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        child: Padding(
+          padding:
+          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 96,
+                height: 66,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 16,
+                      width: double.infinity,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 14,
+                      width: 80,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(height: 12, width: 40, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Container(height: 12, width: 40, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Container(height: 12, width: 60, color: Colors.white),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(width: 16, height: 16, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}

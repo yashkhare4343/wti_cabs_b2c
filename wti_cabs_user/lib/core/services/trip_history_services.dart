@@ -1,60 +1,54 @@
 import 'dart:convert';
-import 'package:wti_cabs_user/core/services/storage_services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TripHistoryService {
-  static const String _recentTripsKey = 'recent_trips';
-  static const String _tripCountMapKey = 'trip_count_map';
+  static const String _key = 'recent_trips';
 
-  static Future<void> recordTrip(String pickup, String drop) async {
-    final tripKey = '$drop';
+  // Save or update trip
+  static Future<void> recordTrip(
+      String pickupTitle,
+      String pickupPlaceId,
+      String dropTitle,
+      String dropPlaceId,
+      ) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Map<String, dynamic>> trips = [];
 
-    final recentJson = await StorageServices.instance.read(_recentTripsKey);
-    final List<String> recentTrips = recentJson != null
-        ? List<String>.from(json.decode(recentJson))
-        : [];
-
-    final countJson = await StorageServices.instance.read(_tripCountMapKey);
-    final Map<String, int> tripCountMap = countJson != null
-        ? Map<String, dynamic>.from(json.decode(countJson))
-        .map((k, v) => MapEntry(k, v as int))
-        : {};
-
-    tripCountMap[tripKey] = (tripCountMap[tripKey] ?? 0) + 1;
-
-    recentTrips.remove(tripKey);
-    recentTrips.insert(0, tripKey);
-    if (recentTrips.length > 10) {
-      recentTrips.removeLast();
+    final existing = prefs.getString(_key);
+    if (existing != null) {
+      trips = List<Map<String, dynamic>>.from(jsonDecode(existing));
     }
 
-    await StorageServices.instance.save(_tripCountMapKey, json.encode(tripCountMap));
-    await StorageServices.instance.save(_recentTripsKey, json.encode(recentTrips));
-  }
+    final index = trips.indexWhere((trip) =>
+    trip['pickup']['title'] == pickupTitle &&
+        trip['drop']['title'] == dropTitle);
 
-  static Future<List<String>> getTop2Trips() async {
-    final recentJson = await StorageServices.instance.read(_recentTripsKey);
-    final List<String> recentTrips = recentJson != null
-        ? List<String>.from(json.decode(recentJson))
-        : [];
-
-    final countJson = await StorageServices.instance.read(_tripCountMapKey);
-    final Map<String, int> tripCountMap = countJson != null
-        ? Map<String, dynamic>.from(json.decode(countJson))
-        .map((k, v) => MapEntry(k, v as int))
-        : {};
-
-    final sorted = recentTrips.toList()
-      ..sort((a, b) {
-        final countA = tripCountMap[a] ?? 0;
-        final countB = tripCountMap[b] ?? 0;
-        return countB.compareTo(countA);
+    if (index != -1) {
+      trips[index]['count'] += 1;
+    } else {
+      trips.add({
+        'pickup': {'title': pickupTitle, 'placeId': pickupPlaceId},
+        'drop': {'title': dropTitle, 'placeId': dropPlaceId},
+        'count': 1,
       });
+    }
 
-    return sorted.take(2).toList();
+    // Save all trips without trimming
+    await prefs.setString(_key, jsonEncode(trips));
   }
 
+  // Get all stored trips
+  static Future<List<Map<String, dynamic>>> getAllTrips() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_key);
+    if (data == null) return [];
+
+    return List<Map<String, dynamic>>.from(jsonDecode(data));
+  }
+
+  // Optional: clear history
   static Future<void> clearHistory() async {
-    await StorageServices.instance.delete(_recentTripsKey);
-    await StorageServices.instance.delete(_tripCountMapKey);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
   }
 }

@@ -10,6 +10,7 @@ import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/cab_booking/cab_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/fetch_coupons_controller.dart';
+import 'package:wti_cabs_user/core/controller/drop_location_controller/drop_location_controller.dart';
 import 'package:wti_cabs_user/core/controller/payment/global/global_provisional_booking.dart';
 import 'package:wti_cabs_user/core/controller/payment/india/provisional_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/profile_controller.dart';
@@ -19,6 +20,7 @@ import '../../core/api/api_services.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import '../../core/controller/inventory/search_cab_inventory_controller.dart';
+import '../../core/controller/source_controller/source_controller.dart';
 import '../../core/model/cab_booking/india_cab_booking.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
@@ -42,6 +44,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       Get.put(CabBookingController());
   final ProfileController profileController = Get.put(ProfileController());
   final CouponController couponController = Get.put(CouponController());
+  final GlobalKey<FormState> travelerFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -105,6 +109,284 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                       return _buildGlobalCard();
                     },
                   ),
+                  GetBuilder<CabBookingController>(
+                      builder: (cabBookingController) {
+                    final stateTax = cabBookingController
+                        .indiaData
+                        .value
+                        ?.inventory
+                        ?.carTypes
+                        ?.fareDetails
+                        ?.extraCharges
+                        ?.stateTax;
+
+                    final isStateChargeExcluded =
+                        stateTax?.isIncludedInBaseFare == false &&
+                            stateTax?.isIncludedInGrandTotal == false;
+
+                    // toll charges
+                    final tollTax = cabBookingController
+                        .indiaData
+                        .value
+                        ?.inventory
+                        ?.carTypes
+                        ?.fareDetails
+                        ?.extraCharges
+                        ?.tollCharges;
+
+                    final istollExcluded =
+                        tollTax?.isIncludedInBaseFare == false &&
+                            tollTax?.isIncludedInGrandTotal == false;
+
+                    // night charges
+                    final nightTax = cabBookingController
+                        .indiaData
+                        .value
+                        ?.inventory
+                        ?.carTypes
+                        ?.fareDetails
+                        ?.extraCharges
+                        ?.nightCharges;
+
+                    final isNightExcluded =
+                        nightTax?.isIncludedInBaseFare == false &&
+                            nightTax?.isIncludedInGrandTotal == false;
+
+                    // waiting charges
+                    final waitingTax = cabBookingController
+                        .indiaData
+                        .value
+                        ?.inventory
+                        ?.carTypes
+                        ?.fareDetails
+                        ?.extraCharges
+                        ?.waitingCharges;
+
+                    final isWaitingExcluded =
+                        waitingTax?.isIncludedInBaseFare == false &&
+                            waitingTax?.isIncludedInGrandTotal == false;
+                    // parking charges
+                    final parkingTax = cabBookingController
+                        .indiaData
+                        .value
+                        ?.inventory
+                        ?.carTypes
+                        ?.fareDetails
+                        ?.extraCharges
+                        ?.parkingCharges;
+
+                    final isParkingExcluded =
+                        parkingTax?.isIncludedInBaseFare == false &&
+                            parkingTax?.isIncludedInGrandTotal == false;
+
+                    if (_country == null) {
+                      return Center(child: buildShimmer());
+                    }
+
+                    if (_country!.toLowerCase() == 'india') {
+                      return Card(
+                        color: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                              color: AppColors.greyBorder1, width: 1),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Obx(() {
+                            if (cabBookingController.indiaData.value == null) {
+                              return buildShimmer();
+                            }
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Card Heading
+                                Text(
+                                  'Inclusions / Exclusions',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                // Icon and Text Row
+
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isStateChargeExcluded
+                                          ? Icons.cancel
+                                          : Icons.check_circle,
+                                      color: isStateChargeExcluded
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isStateChargeExcluded
+                                            ? 'State Charge Excluded'
+                                            : 'State Charge Included',
+                                        style: CommonFonts.bodyText3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      istollExcluded
+                                          ? Icons.cancel
+                                          : Icons.check_circle,
+                                      color: istollExcluded
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isStateChargeExcluded
+                                            ? 'Toll Charge Excluded'
+                                            : 'Toll Charge Included',
+                                        style: CommonFonts.bodyText3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isNightExcluded
+                                          ? Icons.cancel
+                                          : Icons.check_circle,
+                                      color: isNightExcluded
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isNightExcluded
+                                            ? 'Night Charge Excluded'
+                                            : 'Night Charge Included',
+                                        style: CommonFonts.bodyText3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isWaitingExcluded
+                                          ? Icons.cancel
+                                          : Icons.check_circle,
+                                      color: isWaitingExcluded
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isWaitingExcluded
+                                            ? 'Waiting Charge Excluded'
+                                            : 'Waiting Charge Included',
+                                        style: CommonFonts.bodyText3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isParkingExcluded
+                                          ? Icons.cancel
+                                          : Icons.check_circle,
+                                      color: isParkingExcluded
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isParkingExcluded
+                                            ? 'Parking Charge Excluded'
+                                            : 'Parking Charge Included',
+                                        style: CommonFonts.bodyText3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      );
+                    }
+
+                    return SizedBox();
+                    // Card(
+                    //    color: Colors.white,
+                    //    elevation: 0,
+                    //    shape: RoundedRectangleBorder(
+                    //      borderRadius: BorderRadius.circular(12),
+                    //      side: BorderSide(
+                    //          color: AppColors.greyBorder1, width: 1),
+                    //    ),
+                    //    child: Padding(
+                    //      padding: const EdgeInsets.all(16),
+                    //      child: Column(
+                    //        crossAxisAlignment: CrossAxisAlignment.start,
+                    //        children: [
+                    //          // Card Heading
+                    //          Text(
+                    //            'Inclusions / Exclusions',
+                    //            style: TextStyle(
+                    //              fontSize: 16,
+                    //              fontWeight: FontWeight.w600,
+                    //            ),
+                    //          ),
+                    //          const SizedBox(height: 12),
+                    //          // Icon and Text Row
+                    //          Row(
+                    //            children: [
+                    //              Icon(Icons.check_circle,
+                    //                  color: Colors.green, size: 20),
+                    //              const SizedBox(width: 12),
+                    //              Expanded(
+                    //                child: Text(
+                    //                  'State Charge included',
+                    //                  style: CommonFonts.bodyText3,
+                    //                ),
+                    //              ),
+                    //            ],
+                    //          ),
+                    //        ],
+                    //      ),
+                    //    ),
+                    //  );
+                  }),
+
+                  SizedBox(
+                    height: 12,
+                  ),
                   ExtrasSelectionCard(),
                   SizedBox(
                     height: 8,
@@ -113,14 +395,18 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                   // SizedBox(
                   //   height: 16,
                   // ),
-                  TravelerDetailsForm(),
+                  TravelerDetailsForm(
+                    formKey: formKey,
+                  ),
 
                   DiscountCouponsCard()
                 ],
               ),
             )),
       ),
-      bottomSheet: BottomPaymentBar(),
+      bottomSheet: BottomPaymentBar(
+        formKey: formKey,
+      ),
     );
   }
 
@@ -137,7 +423,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
             side: BorderSide(color: Colors.grey.shade300, width: 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -184,13 +471,16 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       ),
     );
   }
-
 }
 
 Widget _buildIndiaCard(IndiaCabBooking data) {
   final carInventory = data.inventory;
   final carTripType = data.tripType;
   final carOffer = data.offerObject;
+
+  num calculateOriginalPrice(num baseFare, num discountPercent) {
+    return baseFare + (baseFare * discountPercent / 100);
+  }
 
   return Padding(
     padding: const EdgeInsets.only(bottom: 16.0),
@@ -208,65 +498,156 @@ Widget _buildIndiaCard(IndiaCabBooking data) {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Image.network(
-                  carInventory?.carTypes?.carImageUrl ?? '',
-                  width: 96,
-                  height: 66,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                      'assets/images/inventory_car.png',
-                      width: 96,
-                      height: 66,
-                      fit: BoxFit.contain,
-                    );
-                  },
+                Transform.translate(
+                  offset: Offset(0, -6),
+                  child: Column(
+                    children: [
+                      Image.network(
+                        carInventory?.carTypes?.carImageUrl ?? '',
+                        width: 80,
+                        height: 50,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/inventory_car.png',
+                            width: 80,
+                            height: 50,
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      ),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Color(0xFFE3F2FD),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          side: const BorderSide(
+                              color: Colors.transparent, width: 1),
+                          foregroundColor: Color(0xFF1565C0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        onPressed: () {},
+                        child: Text(
+                          carInventory?.carTypes?.type ?? '',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Text(cabBookingController.indiaData.value?.inventory?.carTypes?.carTagLine ?? '', style: CommonFonts.bodyText1Bold),
-                      Text(carInventory?.carTypes?.carTagLine ?? '',
-                          style: CommonFonts.bodyText1Bold),
-                      const SizedBox(height: 4),
+                      // Car Tagline
                       Row(
                         children: [
                           Text(
-                              carInventory?.carTypes?.rating?.ratePoints
-                                      .toString() ??
-                                  '',
-                              style: CommonFonts.bodyText1),
-                          const SizedBox(width: 4),
-                          Icon(Icons.star, color: AppColors.yellow1, size: 12),
+                            carInventory?.carTypes?.carTagLine ?? '',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.mainButtonBg,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 8,
+                          ),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: AppColors.mainButtonBg,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              side: const BorderSide(
+                                  color: AppColors.mainButtonBg, width: 1),
+                              foregroundColor: Colors.white,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            onPressed: () {},
+                            child: Text(
+                              carInventory?.carTypes?.combustionType != null
+                                  ? carInventory?.carTypes?.combustionType ?? ''
+                                  : "",
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      Text('or similar',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              fontSize: 12,
+                              color: Colors.grey[600])),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Rating
                       Row(
                         children: [
+                          Text(
+                            carInventory?.carTypes?.rating?.ratePoints
+                                    .toString() ??
+                                '',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.star, color: AppColors.yellow1, size: 12),
+                          const SizedBox(width: 4),
                           Icon(Icons.airline_seat_recline_extra, size: 13),
                           const SizedBox(width: 4),
-                          Text('${carInventory?.carTypes?.seats} Seat',
-                              style: CommonFonts.bodyTextXS),
+                          Text(
+                            '${carInventory?.carTypes?.seats} Seat',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey[700],
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Icon(Icons.luggage_outlined, size: 13),
                           const SizedBox(width: 4),
-                          Text('${carInventory?.carTypes?.luggageCapacity}',
-                              style: CommonFonts.bodyTextXS),
+                          Text(
+                            '${carInventory?.carTypes?.luggageCapacity}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey[700],
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Icon(Icons.speed_outlined, size: 13),
                           const SizedBox(width: 4),
                           Text(
                             '${carInventory?.distanceBooked} km',
-                            style: CommonFonts.bodyTextXS,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey[700],
+                            ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 6),
+
+                      // Seats, luggage, distance
                     ],
                   ),
                 ),
-                const Icon(Icons.info_outline, size: 16),
+
+                // Price & Book Button
               ],
             ),
           ],
@@ -306,27 +687,101 @@ Widget _buildGlobalCard() {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Image.network(
-                    results.vehicleImageLink ?? '',
-                    width: 66,
-                    height: 66,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/inventory_car.png',
-                        width: 66,
-                        height: 66,
-                        fit: BoxFit.contain,
-                      );
-                    },
+                  Transform.translate(
+                    offset: Offset(0, 0),
+                    child: Column(
+                      children: [
+                        Image.network(
+                          results.vehicleImageLink ?? '',
+                          width: 80,
+                          height: 50,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/inventory_car.png',
+                              width: 80,
+                              height: 50,
+                              fit: BoxFit.contain,
+                            );
+                          },
+                        ),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Color(0xFFE3F2FD),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            side: const BorderSide(
+                                color: Colors.transparent, width: 1),
+                            foregroundColor: Color(0xFF1565C0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () {},
+                          child: Text(
+                            fareDetails?.vehicleCategory ?? '',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(results.title ?? '',
-                            style: CommonFonts.bodyText1Bold),
+                        Text(
+                          results.title ?? '',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.mainButtonBg,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 2,
+                        ),
+                        Row(
+                          children: [
+                            Text('or similar',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 12,
+                                    color: Colors.grey[600])),
+                            SizedBox(
+                              width: 8,
+                            ),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: AppColors.mainButtonBg,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                side: const BorderSide(
+                                    color: AppColors.mainButtonBg, width: 1),
+                                foregroundColor: Colors.white,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              onPressed: () {},
+                              child: Text(
+                                fareDetails?.fuelType != null
+                                    ? fareDetails?.fuelType ?? ''
+                                    : "",
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -337,11 +792,7 @@ Widget _buildGlobalCard() {
                             const SizedBox(width: 4),
                             const Icon(Icons.star,
                                 color: AppColors.yellow1, size: 12),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
+                            const SizedBox(width: 4),
                             const Icon(Icons.airline_seat_recline_extra,
                                 size: 13),
                             const SizedBox(width: 4),
@@ -364,7 +815,6 @@ Widget _buildGlobalCard() {
                       ],
                     ),
                   ),
-                  const Icon(Icons.info_outline, size: 16),
                 ],
               ),
             ],
@@ -374,7 +824,6 @@ Widget _buildGlobalCard() {
     );
   });
 }
-
 
 class BookingTopBar extends StatefulWidget {
   @override
@@ -589,7 +1038,6 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
     return _buildExtrasCard(title: title, extras: extras);
   }
 
-
   Widget _buildExtrasCard({
     required String title,
     required List<SelectableExtra> extras,
@@ -651,7 +1099,8 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
                                 extras[index].isSelected = val;
 
                                 // Store selected IDs in controller
-                                cabBookingController.toggleExtraId(item.id, val);
+                                cabBookingController.toggleExtraId(
+                                    item.id, val);
 
                                 // Existing logic
                                 cabBookingController.toggleExtraFacility(
@@ -682,8 +1131,8 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
                             padding: EdgeInsets.only(right: 8.0),
                             child: Text(
                               'per day',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.black54),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.black54),
                             ),
                           ),
                         ],
@@ -697,7 +1146,6 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
       ),
     );
   }
-
 }
 
 class ExtraItem {
@@ -713,6 +1161,10 @@ class ExtraItem {
 }
 
 class TravelerDetailsForm extends StatefulWidget {
+  final GlobalKey<FormState> formKey;
+
+  const TravelerDetailsForm(
+      {super.key, required this.formKey}); // ✅ Accept form key from parent
   @override
   _TravelerDetailsFormState createState() => _TravelerDetailsFormState();
 }
@@ -782,198 +1234,186 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      margin: EdgeInsets.only(bottom: 20),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.greyBorder1, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Top Row: Title + Info icon
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Travelers Details",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                Icon(Icons.info_outline, size: 18, color: Colors.black54),
-              ],
-            ),
+    return Form(
+      // ✅ Wrap form
+      key: widget.formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction, // ✅ show on change
 
-            const SizedBox(height: 12),
-
-            /// Title Buttons
-            Row(
-              children: titles.map((title) {
-                final isSelected = selectedTitle == title;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                    label: Text(title),
-                    selected: isSelected,
-                    selectedColor: AppColors.mainButtonBg,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      side: BorderSide(color: AppColors.mainButtonBg),
-                    ),
-                    showCheckmark: false, // 🔍 This removes the check icon
-                    onSelected: (_) => setState(() {
-                      selectedTitle = title;
-                    }),
-                  ),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 16),
-
-            /// Full Name
-            _buildTextField(
-                hint: "Enter full name", controller: firstNameController),
-
-            /// Email
-            _buildTextField(
-                hint: "Enter email id", controller: emailController),
-
-            /// Phone
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.grey.shade300,
-                    width: 1.0,
-                  ),
-                ),
-              ),
-              child: InternationalPhoneNumberInput(
-                selectorConfig: const SelectorConfig(
-                  selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
-                  useBottomSheetSafeArea: true,
-                  showFlags: true,
-                ),
-                ignoreBlank: false,
-                autoValidateMode: AutovalidateMode.disabled,
-                selectorTextStyle: const TextStyle(color: Colors.black),
-                initialValue: number,
-                textFieldController: contactController,
-                formatInput: false,
-                keyboardType:
-                    const TextInputType.numberWithOptions(signed: true),
-                validator: (_) => null,
-                maxLength: 10,
-                inputDecoration: const InputDecoration(
-                  hintText: "Enter Mobile Number",
-                  hintStyle: TextStyle(color: Colors.black45),
-                  counterText: "",
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 0, vertical: 14),
-                  border: InputBorder.none,
-                ),
-                onInputChanged: (PhoneNumber value) async {
-                  contact = value.phoneNumber
-                          ?.replaceFirst(value.dialCode ?? '', '') ??
-                      '';
-                  contactCode = value.dialCode?.replaceAll('+', '');
-
-                  await StorageServices.instance.save('contact', contact ?? '');
-                  await StorageServices.instance
-                      .save('contactCode', contactCode ?? '');
-
-                  print("📱 Contact updated (no country code): $contact");
-                  print("📞 Dial Code updated: $contactCode");
-
-                  setState(() {});
-                },
-              ),
-            ),
-
-            /// Pickup
-
-            SizedBox(
-              height: 8,
-            ),
-            _buildTextField(
-                hint: "Enter Pickup Address",
-                tag: "",
-                controller: sourceController),
-
-            /// Drop
-            _buildTextField(
-                hint: "Enter Dropping Address",
-                tag: "",
-                controller: destinationController),
-
-            // flight no for airport trips
-            searchCabInventoryController
-                        .indiaData.value?.result?.tripType?.currentTripCode ==
-                    '2'
-                ? _buildTextField(
-                    hint: "Enter Flight Number", controller: flightNoController)
-                : SizedBox(),
-            // optional remarks
-            _buildTextField(hint: "Remarks", controller: remarkController),
-            SizedBox(
-              height: 8,
-            ),
-
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  isGstSelected = !isGstSelected;
-                });
-              },
-              child: Row(
+      child: Card(
+        color: Colors.white,
+        margin: EdgeInsets.only(bottom: 20),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: AppColors.greyBorder1, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CustomCheckbox(
-                    value: isGstSelected,
-                    onChanged: (val) {
-                      setState(() {
-                        isGstSelected = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'I have a GST number (Optional)',
-                      style: TextStyle(fontSize: 14, color: Colors.black87),
-                    ),
-                  ),
+                  Text("Travelers Details",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  Icon(Icons.info_outline, size: 18, color: Colors.black54),
                 ],
               ),
-            ),
+              SizedBox(height: 12),
 
-            SizedBox(
-              height: 16,
-            ),
+              /// Title Chips
+              Row(
+                children: titles.map((title) {
+                  final isSelected = selectedTitle == title;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(title),
+                      selected: isSelected,
+                      selectedColor: AppColors.mainButtonBg,
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        color: isSelected ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        side: BorderSide(color: AppColors.mainButtonBg),
+                      ),
+                      showCheckmark: false,
+                      onSelected: (_) => setState(() => selectedTitle = title),
+                    ),
+                  );
+                }).toList(),
+              ),
+              SizedBox(height: 16),
 
-            isGstSelected
-                ? _buildTextField(
-                    hint: "Enter GST Number",
-                    tag: "",
-                    controller: gstController)
-                : SizedBox(),
+              /// Fields
+              _buildTextField(
+                hint: "Enter full name",
+                controller: firstNameController,
+                validator: (v) =>
+                    v!.trim().isEmpty ? "Full name is required" : null,
+              ),
 
-            SizedBox(
-              height: 40,
-            )
-          ],
+              _buildTextField(
+                hint: "Enter email id",
+                controller: emailController,
+                validator: (v) {
+                  if (v!.isEmpty) return "Email is required";
+                  final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                  return !regex.hasMatch(v) ? "Enter a valid email" : null;
+                },
+              ),
+
+              /// Phone
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                      bottom:
+                          BorderSide(color: Colors.grey.shade300, width: 1.0)),
+                ),
+                child: InternationalPhoneNumberInput(
+                  selectorConfig: const SelectorConfig(
+                    selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
+                    useBottomSheetSafeArea: true,
+                    showFlags: true,
+                  ),
+                  initialValue: number,
+                  textFieldController: contactController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(signed: true),
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.length != 10) {
+                      return "Enter valid 10-digit mobile number";
+                    }
+                    return null;
+                  },
+                  inputDecoration: const InputDecoration(
+                    hintText: "Enter Mobile Number",
+                    counterText: "",
+                    border: InputBorder.none,
+                  ),
+                  onInputChanged: (PhoneNumber value) async {
+                    contact = value.phoneNumber
+                            ?.replaceFirst(value.dialCode ?? '', '') ??
+                        '';
+                    contactCode = value.dialCode?.replaceAll('+', '');
+                  },
+                ),
+              ),
+
+              SizedBox(height: 8),
+              _buildTextField(
+                hint: "Enter Pickup Address",
+                controller: sourceController,
+                validator: (v) =>
+                    v!.trim().isEmpty ? "Pickup address is required" : null,
+              ),
+
+              _buildTextField(
+                hint: "Enter Dropping Address",
+                controller: destinationController,
+                validator: (v) =>
+                    v!.trim().isEmpty ? "Drop address is required" : null,
+              ),
+
+              /// Flight No only for trip code 2
+              if (searchCabInventoryController
+                      .indiaData.value?.result?.tripType?.currentTripCode ==
+                  '2')
+                _buildTextField(
+                  hint: "Enter Flight Number",
+                  controller: flightNoController,
+                  validator: (v) =>
+                      v!.trim().isEmpty ? "Flight number is required" : null,
+                ),
+
+              _buildTextField(hint: "Remarks", controller: remarkController),
+
+              SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setState(() => isGstSelected = !isGstSelected),
+                child: Row(
+                  children: [
+                    CustomCheckbox(
+                        value: isGstSelected,
+                        onChanged: (val) =>
+                            setState(() => isGstSelected = val)),
+                    SizedBox(width: 8),
+                    Expanded(
+                        child: Text('I have a GST number (Optional)',
+                            style: TextStyle(fontSize: 14))),
+                  ],
+                ),
+              ),
+
+              if (isGstSelected)
+                _buildTextField(
+                  hint: "Enter GST Number",
+                  controller: gstController,
+                  validator: (v) {
+                    if (isGstSelected && v!.isEmpty)
+                      return "GST number is required";
+                    if (isGstSelected &&
+                        !RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')
+                            .hasMatch(v!)) {
+                      return "Enter valid GST number";
+                    }
+                    return null;
+                  },
+                ),
+
+              SizedBox(height: 40),
+
+              /// Submit Button
+            ],
+          ),
         ),
       ),
     );
@@ -982,13 +1422,14 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   Widget _buildTextField(
       {required String hint,
       required TextEditingController controller,
+      String? Function(String?)? validator,
       String? tag}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          TextFormField(
             controller: controller,
             decoration: InputDecoration(
               hintText: hint,
@@ -1001,6 +1442,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
               ),
               contentPadding: EdgeInsets.symmetric(vertical: 4),
             ),
+            validator: validator,
             onChanged: (value) async {
               if (controller == firstNameController) {
                 firstName = value;
@@ -1036,37 +1478,6 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
       ),
     );
   }
-
-  // Widget _buildPhoneField() {
-  //   return Padding(
-  //     padding: const EdgeInsets.only(bottom: 16.0),
-  //     child: Row(
-  //       children: [
-  //         Text(
-  //           "+91",
-  //           style: TextStyle(fontWeight: FontWeight.w600),
-  //         ),
-  //         const SizedBox(width: 12),
-  //         Expanded(
-  //           child: TextField(
-  //             keyboardType: TextInputType.phone,
-  //             decoration: InputDecoration(
-  //               hintText: "Enter mobile number",
-  //               hintStyle: TextStyle(color: Colors.black45),
-  //               enabledBorder: UnderlineInputBorder(
-  //                 borderSide: BorderSide(color: Colors.grey.shade300),
-  //               ),
-  //               focusedBorder: UnderlineInputBorder(
-  //                 borderSide: BorderSide(color: Colors.black54),
-  //               ),
-  //               contentPadding: EdgeInsets.symmetric(vertical: 4),
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }
 
 class SelectableExtra {
@@ -1391,13 +1802,22 @@ class _CouponScreenState extends State<CouponScreen> {
 }
 
 class BottomPaymentBar extends StatefulWidget {
+  final GlobalKey<FormState> formKey;
+
+  const BottomPaymentBar({super.key, required this.formKey});
+
   @override
   _BottomPaymentBarState createState() => _BottomPaymentBarState();
 }
 
 class _BottomPaymentBarState extends State<BottomPaymentBar> {
   final CabBookingController cabBookingController = Get.find(); // ✅ FIXED
-  final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
+  final FetchReservationBookingData fetchReservationBookingData =
+      Get.put(FetchReservationBookingData());
+  final SourceLocationController sourceController =
+      Get.put(SourceLocationController());
+  final DestinationLocationController destinationController =
+      Get.put(DestinationLocationController());
 
   int selectedOption = 0;
   String? _country;
@@ -1663,26 +2083,24 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                 "make_year": ""
                               },
                               "source": {
-                                "sourceTitle": sourceTitle,
-                                "sourcePlaceId": sourcePlaceId,
-                                "sourceCity": sourceCity,
-                                "sourceState": sourceState,
-                                "sourceCountry": sourceCountry,
-                                "sourceType": sourceTypes,
-                                "sourceLat": sourceLat,
-                                "sourceLng": sourceLng,
-                                "terms": sourceTerms
+                                "address": sourceController.title.value,
+                                "latitude": sourceLat,
+                                "longitude": sourceLng,
+                                "city": sourceController.city.value,
+                                "place_id": sourceController.placeId.value,
+                                "types": sourceController.types.toList(),
+                                "state": sourceController.state.value,
+                                "country": sourceController.country.value
                               },
                               "destination": {
-                                "destinationTitle": destinationTitle,
-                                "destinationPlaceId": destinationPlaceId,
-                                "destinationCity": destinationCity,
-                                "destinationState": destinationState,
-                                "destinationCountry": destinationCountry,
-                                "destinationType": destinationType,
-                                "destinationLat": destinationLat,
-                                "destinationLng": destinationLng,
-                                "terms": destinationTerms
+                                "address": destinationController.title.value,
+                                "latitude": destinationLat,
+                                "longitude": destinationLng,
+                                "city": destinationController.city.value,
+                                "place_id": destinationController.placeId.value,
+                                "types": destinationController.types.toList(),
+                                "state": destinationController.state.value,
+                                "country": destinationController.country.value
                               },
                               "stopovers": [],
                               "trip_type_details": {
@@ -1815,9 +2233,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   provisionalRequestData:
                                       provisionalRequestData,
                                   context: context)
-                              .then((value) {
-                            GoRouter.of(context).pop();
-                          });
+                              .then((value) {});
+                          GoRouter.of(context).pop();
                         }
                       : () async {
                           globalPaymentController.showLoader(context);
@@ -1968,26 +2385,24 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     ''
                               },
                               "source": {
-                                "sourceTitle": sourceTitle,
-                                "sourcePlaceId": sourcePlaceId,
-                                "sourceCity": sourceCity,
-                                "sourceState": sourceState,
-                                "sourceCountry": sourceCountry,
-                                "sourceType": sourceTypes,
-                                "sourceLat": sourceLat,
-                                "sourceLng": sourceLng,
-                                "terms": sourceTerms
+                                "address": sourceController.title.value,
+                                "latitude": sourceLat,
+                                "longitude": sourceLng,
+                                "city": sourceController.city.value,
+                                "place_id": sourceController.placeId.value,
+                                "types": sourceController.types.toList(),
+                                "state": sourceController.state.value,
+                                "country": sourceController.country.value
                               },
                               "destination": {
-                                "destinationTitle": destinationTitle,
-                                "destinationPlaceId": destinationPlaceId,
-                                "destinationCity": destinationCity,
-                                "destinationState": destinationState,
-                                "destinationCountry": destinationCountry,
-                                "destinationType": destinationType,
-                                "destinationLat": destinationLat,
-                                "destinationLng": destinationLng,
-                                "terms": destinationTerms
+                                "address": destinationController.title.value,
+                                "latitude": destinationLat,
+                                "longitude": destinationLng,
+                                "city": destinationController.city.value,
+                                "place_id": destinationController.placeId.value,
+                                "types": destinationController.types.toList(),
+                                "state": destinationController.state.value,
+                                "country": destinationController.country.value
                               },
                               "stopovers": [],
                               "trip_type_details": searchCabInventoryController
@@ -2081,6 +2496,26 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                             "userType": "CUSTOMER",
                           };
 
+                          final isValid =
+                              widget.formKey.currentState?.validate() ?? false;
+
+                          if (!isValid) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text(
+                                    "Please fill all required fields correctly."),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                margin: const EdgeInsets.all(16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if(isValid){
                           await globalPaymentController
                               .verifySignup(
                                   requestData: requestData,
@@ -2091,7 +2526,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                               .then((value) {
                             GoRouter.of(context).pop();
                           });
-                        }))
+                        }}))
         ],
       ),
     );
@@ -2200,11 +2635,11 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
   final ApplyCouponController applyCouponController =
       Get.put(ApplyCouponController());
   final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
+      Get.put(BookingRideController());
   final CabBookingController cabBookingController =
-  Get.put(CabBookingController());
+      Get.put(CabBookingController());
   final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
+      Get.put(SearchCabInventoryController());
 
   @override
   Widget build(BuildContext context) {
@@ -2225,7 +2660,10 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
               children: [
                 const Text(
                   'Discounts Coupons',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w400, color: Colors.black),
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.black),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -2237,14 +2675,23 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           Text(
                             selectedCoupon ?? 'No coupon applied',
                             style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF333333)),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF333333)),
                           ),
-                          SizedBox(height: 8,),
-                          Container(height: 1, color: Color(0xFFE8E8E8),)
+                          SizedBox(
+                            height: 8,
+                          ),
+                          Container(
+                            height: 1,
+                            color: Color(0xFFE8E8E8),
+                          )
                         ],
                       ),
                     ),
-                    SizedBox(width: 8,),
+                    SizedBox(
+                      width: 8,
+                    ),
                     Opacity(
                       opacity: 0.3,
                       child: SizedBox(
@@ -2258,7 +2705,8 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           },
                           style: TextButton.styleFrom(
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 6,horizontal: 12),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                               side: const BorderSide(color: Color(0xFF333333)),
@@ -2266,7 +2714,10 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           ),
                           child: const Text(
                             'CLEAR',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF333333)),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF333333)),
                           ),
                         ),
                       ),
@@ -2277,7 +2728,10 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                   const SizedBox(height: 4),
                   const Text(
                     'Congratulations! Your discount has been applied successfully.',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Color(0xFF00C310)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF00C310)),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -2286,25 +2740,27 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                     title: coupon.codeName ?? '',
                     subtitle: coupon.codeDescription!,
                     selected: selectedCoupon == coupon.codeName.toString(),
-                    onTap: () async{
-                      final token = await StorageServices.instance.read('token');
+                    onTap: () async {
+                      final token =
+                          await StorageServices.instance.read('token');
                       final Map<String, dynamic> requestData = {
                         "userID": null,
                         "couponID": coupon.id,
                         "totalAmount": cabBookingController.totalFare,
                         "sourceLocation": bookingRideController.prefilled.value,
-                        "destinationLocation": bookingRideController.prefilledDrop.value,
+                        "destinationLocation":
+                            bookingRideController.prefilledDrop.value,
                         "serviceType": null,
                         "bankName": null,
                         "userType": "CUSTOMER",
                         "bookingDateTime":
-                        await StorageServices.instance.read('userDateTime'),
+                            await StorageServices.instance.read('userDateTime'),
                         "appliedCoupon": token != null ? 1 : 0,
                         "payNow": cabBookingController.actualFare,
                         "tripType": searchCabInventoryController
                             .indiaData.value?.result?.tripType?.currentTripCode,
-                        "vehicleType":
-                        cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
+                        "vehicleType": cabBookingController
+                                .indiaData.value?.inventory?.carTypes?.type ??
                             ''
                       };
                       await applyCouponController.applyCoupon(
@@ -2312,7 +2768,6 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                       setState(() {
                         selectedCoupon = coupon.codeName.toString();
                       });
-
                     },
                   ),
               ],
@@ -2329,7 +2784,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
               final coupon = fetchCouponController.coupons[index];
               return CouponCard(
                 code: coupon.codeName!,
-                id: coupon.id??'',
+                id: coupon.id ?? '',
                 title: coupon.codeDescription!,
                 subtitle: coupon.codePercentage.toString()!,
                 imageUrl: 'https://test.wticabs.com:5001${coupon.imageUrl!}',
@@ -2361,7 +2816,6 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-
     return Column(
       children: [
         InkWell(
@@ -2405,11 +2859,16 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                     children: [
                       Text(title,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w500, fontSize: 12, color: Color(0xFF333333))),
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: Color(0xFF333333))),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF727272)),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF727272)),
                       ),
                     ],
                   ),
@@ -2445,7 +2904,8 @@ class CouponCard extends StatefulWidget {
     required this.imageUrl,
     required this.onApply,
     required this.selectedCoupon,
-    required this.onSelected, required this.id,
+    required this.onSelected,
+    required this.id,
   }) : super(key: key);
 
   @override
@@ -2454,18 +2914,18 @@ class CouponCard extends StatefulWidget {
 
 class _CouponCardState extends State<CouponCard> {
   final ApplyCouponController applyCouponController =
-  Get.put(ApplyCouponController());
+      Get.put(ApplyCouponController());
   final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
+      Get.put(BookingRideController());
   final CabBookingController cabBookingController =
-  Get.put(CabBookingController());
+      Get.put(CabBookingController());
   final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
+      Get.put(SearchCabInventoryController());
   @override
   Widget build(BuildContext context) {
     return InkWell(
       splashColor: Colors.transparent,
-      onTap: () async{
+      onTap: () async {
         final token = await StorageServices.instance.read('token');
         final Map<String, dynamic> requestData = {
           "userID": null,
@@ -2477,14 +2937,14 @@ class _CouponCardState extends State<CouponCard> {
           "bankName": null,
           "userType": "CUSTOMER",
           "bookingDateTime":
-          await StorageServices.instance.read('userDateTime'),
+              await StorageServices.instance.read('userDateTime'),
           "appliedCoupon": token != null ? 1 : 0,
           "payNow": cabBookingController.actualFare,
           "tripType": searchCabInventoryController
               .indiaData.value?.result?.tripType?.currentTripCode,
           "vehicleType":
-          cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
-              ''
+              cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
+                  ''
         };
         await applyCouponController.applyCoupon(
             requestData: requestData, context: context);
@@ -2502,12 +2962,14 @@ class _CouponCardState extends State<CouponCard> {
                 decoration: BoxDecoration(
                   gradient: widget.selectedCoupon == widget.code
                       ? const LinearGradient(
-                    colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
+                          colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
                       : null,
-                  color: widget.selectedCoupon == widget.code ? null : Colors.white,
+                  color: widget.selectedCoupon == widget.code
+                      ? null
+                      : Colors.white,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(12),
                     bottomLeft: Radius.circular(12),
@@ -2520,7 +2982,8 @@ class _CouponCardState extends State<CouponCard> {
                     Padding(
                       padding: EdgeInsets.only(left: 16, top: 16),
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(12)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(12)),
                         child: Image.asset(
                           'assets/images/coupon_image.png',
                           width: 64,
@@ -2557,15 +3020,18 @@ class _CouponCardState extends State<CouponCard> {
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
-
                             const SizedBox(height: 2),
-                            Text('Save ₹25 on all transactions above ₹250.', style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF676767)
-
-                            ), overflow: TextOverflow.ellipsis,
-                              maxLines: 1,),
+                            Text(
+                              'Save ₹25 on all transactions above ₹250.',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF676767)),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                             const SizedBox(height: 2),
-                             Text(
+                            Text(
                               '*Terms & conditions applicable',
                               style: TextStyle(
                                 fontSize: 10,
@@ -2578,14 +3044,19 @@ class _CouponCardState extends State<CouponCard> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 10),
                       margin: EdgeInsets.only(top: 16, left: 16),
                       decoration: BoxDecoration(
-                        color: widget.selectedCoupon == widget.code ? Color(0xFF00C400) :  Color(0xFFBBBBBB),
+                        color: widget.selectedCoupon == widget.code
+                            ? Color(0xFF00C400)
+                            : Color(0xFFBBBBBB),
                         borderRadius: BorderRadius.circular(2),
                       ),
                       child: Text(
-                        widget.selectedCoupon == widget.code ? 'Applied' : 'Apply',
+                        widget.selectedCoupon == widget.code
+                            ? 'Applied'
+                            : 'Apply',
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
@@ -2593,7 +3064,6 @@ class _CouponCardState extends State<CouponCard> {
                         ),
                       ),
                     )
-
 
                     // Apply button
                   ],
@@ -2603,7 +3073,9 @@ class _CouponCardState extends State<CouponCard> {
 
             // Right cut image
             Image.asset(
-              widget.selectedCoupon == widget.code ? 'assets/images/coupon_gradient.png' : 'assets/images/coupon_white_cut.png',
+              widget.selectedCoupon == widget.code
+                  ? 'assets/images/coupon_gradient.png'
+                  : 'assets/images/coupon_white_cut.png',
               width: 30,
               height: 95,
               fit: BoxFit.fill,
@@ -2674,4 +3146,67 @@ Widget buildShimmer() {
       ),
     ),
   );
+}
+
+class ExtraChargesWidget extends StatelessWidget {
+  final dynamic extraCharges; // This will be your model's extraCharges object
+
+  const ExtraChargesWidget({super.key, required this.extraCharges});
+
+  Widget _buildChargeRow(String label, dynamic charge) {
+    final isExcluded = charge?.isIncludedInBaseFare == false &&
+        charge?.isIncludedInGrandTotal == false;
+
+    // Amount handling
+    final amount = charge?.amount ?? 0;
+
+    // Extra details
+    String extraInfo = '';
+    if (charge?.applicableTimeFrom != null &&
+        charge?.applicableTimeTill != null) {
+      extraInfo =
+          ' (${charge.applicableTimeFrom}:00 - ${charge.applicableTimeTill}:00)';
+    }
+    if (charge?.freeWaitingTime != null) {
+      extraInfo += ' | Free: ${charge.freeWaitingTime} mins';
+    }
+    if (charge?.applicableTime != null) {
+      extraInfo += ' | Every ${charge.applicableTime} mins';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isExcluded ? Icons.cancel : Icons.check_circle,
+            color: isExcluded ? Colors.redAccent : Colors.green,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${isExcluded ? '$label Excluded' : '$label Included'}'
+              ' - ₹$amount$extraInfo',
+              style: const TextStyle(
+                  fontSize: 14), // Replace with CommonFonts.bodyText3
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _buildChargeRow('Night Charges', extraCharges?.nightCharges),
+        _buildChargeRow('Toll Charges', extraCharges?.tollCharges),
+        _buildChargeRow('State Tax', extraCharges?.stateTax),
+        _buildChargeRow('Parking Charges', extraCharges?.parkingCharges),
+        _buildChargeRow('Waiting Charges', extraCharges?.waitingCharges),
+      ],
+    );
+  }
 }

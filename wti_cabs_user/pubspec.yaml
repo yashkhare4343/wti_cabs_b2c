@@ -67,6 +67,9 @@ dependencies:
   open_file: ^3.5.10
   device_info_plus: ^11.3.0
   flutter_stripe: ^11.5.0
+  google_maps_flutter: ^2.12.3
+  location: ^8.0.1
+  jwt_decoder: ^2.0.1
 #  flutter_stripe: ^11.5.0
 dev_dependencies:
   flutter_test:

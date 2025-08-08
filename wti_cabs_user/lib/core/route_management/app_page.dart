@@ -6,6 +6,7 @@ import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
 import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
+import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/screens/offers/offers.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_failure.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_success.dart';
@@ -72,6 +73,7 @@ class AppPages{
           path: AppRoutes.manageBookings,
           builder: (context, state) => ManageBookings(),
         ),
+
       ],
    );
 }

@@ -49,7 +49,7 @@ class IndiaPaymentController extends GetxController {
       print("📤 Signup request: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/user/createUser'),
+        Uri.parse('https://test.wticabs.com:5001/global/app/v1/user/createUser?isMobile=true'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -159,11 +159,13 @@ class IndiaPaymentController extends GetxController {
       "razorpay_payment_id": response.paymentId,
       "razorpay_signature": response.signature
     };
+    await StorageServices.instance.save('reservationId', response.orderId??'');
 
     await verifyPaymentStatus(verifyPayload).then((value){
       WidgetsBinding.instance.addPostFrameCallback((_) {
         GoRouter.of(_currentContext).push(AppRoutes.paymentSuccess);
       });
+      GoRouter.of(_currentContext).pop();
     }).then((value){
       fetchReservationBookingData.fetchReservationData();
 
@@ -177,6 +179,7 @@ class IndiaPaymentController extends GetxController {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
     });
+    GoRouter.of(_currentContext).pop();
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
@@ -202,7 +205,6 @@ class IndiaPaymentController extends GetxController {
 
       if (res.statusCode == 200) {
         paymentVerification = jsonDecode(res.body);
-        await StorageServices.instance.save('reservationId', paymentVerification?['isUpdated']['reservationId']);
 
         print("✅ Payment Verified: $paymentVerification");
       }
@@ -211,6 +213,8 @@ class IndiaPaymentController extends GetxController {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
       });
+      GoRouter.of(_currentContext).pop();
+
     } finally {
       isLoading.value = false;
     }

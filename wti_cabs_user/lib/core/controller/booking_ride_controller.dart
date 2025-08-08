@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
+import 'booking_validation.dart';
+
 class BookingRideController extends GetxController {
   var isLoading = false.obs;
   var errorMessage = ''.obs;
@@ -18,6 +20,24 @@ class BookingRideController extends GetxController {
   // New: pickup & drop
   Rx<DateTime?> pickupDateTime = Rx<DateTime?>(null);
   Rx<DateTime?> dropDateTime = Rx<DateTime?>(null);
+
+  var selectedIndex = 0.obs;
+  final BookingValidation controller = Get.put(BookingValidation());
+
+  void showErrorSnackbar(String message, BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+  void changeTab(int index) {
+  selectedIndex.value = index;
+  }
+
 
   @override
   void onInit() {

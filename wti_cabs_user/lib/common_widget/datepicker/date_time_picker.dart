@@ -152,56 +152,76 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
     final formattedTime =
     DateFormat('hh:mm a').format(selectedDateTime);
 
-    return Column(
+    return Row(
       children: [
-        GestureDetector(
-          onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.date),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.lightBlueBorder, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today,
-                    color: AppColors.bgGrey3, size: 15),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Drop Date', style: CommonFonts.bodyText5Black),
-                    Text(formattedDate, style: CommonFonts.bodyText1Black),
-                  ],
-                ),
-              ],
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.date),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AppColors.lightBlueBorder, width: 1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month_outlined, color: AppColors.bgGrey3, size: 20),
+
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Drop Date', style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        letterSpacing: 1.1,
+                      ),),
+                      Text(formattedDate, style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        GestureDetector(
-          onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.time),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.lightBlueBorder, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.watch_later_outlined,
-                    color: AppColors.bgGrey3, size: 15),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Drop Time', style: CommonFonts.bodyText5Black),
-                    Text(formattedTime, style: CommonFonts.bodyText1Black),
-                  ],
-                ),
-              ],
+        const SizedBox(width: 16),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _showCupertinoPicker(context, CupertinoDatePickerMode.time),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AppColors.lightBlueBorder, width: 1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.watch_later_outlined,
+                      color: AppColors.bgGrey3, size: 15),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Drop Time', style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        letterSpacing: 1.1,
+                      ),),
+                      Text(formattedTime, style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

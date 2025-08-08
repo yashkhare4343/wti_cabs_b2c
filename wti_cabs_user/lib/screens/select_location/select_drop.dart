@@ -5,14 +5,18 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../common_widget/buttons/quick_action_button.dart';
+import '../../common_widget/loader/popup_loader.dart';
 import '../../common_widget/textformfield/drop_google_place_text_field.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
+import '../trip_history_controller/trip_history_controller.dart';
 
 class SelectDrop extends StatefulWidget {
   const SelectDrop({super.key});
@@ -26,20 +30,18 @@ class _SelectDropState extends State<SelectDrop> {
   final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
   final TextEditingController dropController = TextEditingController();
+  final TripHistoryController tripController = Get.put(TripHistoryController());
+  final DestinationLocationController destinationController = Get.put(DestinationLocationController());
+
   List<String> _topRecentTrips = [];
 
   @override
   void initState() {
     super.initState();
-    _loadRecentTrips();
+    bookingRideController.prefilledDrop.value = '';
   }
 
-  Future<void> _loadRecentTrips() async {
-    final trips = await TripHistoryService.getTop2Trips();
-    setState(() {
-      _topRecentTrips = trips;
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -156,28 +158,65 @@ class _SelectDropState extends State<SelectDrop> {
                     leading: const Icon(Icons.location_on, size: 20),
                     title: Text(place.primaryText.split(',').first.trim(), style: CommonFonts.bodyText1Black),
                     subtitle: Text(place.secondaryText, style: CommonFonts.bodyText6Black),
-                    onTap: () async{
-                      dropController.text = place.primaryText;
-                      bookingRideController.prefilledDrop.value = place.primaryText;
-                      dropPlaceSearchController.dropPlaceId.value = place.placeId;
-                      dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
-                      if(placeSearchController.placeId.value.isNotEmpty){
-                      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);}
+                      onTap: () {
+                        // 🚀 1. Instant UI updates (no waiting)
+                        dropController.text = place.primaryText;
+                        bookingRideController.prefilledDrop.value = place.primaryText;
+                        dropPlaceSearchController.dropPlaceId.value = place.placeId;
 
-                      await StorageServices.instance.save('destinationPlaceId', place.placeId);
-                      await StorageServices.instance.save('destinationTitle', place.primaryText);
-                      await StorageServices.instance.save('destinationCity', place.city);
-                      await StorageServices.instance.save('destinationState', place.state);
-                      await StorageServices.instance.save('destinationCountry', place.country);
-                      await StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
-                      await StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+                        // 🚀 2. Navigate immediately
+                        FocusScope.of(context).unfocus();
+                        GoRouter.of(context).push(AppRoutes.bookingRide);
 
-                      await TripHistoryService.recordTrip('', dropController.text);
-                      await _loadRecentTrips();
+                        // 🧠 3. Background work (fire-and-forget, non-blocking)
+                        Future.microtask(() {
+                          // LatLng for drop (non-blocking)
+                          dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
 
-                      FocusScope.of(context).unfocus();
-                      GoRouter.of(context).pop();
-                    },
+                          // Optional: recordTrip + pickup lat/lng in parallel
+                          final pickupTitle = bookingRideController.prefilled.value;
+                          final pickupPlaceId = placeSearchController.placeId.value;
+
+                          if (pickupPlaceId.isNotEmpty) {
+                            placeSearchController.getLatLngDetails(pickupPlaceId, context);
+                          }
+
+                          tripController.recordTrip(
+                            pickupTitle,
+                            pickupPlaceId,
+                            place.primaryText,
+                            place.placeId,
+                          );
+
+                          // Storage (fast, no await)
+                          StorageServices.instance.save('destinationPlaceId', place.placeId);
+                          StorageServices.instance.save('destinationTitle', place.primaryText);
+                          StorageServices.instance.save('destinationCity', place.city);
+                          StorageServices.instance.save('destinationState', place.state);
+                          StorageServices.instance.save('destinationCountry', place.country);
+
+                          if (place.types.isNotEmpty) {
+                            StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
+                          }
+
+                          if (place.terms.isNotEmpty) {
+                            StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+                          }
+
+                          // Set in controller
+                          destinationController.setPlace(
+                            placeId: place.placeId,
+                            title: place.primaryText,
+                            city: place.city,
+                            state: place.state,
+                            country: place.country,
+                            types: place.types,
+                            terms: place.terms,
+                          );
+                        });
+                      }
+
+
                   );
                 },
               )

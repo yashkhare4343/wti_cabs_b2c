@@ -7,7 +7,6 @@ import '../../services/storage_services.dart';
 class MobileController extends GetxController {
   Rx<MobileResponse?> mobileData = Rx<MobileResponse?>(null);
   RxBool isLoading = false.obs;
-
   /// Fetch booking data based on the given country and request body
   Future<void> verifyMobile({
     required String mobile,
@@ -32,6 +31,4 @@ class MobileController extends GetxController {
       isLoading.value = false;
     }
   }
-
-
 }

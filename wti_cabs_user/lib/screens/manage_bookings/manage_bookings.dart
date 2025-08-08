@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
@@ -13,8 +16,14 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 
 import '../../common_widget/loader/popup_loader.dart';
+import '../../core/controller/auth/mobile_controller.dart';
+import '../../core/controller/auth/otp_controller.dart';
+import '../../core/controller/auth/register_controller.dart';
+import '../../core/controller/auth/resend_otp_controller.dart';
 import '../../core/controller/download_receipt/download_receipt_controller.dart';
 import '../../core/services/storage_services.dart';
+import '../../utility/constants/fonts/common_fonts.dart';
+import '../bottom_nav/bottom_nav.dart';
 
 class ManageBookings extends StatefulWidget {
   @override
@@ -42,17 +51,1028 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
 
   int selectedDriveType = 0; // 0: Chauffeur's, 1: Self Drive
   TabController? _tabController;
+  bool _isLoggedIn = false; // default: not logged in
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     upcomingBookingController.fetchUpcomingBookingsData();
+    isLogin();
   }
+
+  void isLogin() async{
+    if(await StorageServices.instance.read('token')==null){
+      _showAuthBottomSheet();
+      setState(() {
+        _isLoggedIn = true;
+      });
+    }
+  }
+
+  Widget _buildLoginPrompt(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16),
+          child: Card(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0.7,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Illustration or image can be added here
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.blue.shade50,
+                    child: Icon(Icons.lock_outline, size: 48, color: Colors.blue.shade400),
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    "Log in to view your bookings",
+                    textAlign: TextAlign.center,
+                    style: CommonFonts.headline2,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    "Access, manage, and update your bookings securely.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: MainButton(text: 'Login', onPressed: (){
+                      _showAuthBottomSheet();
+                    }),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  void _showRegisterSheet(BuildContext context) {
+    final GlobalKey<FormState> _registerFormKey = GlobalKey<FormState>();
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController mobileController = TextEditingController();
+    String gender = "MALE";
+    PhoneNumber number = PhoneNumber(isoCode: 'IN');
+    bool isGoogleLoading = false;
+    bool hasError = false;
+    String? errorMessage;
+    bool isButtonEnabled = false;
+    bool showOtpField = false;
+
+    Future<UserCredential?> signInWithGoogle() async {
+      try {
+        final GoogleSignIn _googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          clientId:
+          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+        );
+
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) {
+          print("User cancelled the sign-in flow");
+          return null;
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+        print("✅ Signed in as: ${userCredential.user?.displayName}");
+        return userCredential;
+      } catch (e) {
+        print("❌ Google sign-in failed: $e");
+        return null;
+      }
+    }
+
+    void _handleGoogleLogin(StateSetter setModalState) async {
+      setModalState(() => isGoogleLoading = true);
+
+      final result = await signInWithGoogle();
+
+      setModalState(() => isGoogleLoading = false);
+
+      if (result != null) {
+        // ✅ Prefill controllers
+        nameController.text = result.user?.displayName ?? '';
+        emailController.text = result.user?.email ?? '';
+        mobileController.text = result.user?.phoneNumber ?? '';
+
+        gender = "MALE"; // default or based on preference
+
+        print("✅ User signed in: ${result.user?.email}");
+      } else {
+        print("❌ Google Sign-In cancelled or failed");
+      }
+    }
+
+    Future<void> signOutFromGoogle() async {
+      try {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+
+        // Sign out from Google account
+        if (await googleSignIn.isSignedIn()) {
+          await googleSignIn.signOut();
+        }
+
+        // Sign out from Firebase
+        await FirebaseAuth.instance.signOut();
+
+        print("✅ User signed out successfully");
+      } catch (e) {
+        print("❌ Error signing out: $e");
+      }
+    }
+
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModelState) {
+            void _validatePhone(String value) {
+              if (value.isEmpty) {
+                errorMessage = "Mobile number is required";
+                hasError = true;
+                isButtonEnabled = false;
+              } else if (value.length < 10) {
+                errorMessage = "Please enter at least 10 digits";
+                hasError = true;
+                isButtonEnabled = false;
+              } else {
+                errorMessage = null;
+                hasError = false;
+                isButtonEnabled = true;
+              }
+              setModelState(() {});
+            }
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.95,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (_, controller) {
+                return ClipRRect(
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: Material(
+                    color: Colors.white,
+                    child: SingleChildScrollView(
+                      controller: controller,
+                      child: Form(
+                        key: _registerFormKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFF6DD),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  topRight: Radius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text("Invite & Earn!",
+                                            style: CommonFonts.heading1Bold),
+                                        const SizedBox(height: 8),
+                                        Text("Invite your Friends & Get Up to",
+                                            style: CommonFonts.bodyText6),
+                                        Text("INR 2000*",
+                                            style: CommonFonts.bodyText6Bold),
+                                      ],
+                                    ),
+                                  ),
+                                  Image.asset('assets/images/offer.png',
+                                      width: 85, height: 85),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Register",
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: nameController,
+                                    decoration: const InputDecoration(
+                                      labelText: "Full Name",
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    validator: (val) =>
+                                    val == null || val.isEmpty
+                                        ? "Name required"
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: const InputDecoration(
+                                      labelText: "Email",
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    validator: (val) =>
+                                    val == null || !val.contains('@')
+                                        ? "Valid email required"
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.only(left: 16.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                          color: hasError
+                                              ? Colors.red
+                                              : Colors.grey),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      child: InternationalPhoneNumberInput(
+                                        onInputChanged: (_) => _validatePhone(
+                                            mobileController.text.trim()),
+                                        selectorConfig: const SelectorConfig(
+                                          selectorType: PhoneInputSelectorType
+                                              .BOTTOM_SHEET,
+                                          useBottomSheetSafeArea: true,
+                                          showFlags: true,
+                                        ),
+                                        ignoreBlank: false,
+                                        autoValidateMode:
+                                        AutovalidateMode.disabled,
+                                        selectorTextStyle: const TextStyle(
+                                            color: Colors.black),
+                                        initialValue: number,
+                                        textFieldController: mobileController,
+                                        formatInput: false,
+                                        keyboardType: const TextInputType
+                                            .numberWithOptions(signed: true),
+                                        validator: (_) => null,
+                                        maxLength: 10,
+                                        inputDecoration: const InputDecoration(
+                                          hintText: "Enter Mobile Number",
+                                          counterText: "",
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 14),
+                                          border: InputBorder.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text("Gender"),
+                                  Row(
+                                    children: [
+                                      Radio<String>(
+                                        value: "MALE",
+                                        groupValue: gender,
+                                        onChanged: (val) {
+                                          setModelState(
+                                                  () => gender = val ?? "MALE");
+                                        },
+                                      ),
+                                      const Text("Male"),
+                                      const SizedBox(width: 12),
+                                      Radio<String>(
+                                        value: "FEMALE",
+                                        groupValue: gender,
+                                        onChanged: (val) {
+                                          setModelState(
+                                                  () => gender = val ?? "FEMALE");
+                                        },
+                                      ),
+                                      const Text("Female"),
+                                      const SizedBox(width: 12),
+                                      Radio<String>(
+                                        value: "Others",
+                                        groupValue: gender,
+                                        onChanged: (val) {
+                                          setModelState(
+                                                  () => gender = val ?? "Others");
+                                        },
+                                      ),
+                                      const Text("Others"),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: MainButton(
+                                      text: 'Submit',
+                                      onPressed: () async {
+                                        if (_registerFormKey.currentState
+                                            ?.validate() ??
+                                            false) {
+                                          final Map<String, dynamic>
+                                          requestData = {
+                                            "firstName":
+                                            nameController.text.trim(),
+                                            "contact":
+                                            mobileController.text.trim()??'0000000000',
+                                            "contactCode": "91",
+                                            "countryName": "India",
+                                            "gender": gender,
+                                            "emailID":
+                                            emailController.text.trim()
+                                          };
+
+                                          await Get.find<RegisterController>()
+                                              .verifySignup(
+                                            requestData: requestData,
+                                            context: context,
+                                          );
+
+                                          Navigator.of(context).pop();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: const [
+                                      Expanded(child: Divider(thickness: 1)),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 8.0),
+                                        child: Text("Or Login Via",
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.black54)),
+                                      ),
+                                      Expanded(child: Divider(thickness: 1)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  GestureDetector(
+                                    onTap: isGoogleLoading
+                                        ? null
+                                        : () =>
+                                        _handleGoogleLogin(setModelState),
+                                    child: Center(
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            padding: const EdgeInsets.all(1),
+                                            decoration: const BoxDecoration(
+                                                color: Colors.grey,
+                                                shape: BoxShape.circle),
+                                            child: CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor: Colors.white,
+                                              child: isGoogleLoading
+                                                  ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                CircularProgressIndicator(
+                                                    strokeWidth: 2),
+                                              )
+                                                  : Image.asset(
+                                                'assets/images/google_icon.png',
+                                                fit: BoxFit.contain,
+                                                width: 29,
+                                                height: 29,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text("Google",
+                                              style: TextStyle(fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  GestureDetector(
+                                    onTap: (){
+                                      signOutFromGoogle();
+                                    },
+                                    child: Column(
+                                      children: [
+                                        Text.rich(
+                                          TextSpan(
+                                            text:
+                                            "By logging in, I understand & agree to Wise Travel India Limited ",
+                                            style: CommonFonts.bodyText3Medium,
+                                            children: [
+                                              TextSpan(
+                                                  text: "Terms & Conditions",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                              TextSpan(text: ", "),
+                                              TextSpan(
+                                                  text: "Privacy Policy",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                              TextSpan(
+                                                  text: ", and User agreement",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                            ],
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAuthBottomSheet() {
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController otpTextEditingController =
+    TextEditingController();
+    final MobileController mobileController = Get.put(MobileController());
+    final OtpController otpController = Get.put(OtpController());
+    final ResendOtpController resendOtpController =
+    Get.put(ResendOtpController());
+    final RegisterController registerController = Get.put(RegisterController());
+    bool isGoogleLoading = false;
+
+    Future<UserCredential?> signInWithGoogle() async {
+      try {
+        final GoogleSignIn _googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          clientId:
+          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+        );
+
+        // Start the sign-in flow
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) {
+          print("User cancelled the sign-in flow");
+          return null;
+        }
+
+        // Obtain the auth tokens
+        final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+        // Create a Firebase credential
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase
+        final userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+        print("✅ Signed in as: ${userCredential.user?.displayName}");
+        return userCredential;
+      } catch (e) {
+        print("❌ Google sign-in failed: $e");
+        return null;
+      }
+    }
+
+    void _handleGoogleLogin(StateSetter setModalState) async {
+      setModalState(() => isGoogleLoading = true);
+
+      final result = await signInWithGoogle();
+
+      setModalState(() => isGoogleLoading = false);
+
+      if (result != null) {
+        final Map<String, dynamic> requestData = {
+          "firstName": result.user?.displayName,
+          // "lastName": "Sahni",
+          "contact": result.user?.phoneNumber ?? '000000000',
+          "contactCode": "91",
+          "countryName": "India",
+          // "address": "String",
+          // "city": "String",
+          "gender": "MALE",
+          // "postalCode": "String",
+          "emailID": result.user?.email
+          // "password": "String"
+          // "otp": {
+          //     "code": "Number",
+          //     "otpExpiry": ""
+          // }
+        };
+        await registerController
+            .verifySignup(requestData: requestData, context: context)
+            .then((value) {
+          Navigator.of(context).pop();
+        });
+        print("✅ User signed in: ${result.user?.email}");
+
+        // close the bottom sheet
+      } else {
+        print("❌ Google Sign-In cancelled or failed");
+      }
+    }
+
+
+    PhoneNumber number = PhoneNumber(isoCode: 'IN');
+    bool hasError = false;
+    String? errorMessage;
+    bool isButtonEnabled = false;
+    bool showOtpField = false;
+
+
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void _validatePhone(String value) {
+              if (value.isEmpty) {
+                errorMessage = "Mobile number is required";
+                hasError = true;
+                isButtonEnabled = false;
+              } else if (value.length < 10) {
+                errorMessage = "Please enter at least 10 digits";
+                hasError = true;
+                isButtonEnabled = false;
+              } else {
+                errorMessage = null;
+                hasError = false;
+                isButtonEnabled = true;
+              }
+              setModalState(() {});
+            }
+
+            void _validateOtp(String value) {
+              if (value.isEmpty) {
+                errorMessage = "OTP is required";
+                hasError = true;
+                isButtonEnabled = false;
+              } else if (value.length < 6) {
+                errorMessage = "Enter valid 6-digit OTP";
+                hasError = true;
+                isButtonEnabled = false;
+              } else {
+                errorMessage = null;
+                hasError = false;
+                isButtonEnabled = true;
+              }
+              setModalState(() {});
+            }
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.75,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (context, scrollController) {
+                return ClipRRect(
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(10)),
+                  child: Material(
+                    color: Colors.white,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header banner
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFF6DD),
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Invite & Earn!",
+                                        style: CommonFonts.heading1Bold,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "Invite your Friends & Get Up to",
+                                        style: CommonFonts.bodyText6,
+                                      ),
+                                      Text("INR 2000*",
+                                          style: CommonFonts.bodyText6Bold),
+                                    ],
+                                  ),
+                                ),
+                                Image.asset('assets/images/offer.png',
+                                    width: 85, height: 85),
+                              ],
+                            ),
+                          ),
+
+                          // Form section
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Dynamic heading
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      showOtpField
+                                          ? "OTP Authentication"
+                                          : "Login or Create an Account",
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const SizedBox(
+                                      width: 40,
+                                      height: 4,
+                                      child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                              color: Color(0xFF3563FF))),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Form body
+                                Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      if (!showOtpField)
+                                        Container(
+                                          padding: const EdgeInsets.only(
+                                              left: 16.0),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            border: Border.all(
+                                                color: hasError
+                                                    ? Colors.red
+                                                    : Colors.grey),
+                                            borderRadius:
+                                            BorderRadius.circular(12),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                            BorderRadius.circular(12.0),
+                                            child:
+                                            InternationalPhoneNumberInput(
+                                              onInputChanged: (_) =>
+                                                  _validatePhone(
+                                                      phoneController.text
+                                                          .trim()),
+                                              selectorConfig:
+                                              const SelectorConfig(
+                                                selectorType:
+                                                PhoneInputSelectorType
+                                                    .BOTTOM_SHEET,
+                                                useBottomSheetSafeArea: true,
+                                                showFlags: true,
+                                              ),
+                                              ignoreBlank: false,
+                                              autoValidateMode:
+                                              AutovalidateMode.disabled,
+                                              selectorTextStyle:
+                                              const TextStyle(
+                                                  color: Colors.black),
+                                              initialValue: number,
+                                              textFieldController:
+                                              phoneController,
+                                              formatInput: false,
+                                              keyboardType:
+                                              const TextInputType
+                                                  .numberWithOptions(
+                                                  signed: true),
+                                              validator: (_) => null,
+                                              maxLength: 10,
+                                              inputDecoration:
+                                              InputDecoration(
+                                                hintText:
+                                                "Enter Mobile Number",
+                                                counterText: "",
+                                                filled: true,
+                                                fillColor: Colors.white,
+                                                contentPadding:
+                                                const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 14),
+                                                border: InputBorder.none,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      if (showOtpField)
+                                        OtpTextField(
+                                          otpController:
+                                          otpTextEditingController,
+                                          mobileNo:
+                                          phoneController.text.trim(),
+                                        ),
+                                      if (errorMessage != null) ...[
+                                        const SizedBox(height: 8),
+                                        Text(errorMessage!,
+                                            style: const TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 12)),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 28),
+
+                                // Button
+                                Obx(() => SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: Opacity(
+                                    opacity: !showOtpField
+                                        ? isButtonEnabled
+                                        ? 1.0
+                                        : 0.4
+                                        : 1.0,
+                                    child: MainButton(
+                                      text: showOtpField
+                                          ? 'Verify OTP'
+                                          : 'Continue',
+                                      isLoading: mobileController
+                                          .isLoading.value,
+                                      onPressed: isButtonEnabled
+                                          ? () async {
+                                        mobileController
+                                            .isLoading.value = true;
+                                        await Future.delayed(
+                                            const Duration(
+                                                seconds: 2));
+
+                                        if (showOtpField) {
+                                          await otpController
+                                              .verifyOtp(
+                                            mobile: phoneController
+                                                .text
+                                                .trim(),
+                                            otp:
+                                            otpTextEditingController
+                                                .text
+                                                .trim(),
+                                            context: context,
+                                          )
+                                              .then((value) {
+                                            GoRouter.of(context)
+                                                .pop();
+                                          });
+                                          setState(() {
+                                            _isLoggedIn = false;
+                                          });
+                                         await upcomingBookingController.fetchUpcomingBookingsData();
+                                        } else {
+                                          await mobileController
+                                              .verifyMobile(
+                                            mobile: phoneController
+                                                .text
+                                                .trim(),
+                                            context: context,
+                                          );
+                                          if ((mobileController
+                                              .mobileData
+                                              .value !=
+                                              null) &&
+                                              (mobileController
+                                                  .mobileData
+                                                  .value
+                                                  ?.userAssociated ==
+                                                  true)) {
+                                            showOtpField = true;
+                                            errorMessage = null;
+                                            isButtonEnabled = true;
+                                            otpTextEditingController
+                                                .clear();
+                                            setModalState(() {});
+                                          }
+                                        }
+
+                                        mobileController.isLoading
+                                            .value = false;
+                                      }
+                                          : () {},
+                                    ),
+                                  ),
+                                )),
+
+                                if (!showOtpField) const SizedBox(height: 8),
+
+                                Column(
+                                  children: [
+                                    if (!showOtpField)
+                                      Padding(
+                                        padding:
+                                        const EdgeInsets.only(top: 0.0),
+                                        child: Center(
+                                          child: TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context)
+                                                  .pop(); // close current sheet
+                                              _showRegisterSheet(
+                                                  context); // open register sheet
+                                            },
+                                            child: Text(
+                                                "Don't have an account? Register"),
+                                          ),
+                                        ),
+                                      ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Divider with Text
+                                    if (!showOtpField)
+                                      Row(
+                                        children: [
+                                          const Expanded(
+                                              child: Divider(thickness: 1)),
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8.0),
+                                            child: Text("Or Login Via",
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.black54)),
+                                          ),
+                                          const Expanded(
+                                              child: Divider(thickness: 1)),
+                                        ],
+                                      ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Google Login
+                                    if (!showOtpField)
+                                      GestureDetector(
+                                        onTap: isGoogleLoading
+                                            ? null
+                                            : () => _handleGoogleLogin(
+                                            setModalState),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 48,
+                                                height: 48,
+                                                padding:
+                                                const EdgeInsets.all(1),
+                                                decoration:
+                                                const BoxDecoration(
+                                                    color: Colors.grey,
+                                                    shape:
+                                                    BoxShape.circle),
+                                                child: CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor:
+                                                  Colors.white,
+                                                  child: isGoogleLoading
+                                                      ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth:
+                                                        2),
+                                                  )
+                                                      : Image.asset(
+                                                    'assets/images/google_icon.png',
+                                                    fit: BoxFit.contain,
+                                                    width: 29,
+                                                    height: 29,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text("Google",
+                                                  style: TextStyle(
+                                                      fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                    const SizedBox(height: 20),
+
+                                    // Terms & Conditions
+                                    Column(
+                                      children: [
+                                        Text.rich(
+                                          TextSpan(
+                                            text:
+                                            "By logging in, I understand & agree to Wise Travel India Limited ",
+                                            style:
+                                            CommonFonts.bodyText3Medium,
+                                            children: [
+                                              TextSpan(
+                                                  text: "Terms & Conditions",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                              TextSpan(text: ", "),
+                                              TextSpan(
+                                                  text: "Privacy Policy",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                              TextSpan(
+                                                  text:
+                                                  ", and User agreement",
+                                                  style: CommonFonts
+                                                      .bodyText3MediumBlue),
+                                            ],
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     final driveTypes = ["Chauffeur's Drive", "Self Drive"];
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Manage Bookings",
@@ -70,7 +1090,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
         ),
       ),
       backgroundColor: AppColors.scaffoldBgPrimary1,
-      body: Column(
+      body: _isLoggedIn ? _buildLoginPrompt(context) :  Column(
         children: [
           SizedBox(height: 12),
           // Drive Type Toggle
@@ -85,7 +1105,10 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
             ),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Row(
+              child: StorageServices.instance.read('token')==null ? Center(
+              child: MainButton(text: 'Login/Register', onPressed: (){
+              }),
+            ) : Row(
                 children: List.generate(2, (index) {
                   return Expanded(
                     child: GestureDetector(
@@ -514,8 +1537,8 @@ class _BookingCardState extends State<BookingCard> {
                             );
                             await pdfCtrl
                                 .downloadReceiptPdf(
-                                upcomingBookingController
-                                    .completedBookings?[index].id ??
+                                upcomingBookingController.confirmedBookings
+                                    [index].id ??
                                     '',
                                 context)
                                 .then((value) {
@@ -1036,7 +2059,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                 await pdfCtrl
                                     .downloadReceiptPdf(
                                     upcomingBookingController
-                                        .completedBookings?[index].id ??
+                                        .completedBookings[index].id ??
                                         '',
                                     context)
                                     .then((value) {
@@ -1457,7 +2480,7 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                 await pdfCtrl
                                     .downloadReceiptPdf(
                                     upcomingBookingController
-                                        .completedBookings?[index].id ??
+                                        .cancelledBookings[index].id ??
                                         '',
                                     context)
                                     .then((value) {
