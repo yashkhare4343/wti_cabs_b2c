@@ -867,12 +867,21 @@ class _BookingTopBarState extends State<BookingTopBar> {
     print('yash trip code : $tripCode');
   }
 
+  String trimAfterTwoSpaces(String input) {
+    final parts = input.split(' ');
+    if (parts.length <= 2)
+      return input; // less than or equal to two spaces, keep as is
+    return parts.take(3).join(' '); // first 3 words (2 spaces)
+  }
+
   @override
   Widget build(BuildContext context) {
     String? _country;
     final pickupDateTime = bookingRideController.localStartTime.value;
     final formattedPickup = formatDateTime(pickupDateTime);
     final isIndia = _country?.toLowerCase() == 'india';
+
+
 
     return Column(
       children: [
@@ -900,7 +909,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
               children: [
                 Expanded(
                   child: Text(
-                    '${bookingRideController.prefilled.value} to ${bookingRideController.prefilledDrop.value}',
+                    '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,

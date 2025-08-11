@@ -70,6 +70,7 @@ dependencies:
   google_maps_flutter: ^2.12.3
   location: ^8.0.1
   jwt_decoder: ^2.0.1
+  video_player: ^2.10.0
 #  flutter_stripe: ^11.5.0
 dev_dependencies:
   flutter_test:

@@ -47,7 +47,10 @@ class AppPages{
         ),
         GoRoute(
           path: AppRoutes.inventoryList,
-          builder: (context, state) => InventoryList(),
+          builder: (context, state) {
+            final requestData = state.extra as Map<String, dynamic>;
+            return InventoryList(requestData: requestData);
+          },
         ),
         GoRoute(
           path: AppRoutes.bookingDetailsFinal,

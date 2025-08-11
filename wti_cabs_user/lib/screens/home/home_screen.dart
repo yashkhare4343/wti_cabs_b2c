@@ -13,12 +13,14 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfield.dart';
+import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
 import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
 import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:wti_cabs_user/core/model/home_page_images/home_page_image_response.dart';
 
 import '../../common_widget/buttons/main_button.dart';
 import '../../common_widget/drawer/custom_drawer.dart';
@@ -42,7 +44,6 @@ import 'dart:convert'; // for jsonEncode
 import 'package:google_maps_flutter/google_maps_flutter.dart'; // For LatLng
 // keep this as is
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -54,16 +55,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String address = '';
   List<Map<String, dynamic>> recentTrips = [];
   final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
+      Get.put(BookingRideController());
+  final PopularDestinationController popularDestinationController =
+      Get.put(PopularDestinationController());
   final UspController uspController = Get.put(UspController());
+  final BannerController bannerController = Get.put(BannerController());
 
   final TripHistoryController tripController = Get.put(TripHistoryController());
-  final PlaceSearchController searchController = Get.put(PlaceSearchController());
-  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
-  final SourceLocationController sourceController = Get.put(SourceLocationController());
-
-
+  final PlaceSearchController searchController =
+      Get.put(PlaceSearchController());
+  final PlaceSearchController placeSearchController =
+      Get.put(PlaceSearchController());
+  final SourceLocationController sourceController =
+      Get.put(SourceLocationController());
 
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
@@ -98,7 +102,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onPressed: () => Navigator.pop(context),
                 child: const Text("Got it"),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -110,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
   }
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +125,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Fetch location and show bottom sheet
     popularDestinationController.fetchPopularDestinations();
     uspController.fetchUsps();
+    bannerController.fetchImages();
+
     fetchCurrentLocationAndAddress();
 
     _setStatusBarColor();
@@ -131,8 +139,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
   }
-
-
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -214,7 +220,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         place.postalCode ?? '',
         place.country ?? '',
       ];
-      final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
+      final fullAddress =
+          components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Immediately update the visible address
       setState(() {
@@ -243,11 +250,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         StorageServices.instance.save('sourceCountry', suggestion.country);
 
         if (suggestion.types.isNotEmpty) {
-          StorageServices.instance.save('sourceTypes', jsonEncode(suggestion.types));
+          StorageServices.instance
+              .save('sourceTypes', jsonEncode(suggestion.types));
         }
 
         if (suggestion.terms.isNotEmpty) {
-          StorageServices.instance.save('sourceTerms', jsonEncode(suggestion.terms));
+          StorageServices.instance
+              .save('sourceTerms', jsonEncode(suggestion.terms));
         }
 
         sourceController.setPlace(
@@ -270,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
     }
   }
+
   void _showBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -312,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   ];
   final Duration _duration = Duration(milliseconds: 300);
 
-
   void _showRegisterSheet(BuildContext context) {
     final GlobalKey<FormState> _registerFormKey = GlobalKey<FormState>();
     final TextEditingController nameController = TextEditingController();
@@ -331,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
           clientId:
-          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+              '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
         );
 
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -341,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
 
         final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+            await googleUser.authentication;
 
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
@@ -349,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
 
         final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+            await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -397,7 +406,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -429,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               builder: (_, controller) {
                 return ClipRRect(
                   borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+                      const BorderRadius.vertical(top: Radius.circular(12)),
                   child: Material(
                     color: Colors.white,
                     child: SingleChildScrollView(
@@ -454,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text("Invite & Earn!",
                                             style: CommonFonts.heading1Bold),
@@ -489,9 +497,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       border: OutlineInputBorder(),
                                     ),
                                     validator: (val) =>
-                                    val == null || val.isEmpty
-                                        ? "Name required"
-                                        : null,
+                                        val == null || val.isEmpty
+                                            ? "Name required"
+                                            : null,
                                   ),
                                   const SizedBox(height: 12),
                                   TextFormField(
@@ -502,9 +510,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       border: OutlineInputBorder(),
                                     ),
                                     validator: (val) =>
-                                    val == null || !val.contains('@')
-                                        ? "Valid email required"
-                                        : null,
+                                        val == null || !val.contains('@')
+                                            ? "Valid email required"
+                                            : null,
                                   ),
                                   const SizedBox(height: 12),
                                   Container(
@@ -530,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         ),
                                         ignoreBlank: false,
                                         autoValidateMode:
-                                        AutovalidateMode.disabled,
+                                            AutovalidateMode.disabled,
                                         selectorTextStyle: const TextStyle(
                                             color: Colors.black),
                                         initialValue: number,
@@ -561,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         groupValue: gender,
                                         onChanged: (val) {
                                           setModelState(
-                                                  () => gender = val ?? "MALE");
+                                              () => gender = val ?? "MALE");
                                         },
                                       ),
                                       const Text("Male"),
@@ -571,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         groupValue: gender,
                                         onChanged: (val) {
                                           setModelState(
-                                                  () => gender = val ?? "FEMALE");
+                                              () => gender = val ?? "FEMALE");
                                         },
                                       ),
                                       const Text("Female"),
@@ -581,7 +589,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         groupValue: gender,
                                         onChanged: (val) {
                                           setModelState(
-                                                  () => gender = val ?? "Others");
+                                              () => gender = val ?? "Others");
                                         },
                                       ),
                                       const Text("Others"),
@@ -595,19 +603,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       text: 'Submit',
                                       onPressed: () async {
                                         if (_registerFormKey.currentState
-                                            ?.validate() ??
+                                                ?.validate() ??
                                             false) {
                                           final Map<String, dynamic>
-                                          requestData = {
+                                              requestData = {
                                             "firstName":
-                                            nameController.text.trim(),
+                                                nameController.text.trim(),
                                             "contact":
-                                            mobileController.text.trim()??'0000000000',
+                                                mobileController.text.trim() ??
+                                                    '0000000000',
                                             "contactCode": "91",
                                             "countryName": "India",
                                             "gender": gender,
                                             "emailID":
-                                            emailController.text.trim()
+                                                emailController.text.trim()
                                           };
 
                                           await Get.find<RegisterController>()
@@ -641,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     onTap: isGoogleLoading
                                         ? null
                                         : () =>
-                                        _handleGoogleLogin(setModelState),
+                                            _handleGoogleLogin(setModelState),
                                     child: Center(
                                       child: Column(
                                         children: [
@@ -657,18 +666,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                               backgroundColor: Colors.white,
                                               child: isGoogleLoading
                                                   ? const SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child:
-                                                CircularProgressIndicator(
-                                                    strokeWidth: 2),
-                                              )
+                                                      width: 20,
+                                                      height: 20,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth: 2),
+                                                    )
                                                   : Image.asset(
-                                                'assets/images/google_icon.png',
-                                                fit: BoxFit.contain,
-                                                width: 29,
-                                                height: 29,
-                                              ),
+                                                      'assets/images/google_icon.png',
+                                                      fit: BoxFit.contain,
+                                                      width: 29,
+                                                      height: 29,
+                                                    ),
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -680,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   ),
                                   const SizedBox(height: 20),
                                   GestureDetector(
-                                    onTap: (){
+                                    onTap: () {
                                       signOutFromGoogle();
                                     },
                                     child: Column(
@@ -688,7 +697,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         Text.rich(
                                           TextSpan(
                                             text:
-                                            "By logging in, I understand & agree to Wise Travel India Limited ",
+                                                "By logging in, I understand & agree to Wise Travel India Limited ",
                                             style: CommonFonts.bodyText3Medium,
                                             children: [
                                               TextSpan(
@@ -732,11 +741,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController otpTextEditingController =
-    TextEditingController();
+        TextEditingController();
     final MobileController mobileController = Get.put(MobileController());
     final OtpController otpController = Get.put(OtpController());
     final ResendOtpController resendOtpController =
-    Get.put(ResendOtpController());
+        Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
     bool isGoogleLoading = false;
 
@@ -745,7 +754,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
           clientId:
-          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+              '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -757,7 +766,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+            await googleUser.authentication;
 
         // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
@@ -767,7 +776,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Sign in to Firebase
         final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+            await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -814,14 +823,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
-
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
     bool hasError = false;
     String? errorMessage;
     bool isButtonEnabled = false;
     bool showOtpField = false;
-
-
 
     showModalBottomSheet(
       context: context,
@@ -874,7 +880,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   textDirection: TextDirection.ltr,
                   child: ClipRRect(
                     borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
+                        const BorderRadius.vertical(top: Radius.circular(10)),
                     child: Material(
                       color: Colors.white,
                       child: SingleChildScrollView(
@@ -898,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           "Invite & Earn!",
@@ -956,7 +962,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     key: _formKey,
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         if (!showOtpField)
                                           Container(
@@ -969,53 +975,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                       ? Colors.red
                                                       : Colors.grey),
                                               borderRadius:
-                                              BorderRadius.circular(12),
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: ClipRRect(
                                               borderRadius:
-                                              BorderRadius.circular(12.0),
+                                                  BorderRadius.circular(12.0),
                                               child:
-                                              InternationalPhoneNumberInput(
+                                                  InternationalPhoneNumberInput(
                                                 onInputChanged: (_) =>
                                                     _validatePhone(
                                                         phoneController.text
                                                             .trim()),
                                                 selectorConfig:
-                                                const SelectorConfig(
+                                                    const SelectorConfig(
                                                   selectorType:
-                                                  PhoneInputSelectorType
-                                                      .BOTTOM_SHEET,
+                                                      PhoneInputSelectorType
+                                                          .BOTTOM_SHEET,
                                                   useBottomSheetSafeArea: true,
                                                   showFlags: true,
                                                 ),
                                                 ignoreBlank: false,
                                                 autoValidateMode:
-                                                AutovalidateMode.disabled,
+                                                    AutovalidateMode.disabled,
                                                 selectorTextStyle:
-                                                const TextStyle(
-                                                    color: Colors.black),
+                                                    const TextStyle(
+                                                        color: Colors.black),
                                                 initialValue: number,
                                                 textFieldController:
-                                                phoneController,
+                                                    phoneController,
                                                 formatInput: false,
                                                 keyboardType:
-                                                const TextInputType
-                                                    .numberWithOptions(
-                                                    signed: true),
+                                                    const TextInputType
+                                                        .numberWithOptions(
+                                                        signed: true),
                                                 validator: (_) => null,
                                                 maxLength: 10,
                                                 inputDecoration:
-                                                InputDecoration(
+                                                    InputDecoration(
                                                   hintText:
-                                                  "Enter Mobile Number",
+                                                      "Enter Mobile Number",
                                                   counterText: "",
                                                   filled: true,
                                                   fillColor: Colors.white,
                                                   contentPadding:
-                                                  const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 14),
+                                                      const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 16,
+                                                          vertical: 14),
                                                   border: InputBorder.none,
                                                 ),
                                               ),
@@ -1024,9 +1030,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         if (showOtpField)
                                           OtpTextField(
                                             otpController:
-                                            otpTextEditingController,
+                                                otpTextEditingController,
                                             mobileNo:
-                                            phoneController.text.trim(),
+                                                phoneController.text.trim(),
                                           ),
                                         if (errorMessage != null) ...[
                                           const SizedBox(height: 8),
@@ -1043,77 +1049,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                                   // Button
                                   Obx(() => SizedBox(
-                                    width: double.infinity,
-                                    height: 48,
-                                    child: Opacity(
-                                      opacity: !showOtpField
-                                          ? isButtonEnabled
-                                          ? 1.0
-                                          : 0.4
-                                          : 1.0,
-                                      child: MainButton(
-                                        text: showOtpField
-                                            ? 'Verify OTP'
-                                            : 'Continue',
-                                        isLoading: mobileController
-                                            .isLoading.value,
-                                        onPressed: isButtonEnabled
-                                            ? () async {
-                                          mobileController
-                                              .isLoading.value = true;
-                                          await Future.delayed(
-                                              const Duration(
-                                                  seconds: 2));
+                                        width: double.infinity,
+                                        height: 48,
+                                        child: Opacity(
+                                          opacity: !showOtpField
+                                              ? isButtonEnabled
+                                                  ? 1.0
+                                                  : 0.4
+                                              : 1.0,
+                                          child: MainButton(
+                                            text: showOtpField
+                                                ? 'Verify OTP'
+                                                : 'Continue',
+                                            isLoading: mobileController
+                                                .isLoading.value,
+                                            onPressed: isButtonEnabled
+                                                ? () async {
+                                                    mobileController
+                                                        .isLoading.value = true;
+                                                    await Future.delayed(
+                                                        const Duration(
+                                                            seconds: 2));
 
-                                          if (showOtpField) {
-                                            await otpController
-                                                .verifyOtp(
-                                              mobile: phoneController
-                                                  .text
-                                                  .trim(),
-                                              otp:
-                                              otpTextEditingController
-                                                  .text
-                                                  .trim(),
-                                              context: context,
-                                            )
-                                                .then((value) {
-                                              GoRouter.of(context)
-                                                  .pop();
-                                            });
-                                          } else {
-                                            await mobileController
-                                                .verifyMobile(
-                                              mobile: phoneController
-                                                  .text
-                                                  .trim(),
-                                              context: context,
-                                            );
-                                            if ((mobileController
-                                                .mobileData
-                                                .value !=
-                                                null) &&
-                                                (mobileController
-                                                    .mobileData
-                                                    .value
-                                                    ?.userAssociated ==
-                                                    true)) {
-                                              showOtpField = true;
-                                              errorMessage = null;
-                                              isButtonEnabled = true;
-                                              otpTextEditingController
-                                                  .clear();
-                                              setModalState(() {});
-                                            }
-                                          }
+                                                    if (showOtpField) {
+                                                      await otpController
+                                                          .verifyOtp(
+                                                        mobile: phoneController
+                                                            .text
+                                                            .trim(),
+                                                        otp:
+                                                            otpTextEditingController
+                                                                .text
+                                                                .trim(),
+                                                        context: context,
+                                                      )
+                                                          .then((value) {
+                                                        GoRouter.of(context)
+                                                            .pop();
+                                                      });
+                                                    } else {
+                                                      await mobileController
+                                                          .verifyMobile(
+                                                        mobile: phoneController
+                                                            .text
+                                                            .trim(),
+                                                        context: context,
+                                                      );
+                                                      if ((mobileController
+                                                                  .mobileData
+                                                                  .value !=
+                                                              null) &&
+                                                          (mobileController
+                                                                  .mobileData
+                                                                  .value
+                                                                  ?.userAssociated ==
+                                                              true)) {
+                                                        showOtpField = true;
+                                                        errorMessage = null;
+                                                        isButtonEnabled = true;
+                                                        otpTextEditingController
+                                                            .clear();
+                                                        setModalState(() {});
+                                                      }
+                                                    }
 
-                                          mobileController.isLoading
-                                              .value = false;
-                                        }
-                                            : () {},
-                                      ),
-                                    ),
-                                  )),
+                                                    mobileController.isLoading
+                                                        .value = false;
+                                                  }
+                                                : () {},
+                                          ),
+                                        ),
+                                      )),
 
                                   if (!showOtpField) const SizedBox(height: 8),
 
@@ -1122,7 +1128,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       if (!showOtpField)
                                         Padding(
                                           padding:
-                                          const EdgeInsets.only(top: 0.0),
+                                              const EdgeInsets.only(top: 0.0),
                                           child: Center(
                                             child: TextButton(
                                               onPressed: () {
@@ -1166,7 +1172,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           onTap: isGoogleLoading
                                               ? null
                                               : () => _handleGoogleLogin(
-                                              setModalState),
+                                                  setModalState),
                                           child: Center(
                                             child: Column(
                                               children: [
@@ -1174,31 +1180,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                   width: 48,
                                                   height: 48,
                                                   padding:
-                                                  const EdgeInsets.all(1),
+                                                      const EdgeInsets.all(1),
                                                   decoration:
-                                                  const BoxDecoration(
-                                                      color: Colors.grey,
-                                                      shape:
-                                                      BoxShape.circle),
+                                                      const BoxDecoration(
+                                                          color: Colors.grey,
+                                                          shape:
+                                                              BoxShape.circle),
                                                   child: CircleAvatar(
                                                     radius: 20,
                                                     backgroundColor:
-                                                    Colors.white,
+                                                        Colors.white,
                                                     child: isGoogleLoading
                                                         ? const SizedBox(
-                                                      width: 20,
-                                                      height: 20,
-                                                      child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth:
-                                                          2),
-                                                    )
+                                                            width: 20,
+                                                            height: 20,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2),
+                                                          )
                                                         : Image.asset(
-                                                      'assets/images/google_icon.png',
-                                                      fit: BoxFit.contain,
-                                                      width: 29,
-                                                      height: 29,
-                                                    ),
+                                                            'assets/images/google_icon.png',
+                                                            fit: BoxFit.contain,
+                                                            width: 29,
+                                                            height: 29,
+                                                          ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),
@@ -1218,9 +1224,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           Text.rich(
                                             TextSpan(
                                               text:
-                                              "By logging in, I understand & agree to Wise Travel India Limited ",
+                                                  "By logging in, I understand & agree to Wise Travel India Limited ",
                                               style:
-                                              CommonFonts.bodyText3Medium,
+                                                  CommonFonts.bodyText3Medium,
                                               children: [
                                                 TextSpan(
                                                     text: "Terms & Conditions",
@@ -1233,7 +1239,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                         .bodyText3MediumBlue),
                                                 TextSpan(
                                                     text:
-                                                    ", and User agreement",
+                                                        ", and User agreement",
                                                     style: CommonFonts
                                                         .bodyText3MediumBlue),
                                               ],
@@ -1415,16 +1421,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                     InkWell(
                                       splashColor: Colors.transparent,
-                                      onTap: () async{
-
-                                        print('homepage yash token for profile : ${await StorageServices.instance.read('token')==null}');
-                                        if(await StorageServices.instance.read('token')==null){
+                                      onTap: () async {
+                                        print(
+                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                        if (await StorageServices.instance
+                                                .read('token') ==
+                                            null) {
                                           _showAuthBottomSheet();
                                         }
-                                        if(await StorageServices.instance.read('token')!=null){
-                                          GoRouter.of(context).push(AppRoutes.profile);
+                                        if (await StorageServices.instance
+                                                .read('token') !=
+                                            null) {
+                                          GoRouter.of(context)
+                                              .push(AppRoutes.profile);
                                         }
-
                                       },
                                       child: Transform.translate(
                                         offset: Offset(0.0, -4.0),
@@ -1454,7 +1464,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 icon: Icons.search,
                                 prefixText: '',
                                 onTap: () {
-                                  if(placeSearchController.suggestions.isEmpty){
+                                  if (placeSearchController
+                                      .suggestions.isEmpty) {
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -1462,12 +1473,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         message: "Go to Search Booking",
                                       ),
                                     );
-                                    fetchCurrentLocationAndAddress();                                    GoRouter.of(context)
+                                    fetchCurrentLocationAndAddress();
+                                    GoRouter.of(context)
                                         .push(AppRoutes.choosePickup);
                                     GoRouter.of(context).pop();
-                                  }
-                                  else if(placeSearchController.suggestions.isNotEmpty)
-                                  {
+                                  } else if (placeSearchController
+                                      .suggestions.isNotEmpty) {
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -1475,12 +1486,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         message: "Go to Search Booking",
                                       ),
                                     );
-                                   fetchCurrentLocationAndAddress();
+                                    fetchCurrentLocationAndAddress();
                                     GoRouter.of(context)
                                         .push(AppRoutes.chooseDrop);
                                     GoRouter.of(context).pop();
-                                  }
-                                  else{
+                                  } else {
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -1493,7 +1503,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         .push(AppRoutes.bookingRide);
                                     GoRouter.of(context).pop();
                                   }
-
                                 },
                               ),
                             ),
@@ -1509,9 +1518,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          Obx((){
+                          Obx(() {
                             return Text(
-                              tripController.topRecentTrips.isEmpty ?  'Popular Destinations' : 'Recent Destination',
+                              tripController.topRecentTrips.isEmpty
+                                  ? 'Popular Destinations'
+                                  : 'Recent Destination',
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -1529,13 +1540,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     //     height: 170,
                     //     child: BorderedListView()),
 
-
                     RecentTripList(),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                            Text('Services',
+                          Text('Services',
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -1706,14 +1716,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Expanded(
                             child: InkWell(
                               splashColor: Colors.transparent,
-                              onTap: (){
+                              onTap: () {
                                 bookingRideController.selectedIndex.value = 0;
-                                GoRouter.of(context).push(AppRoutes.bookingRide);
+                                GoRouter.of(context)
+                                    .push(AppRoutes.bookingRide);
                               },
                               child: Container(
                                 width: 80,
                                 height: 80,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
@@ -1756,15 +1768,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               children: [
                                 InkWell(
                                   splashColor: Colors.transparent,
-                                  onTap: (){
-                                    bookingRideController.selectedIndex.value = 1;
-                                    GoRouter.of(context).push(AppRoutes.bookingRide);
+                                  onTap: () {
+                                    bookingRideController.selectedIndex.value =
+                                        1;
+                                    GoRouter.of(context)
+                                        .push(AppRoutes.bookingRide);
                                   },
                                   child: Container(
                                     width: 80,
                                     height: 80,
-                                    margin:
-                                        const EdgeInsets.symmetric(horizontal: 4),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
@@ -1837,13 +1851,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Expanded(
                             child: InkWell(
                               splashColor: Colors.transparent,
-                              onTap: (){
+                              onTap: () {
                                 bookingRideController.selectedIndex.value = 2;
-                                GoRouter.of(context).push(AppRoutes.bookingRide);
+                                GoRouter.of(context)
+                                    .push(AppRoutes.bookingRide);
                               },
                               child: Container(
                                 height: 80,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
@@ -1880,10 +1896,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Expanded(
                             child: InkWell(
                               splashColor: Colors.transparent,
-                              onTap: (){
+                              onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text("Self Service service is coming soon!"),
+                                    content: Text(
+                                        "Self Service service is coming soon!"),
                                     duration: Duration(seconds: 2),
                                     behavior: SnackBarBehavior.fixed,
                                   ),
@@ -1891,7 +1908,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               },
                               child: Container(
                                 height: 80,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
@@ -1935,9 +1953,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   width: double.infinity,
                   height: 124,
                   child: CarouselSlider.builder(
-                    itemCount: imageList.length,
+                    itemCount: bannerController.homepageImageResponse.value
+                        ?.result?.topBanner?.images?.length ?? 0,
                     options: CarouselOptions(
-                      height: 124, // Fixed height for carousel
+                      height: 124,
                       viewportFraction: 1.0,
                       enlargeCenterPage: false,
                       autoPlay: true,
@@ -1945,10 +1964,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     itemBuilder: (context, index, realIdx) {
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
-                        width: double.infinity,
-                        child: Image.asset(
-                          imageList[index],
-                          fit: BoxFit.fill,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0), // Clip image corners
+                          child: Image.network(
+                            "${bannerController.homepageImageResponse.value?.result?.baseUrl}${bannerController.homepageImageResponse.value?.result?.topBanner?.images?[index].url ?? ''}",
+                            fit: BoxFit.cover, // Keeps aspect ratio and fills space
+                            width: double.infinity,
+                            height: 124,
+                          ),
                         ),
                       );
                     },
@@ -1976,9 +1999,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(
                   height: 12,
                 ),
-                // Padding(
-                //     padding: EdgeInsets.only(left: 12),
-                //     child: CustomCarousel()),
+                Padding(
+                    padding: EdgeInsets.only(left: 12),
+                    child: CustomCarousel()),
                 // special offers
                 // SizedBox(
                 //   height: 20,
@@ -2002,6 +2025,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 //   height: 12,
                 // ),
                 // CustomTabBar()
+
+                // Carbon emission, women safety
+                SizedBox(
+                  width: double.infinity,
+                  height: 174,
+                  child: CarouselSlider.builder(
+                    itemCount: bannerController.homepageImageResponse.value
+                        ?.result?.bottomBanner?.images?.length ??
+                        0,
+                    options: CarouselOptions(
+                      height: 174,
+                      viewportFraction: 0.75, // Show 1 full + part of the next
+                      enlargeCenterPage: false, // Slight zoom effect for active
+                      autoPlay: true,
+                    ),
+                    itemBuilder: (context, index, realIdx) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0),
+                          child: Image.network(
+                            "${bannerController.homepageImageResponse.value?.result?.baseUrl}${bannerController.homepageImageResponse.value?.result?.bottomBanner?.images?[index].url ?? ''}",
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: 16,)
+
+
               ],
             ),
           ),
@@ -2020,6 +2076,8 @@ class CustomCarousel extends StatefulWidget {
 
 class _CustomCarouselState extends State<CustomCarousel> {
   final UspController uspController = Get.put(UspController());
+  final BannerController bannerController = Get.put(BannerController());
+
   @override
   Widget build(BuildContext context) {
     final List<Map<String, String>> data = [
@@ -2047,86 +2105,88 @@ class _CustomCarouselState extends State<CustomCarousel> {
       },
     ];
 
-    final List<Widget> items = uspController.uspResponse.value?.data?.map((item) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 106,
-            width: MediaQuery.of(context).size.width * 0.56,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(8), // ✅ Only top corners
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Opacity(
-              opacity: 1.0,
-              child: ClipRRect(
-                child: Image.asset(
-                  item.imgUrl??'',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
-            color: Colors.white,
-            width: MediaQuery.of(context).size.width * 0.50,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              item.title??'',
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-          Container(
-            height: 36,
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
-            color: Colors.white,
-            width: MediaQuery.of(context).size.width * 0.56,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            // decoration: BoxDecoration(
-            //   borderRadius: BorderRadius.vertical(
-            //     bottom: Radius.circular(8), // ✅ Only top corners
-            //   ),
-            // ),
-            child: Text(
-              item.desc??'',
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF4F4F4F)),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-          Container(
-            width: MediaQuery.of(context).size.width * 0.56,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            height: 10,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(8), // ✅ Only top corners
-              ),
-            ),
-          ),
-        ],
-      );
-    }).toList() ?? [];
+    final List<Widget> items =
+        uspController.uspResponse.value?.data?.map((item) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 106,
+                    width: MediaQuery.of(context).size.width * 0.56,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(8), // ✅ Only top corners
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Opacity(
+                      opacity: 1.0,
+                      child: ClipRRect(
+                        child: Image.asset(
+                          item.imgUrl ?? '',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
+                    color: Colors.white,
+                    width: MediaQuery.of(context).size.width * 0.50,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      item.title ?? '',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  Container(
+                    height: 36,
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    color: Colors.white,
+                    width: MediaQuery.of(context).size.width * 0.56,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    // decoration: BoxDecoration(
+                    //   borderRadius: BorderRadius.vertical(
+                    //     bottom: Radius.circular(8), // ✅ Only top corners
+                    //   ),
+                    // ),
+                    child: Text(
+                      item.desc ?? '',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF4F4F4F)),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                  Container(
+                    width: MediaQuery.of(context).size.width * 0.56,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        bottom: Radius.circular(8), // ✅ Only top corners
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList() ??
+            [];
 
     return CarouselSlider(
       options: CarouselOptions(
@@ -2343,7 +2403,6 @@ class TravelOfferCard extends StatelessWidget {
 }
 
 class BorderedListView extends StatefulWidget {
-
   @override
   State<BorderedListView> createState() => _BorderedListViewState();
 }
@@ -2355,9 +2414,6 @@ class _BorderedListViewState extends State<BorderedListView> {
   void initState() {
     super.initState();
   }
-
-
-
 
   final List<Map<String, String>> items = [
     {
@@ -2389,9 +2445,10 @@ class _BorderedListViewState extends State<BorderedListView> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: ListTile(
-            contentPadding: EdgeInsets.only(left: 16), // removes horizontal padding
-            dense: true,                     // makes it more compact
-            minVerticalPadding: 0,           // removes vertical padding
+            contentPadding:
+                EdgeInsets.only(left: 16), // removes horizontal padding
+            dense: true, // makes it more compact
+            minVerticalPadding: 0, // removes vertical padding
             leading: Container(
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
@@ -2437,20 +2494,26 @@ class RecentTripList extends StatefulWidget {
 }
 
 class _RecentTripListState extends State<RecentTripList> {
-
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
-  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
-  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final BookingRideController bookingRideController =
+      Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController =
+      Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.put(DropPlaceSearchController());
   final TripHistoryController tripController = Get.put(TripHistoryController());
-final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
-final DestinationLocationController dropLocationController = Get.put(DestinationLocationController());
+  final PopularDestinationController popularDestinationController =
+      Get.put(PopularDestinationController());
+  final DestinationLocationController dropLocationController =
+      Get.put(DestinationLocationController());
 
   String address = '';
   List<Map<String, dynamic>> recentTrips = [];
   final UspController uspController = Get.put(UspController());
 
-  final PlaceSearchController searchController = Get.put(PlaceSearchController());
-  final SourceLocationController sourceController = Get.put(SourceLocationController());
+  final PlaceSearchController searchController =
+      Get.put(PlaceSearchController());
+  final SourceLocationController sourceController =
+      Get.put(SourceLocationController());
 
   Future<void> fetchCurrentLocationAndAddress() async {
     try {
@@ -2475,7 +2538,8 @@ final DestinationLocationController dropLocationController = Get.put(Destination
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      print('yash current location : ${ position.latitude}, ${position.longitude}');
+      print(
+          'yash current location : ${position.latitude}, ${position.longitude}');
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
@@ -2485,7 +2549,7 @@ final DestinationLocationController dropLocationController = Get.put(Destination
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         final components = <String>[
-          p.name??'',
+          p.name ?? '',
           p.street ?? '',
           p.subLocality ?? '',
           p.locality ?? '',
@@ -2495,24 +2559,32 @@ final DestinationLocationController dropLocationController = Get.put(Destination
         ];
 
         final fullAddress =
-        components.where((s) => s.trim().isNotEmpty).join(', ');
+            components.where((s) => s.trim().isNotEmpty).join(', ');
 
         setState(() {
           address = fullAddress;
         });
 
+        await searchController
+            .searchPlaces(fullAddress, context)
+            .then((value) async {});
+        bookingRideController.prefilled.value =
+            placeSearchController.suggestions.first.primaryText;
+        placeSearchController.placeId.value =
+            placeSearchController.suggestions.first.placeId;
 
-        await searchController.searchPlaces(fullAddress, context).then((value) async{
-        });
-        bookingRideController.prefilled.value = placeSearchController.suggestions.first.primaryText;
-        placeSearchController.placeId.value = placeSearchController.suggestions.first.placeId;
-
-        placeSearchController.getLatLngDetails (placeSearchController.suggestions.first.placeId, context);
-        await StorageServices.instance.save('sourcePlaceId', placeSearchController.suggestions.first.placeId);
-        await StorageServices.instance.save('sourceTitle', placeSearchController.suggestions.first.primaryText);
-        await StorageServices.instance.save('sourceCity', placeSearchController.suggestions.first.city);
-        await StorageServices.instance.save('sourceState', placeSearchController.suggestions.first.state);
-        await StorageServices.instance.save('sourceCountry', placeSearchController.suggestions.first.country);
+        placeSearchController.getLatLngDetails(
+            placeSearchController.suggestions.first.placeId, context);
+        await StorageServices.instance.save(
+            'sourcePlaceId', placeSearchController.suggestions.first.placeId);
+        await StorageServices.instance.save(
+            'sourceTitle', placeSearchController.suggestions.first.primaryText);
+        await StorageServices.instance
+            .save('sourceCity', placeSearchController.suggestions.first.city);
+        await StorageServices.instance
+            .save('sourceState', placeSearchController.suggestions.first.state);
+        await StorageServices.instance.save(
+            'sourceCountry', placeSearchController.suggestions.first.country);
         sourceController.setPlace(
           placeId: placeSearchController.suggestions.first.placeId,
           title: placeSearchController.suggestions.first.primaryText,
@@ -2520,16 +2592,19 @@ final DestinationLocationController dropLocationController = Get.put(Destination
           state: placeSearchController.suggestions.first.state,
           country: placeSearchController.suggestions.first.country,
           types: placeSearchController.suggestions.first.types,
-          terms: placeSearchController.suggestions.first.terms, // List<Map> -> List<Term>
+          terms: placeSearchController
+              .suggestions.first.terms, // List<Map> -> List<Term>
         );
-        print('akash country: ${placeSearchController.suggestions.first.country}');
+        print(
+            'akash country: ${placeSearchController.suggestions.first.country}');
         if (placeSearchController.suggestions.first.types.isNotEmpty) {
-          await StorageServices.instance.save('sourceTypes', jsonEncode(placeSearchController.suggestions.first.types));
+          await StorageServices.instance.save('sourceTypes',
+              jsonEncode(placeSearchController.suggestions.first.types));
         }
         if (placeSearchController.suggestions.first.terms.isNotEmpty) {
-          await StorageServices.instance.save('sourceTerms', jsonEncode(placeSearchController.suggestions.first.terms));
+          await StorageServices.instance.save('sourceTerms',
+              jsonEncode(placeSearchController.suggestions.first.terms));
         }
-
       } else {
         address = 'Address not found';
       }
@@ -2537,264 +2612,297 @@ final DestinationLocationController dropLocationController = Get.put(Destination
       print('Current location address: $address');
     } catch (e) {
       print('Error fetching location/address: $e');
-
     }
   }
 
   @override
   Widget build(BuildContext context) {
     popularDestinationController.fetchPopularDestinations();
-    return
-      tripController.topRecentTrips.isNotEmpty?
-      Obx(() {
-        if (tripController.topRecentTrips.isEmpty) {
-          return const Text("No recent trips");
-        }
+    return tripController.topRecentTrips.isNotEmpty
+        ? Obx(() {
+            if (tripController.topRecentTrips.isEmpty) {
+              return const Text("No recent trips");
+            }
 
-        return SizedBox(
-          height:tripController.topRecentTrips.length != 1 ? 180 : 95,
-          child: ListView.builder(
-            itemCount: tripController.topRecentTrips.length,
-            itemBuilder: (context, index) {
-              final trip = tripController.topRecentTrips[index];
-              final pickup = trip['pickup']['title'];
-              final dropTitle = trip['drop']['title'] ?? '';
-              final dropPlaceId = trip['drop']['placeId'] ?? '';
-              final parts = dropTitle.split(',');
+            return SizedBox(
+              height: tripController.topRecentTrips.length != 1 ? 180 : 95,
+              child: ListView.builder(
+                itemCount: tripController.topRecentTrips.length,
+                itemBuilder: (context, index) {
+                  final trip = tripController.topRecentTrips[index];
+                  final pickup = trip['pickup']['title'];
+                  final dropTitle = trip['drop']['title'] ?? '';
+                  final dropPlaceId = trip['drop']['placeId'] ?? '';
+                  final parts = dropTitle.split(',');
 
-              final mainTitle = parts.first.trim();
-              final subTitle = parts.length > 1 ? parts.sublist(1).join(',').trim() : '';            final count = trip['count'];
+                  final mainTitle = parts.first.trim();
+                  final subTitle =
+                      parts.length > 1 ? parts.sublist(1).join(',').trim() : '';
+                  final count = trip['count'];
 
-              return InkWell(
-                splashColor: Colors.transparent,
-                onTap: () {
-                  // 🚀 1. Instantly update local fields
-                  bookingRideController.prefilledDrop.value = mainTitle;
-                  dropPlaceSearchController.dropPlaceId.value = dropPlaceId;
+                  return InkWell(
+                    splashColor: Colors.transparent,
+                    onTap: () {
+                      // 🚀 1. Instantly update local fields
+                      bookingRideController.prefilledDrop.value = mainTitle;
+                      dropPlaceSearchController.dropPlaceId.value = dropPlaceId;
 
-                  // 🚀 2. Navigate immediately
-                  FocusScope.of(context).unfocus();
-                  GoRouter.of(context).push(AppRoutes.bookingRide);
+                      // 🚀 2. Navigate immediately
+                      FocusScope.of(context).unfocus();
+                      GoRouter.of(context).push(AppRoutes.bookingRide);
 
-                  // 🧠 3. Background async logic delayed slightly to allow UI to complete transition
-                  Future.delayed(const Duration(milliseconds: 150), () {
-                    // Fire-and-forget – do not await
-                    fetchCurrentLocationAndAddress();
-                    dropPlaceSearchController.getLatLngForDrop(dropPlaceId, context);
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 0,),
-                  margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1F192653),
-                        offset: Offset(0, 2),
-                        blurRadius: 4,
+                      // 🧠 3. Background async logic delayed slightly to allow UI to complete transition
+                      Future.delayed(const Duration(milliseconds: 150), () {
+                        // Fire-and-forget – do not await
+                        fetchCurrentLocationAndAddress();
+                        dropPlaceSearchController.getLatLngForDrop(
+                            dropPlaceId, context);
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 0,
                       ),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.only(left: 16), // removes horizontal padding
-                    dense: true,                     // makes it more compact
-                    minVerticalPadding: 0,           // removes vertical padding
-                    leading: Container(
-                      padding: const EdgeInsets.all(10.0),
+                      margin: const EdgeInsets.only(
+                          bottom: 8, left: 16, right: 16, top: 12),
                       decoration: BoxDecoration(
-                        color: const Color.fromRGBO(51, 51, 51, 0.05),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1F192653),
+                            offset: Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
-                      child: SvgPicture.asset(
-                        'assets/images/history.svg',
-                        height: 16,
-                        width: 16,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.only(
+                            left: 16), // removes horizontal padding
+                        dense: true, // makes it more compact
+                        minVerticalPadding: 0, // removes vertical padding
+                        leading: Container(
+                          padding: const EdgeInsets.all(10.0),
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(51, 51, 51, 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SvgPicture.asset(
+                            'assets/images/history.svg',
+                            height: 16,
+                            width: 16,
+                          ),
+                        ),
+                        title: Text(
+                          mainTitle,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          subTitle,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF4F4F4F),
+                          ),
+                        ),
+                        tileColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                    title: Text(
-                      mainTitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
+                  );
+                },
+              ),
+            );
+          })
+        : Obx(() {
+            final popularTitle = popularDestinationController.popularResponse
+                    .value?.popularAirports?.first.primaryText ??
+                '';
+            final popularPlaceId = popularDestinationController
+                    .popularResponse.value?.popularAirports?.first.placeId ??
+                '';
+            final popularParts = popularTitle.split(',');
+
+            final mainPopularTitle = popularParts.first.trim();
+            final subPopularTitle = popularParts.length > 1
+                ? popularParts.sublist(1).join(',').trim()
+                : '';
+            // outstation
+            final popularTitleOutStation = popularDestinationController
+                    .popularResponse.value?.popularCities?.first.primaryText ??
+                '';
+
+            final popularplaceIDOutStation = popularDestinationController
+                    .popularResponse.value?.popularCities?.first.placeId ??
+                '';
+            final popularPartsOutStation = popularTitleOutStation.split(',');
+
+            final popularMainPopularTitle = popularPartsOutStation.first.trim();
+            final popularSubPopularTitle = popularPartsOutStation.length > 1
+                ? popularParts.sublist(1).join(',').trim()
+                : '';
+
+            return Column(
+              children: [
+                InkWell(
+                  splashColor: Colors.transparent,
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const PopupLoader(
+                        message: "Go to Search Booking",
                       ),
+                    );
+                    bookingRideController.prefilledDrop.value =
+                        popularTitleOutStation;
+                    dropPlaceSearchController.dropPlaceId.value =
+                        popularplaceIDOutStation;
+
+                    await dropPlaceSearchController
+                        .getLatLngForDrop(popularPlaceId, context)
+                        .then((value) {
+                      GoRouter.of(context).push(AppRoutes.bookingRide);
+                    });
+                    GoRouter.of(context).pop();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: 0,
                     ),
-                    subtitle: Text(
-                      subTitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF4F4F4F),
+                    margin: const EdgeInsets.only(
+                        bottom: 8, left: 16, right: 16, top: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border.all(
+                        color: const Color.fromRGBO(44, 44, 111, 0.15),
+                        width: 1,
                       ),
-                    ),
-                    tileColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.only(
+                          left: 16), // removes horizontal padding
+                      dense: true, // makes it more compact
+                      minVerticalPadding: 0, // removes vertical padding
+                      leading: Container(
+                        padding: const EdgeInsets.all(10.0),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(51, 51, 51, 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SvgPicture.asset(
+                          'assets/images/history.svg',
+                          height: 16,
+                          width: 16,
+                        ),
+                      ),
+                      title: Text(
+                        mainPopularTitle,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                      ),
+                      subtitle: Text(
+                        subPopularTitle,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF4F4F4F),
+                        ),
+                      ),
+                      tileColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-        );
-      }) :
-    Obx((){
-      final popularTitle = popularDestinationController.popularResponse.value?.popularAirports?.first.primaryText ?? '';
-      final popularPlaceId = popularDestinationController.popularResponse.value?.popularAirports?.first.placeId ?? '';
-      final popularParts = popularTitle.split(',');
-
-      final mainPopularTitle = popularParts.first.trim();
-      final subPopularTitle = popularParts.length > 1 ? popularParts.sublist(1).join(',').trim() : '';
-      // outstation
-      final popularTitleOutStation = popularDestinationController.popularResponse.value?.popularCities?.first.primaryText ?? '';
-
-      final popularplaceIDOutStation = popularDestinationController.popularResponse.value?.popularCities?.first.placeId ?? '';
-      final popularPartsOutStation = popularTitleOutStation.split(',');
-
-      final popularMainPopularTitle = popularPartsOutStation.first.trim();
-      final popularSubPopularTitle = popularPartsOutStation.length > 1 ? popularParts.sublist(1).join(',').trim() : '';
-
-      return Column(
-        children: [
-          InkWell(
-            splashColor: Colors.transparent,
-            onTap: () async{
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => const PopupLoader(
-                  message: "Go to Search Booking",
-                ),
-              );
-              bookingRideController.prefilledDrop.value = popularTitleOutStation;
-              dropPlaceSearchController.dropPlaceId.value = popularplaceIDOutStation;
-
-              await dropPlaceSearchController.getLatLngForDrop(popularPlaceId, context).then((value){
-                GoRouter.of(context).push(AppRoutes.bookingRide);
-              });
-              GoRouter.of(context).pop();
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 0,),
-              margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 12),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(
-                  color: const Color.fromRGBO(44, 44, 111, 0.15),
-                  width: 1,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                contentPadding: EdgeInsets.only(left: 16), // removes horizontal padding
-                dense: true,                     // makes it more compact
-                minVerticalPadding: 0,           // removes vertical padding
-                leading: Container(
-                  padding: const EdgeInsets.all(10.0),
-                  decoration: BoxDecoration(
-                    color: const Color.fromRGBO(51, 51, 51, 0.05),
-                    borderRadius: BorderRadius.circular(8),
+                InkWell(
+                  splashColor: Colors.transparent,
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const PopupLoader(
+                        message: "Go to Search Booking",
+                      ),
+                    );
+                    bookingRideController.prefilledDrop.value =
+                        popularTitleOutStation;
+                    await dropPlaceSearchController
+                        .getLatLngForDrop(popularplaceIDOutStation, context)
+                        .then((value) {
+                      GoRouter.of(context).push(AppRoutes.bookingRide);
+                    });
+                    GoRouter.of(context).pop();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: 0,
+                    ),
+                    margin: const EdgeInsets.only(
+                        bottom: 8, left: 16, right: 16, top: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color.fromRGBO(44, 44, 111, 0.15),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.only(
+                          left: 16), // removes horizontal padding
+                      dense: true, // makes it more compact
+                      minVerticalPadding: 0, // removes vertical padding
+                      leading: Container(
+                        padding: const EdgeInsets.all(10.0),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(51, 51, 51, 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SvgPicture.asset(
+                          'assets/images/history.svg',
+                          height: 16,
+                          width: 16,
+                        ),
+                      ),
+                      title: Text(
+                        popularMainPopularTitle,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                      ),
+                      subtitle: Text(
+                        popularDestinationController.popularResponse.value
+                                ?.popularCities?.first.city ??
+                            '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF4F4F4F),
+                        ),
+                      ),
+                      tileColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                  child: SvgPicture.asset(
-                    'assets/images/history.svg',
-                    height: 16,
-                    width: 16,
-                  ),
-                ),
-                title: Text(
-                  mainPopularTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-                subtitle: Text(
-                  subPopularTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF4F4F4F),
-                  ),
-                ),
-                tileColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          InkWell(
-            splashColor: Colors.transparent,
-            onTap: () async{
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => const PopupLoader(
-                  message: "Go to Search Booking",
-                ),
-              );
-              bookingRideController.prefilledDrop.value = popularTitleOutStation;
-              await dropPlaceSearchController.getLatLngForDrop(popularplaceIDOutStation, context).then((value){
-                GoRouter.of(context).push(AppRoutes.bookingRide);
-              });
-              GoRouter.of(context).pop();
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 0,),
-              margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 12),
-              decoration: BoxDecoration(
-      border: Border.all(
-                  color: const Color.fromRGBO(44, 44, 111, 0.15),
-                  width: 1,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                contentPadding: EdgeInsets.only(left: 16), // removes horizontal padding
-                dense: true,                     // makes it more compact
-                minVerticalPadding: 0,           // removes vertical padding
-                leading: Container(
-                  padding: const EdgeInsets.all(10.0),
-                  decoration: BoxDecoration(
-                    color: const Color.fromRGBO(51, 51, 51, 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/history.svg',
-                    height: 16,
-                    width: 16,
-                  ),
-                ),
-                title: Text(
-                  popularMainPopularTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-                subtitle: Text(
-                  popularDestinationController.popularResponse.value?.popularCities?.first.city??'',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF4F4F4F),
-                  ),
-                ),
-                tileColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          )
-        ],
-      );
-    })
-    ;
+                )
+              ],
+            );
+          });
   }
 }
 
@@ -2819,7 +2927,7 @@ class _BottomCarouselBannerState extends State<BottomCarouselBanner> {
         'image': 'assets/images/ap_counter.png',
         'title': 'Dedicated Airport Counters',
         'subtitle':
-        'Kick off your journey with 20% off your first cab booking.',
+            'Kick off your journey with 20% off your first cab booking.',
       },
       {
         'image': 'assets/images/sd_availbility.png',
@@ -2830,54 +2938,55 @@ class _BottomCarouselBannerState extends State<BottomCarouselBanner> {
         'image': 'assets/images/part_payment.png',
         'title': 'Part Payment',
         'subtitle':
-        'Kick off your journey with 20% off your first cab booking.',
+            'Kick off your journey with 20% off your first cab booking.',
       },
     ];
 
     final List<Widget> items = data.map((item) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 106,
-            width: MediaQuery.of(context).size.width * 0.56,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(8), // ✅ Only top corners
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  offset: const Offset(0, 2),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 106,
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(8), // ✅ Only top corners
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Opacity(
-              opacity: 1.0,
-              child: ClipRRect(
-                child: Image.asset(
-                  item['image']??'',
-                  fit: BoxFit.cover,
+                child: Opacity(
+                  opacity: 1.0,
+                  child: ClipRRect(
+                    child: Image.asset(
+                      item['image'] ?? '',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Container(
-            width: MediaQuery.of(context).size.width * 0.56,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            height: 10,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(8), // ✅ Only top corners
+              Container(
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(8), // ✅ Only top corners
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
-      );
-    }).toList() ?? [];
+            ],
+          );
+        }).toList() ??
+        [];
 
     return CarouselSlider(
       options: CarouselOptions(
@@ -2891,5 +3000,3 @@ class _BottomCarouselBannerState extends State<BottomCarouselBanner> {
     );
   }
 }
-
-

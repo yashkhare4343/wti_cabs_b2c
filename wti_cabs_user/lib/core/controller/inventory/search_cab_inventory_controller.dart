@@ -31,15 +31,6 @@ class SearchCabInventoryController extends GetxController {
   }) async {
     isLoading.value = true;
 
-    // ✅ Show loader (PopupLoader should be lightweight)
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const PopupLoader(
-        message: 'Search Rides for you',
-      ),
-    );
-
     try {
       if (country.toLowerCase() == 'india') {
         final response = await ApiService().postRequestNew<IndiaResponse>(
@@ -100,21 +91,14 @@ class SearchCabInventoryController extends GetxController {
         await StorageServices.instance.save('previousTripCode', previousTripCode ?? '');
 
       }
-      // ✅ Safely dismiss loader
-      if (Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-        await Future.delayed(const Duration(milliseconds: 100)); // Let UI settle
-      }
 
-      // ✅ Navigate
-      if(isSecondPage==false) {
-        if (context.mounted) {
-          GoRouter.of(context).push(AppRoutes.inventoryList);
-        }
-      }
-      else{
-        GoRouter.of(context).pop();
-      }
+
+      // // ✅ Navigate
+      // if(isSecondPage==false) {
+      //   if (context.mounted) {
+      //     GoRouter.of(context).push(AppRoutes.inventoryList);
+      //   }
+      // }
     } catch (e) {
       print("❌ Error fetching booking data: $e");
 
