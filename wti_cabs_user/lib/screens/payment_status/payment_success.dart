@@ -10,6 +10,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
+import '../bottom_nav/bottom_nav.dart';
+
 class PaymentSuccessPage extends StatefulWidget {
   @override
   State<PaymentSuccessPage> createState() => _PaymentSuccessPageState();
@@ -92,7 +94,10 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                         height: 50,
                         child: MainButton(text: 'See My Bookings', onPressed: () {
                           // Navigate or do something
-                          GoRouter.of(context).push(AppRoutes.manageBookings);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const BottomNavScreen(initialIndex: 2)), // Bookings
+                          );
                         }),
                       )
                     ],

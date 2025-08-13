@@ -30,7 +30,7 @@ class _InventoryListState extends State<InventoryList> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
   final TripController tripController = Get.put(TripController());
 
- static const Map<String, String> tripMessages = {
+  static const Map<String, String> tripMessages = {
     '0': 'Your selected trip type has changed to Outstation One Trip.',
     '1': 'Your selected trip type has changed to Outstation Round Trip.',
     '2': 'Your selected trip type has changed to Airport Trip.',
@@ -63,12 +63,15 @@ class _InventoryListState extends State<InventoryList> {
 
   /// Check for trip code changes and show dialog if needed
   Future<void> loadTripCode(BuildContext context) async {
-    final current = await StorageServices.instance.read('currentTripCode') ?? '';
-    final previous = await StorageServices.instance.read('previousTripCode') ?? '';
+    final current =
+        await StorageServices.instance.read('currentTripCode') ?? '';
+    final previous =
+        await StorageServices.instance.read('previousTripCode') ?? '';
 
     // Show dialog only if codes differ and current is not empty
     if (mounted && current.isNotEmpty && current != previous) {
-      final message = tripMessages[current] ?? 'Your selected trip type has changed.';
+      final message =
+          tripMessages[current] ?? 'Your selected trip type has changed.';
 
       await showDialog(
         context: context,
@@ -88,7 +91,8 @@ class _InventoryListState extends State<InventoryList> {
                 Icon(Icons.update_outlined, color: Colors.blueAccent, size: 20),
                 SizedBox(width: 10),
                 Text('Trip Updated',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
             content: Padding(
@@ -117,7 +121,6 @@ class _InventoryListState extends State<InventoryList> {
                     });
                   },
                   child: const Text('OK'),
-
                 ),
               ),
             ],
@@ -138,17 +141,15 @@ class _InventoryListState extends State<InventoryList> {
         context: context,
         isSecondPage: true,
       );
-
     } catch (e) {
       // Maybe log the error
       Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted){
+        if (mounted) {
           Navigator.pop(context);
           setState(() {
             isLoading = false;
           });
         }
-
       });
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -183,7 +184,6 @@ class _InventoryListState extends State<InventoryList> {
 
     final indiaCarTypes = indiaData?.result?.inventory?.carTypes ?? [];
     final globalList = globalData?.result ?? [];
-
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -321,7 +321,7 @@ class _InventoryListState extends State<InventoryList> {
       style: TextStyle(
         decoration: TextDecoration.lineThrough,
         color: Colors.grey,
-        fontSize: 14,
+        fontSize: 13,
       ),
     );
     Text(
@@ -329,7 +329,7 @@ class _InventoryListState extends State<InventoryList> {
       style: TextStyle(
         decoration: TextDecoration.lineThrough,
         color: Colors.grey,
-        fontSize: 14,
+        fontSize: 13,
       ),
     );
     return InkWell(
@@ -380,7 +380,7 @@ class _InventoryListState extends State<InventoryList> {
             country: country ?? '', requestData: requestData, context: context);
       },
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
+        padding: const EdgeInsets.only(bottom: 4.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,7 +398,7 @@ class _InventoryListState extends State<InventoryList> {
                       children: [
                         Image.network(
                           carType.carImageUrl ?? '',
-                          width: 80,
+                          width: 70,
                           height: 50,
                         ),
                         OutlinedButton(
@@ -420,14 +420,14 @@ class _InventoryListState extends State<InventoryList> {
                           child: Text(
                             carType.type ?? '',
                             style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
+                                fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         )
                       ],
                     ),
                     SizedBox(width: 6),
                     Expanded(
-                      flex: 3,
+                      flex: 0,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -466,7 +466,7 @@ class _InventoryListState extends State<InventoryList> {
                                       ? carType.combustionType ?? ''
                                       : "",
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w600),
                                 ),
                               )
@@ -1320,11 +1320,11 @@ class _BookingTopBarState extends State<BookingTopBar> {
 
   void getCurrentTripCode() async {
     tripCode = await StorageServices.instance.read('currentTripCode');
-    previousCode = await StorageServices.instance.read('previousTripCode') ?? '';
+    previousCode =
+        await StorageServices.instance.read('previousTripCode') ?? '';
 
     setState(() {});
     print('yash trip code : $tripCode');
-
   }
 
   String trimAfterTwoSpaces(String input) {
@@ -1333,8 +1333,10 @@ class _BookingTopBarState extends State<BookingTopBar> {
       return input; // less than or equal to two spaces, keep as is
     return parts.take(2).join(' '); // first 3 words (2 spaces)
   }
-  Future<void> loadTripCode(BuildContext context) async {
 
+
+
+  Future<void> loadTripCode(BuildContext context) async {
     final tripMessages = {
       '0': 'Your selected trip type has changed to Outstation One Trip.',
       '1': 'Your selected trip type has changed to Outstation Round Trip.',
@@ -1343,8 +1345,9 @@ class _BookingTopBarState extends State<BookingTopBar> {
     };
 
     // Show dialog only if codes differ and current is not empty
-    if (tripCode!=null && tripCode != previousCode) {
-      final message = tripMessages[tripCode] ?? 'Your selected trip type has changed.';
+    if (tripCode != null && tripCode != previousCode) {
+      final message =
+          tripMessages[tripCode] ?? 'Your selected trip type has changed.';
 
       showDialog(
         context: context,
@@ -1399,8 +1402,6 @@ class _BookingTopBarState extends State<BookingTopBar> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final pickupDateTime = bookingRideController.localStartTime.value;
@@ -1427,14 +1428,19 @@ class _BookingTopBarState extends State<BookingTopBar> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-        tripCode == '3' ? '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} [${bookingRideController.selectedPackage.value}]' : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            SizedBox(
+              width: MediaQuery.of(context).size.width*0.7,
+              child: Text(
+                tripCode == '3'
+                    ? '${bookingRideController.prefilled.value}'
+                    : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.clip,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.clip,
             ),
             SizedBox(
               width: 8,
@@ -1450,64 +1456,80 @@ class _BookingTopBarState extends State<BookingTopBar> {
                         builder: (context) => TopBookingDialogWrapper(),
                       );
                     },
-                    child:
-                        Icon(Icons.edit, size: 16, color: AppColors.mainButtonBg)),
+                    child: Icon(Icons.edit,
+                        size: 16, color: AppColors.mainButtonBg)),
               ],
             ),
           ],
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 0),
-          child: Row(
-            children: [
-              Text(
-                formattedPickup,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.greyText5,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.clip,
+        subtitle: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            tripCode == '3' ? Text(
+              'Selected Package ${bookingRideController.selectedPackage.value}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 8),
-              if (tripCode == '0')
-                Text(
-                  'Outstation One Way Trip',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.mainButtonBg,
-                    fontWeight: FontWeight.w500,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+            ): SizedBox(),
+            Padding(
+              padding: const EdgeInsets.only(top: 0),
+              child: Row(
+                children: [
+                  Text(
+                    formattedPickup,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.greyText5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
                   ),
-                ),
-              if (tripCode == '1')
-                Text(
-                  'Outstation Round Way Trip',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.mainButtonBg,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              if (tripCode == '2')
-                Text(
-                  'Airport Trip',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.mainButtonBg,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              if (tripCode == '3')
-                Text(
-                  'Rental Trip',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.mainButtonBg,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-            ],
-          ),
+                  const SizedBox(width: 8),
+                  if (tripCode == '0')
+                    Text(
+                      'Outstation One Way Trip',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mainButtonBg,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  if (tripCode == '1')
+                    Text(
+                      'Outstation Round Way Trip',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mainButtonBg,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  if (tripCode == '2')
+                    Text(
+                      'Airport Trip',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mainButtonBg,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  if (tripCode == '3')
+                    Text(
+                      'Rental Trip',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mainButtonBg,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1079,6 +1079,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
         centerTitle: true,
         elevation: 0,
         backgroundColor: AppColors.scaffoldBgPrimary1,
+        automaticallyImplyLeading: false,
         // leading: Icon(
         //   Icons.arrow_back,
         //   color: Colors.black,
@@ -1087,6 +1088,16 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
       ),
       backgroundColor: AppColors.scaffoldBgPrimary1,
       body: Obx((){
+        if(upcomingBookingController.isLoading.value){
+          return ListView.builder(
+               itemCount: 5,
+              itemBuilder: (context, index){
+                 return Container(
+                   height: 120,
+                     margin: EdgeInsets.only(bottom: 8, left: 16, ),
+                     child: BookingCardShimmer());
+              });
+        }
        return upcomingBookingController.isLoggedIn.value ?  _buildLoginPrompt(context) : Column(
           children: [
             SizedBox(height: 12),
@@ -1225,7 +1236,7 @@ class _BookingCardState extends State<BookingCard> {
             padding: const EdgeInsets.all(8),
             itemCount: upcomingBookingController.confirmedBookings?.length,
             itemBuilder: (BuildContext context, int index) {
-              return buildShimmer();
+              return BookingCardShimmer();
             });
 
         // ⏳ Show loading until data is ready
@@ -1581,66 +1592,6 @@ class _BookingCardState extends State<BookingCard> {
   }
 }
 
-Widget buildShimmer() {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 16.0),
-    child: Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade300, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                width: 96,
-                height: 66,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 16,
-                      width: double.infinity,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 14,
-                      width: 80,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(height: 12, width: 40, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Container(height: 12, width: 40, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Container(height: 12, width: 60, color: Colors.white),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(width: 16, height: 16, color: Colors.white),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
 
 Widget buildDownloadButton({
   required String title,
@@ -1710,7 +1661,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
             padding: const EdgeInsets.all(8),
             itemCount: upcomingBookingController.completedBookings?.length,
             itemBuilder: (BuildContext context, int index) {
-              return buildShimmer();
+              return BookingCardShimmer();
             });
 
         // ⏳ Show loading until data is ready
@@ -2164,7 +2115,7 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
             padding: const EdgeInsets.all(8),
             itemCount: upcomingBookingController.cancelledBookings?.length,
             itemBuilder: (BuildContext context, int index) {
-              return buildShimmer();
+              return BookingCardShimmer();
             });
 
         // ⏳ Show loading until data is ready
@@ -2542,5 +2493,111 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
             );
           });
     });
+  }
+}
+
+
+class BookingCardShimmer extends StatelessWidget {
+  const BookingCardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: 5, // number of skeleton cards
+      itemBuilder: (_, __) {
+        return Card(
+          elevation: 0,
+          color: Colors.white,
+          margin: const EdgeInsets.only(bottom: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(width: 1, color: Color(0xFFCECECE)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Car row
+                  Row(
+                    children: [
+                      Container(
+                        width: 84,
+                        height: 64,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(height: 14, width: 80, color: Colors.white),
+                            const SizedBox(height: 8),
+                            Container(height: 12, width: 120, color: Colors.white),
+                            const SizedBox(height: 8),
+                            Container(height: 12, width: 100, color: Colors.white),
+                            const SizedBox(height: 8),
+                            Container(height: 12, width: 90, color: Colors.white),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(height: 1, color: Colors.grey[200]),
+                  const SizedBox(height: 12),
+
+                  // Pickup and drop row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(height: 12, width: 60, color: Colors.white),
+                            const SizedBox(height: 6),
+                            Container(height: 12, width: double.infinity, color: Colors.white),
+                            const SizedBox(height: 6),
+                            Container(height: 12, width: 80, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 75, color: Colors.grey[200]),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(height: 12, width: 60, color: Colors.white),
+                            const SizedBox(height: 6),
+                            Container(height: 12, width: double.infinity, color: Colors.white),
+                            const SizedBox(height: 6),
+                            Container(height: 12, width: 80, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Buttons row
+                  Row(
+                    children: [
+                      Container(height: 32, width: 120, color: Colors.white),
+                      const SizedBox(width: 16),
+                      Container(height: 32, width: 140, color: Colors.white),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
