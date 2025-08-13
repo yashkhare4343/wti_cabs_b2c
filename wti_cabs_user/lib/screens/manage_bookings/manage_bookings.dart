@@ -9,7 +9,6 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
-import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
