@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
 import 'package:wti_cabs_user/core/model/auth/otp/otp_response.dart';
@@ -11,61 +12,62 @@ class OtpController extends GetxController {
   Rx<OtpResponse?> otpData = Rx<OtpResponse?>(null);
   RxBool isLoading = false.obs;
 
-  /// Fetch booking data based on the given country and request body
-  Future<void> verifyOtp({
-    required String mobile, required String otp,
+  RxnBool isAuth = RxnBool(null); // 🔹 nullable by default
+  RxString otpMessage = ''.obs; // message text (error or success)
+  RxBool hasError = false.obs;   // true if error, false if success
+
+  Future<bool> verifyOtp({
+    required String mobile,
+    required String otp,
     required BuildContext context,
   }) async {
-    final Map<String, dynamic> requestData = {
-      "contact": mobile,
-      "otp": otp
-    };
     isLoading.value = true;
+
     try {
-      final response = await ApiService().postRequestNew<OtpResponse>(
-        'user/verifyOtpViaSms',
-        requestData,
-        OtpResponse.fromJson,
-        context,
-      );
-      otpData.value = response;
-      print('print otp data : ${otpData.value}');
-      decodeRefreshToken(otpData.value?.refreshToken??'');
-       await StorageServices.instance.save('refreshToken', otpData.value?.refreshToken??'');
-       await StorageServices.instance.save('token', otpData.value?.accessToken??'');
-
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Otp verified successfully', style: CommonFonts.primaryButtonText,),
-          backgroundColor: Colors.green,
-          duration: const Duration(milliseconds: 800), // Very short duration
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
+      final result = await ApiService().postRequestWithStatus(
+        endpoint: 'user/verifyOtpViaSms',
+        data: {
+          "contact": mobile,
+          "otp": otp,
+        },
       );
 
+      final statusCode = result["statusCode"];
+      final body = result["body"];
 
-    } catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString(), style: CommonFonts.primaryButtonText,),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(milliseconds: 800), // Very short duration
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-    }
+      if (statusCode == 200 && body != null) {
+        isAuth.value = body["auth"]; // 🔹 true or false from API
 
-    finally {
+        if (body["auth"] == true) {
+          otpData.value = OtpResponse.fromJson(body);
+          decodeRefreshToken(otpData.value?.refreshToken ?? '');
+          await StorageServices.instance.save('refreshToken', otpData.value?.refreshToken ?? '');
+          await StorageServices.instance.save('token', otpData.value?.accessToken ?? '');
+          otpMessage.value = body["description"] ?? "OTP verified successfully";
+          GoRouter.of(context).pop();
+          return true;
+        } else {
+          otpMessage.value = body["description"] ?? "OTP verification failed";
+          return false;
+        }
+      } else {
+        isAuth.value = false;
+        otpMessage.value = "Invalid response from server";
+        return false;
+      }
+    } catch (e) {
+      isAuth.value = false;
+      otpMessage.value = "OTP Failed! Please try again.";
+      return false;
+    } finally {
       isLoading.value = false;
     }
   }
+
+
+
+// ... rest of your code ...
+
 
 
   void decodeRefreshToken(String refreshToken) async{

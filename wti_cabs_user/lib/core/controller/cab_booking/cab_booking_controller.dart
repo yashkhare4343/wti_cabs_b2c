@@ -160,6 +160,13 @@ class CabBookingController extends GetxController {
     selectedExtrasIds.clear();
   }
 
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  var isFormValid = false.obs;
+
+  void validateForm() {
+    isFormValid.value = formKey.currentState?.validate() ?? false;
+  }
+
   Future<void> fetchBookingData({
     required String country,
     required Map<String, dynamic> requestData,

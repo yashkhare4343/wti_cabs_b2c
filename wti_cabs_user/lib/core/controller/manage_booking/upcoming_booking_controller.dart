@@ -11,7 +11,8 @@ class UpcomingBookingController extends GetxController {
   Rx<UpcomingBookingResponse?> upcomingBookingResponse = Rx<UpcomingBookingResponse?>(null);
   RxList<ChauffeurResult> confirmedBookings = <ChauffeurResult>[].obs; // 🔹 Filtered list
   RxList<ChauffeurResult> completedBookings = <ChauffeurResult>[].obs; // 🔹 Filtered list
-  RxList<ChauffeurResult> cancelledBookings = <ChauffeurResult>[].obs; // 🔹 Filtered list
+  RxList<ChauffeurResult> cancelledBookings = <ChauffeurResult>[].obs;
+  RxBool isLoggedIn = false.obs;
   RxBool isLoading = false.obs;
 
   // upcoming bookings

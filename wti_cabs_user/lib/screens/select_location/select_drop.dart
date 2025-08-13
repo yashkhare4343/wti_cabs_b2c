@@ -78,50 +78,50 @@ class _SelectDropState extends State<SelectDrop> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            // const SizedBox(height: 16),
 
-            // 📍 Quick Actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    QuickAddLocationTile(
-                      icon: Icons.home,
-                      label: "Home",
-                      onTap: () => print("🏠 Home tapped"),
-                    ),
-                    const SizedBox(width: 12),
-                    QuickAddLocationTile(
-                      icon: Icons.business,
-                      label: "Office",
-                      onTap: () => print("🏢 Office tapped"),
-                    ),
-                    const SizedBox(width: 12),
-                    QuickAddLocationTile(
-                      icon: Icons.add_location_alt,
-                      label: "Add Place",
-                      onTap: () => print("📍 Add Location tapped"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
+            // // 📍 Quick Actions
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16),
+            //   child: SingleChildScrollView(
+            //     scrollDirection: Axis.horizontal,
+            //     child: Row(
+            //       children: [
+            //         QuickAddLocationTile(
+            //           icon: Icons.home,
+            //           label: "Home",
+            //           onTap: () => print("🏠 Home tapped"),
+            //         ),
+            //         const SizedBox(width: 12),
+            //         QuickAddLocationTile(
+            //           icon: Icons.business,
+            //           label: "Office",
+            //           onTap: () => print("🏢 Office tapped"),
+            //         ),
+            //         const SizedBox(width: 12),
+            //         QuickAddLocationTile(
+            //           icon: Icons.add_location_alt,
+            //           label: "Add Place",
+            //           onTap: () => print("📍 Add Location tapped"),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
+            //
+            // const SizedBox(height: 16),
 
             // 🌍 Set on Map
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.location_searching_outlined, size: 18, color: AppColors.blue4),
-                  const SizedBox(width: 6),
-                  Text('Set Location on Map', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blue4)),
-                ],
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16),
+            //   child: Row(
+            //     children: [
+            //       Icon(Icons.location_searching_outlined, size: 18, color: AppColors.blue4),
+            //       const SizedBox(width: 6),
+            //       Text('Set Location on Map', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blue4)),
+            //     ],
+            //   ),
+            // ),
 
             const SizedBox(height: 16),
 
@@ -166,11 +166,23 @@ class _SelectDropState extends State<SelectDrop> {
 
                         // 🚀 2. Navigate immediately
                         FocusScope.of(context).unfocus();
-                        GoRouter.of(context).push(AppRoutes.bookingRide);
+                        final tabName = Get.find<BookingRideController>().currentTabName;
+                        if (tabName == 'rental') {
+                          bookingRideController.selectedIndex.value =0;
+                          GoRouter.of(context).go(
+                            '${AppRoutes.bookingRide}?tab=airport',
+                          );
+                        } else {
+                          bookingRideController.selectedIndex.value =0;
+                          GoRouter.of(context).go(
+                            '${AppRoutes.bookingRide}?tab=airport',
+                          );
+                        }
 
                         // 🧠 3. Background work (fire-and-forget, non-blocking)
                         Future.microtask(() {
                           // LatLng for drop (non-blocking)
+
                           dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
 
                           // Optional: recordTrip + pickup lat/lng in parallel
@@ -186,6 +198,7 @@ class _SelectDropState extends State<SelectDrop> {
                             pickupPlaceId,
                             place.primaryText,
                             place.placeId,
+                            context
                           );
 
                           // Storage (fast, no await)

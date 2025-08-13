@@ -22,8 +22,8 @@ class CouponController extends GetxController {
         context,
       );
 
-      if (response.couponCodesFetched == true && response.data != null) {
-        coupons.value = response.data!;
+      if (response?.couponCodesFetched == true && response?.data != null) {
+        coupons.value = response?.data??[];
       } else {
         coupons.clear();
       }

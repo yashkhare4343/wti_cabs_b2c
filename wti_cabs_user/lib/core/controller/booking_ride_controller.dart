@@ -22,6 +22,23 @@ class BookingRideController extends GetxController {
   Rx<DateTime?> dropDateTime = Rx<DateTime?>(null);
 
   var selectedIndex = 0.obs;
+  final tabNames = ["airport", "outstation", "rental"];
+
+  void changeTab(int index) {
+    selectedIndex.value = index;
+  }
+
+  var selectedPackage = ''.obs;
+
+
+  void setTabByName(String name) {
+    final index = tabNames.indexOf(name.toLowerCase());
+    if (index != -1) {
+      selectedIndex.value = index;
+    }
+  }
+
+  String get currentTabName => tabNames[0];
   final BookingValidation controller = Get.put(BookingValidation());
 
   void showErrorSnackbar(String message, BuildContext context) {
@@ -34,9 +51,7 @@ class BookingRideController extends GetxController {
       ),
     );
   }
-  void changeTab(int index) {
-  selectedIndex.value = index;
-  }
+
 
 
   @override

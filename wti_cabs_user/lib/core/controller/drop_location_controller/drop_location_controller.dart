@@ -24,6 +24,15 @@ class DestinationLocationController extends GetxController {
     List<String>? types,
     List<Term>? terms,
   }) {
+    print('--- setPlace destination called ---');
+    print('placeId: $placeId');
+    print('title: $title');
+    print('city: $city');
+    print('state: $state');
+    print('country: $country');
+    print('types: ${types ?? []}');
+    print('terms: ${terms ?? []}');
+
     this.placeId.value = placeId;
     this.title.value = title;
     this.city.value = city;

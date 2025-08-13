@@ -53,7 +53,9 @@ class _InventoryListState extends State<InventoryList> {
   /// Load the country and check trip code change dialog
   Future<void> loadInitialData() async {
     _country = await StorageServices.instance.read('country');
-    await loadTripCode(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await loadTripCode(context);
+    });
     setState(() {
       isLoading = false;
     });
@@ -1314,11 +1316,15 @@ class _BookingTopBarState extends State<BookingTopBar> {
   final BookingRideController bookingRideController =
       Get.put(BookingRideController());
   String? tripCode;
+  String? previousCode;
 
   void getCurrentTripCode() async {
     tripCode = await StorageServices.instance.read('currentTripCode');
+    previousCode = await StorageServices.instance.read('previousTripCode') ?? '';
+
     setState(() {});
     print('yash trip code : $tripCode');
+
   }
 
   String trimAfterTwoSpaces(String input) {
@@ -1328,8 +1334,6 @@ class _BookingTopBarState extends State<BookingTopBar> {
     return parts.take(2).join(' '); // first 3 words (2 spaces)
   }
   Future<void> loadTripCode(BuildContext context) async {
-    final current = await StorageServices.instance.read('currentTripCode') ?? '';
-    final previous = await StorageServices.instance.read('previousTripCode') ?? '';
 
     final tripMessages = {
       '0': 'Your selected trip type has changed to Outstation One Trip.',
@@ -1339,8 +1343,8 @@ class _BookingTopBarState extends State<BookingTopBar> {
     };
 
     // Show dialog only if codes differ and current is not empty
-    if (current.isNotEmpty && current != previous) {
-      final message = tripMessages[current] ?? 'Your selected trip type has changed.';
+    if (tripCode!=null && tripCode != previousCode) {
+      final message = tripMessages[tripCode] ?? 'Your selected trip type has changed.';
 
       showDialog(
         context: context,
@@ -1421,9 +1425,10 @@ class _BookingTopBarState extends State<BookingTopBar> {
             },
             child: Icon(Icons.arrow_back, size: 20)),
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+        tripCode == '3' ? '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} [${bookingRideController.selectedPackage.value}]' : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1434,16 +1439,21 @@ class _BookingTopBarState extends State<BookingTopBar> {
             SizedBox(
               width: 8,
             ),
-            GestureDetector(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: true,
-                    builder: (context) => TopBookingDialogWrapper(),
-                  );
-                },
-                child:
-                    Icon(Icons.edit, size: 16, color: AppColors.mainButtonBg)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: true,
+                        builder: (context) => TopBookingDialogWrapper(),
+                      );
+                    },
+                    child:
+                        Icon(Icons.edit, size: 16, color: AppColors.mainButtonBg)),
+              ],
+            ),
           ],
         ),
         subtitle: Padding(
@@ -1471,7 +1481,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
                 ),
               if (tripCode == '1')
                 Text(
-                  'Outstation One Way Trip',
+                  'Outstation Round Way Trip',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.mainButtonBg,

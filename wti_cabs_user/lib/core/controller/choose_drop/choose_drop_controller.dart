@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../api/api_services.dart';
 import '../../model/booking_engine/findCntryDateTimeResponse.dart';
 import '../../model/booking_engine/suggestions_places_response.dart';
@@ -17,6 +18,7 @@ class DropPlaceSearchController extends GetxController {
   final RxList<SuggestionPlacesResponse> dropSuggestions = <SuggestionPlacesResponse>[].obs;
   final BookingRideController bookingRideController = Get.find<BookingRideController>();
   final PlaceSearchController pickupController = Get.find<PlaceSearchController>();
+  final DestinationLocationController destinationLocationController = Get.find<DestinationLocationController>();
 
   var dropLatLng = Rxn<GetLatLngResponse>();
   var dropDateTimeResponse = Rxn<FindCntryDateTimeResponse>();

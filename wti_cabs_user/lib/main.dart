@@ -18,6 +18,7 @@ import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 import 'config/enviornment_config.dart';
 import 'core/controller/choose_drop/choose_drop_controller.dart';
 import 'core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'core/controller/drop_location_controller/drop_location_controller.dart';
 import 'core/route_management/app_page.dart';
 import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
@@ -76,6 +77,7 @@ void main() async {
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
     Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController());
+    Get.lazyPut<DestinationLocationController>(() => DestinationLocationController());
 
     print('🌍 Initializing Time Zones');
     tz.initializeTimeZones();

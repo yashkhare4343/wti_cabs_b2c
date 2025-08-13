@@ -27,7 +27,10 @@ class AppPages{
          ),
         GoRoute(
           path: AppRoutes.bookingRide,
-          builder: (context, state) => BookingRide(),
+          builder: (context, state) {
+            final tab = state.uri.queryParameters['tab'];
+            return BookingRide(initialTab: tab);
+          },
         ),
         GoRoute(
           path: AppRoutes.choosePickup,

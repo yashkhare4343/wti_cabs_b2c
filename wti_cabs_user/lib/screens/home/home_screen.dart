@@ -31,6 +31,7 @@ import '../../core/controller/auth/register_controller.dart';
 import '../../core/controller/auth/resend_otp_controller.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
+import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
@@ -68,6 +69,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Get.put(PlaceSearchController());
   final SourceLocationController sourceController =
       Get.put(SourceLocationController());
+  final DestinationLocationController destinationLocationController =
+      Get.put(DestinationLocationController());
+  final ProfileController profileController = Get.put(ProfileController());
+
 
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
@@ -202,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         latLng.latitude,
         latLng.longitude,
       );
+      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
         setState(() {
@@ -236,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final suggestion = placeSearchController.suggestions.first;
 
       // 4. Immediate UI values
-      bookingRideController.prefilled.value = suggestion.primaryText;
+      bookingRideController.prefilled.value = address;
       placeSearchController.placeId.value = suggestion.placeId;
 
       // 5. Fire-and-forget async logic in background
@@ -1072,21 +1078,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                             seconds: 2));
 
                                                     if (showOtpField) {
-                                                      await otpController
-                                                          .verifyOtp(
-                                                        mobile: phoneController
-                                                            .text
-                                                            .trim(),
-                                                        otp:
-                                                            otpTextEditingController
-                                                                .text
-                                                                .trim(),
-                                                        context: context,
-                                                      )
-                                                          .then((value) {
-                                                        GoRouter.of(context)
-                                                            .pop();
-                                                      });
+                                                      try {
+                                                        final isVerified = await otpController.verifyOtp(
+                                                          mobile: phoneController.text.trim(),
+                                                          otp: otpTextEditingController.text.trim(),
+                                                          context: context,
+                                                        );
+
+                                                        otpController.hasError.value = !isVerified;
+
+                                                        if (isVerified) {
+
+
+
+                                                          // Show popup loader
+
+                                                          // Simulate 1-second wait
+                                                          await Future.delayed(const Duration(seconds: 3));
+
+                                                          // Mark logged in
+                                                          await profileController.fetchData();
+
+                                                          GoRouter.of(context).go(AppRoutes.profile);
+
+
+                                                          // Navigate
+                                                        }
+
+
+                                                      } catch (e) {
+                                                        otpController.hasError.value = true;
+
+                                                      }
                                                     } else {
                                                       await mobileController
                                                           .verifyMobile(
@@ -2129,7 +2152,7 @@ class _CustomCarouselState extends State<CustomCarousel> {
                     child: Opacity(
                       opacity: 1.0,
                       child: ClipRRect(
-                        child: Image.asset(
+                        child: Image.network(
                           item.imgUrl ?? '',
                           fit: BoxFit.cover,
                         ),
@@ -2234,7 +2257,7 @@ class _CustomTabBarState extends State<CustomTabBar> {
               return GestureDetector(
                 onTap: () {
                   setState(() {
-                    selectedIndex = index;
+                    selectedIndex = 0;
                   });
                 },
                 child: Container(
@@ -2514,6 +2537,8 @@ class _RecentTripListState extends State<RecentTripList> {
       Get.put(PlaceSearchController());
   final SourceLocationController sourceController =
       Get.put(SourceLocationController());
+  final TripHistoryController tripHistoryController =
+      Get.put(TripHistoryController());
 
   Future<void> fetchCurrentLocationAndAddress() async {
     try {
@@ -2545,6 +2570,8 @@ class _RecentTripListState extends State<RecentTripList> {
         position.latitude,
         position.longitude,
       );
+      
+      print('yash testing current lat/lng ${position.latitude}, ${position.longitude}');
 
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
@@ -2569,7 +2596,7 @@ class _RecentTripListState extends State<RecentTripList> {
             .searchPlaces(fullAddress, context)
             .then((value) async {});
         bookingRideController.prefilled.value =
-            placeSearchController.suggestions.first.primaryText;
+            address;
         placeSearchController.placeId.value =
             placeSearchController.suggestions.first.placeId;
 
@@ -2643,28 +2670,67 @@ class _RecentTripListState extends State<RecentTripList> {
                   return InkWell(
                     splashColor: Colors.transparent,
                     onTap: () {
-                      // 🚀 1. Instantly update local fields
-                      bookingRideController.prefilledDrop.value = mainTitle;
+                      // 🚀 1. Instant local updates
+                      // 🚀 1. Instant UI updates (no waiting)
+                      fetchCurrentLocationAndAddress();
+
+                      bookingRideController.prefilledDrop.value = dropTitle;
                       dropPlaceSearchController.dropPlaceId.value = dropPlaceId;
 
                       // 🚀 2. Navigate immediately
                       FocusScope.of(context).unfocus();
-                      GoRouter.of(context).push(AppRoutes.bookingRide);
+                      GoRouter.of(context).push(AppRoutes.chooseDrop);
 
-                      // 🧠 3. Background async logic delayed slightly to allow UI to complete transition
-                      Future.delayed(const Duration(milliseconds: 150), () {
-                        // Fire-and-forget – do not await
-                        fetchCurrentLocationAndAddress();
-                        dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceId, context);
+                      // 🧠 3. Background work (fire-and-forget, non-blocking)
+                      Future.microtask(() async{
+                        // LatLng for drop (non-blocking)
+                       await dropPlaceSearchController.searchDropPlaces(dropTitle, context);
+                       await dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController
+                           .dropSuggestions.first.placeId, context);
+
+                        if(dropPlaceSearchController.dropSuggestions.isNotEmpty) {
+                          var dropSuggestions = dropPlaceSearchController
+                              .dropSuggestions.first;
+                          // Storage (fast, no await)
+                          StorageServices.instance.save('destinationPlaceId',
+                              dropSuggestions.placeId);
+                          StorageServices.instance.save('destinationTitle',
+                              dropSuggestions.primaryText);
+                          StorageServices.instance.save('destinationCity',
+                              dropSuggestions.city);
+                          StorageServices.instance.save('destinationState',
+                              dropSuggestions.state);
+                          StorageServices.instance.save('destinationCountry',
+                              dropSuggestions.country);
+
+                          if (dropSuggestions.types.isNotEmpty) {
+                            StorageServices.instance.save('destinationTypes',
+                                jsonEncode(dropSuggestions.types));
+                          }
+
+                          if (dropSuggestions.terms.isNotEmpty) {
+                            StorageServices.instance.save('destinationTerms',
+                                jsonEncode(dropSuggestions.terms));
+                          }
+
+                          // Set in controller
+                          dropLocationController.setPlace(
+                            placeId: dropSuggestions.placeId,
+                            title: dropSuggestions.primaryText,
+                            city: dropSuggestions.city,
+                            state: dropSuggestions.state,
+                            country: dropSuggestions.country,
+                            types: dropSuggestions.types,
+                            terms: dropSuggestions.terms,
+                          );
+                        }
                       });
+
+
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 0,
-                      ),
-                      margin: const EdgeInsets.only(
-                          bottom: 8, left: 16, right: 16, top: 12),
+                      padding: EdgeInsets.zero,
+                      margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -2677,10 +2743,9 @@ class _RecentTripListState extends State<RecentTripList> {
                         ],
                       ),
                       child: ListTile(
-                        contentPadding: EdgeInsets.only(
-                            left: 16), // removes horizontal padding
-                        dense: true, // makes it more compact
-                        minVerticalPadding: 0, // removes vertical padding
+                        contentPadding: const EdgeInsets.only(left: 16),
+                        dense: true,
+                        minVerticalPadding: 0,
                         leading: Container(
                           padding: const EdgeInsets.all(10.0),
                           decoration: BoxDecoration(
@@ -2708,6 +2773,7 @@ class _RecentTripListState extends State<RecentTripList> {
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF4F4F4F),
                           ),
+                          maxLines: 1,
                         ),
                         tileColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
@@ -2716,6 +2782,7 @@ class _RecentTripListState extends State<RecentTripList> {
                       ),
                     ),
                   );
+
                 },
               ),
             );

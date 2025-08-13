@@ -1,10 +1,22 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
+
+import '../../core/controller/drop_location_controller/drop_location_controller.dart';
+import '../../core/services/storage_services.dart';
 
 class TripHistoryController extends GetxController {
   static const String _key = 'recent_trips';
   var topRecentTrips = <Map<String, dynamic>>[].obs;
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.put(DropPlaceSearchController());
+  final BookingRideController bookingRideController =
+      Get.put(BookingRideController());
+  final DestinationLocationController destinationLocationController =
+      Get.find<DestinationLocationController>();
 
   @override
   void onInit() {
@@ -48,12 +60,8 @@ class TripHistoryController extends GetxController {
     topRecentTrips.value = uniqueTrips.take(4).toList();
   }
 
-  Future<void> recordTrip(
-      String pickupTitle,
-      String pickupPlaceId,
-      String dropTitle,
-      String dropPlaceId,
-      ) async {
+  Future<void> recordTrip(String pickupTitle, String pickupPlaceId,
+      String dropTitle, String dropPlaceId, BuildContext context) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     List<Map<String, dynamic>> trips = [];
 
@@ -63,7 +71,7 @@ class TripHistoryController extends GetxController {
     }
 
     final index = trips.indexWhere((trip) =>
-    trip['pickup']['title'] == pickupTitle &&
+        trip['pickup']['title'] == pickupTitle &&
         trip['drop']['title'] == dropTitle);
 
     if (index != -1) {
@@ -77,7 +85,9 @@ class TripHistoryController extends GetxController {
     }
 
     await prefs.setString(_key, jsonEncode(trips));
-    await loadRecentTrips(); // reload after saving
+    await loadRecentTrips();
+
+    // reload after saving
   }
 
   Future<void> clearHistory() async {

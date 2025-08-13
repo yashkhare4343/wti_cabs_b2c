@@ -13,6 +13,7 @@ import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../core/model/booking_engine/suggestions_places_response.dart';
+import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
@@ -86,40 +87,40 @@ class _SelectPickupState extends State<SelectPickup> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    QuickAddLocationTile(
-                      icon: Icons.home,
-                      label: "Home",
-                      onTap: () {
-                        print("🏠 Home tapped");
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    QuickAddLocationTile(
-                      icon: Icons.business,
-                      label: "Office",
-                      onTap: () {
-                        print("🏢 Office tapped");
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    QuickAddLocationTile(
-                      icon: Icons.add_location_alt,
-                      label: "Add Place",
-                      onTap: () {
-                        print("📍 Add Location tapped");
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16),
+            //   child: SingleChildScrollView(
+            //     scrollDirection: Axis.horizontal,
+            //     child: Row(
+            //       children: [
+            //         QuickAddLocationTile(
+            //           icon: Icons.home,
+            //           label: "Home",
+            //           onTap: () {
+            //             print("🏠 Home tapped");
+            //           },
+            //         ),
+            //         const SizedBox(width: 12),
+            //         QuickAddLocationTile(
+            //           icon: Icons.business,
+            //           label: "Office",
+            //           onTap: () {
+            //             print("🏢 Office tapped");
+            //           },
+            //         ),
+            //         const SizedBox(width: 12),
+            //         QuickAddLocationTile(
+            //           icon: Icons.add_location_alt,
+            //           label: "Add Place",
+            //           onTap: () {
+            //             print("📍 Add Location tapped");
+            //           },
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 16),
             InkWell(
               splashColor:Colors.transparent,
               onTap: () async{
@@ -217,11 +218,25 @@ class _SelectPickupState extends State<SelectPickup> {
 
                                 // 🚀 2. Immediate navigation (unfocus + close current screen)
                                 FocusScope.of(context).unfocus();
-                                GoRouter.of(context).pop();
+                                final tabName = Get.find<BookingRideController>().currentTabName;
+                                if(bookingRideController.selectedIndex.value == 2){
+                                  bookingRideController.selectedIndex.value = 2;
+                                  GoRouter.of(context).go(
+                                    '${AppRoutes.bookingRide}?tab=rental',
+                                  );
+                                }
+                                else{
+                                  bookingRideController.selectedIndex.value = 0;
+
+                                  GoRouter.of(context).go(
+                                    '${AppRoutes.bookingRide}?tab=airport',
+                                  );
+                                }
 
                                 // 🧠 3. Background processing (does not block navigation)
                                 Future.microtask(() {
                                   // Fire-and-forget — don't await unless required later
+
                                   placeSearchController.getLatLngDetails(place.placeId, context);
 
                                   dropPlaceSearchController.dropPlaceId.value.isNotEmpty

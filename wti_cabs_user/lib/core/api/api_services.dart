@@ -320,6 +320,39 @@ class ApiService {
     }
   }
 
+  // ==== post method with status
+  Future<Map<String, dynamic>> postRequestWithStatus({
+    required String endpoint,
+    required Map<String, dynamic> data,
+    Map<String, String>? headers,
+  }) async {
+    final url = Uri.parse('$baseUrl/$endpoint');
+
+    final defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Basic ${base64Encode(utf8.encode('harsh:123'))}',
+    };
+
+    final mergedHeaders = {
+      ...defaultHeaders,
+      if (headers != null) ...headers,
+    };
+
+    final response = await http.post(
+      url,
+      headers: mergedHeaders,
+      body: jsonEncode(data),
+    );
+
+    return {
+      "statusCode": response.statusCode,
+      "body": jsonDecode(response.body),
+    };
+  }
+
+  // ==============
+
   Future<void> downloadPdfWithHttp({
     required String endpoint,
     required Map<String, dynamic> body,

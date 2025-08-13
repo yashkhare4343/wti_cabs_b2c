@@ -9,7 +9,9 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
+import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -51,7 +53,6 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
 
   int selectedDriveType = 0; // 0: Chauffeur's, 1: Self Drive
   TabController? _tabController;
-  bool _isLoggedIn = false; // default: not logged in
 
   @override
   void initState() {
@@ -64,9 +65,9 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
   void isLogin() async{
     if(await StorageServices.instance.read('token')==null){
       _showAuthBottomSheet();
-      setState(() {
-        _isLoggedIn = true;
-      });
+
+        upcomingBookingController.isLoggedIn.value = true;
+
     }
   }
 
@@ -758,85 +759,57 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                 Form(
                                   key: _formKey,
                                   child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       if (!showOtpField)
                                         Container(
-                                          padding: const EdgeInsets.only(
-                                              left: 16.0),
+                                          padding: const EdgeInsets.only(left: 16.0),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            border: Border.all(
-                                                color: hasError
-                                                    ? Colors.red
-                                                    : Colors.grey),
-                                            borderRadius:
-                                            BorderRadius.circular(12),
+                                            border: Border.all(color: hasError ? Colors.red : Colors.grey),
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: ClipRRect(
-                                            borderRadius:
-                                            BorderRadius.circular(12.0),
-                                            child:
-                                            InternationalPhoneNumberInput(
-                                              onInputChanged: (_) =>
-                                                  _validatePhone(
-                                                      phoneController.text
-                                                          .trim()),
-                                              selectorConfig:
-                                              const SelectorConfig(
-                                                selectorType:
-                                                PhoneInputSelectorType
-                                                    .BOTTOM_SHEET,
+                                            borderRadius: BorderRadius.circular(12.0),
+                                            child: InternationalPhoneNumberInput(
+                                              onInputChanged: (_) => _validatePhone(phoneController.text.trim()),
+                                              selectorConfig: const SelectorConfig(
+                                                selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
                                                 useBottomSheetSafeArea: true,
                                                 showFlags: true,
                                               ),
                                               ignoreBlank: false,
-                                              autoValidateMode:
-                                              AutovalidateMode.disabled,
-                                              selectorTextStyle:
-                                              const TextStyle(
-                                                  color: Colors.black),
+                                              autoValidateMode: AutovalidateMode.disabled,
+                                              selectorTextStyle: const TextStyle(color: Colors.black),
                                               initialValue: number,
-                                              textFieldController:
-                                              phoneController,
+                                              textFieldController: phoneController,
                                               formatInput: false,
-                                              keyboardType:
-                                              const TextInputType
-                                                  .numberWithOptions(
-                                                  signed: true),
+                                              keyboardType: const TextInputType.numberWithOptions(signed: true),
                                               validator: (_) => null,
                                               maxLength: 10,
-                                              inputDecoration:
-                                              InputDecoration(
-                                                hintText:
-                                                "Enter Mobile Number",
+                                              inputDecoration: const InputDecoration(
+                                                hintText: "Enter Mobile Number",
                                                 counterText: "",
                                                 filled: true,
                                                 fillColor: Colors.white,
-                                                contentPadding:
-                                                const EdgeInsets
-                                                    .symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 14),
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                                 border: InputBorder.none,
                                               ),
                                             ),
                                           ),
                                         ),
                                       if (showOtpField)
+                                      // Wrap OtpTextField with Obx if you want reactive behavior or just pass error info as parameter
                                         OtpTextField(
-                                          otpController:
-                                          otpTextEditingController,
-                                          mobileNo:
-                                          phoneController.text.trim(),
+                                          otpController: otpTextEditingController,
+                                          mobileNo: phoneController.text.trim(),
                                         ),
-                                      if (errorMessage != null) ...[
+                                      if (errorMessage != null && errorMessage!.isNotEmpty && !showOtpField) ...[
                                         const SizedBox(height: 8),
-                                        Text(errorMessage!,
-                                            style: const TextStyle(
-                                                color: Colors.red,
-                                                fontSize: 12)),
+                                        Text(
+                                          errorMessage!,
+                                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                                        ),
                                       ],
                                     ],
                                   ),
@@ -869,26 +842,49 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                                 seconds: 2));
 
                                         if (showOtpField) {
-                                          await otpController
-                                              .verifyOtp(
-                                            mobile: phoneController
-                                                .text
-                                                .trim(),
-                                            otp:
-                                            otpTextEditingController
-                                                .text
-                                                .trim(),
-                                            context: context,
-                                          )
-                                              .then((value) {
-                                            GoRouter.of(context)
-                                                .pop();
-                                          });
-                                          setState(() {
-                                            _isLoggedIn = false;
-                                          });
-                                         await upcomingBookingController.fetchUpcomingBookingsData();
-                                        } else {
+                                          try {
+                                            final isVerified = await otpController.verifyOtp(
+                                              mobile: phoneController.text.trim(),
+                                              otp: otpTextEditingController.text.trim(),
+                                              context: context,
+                                            );
+
+                                            otpController.hasError.value = !isVerified;
+
+                                            if (isVerified) {
+                                              // 1️⃣ Show loader
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => const PopupLoader(message: 'Fetching Booking Data...'),
+                                              );
+
+                                              // 2️⃣ Let the dialog paint
+                                              await Future.delayed(Duration.zero);
+
+                                              // 3️⃣ Start async work
+                                              upcomingBookingController.isLoggedIn.value = true;
+                                              await upcomingBookingController.fetchUpcomingBookingsData();
+
+                                              // 4️⃣ Optional delay so loader is visible
+                                              await Future.delayed(const Duration(seconds: 1));
+                                              GoRouter.of(context).go(AppRoutes.manageBookings);
+
+                                              // 5️⃣ Close loader
+                                              Navigator.of(context).pop();
+                                              Navigator.of(context).pop();
+
+                                              // 6️⃣ Navigate
+                                            }
+
+
+                                          } catch (e) {
+                                            otpController.hasError.value = true;
+
+                                            upcomingBookingController.isLoggedIn.value = false;
+                                          }
+                                        }
+                                        else {
                                           await mobileController
                                               .verifyMobile(
                                             mobile: phoneController
@@ -1083,100 +1079,102 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
         centerTitle: true,
         elevation: 0,
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        leading: Icon(
-          Icons.arrow_back,
-          color: Colors.black,
-          size: 20,
-        ),
+        // leading: Icon(
+        //   Icons.arrow_back,
+        //   color: Colors.black,
+        //   size: 20,
+        // ),
       ),
       backgroundColor: AppColors.scaffoldBgPrimary1,
-      body: _isLoggedIn ? _buildLoginPrompt(context) :  Column(
-        children: [
-          SizedBox(height: 12),
-          // Drive Type Toggle
-          Container(
-            // height: 46,
-            width: MediaQuery.of(context).size.width * 0.8,
-            // padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: StorageServices.instance.read('token')==null ? Center(
-              child: MainButton(text: 'Login/Register', onPressed: (){
-              }),
-            ) : Row(
-                children: List.generate(2, (index) {
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => selectedDriveType = index),
-                      child: Container(
-                        padding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selectedDriveType == index
-                              ? Color(0xFF002CC0)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          driveTypes[index],
-                          style: TextStyle(
-                            fontSize: 14,
+      body: Obx((){
+       return upcomingBookingController.isLoggedIn.value ?  _buildLoginPrompt(context) : Column(
+          children: [
+            SizedBox(height: 12),
+            // Drive Type Toggle
+            Container(
+              // height: 46,
+              width: MediaQuery.of(context).size.width * 0.8,
+              // padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: StorageServices.instance.read('token')==null ? Center(
+                  child: MainButton(text: 'Login/Register', onPressed: (){
+                  }),
+                ) : Row(
+                  children: List.generate(2, (index) {
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => selectedDriveType = index),
+                        child: Container(
+                          padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
                             color: selectedDriveType == index
-                                ? Colors.white
-                                : Colors.black,
-                            fontWeight: FontWeight.w400,
+                                ? Color(0xFF002CC0)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            driveTypes[index],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: selectedDriveType == index
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 20),
-          // Tabs
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Color(0xFF002CC0),
-              unselectedLabelColor: Color(0xFF494949),
-              indicatorColor: Color(0xFF002CC0),
-              labelStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF002CC0)),
-              tabs: [
-                Tab(
-                  text: "Upcoming",
-                ),
-                Tab(text: "Completed"),
-                Tab(text: "Cancelled"),
-              ],
+            SizedBox(height: 20),
+            // Tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TabBar(
+                controller: _tabController,
+                labelColor: Color(0xFF002CC0),
+                unselectedLabelColor: Color(0xFF494949),
+                indicatorColor: Color(0xFF002CC0),
+                labelStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF002CC0)),
+                tabs: [
+                  Tab(
+                    text: "Upcoming",
+                  ),
+                  Tab(text: "Completed"),
+                  Tab(text: "Cancelled"),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // Upcoming
-                BookingList(),
-                // Completed (empty for now)
-                CompletedBookingList(),
-                // Cancelled (empty for now)
-                CanceledBookingList(),
-              ],
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Upcoming
+                  BookingList(),
+                  // Completed (empty for now)
+                  CompletedBookingList(),
+                  // Cancelled (empty for now)
+                  CanceledBookingList(),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      })
     );
   }
 }
@@ -1211,7 +1209,7 @@ class _BookingCardState extends State<BookingCard> {
       final localTime = tz.TZDateTime.from(utcTime, location);
 
       // Format: 25 July 2025, 05:34 PM
-      return DateFormat("d MMMM yyyy, hh:mm a").format(localTime);
+      return DateFormat("d MMMM yyyy, \n hh:mm a").format(localTime);
     } catch (e) {
       debugPrint("Date conversion error: $e");
       return null;
@@ -1443,7 +1441,9 @@ class _BookingCardState extends State<BookingCard> {
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Color(0xFF808080),
-                                          fontWeight: FontWeight.w400)),
+                                          fontWeight: FontWeight.w400),
+                                    maxLines: 2,
+                                  ),
                                 ],
                               ),
                             ],
