@@ -12,6 +12,7 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
+import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 
 class Profile extends StatefulWidget {
@@ -134,195 +135,203 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
-   return Scaffold(
-      backgroundColor: AppColors.scaffoldBgPrimary2,
-      appBar: AppBar(
+   return PopScope(
+       canPop: false, // 🚀 Stops the default "pop and close app"
+       onPopInvoked: (didPop) {
+         // This will be called for hardware back and gesture
+         GoRouter.of(context).go(AppRoutes.initialPage);
+       },
+     child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary2,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Color(0xFF192653),
-            size: 20,
+        appBar: AppBar(
+          backgroundColor: AppColors.scaffoldBgPrimary2,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back,
+              color: Color(0xFF192653),
+              size: 20,
+            ),
+            onPressed: () {
+              GoRouter.of(context).pop();
+              setState(() {
+                isEdit = false;
+              });
+            },
           ),
-          onPressed: () {
-            GoRouter.of(context).pop();
-            setState(() {
-              isEdit = false;
-            });
-          },
-        ),
-        centerTitle: true,
-        title: const Text(
-          "Profile",
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+          centerTitle: true,
+          title: const Text(
+            "Profile",
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child:Obx((){
-          if(profileController.isLoading==true){
-            return PopupLoader(message: 'Loading...');
-          }
-         return Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(top: 28),
-                  padding: const EdgeInsets.only(top: 20, bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 32,),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding:  EdgeInsets.only(left: 16.0, bottom: isEdit != true ? 12 : 2),
-                          child: Text(
-                            "General Details",
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black
+        body: SingleChildScrollView(
+          child:Obx((){
+            if(profileController.isLoading==true){
+              return PopupLoader(message: 'Loading...');
+            }
+           return Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 28),
+                    padding: const EdgeInsets.only(top: 20, bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 32,),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding:  EdgeInsets.only(left: 16.0, bottom: isEdit != true ? 12 : 2),
+                            child: Text(
+                              "General Details",
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Container(padding: EdgeInsets.only(left: 16, right: 16,),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text('Fields marked with * are mandatory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF6D6D6D)),),
-                          ],
+                        Container(padding: EdgeInsets.only(left: 16, right: 16,),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text('Fields marked with * are mandatory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF6D6D6D)),),
+                            ],
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 16,),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            EditableTextField(label: "Full name *", value: profileController.profileResponse.value?.result?.firstName??'', controller: firstNameController,),
-                            const SizedBox(height: 12),
-                            EditableTextField(label: "Email ID *", value: profileController.profileResponse.value?.result?.emailID??'', controller: emailController,) ,
-                            const SizedBox(height: 12) ,
-                            EditableTextField(label: "Mobile No *", value: "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}", controller: phoneNoController,),
-                            const SizedBox(height: 12) ,
-                            Row(
-                              children: [
-                                Expanded(
-                                  child:
-                                  EditableTextField(label: "City", value: "", controller: cityController,),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child:
-                                  EditableTextField(label: "State", value: "",),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            EditableTextField(label: "Nationality", value: profileController.profileResponse.value?.result?.countryName??'',controller: countryController, readOnly: isEdit == false ? true : false,),
-                            SizedBox(height: 20,),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 0,
-                                  backgroundColor: const Color(0xFF000088),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                        SizedBox(height: 16,),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              EditableTextField(label: "Full name *", value: profileController.profileResponse.value?.result?.firstName??'', controller: firstNameController,),
+                              const SizedBox(height: 12),
+                              EditableTextField(label: "Email ID *", value: profileController.profileResponse.value?.result?.emailID??'', controller: emailController,) ,
+                              const SizedBox(height: 12) ,
+                              EditableTextField(label: "Mobile No *", value: "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}", controller: phoneNoController,),
+                              const SizedBox(height: 12) ,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child:
+                                    EditableTextField(label: "City", value: "", controller: cityController,),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 13),
-                                ),
-                                onPressed: () async{
-                                  // Close loader
-                                  _showLoader('Loading..', context);
-                                  final Map<String, dynamic> requestData = {
-                                    "firstName":
-                                    firstNameController.text.trim(),
-                                    "contact":
-                                    phoneNoController.text.trim()??'0000000000',
-                                    "contactCode": "91",
-                                    "countryName": "India",
-                                    "gender": selectedGender,
-                                    "emailID": emailController.text.trim()
-                                  };
-                                  await updateProfileController.updateProfile(requestData: requestData, context: context).then((value){
-                                    _successLoader('Profile Updated Successfully', context);
-                                  });
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child:
+                                    EditableTextField(label: "State", value: "",),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              EditableTextField(label: "Nationality", value: profileController.profileResponse.value?.result?.countryName??'',controller: countryController, readOnly: isEdit == false ? true : false,),
+                              SizedBox(height: 20,),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: const Color(0xFF000088),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 13),
+                                  ),
+                                  onPressed: () async{
+                                    // Close loader
+                                    _showLoader('Loading..', context);
+                                    final Map<String, dynamic> requestData = {
+                                      "firstName":
+                                      firstNameController.text.trim(),
+                                      "contact":
+                                      phoneNoController.text.trim()??'0000000000',
+                                      "contactCode": "91",
+                                      "countryName": "India",
+                                      "gender": selectedGender,
+                                      "emailID": emailController.text.trim()
+                                    };
+                                    await updateProfileController.updateProfile(requestData: requestData, context: context).then((value){
+                                      _successLoader('Profile Updated Successfully', context);
+                                    });
 
-                                  // / GoRouter.of(context).pop();
-                                },
-                                child: const Text(
-                                  "Save Details",
-                                  style: TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 16
+                                    // / GoRouter.of(context).pop();
+                                  },
+                                  child: const Text(
+                                    "Save Details",
+                                    style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 16
+                                    ),
                                   ),
-                                ),
-                              ) ,
-                            )
-                          ],
+                                ) ,
+                              )
+                            ],
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: CircleAvatar(
+                              backgroundColor: Colors.transparent,
+                                radius: 40,
+                                child: Image.asset('assets/images/user.png', width: 80, height: 80,)
+                            ),
+                          ),
+                          isEdit == true ?  Positioned(
+                            bottom: 5,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              height: 28,
+                              width: 28,
+                              padding: EdgeInsets.all(4.0),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF002CC0),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey.shade300, width: 2),
+                              ),
+                              child: Icon(Icons.camera_alt, color: Colors.white, size: 16,),
+                            ),
+                          ) : SizedBox(),
+
+
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ),
-              Positioned(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Stack(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.only(bottom: 16),
-                          child: CircleAvatar(
-                              radius: 40,
-                              child: Image.asset('assets/images/profile_pic.png', width: 80, height: 80,)
-                          ),
-                        ),
-                        isEdit == true ?  Positioned(
-                          bottom: 5,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 28,
-                            width: 28,
-                            padding: EdgeInsets.all(4.0),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF002CC0),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade300, width: 2),
-                            ),
-                            child: Icon(Icons.camera_alt, color: Colors.white, size: 16,),
-                          ),
-                        ) : SizedBox(),
 
+              ],
+            );
+          })
 
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-            ],
-          );
-        })
-
-        ,
+          ,
+        ),
       ),
-    );
+   );
   }
 }
 

@@ -29,6 +29,7 @@ import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
+import '../user_fill_details/user_fill_details.dart';
 
 class ManageBookings extends StatefulWidget {
   @override
@@ -548,11 +549,10 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
     final ResendOtpController resendOtpController =
     Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
-    final UpcomingBookingController upcomingBookingController = Get.put(UpcomingBookingController());
+    final UpcomingBookingController upcomingBookingController =
+    Get.put(UpcomingBookingController());
     final ProfileController profileController = Get.put(ProfileController());
-    final UspController uspController = Get.put(UspController());
-    final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
-    final BannerController bannerController = Get.put(BannerController());
+
     bool isGoogleLoading = false;
 
     Future<UserCredential?> signInWithGoogle() async {
@@ -598,45 +598,51 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
 
       setModalState(() => isGoogleLoading = false);
 
-      if (result != null) {
-        final Map<String, dynamic> requestData = {
-          "firstName": result.user?.displayName,
-          // "lastName": "Sahni",
-          "contact": result.user?.phoneNumber ?? '000000000',
-          "contactCode": "91",
-          "countryName": "India",
-          // "address": "String",
-          // "city": "String",
-          "gender": "MALE",
-          // "postalCode": "String",
-          "emailID": result.user?.email
-          // "password": "String"
-          // "otp": {
-          //     "code": "Number",
-          //     "otpExpiry": ""
-          // }
-        };
-        await registerController
-            .verifySignup(requestData: requestData, context: context)
-            .then((value) {
-          Navigator.of(context).pop();
-        });
-        print("✅ User signed in: ${result.user?.email}");
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => UserFillDetails(
+              name: result?.user?.displayName ?? '',
+              email: result?.user?.email ?? '',
+              phone: result?.user?.phoneNumber ?? ''), // your login widget
+        ),
+      );
 
-        // close the bottom sheet
-      } else {
-        print("❌ Google Sign-In cancelled or failed");
-      }
+      // if (result != null) {
+      //   final Map<String, dynamic> requestData = {
+      //     "firstName": result.user?.displayName,
+      //     // "lastName": "Sahni",
+      //     "contact": result.user?.phoneNumber ?? '000000000',
+      //     "contactCode": "91",
+      //     "countryName": "India",
+      //     // "address": "String",
+      //     // "city": "String",
+      //     "gender": "MALE",
+      //     // "postalCode": "String",
+      //     "emailID": result.user?.email
+      //     // "password": "String"
+      //     // "otp": {
+      //     //     "code": "Number",
+      //     //     "otpExpiry": ""
+      //     // }
+      //   };
+      //   await registerController
+      //       .verifySignup(requestData: requestData, context: context)
+      //       .then((value) {
+      //     Navigator.of(context).pop();
+      //   });
+      //   print("✅ User signed in: ${result.user?.email}");
+      //
+      //   // close the bottom sheet
+      // } else {
+      //   print("❌ Google Sign-In cancelled or failed");
+      // }
     }
-
 
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
     bool hasError = false;
     String? errorMessage;
     bool isButtonEnabled = false;
     bool showOtpField = false;
-
-
 
     showModalBottomSheet(
       context: context,
@@ -768,57 +774,85 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                 Form(
                                   key: _formKey,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                     children: [
                                       if (!showOtpField)
                                         Container(
-                                          padding: const EdgeInsets.only(left: 16.0),
+                                          padding: const EdgeInsets.only(
+                                              left: 16.0),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            border: Border.all(color: hasError ? Colors.red : Colors.grey),
-                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: hasError
+                                                    ? Colors.red
+                                                    : Colors.grey),
+                                            borderRadius:
+                                            BorderRadius.circular(12),
                                           ),
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(12.0),
-                                            child: InternationalPhoneNumberInput(
-                                              onInputChanged: (_) => _validatePhone(phoneController.text.trim()),
-                                              selectorConfig: const SelectorConfig(
-                                                selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
+                                            borderRadius:
+                                            BorderRadius.circular(12.0),
+                                            child:
+                                            InternationalPhoneNumberInput(
+                                              onInputChanged: (_) =>
+                                                  _validatePhone(
+                                                      phoneController.text
+                                                          .trim()),
+                                              selectorConfig:
+                                              const SelectorConfig(
+                                                selectorType:
+                                                PhoneInputSelectorType
+                                                    .BOTTOM_SHEET,
                                                 useBottomSheetSafeArea: true,
                                                 showFlags: true,
                                               ),
                                               ignoreBlank: false,
-                                              autoValidateMode: AutovalidateMode.disabled,
-                                              selectorTextStyle: const TextStyle(color: Colors.black),
+                                              autoValidateMode:
+                                              AutovalidateMode.disabled,
+                                              selectorTextStyle:
+                                              const TextStyle(
+                                                  color: Colors.black),
                                               initialValue: number,
-                                              textFieldController: phoneController,
+                                              textFieldController:
+                                              phoneController,
                                               formatInput: false,
-                                              keyboardType: const TextInputType.numberWithOptions(signed: true),
+                                              keyboardType:
+                                              const TextInputType
+                                                  .numberWithOptions(
+                                                  signed: true),
                                               validator: (_) => null,
                                               maxLength: 10,
-                                              inputDecoration: const InputDecoration(
-                                                hintText: "Enter Mobile Number",
+                                              inputDecoration:
+                                              InputDecoration(
+                                                hintText:
+                                                "Enter Mobile Number",
                                                 counterText: "",
                                                 filled: true,
                                                 fillColor: Colors.white,
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                                contentPadding:
+                                                const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 14),
                                                 border: InputBorder.none,
                                               ),
                                             ),
                                           ),
                                         ),
                                       if (showOtpField)
-                                      // Wrap OtpTextField with Obx if you want reactive behavior or just pass error info as parameter
                                         OtpTextField(
-                                          otpController: otpTextEditingController,
-                                          mobileNo: phoneController.text.trim(),
+                                          otpController:
+                                          otpTextEditingController,
+                                          mobileNo:
+                                          phoneController.text.trim(),
                                         ),
-                                      if (errorMessage != null && errorMessage!.isNotEmpty && !showOtpField) ...[
+                                      if (errorMessage != null) ...[
                                         const SizedBox(height: 8),
-                                        Text(
-                                          errorMessage!,
-                                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                                        ),
+                                        Text(errorMessage!,
+                                            style: const TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 12)),
                                       ],
                                     ],
                                   ),
@@ -851,57 +885,30 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                                 seconds: 2));
 
                                         if (showOtpField) {
-                                          try {
-                                            final isVerified = await otpController.verifyOtp(
-                                              mobile: phoneController.text.trim(),
-                                              otp: otpTextEditingController.text.trim(),
-                                              context: context,
+                                          final isVerified = await otpController.verifyOtp(
+                                            mobile: phoneController.text.trim(),
+                                            otp: otpTextEditingController.text.trim(),
+                                            context: context,
+                                          );
+
+                                          if (isVerified) {
+                                            // ✅ Run all fetches in parallel
+                                            await Future.wait([
+                                              profileController.fetchData(),
+                                            ]);
+
+                                            // ✅ Mark logged in (triggers Obx immediately if used in UI)
+                                            upcomingBookingController.isLoggedIn.value = true;
+
+                                            // ✅ Fetch bookings but don’t block navigation
+                                            upcomingBookingController.fetchUpcomingBookingsData();
+
+                                            // ✅ Navigate immediately without extra delay
+                                            Navigator.of(context).pushReplacement(
+                                              MaterialPageRoute(builder: (_) => BottomNavScreen()),
                                             );
-
-                                            otpController.hasError.value = !isVerified;
-
-                                            if (isVerified) {
-                                              // 1️⃣ Show loader
-                                              showDialog(
-                                                context: context,
-                                                barrierDismissible: false,
-                                                builder: (_) => const PopupLoader(message: 'Fetching Booking Data...'),
-                                              );
-
-                                              // 2️⃣ Let the dialog paint
-                                              await Future.delayed(Duration.zero);
-                                              // 3️⃣ Start async work
-                                              upcomingBookingController.isLoggedIn.value = true;
-                                              await upcomingBookingController.fetchUpcomingBookingsData();
-                                              await profileController.fetchData();
-
-                                              GoRouter.of(context).go(AppRoutes.profile);
-                                              await popularDestinationController
-                                                  .fetchPopularDestinations();
-                                              await uspController
-                                                  .fetchUsps();
-                                              await bannerController
-                                                  .fetchImages();
-
-                                              // 4️⃣ Optional delay so loader is visible
-                                              await Future.delayed(const Duration(seconds: 1));
-                                              GoRouter.of(context).go(AppRoutes.manageBookings);
-
-                                              // 5️⃣ Close loader
-                                              Navigator.of(context).pop();
-                                              Navigator.of(context).pop();
-
-                                              // 6️⃣ Navigate
-                                            }
-
-
-                                          } catch (e) {
-                                            otpController.hasError.value = true;
-
-                                            upcomingBookingController.isLoggedIn.value = false;
                                           }
-                                        }
-                                        else {
+                                        } else {
                                           await mobileController
                                               .verifyMobile(
                                             mobile: phoneController
