@@ -133,7 +133,25 @@ class DropPlaceSearchController extends GetxController {
       await StorageServices.instance.save('destinationLat', dropLatLng.value!.latLong.lat.toString());
       await StorageServices.instance.save('destinationLng', dropLatLng.value!.latLong.lng.toString());
       await StorageServices.instance.save('destinationCountry', dropLatLng.value!.country);
-      await StorageServices.instance.save('destinationCity', dropLatLng.value!.country);
+      await StorageServices.instance.save('destinationCity', dropLatLng.value!.city);
+
+      final savedLat = await StorageServices.instance.read('destinationLat');
+      final savedLng = await StorageServices.instance.read('destinationLng');
+      final savedCountry = await StorageServices.instance.read('destinationCountry');
+      final savedCity = await StorageServices.instance.read('destinationCity');
+
+      print("📍 Saved Destination:");
+      print("Latitude: $savedLat");
+      print("Longitude: $savedLng");
+      print("Country: $savedCountry");
+      print("City: $savedCity");
+
+      print('======== from model direct======' );
+      print("Latitude: ${dropLatLng.value!.latLong.lat.toString()}");
+      print("Longitude: ${dropLatLng.value!.latLong.lng.toString()}");
+      print("Country: ${dropLatLng.value!.country}");
+      print("City: ${dropLatLng.value!.city}");
+
 
       await findCountryDateTimeForDrop(
         dropLatLng.value!.latLong.lat,

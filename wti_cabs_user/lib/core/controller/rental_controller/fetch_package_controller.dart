@@ -1,12 +1,13 @@
-import 'package:get/get_rx/src/rx_types/rx_types.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
-
+import 'package:get/get.dart';
 import '../../api/api_services.dart';
 import '../../model/rental_response/fetch_package_response.dart';
 
 class FetchPackageController extends GetxController {
   Rx<PackageResponse?> packageModel = Rx<PackageResponse?>(null);
   RxBool isLoading = false.obs;
+
+  // ✅ Global selected package
+  RxString selectedPackage = ''.obs;
 
   Future<void> fetchPackages() async {
     isLoading.value = true;
@@ -15,11 +16,26 @@ class FetchPackageController extends GetxController {
         'inventory/getAllPackages',
         PackageResponse.fromJson,
       );
-      packageModel.value = result;
+
+      if (result != null && result.data.isNotEmpty) {
+        // ✅ sort list by hours
+        result.data.sort((a, b) => a.hours?.compareTo(b.hours?.toInt()??0)??0);
+
+        packageModel.value = result;
+
+        // ✅ preselect the smallest package (after sorting)
+        selectedPackage.value =
+        '${result.data[3].hours} hrs, ${result.data[3].kilometers} kms';
+      }
     } catch (e) {
       print("Failed to fetch packages: $e");
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // ✅ method to update selection globally
+  void updateSelectedPackage(String value) {
+    selectedPackage.value = value;
   }
 }

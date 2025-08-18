@@ -11,19 +11,28 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_it/get_it.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
 import 'config/enviornment_config.dart';
+import 'core/controller/banner/banner_controller.dart';
 import 'core/controller/choose_drop/choose_drop_controller.dart';
 import 'core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'core/controller/drop_location_controller/drop_location_controller.dart';
+import 'core/controller/popular_destination/popular_destination.dart';
+import 'core/controller/usp_controller/usp_controller.dart';
 import 'core/route_management/app_page.dart';
 import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:location/location.dart' as location;
+import 'package:geocoding/geocoding.dart' as geocoding;
+import 'dart:convert'; // for jsonEncode
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
@@ -106,11 +115,134 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _fcmToken = 'Fetching...';
+  String address = '';
+  final PopularDestinationController popularDestinationController =
+  Get.put(PopularDestinationController());
+  final UspController uspController = Get.put(UspController());
+  final BannerController bannerController = Get.put(BannerController());
+
 
   @override
   void initState() {
     super.initState();
     initFCM();
+    homeApiLoading();
+  }
+
+  void homeApiLoading() async{
+  await popularDestinationController.fetchPopularDestinations();
+   await uspController.fetchUsps();
+   await bannerController.fetchImages();
+
+    fetchCurrentLocationAndAddress();
+  }
+
+  Future<void> fetchCurrentLocationAndAddress() async {
+    location.Location loc = location.Location();
+
+    bool serviceEnabled = await loc.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await loc.requestService();
+      if (!serviceEnabled) return;
+    }
+
+    location.PermissionStatus permissionGranted = await loc.hasPermission();
+    if (permissionGranted == location.PermissionStatus.denied) {
+      permissionGranted = await loc.requestPermission();
+      if (permissionGranted != location.PermissionStatus.granted) return;
+    }
+
+    final locData = await loc.getLocation();
+    if (locData.latitude != null && locData.longitude != null) {
+      final LatLng latLng = LatLng(locData.latitude!, locData.longitude!);
+      await _getAddressAndPrefillFromLatLng(latLng);
+    }
+  }
+
+  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
+    try {
+      // 1. Get placemark (required for address)
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
+      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
+
+      if (placemarks.isEmpty) {
+        setState(() {
+          address = 'Address not found';
+        });
+        return;
+      }
+
+      final place = placemarks.first;
+      final components = <String>[
+        place.name ?? '',
+        place.street ?? '',
+        place.subLocality ?? '',
+        place.locality ?? '',
+        place.administrativeArea ?? '',
+        place.postalCode ?? '',
+        place.country ?? '',
+      ];
+      final fullAddress =
+      components.where((s) => s.trim().isNotEmpty).join(', ');
+
+      // 2. Immediately update the visible address
+      setState(() {
+        address = fullAddress;
+      });
+
+      // 3. Start place search
+      await searchController.searchPlaces(fullAddress, context);
+
+      if (placeSearchController.suggestions.isEmpty) return;
+
+      final suggestion = placeSearchController.suggestions.first;
+
+      // 4. Immediate UI values
+      bookingRideController.prefilled.value = address;
+      placeSearchController.placeId.value = suggestion.placeId;
+
+      // 5. Fire-and-forget async logic in background
+      Future.microtask(() {
+        placeSearchController.getLatLngDetails(suggestion.placeId, context);
+
+        StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+        StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+        StorageServices.instance.save('sourceCity', suggestion.city);
+        StorageServices.instance.save('sourceState', suggestion.state);
+        StorageServices.instance.save('sourceCountry', suggestion.country);
+
+        if (suggestion.types.isNotEmpty) {
+          StorageServices.instance
+              .save('sourceTypes', jsonEncode(suggestion.types));
+        }
+
+        if (suggestion.terms.isNotEmpty) {
+          StorageServices.instance
+              .save('sourceTerms', jsonEncode(suggestion.terms));
+        }
+
+        sourceController.setPlace(
+          placeId: suggestion.placeId,
+          title: suggestion.primaryText,
+          city: suggestion.city,
+          state: suggestion.state,
+          country: suggestion.country,
+          types: suggestion.types,
+          terms: suggestion.terms,
+        );
+
+        print('akash country: ${suggestion.country}');
+        print('Current location address: $address');
+      });
+    } catch (e) {
+      print('Error fetching location/address: $e');
+      setState(() {
+        address = 'Error fetching address';
+      });
+    }
   }
 
   Future<void> initFCM() async {

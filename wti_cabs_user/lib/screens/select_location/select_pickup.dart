@@ -247,9 +247,6 @@ class _SelectPickupState extends State<SelectPickup> {
                                   // Storage & controller update (no await — fastest possible)
                                   StorageServices.instance.save('sourcePlaceId', place.placeId);
                                   StorageServices.instance.save('sourceTitle', place.primaryText);
-                                  StorageServices.instance.save('sourceCity', place.city);
-                                  StorageServices.instance.save('sourceState', place.state);
-                                  StorageServices.instance.save('sourceCountry', place.country);
                                   if (place.types.isNotEmpty) {
                                     StorageServices.instance.save('sourceTypes', jsonEncode(place.types));
                                   }

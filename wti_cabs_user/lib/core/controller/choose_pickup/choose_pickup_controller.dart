@@ -161,6 +161,28 @@ class PlaceSearchController extends GetxController {
       getPlacesLatLng.value = GetLatLngResponse.fromJson(responseData);
       if (getPlacesLatLng.value == null) return;
 
+      await StorageServices.instance.save('sourceLat', getPlacesLatLng.value!.latLong.lat.toString());
+      await StorageServices.instance.save('sourceLng', getPlacesLatLng.value!.latLong.lng.toString());
+      await StorageServices.instance.save('sourceCountry', getPlacesLatLng.value!.country);
+      await StorageServices.instance.save('sourceCity', getPlacesLatLng.value!.city);
+
+      final savedLat = await StorageServices.instance.read('sourceLat');
+      final savedLng = await StorageServices.instance.read('sourceLng');
+      final savedCountry = await StorageServices.instance.read('sourceCountry');
+      final savedCity = await StorageServices.instance.read('sourceCity');
+
+      print("📍 Saved Source place:");
+      print("Latitude: $savedLat");
+      print("Longitude: $savedLng");
+      print("Country: $savedCountry");
+      print("City: $savedCity");
+
+      print('======== from model direct source======' );
+      print("Latitude: ${getPlacesLatLng.value!.latLong.lat.toString()}");
+      print("Longitude: ${getPlacesLatLng.value!.latLong.lng.toString()}");
+      print("Country: ${getPlacesLatLng.value!.country}");
+      print("City: ${getPlacesLatLng.value!.city}");
+
       final timeZone = findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
 

@@ -116,7 +116,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         geocoding.Placemark place = placemarks.first;
         setState(() {
           selectedAddress =
-          '${place.name}';
+          '${place.locality}';
           bookingRideController.prefilled.value = place.name??'';
         });
       } else {

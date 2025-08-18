@@ -12,15 +12,18 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfield.dart';
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
 import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
 import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/core/model/home_page_images/home_page_image_response.dart';
+import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 
 import '../../common_widget/buttons/main_button.dart';
 import '../../common_widget/drawer/custom_drawer.dart';
@@ -72,7 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final DestinationLocationController destinationLocationController =
       Get.put(DestinationLocationController());
   final ProfileController profileController = Get.put(ProfileController());
-
 
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
@@ -218,15 +220,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       final place = placemarks.first;
       final components = <String>[
-        place.name ?? '',
-        place.street ?? '',
-        place.subLocality ?? '',
+        // place.street ?? '',
         place.locality ?? '',
         place.administrativeArea ?? '',
         place.postalCode ?? '',
         place.country ?? '',
       ];
-      final fullAddress =
+      String? fullAddress =
           components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Immediately update the visible address
@@ -381,14 +381,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setModalState(() => isGoogleLoading = false);
 
       if (result != null) {
-        // ✅ Prefill controllers
-        nameController.text = result.user?.displayName ?? '';
-        emailController.text = result.user?.email ?? '';
-        mobileController.text = result.user?.phoneNumber ?? '';
-
-        gender = "MALE"; // default or based on preference
-
-        print("✅ User signed in: ${result.user?.email}");
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+                name: result?.user?.displayName ?? '',
+                email: result?.user?.email ?? '',
+                phone: result?.user?.phoneNumber ?? ''), // your login widget
+          ),
+        );
+        // // ✅ Prefill controllers
+        // nameController.text = result.user?.displayName ?? '';
+        // emailController.text = result.user?.email ?? '';
+        // mobileController.text = result.user?.phoneNumber ?? '';
+        //
+        // gender = "MALE"; // default or based on preference
+        //
+        // print("✅ User signed in: ${result.user?.email}");
       } else {
         print("❌ Google Sign-In cancelled or failed");
       }
@@ -753,6 +761,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final ResendOtpController resendOtpController =
         Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
+    final UpcomingBookingController upcomingBookingController =
+        Get.put(UpcomingBookingController());
+
     bool isGoogleLoading = false;
 
     Future<UserCredential?> signInWithGoogle() async {
@@ -798,35 +809,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       setModalState(() => isGoogleLoading = false);
 
-      if (result != null) {
-        final Map<String, dynamic> requestData = {
-          "firstName": result.user?.displayName,
-          // "lastName": "Sahni",
-          "contact": result.user?.phoneNumber ?? '000000000',
-          "contactCode": "91",
-          "countryName": "India",
-          // "address": "String",
-          // "city": "String",
-          "gender": "MALE",
-          // "postalCode": "String",
-          "emailID": result.user?.email
-          // "password": "String"
-          // "otp": {
-          //     "code": "Number",
-          //     "otpExpiry": ""
-          // }
-        };
-        await registerController
-            .verifySignup(requestData: requestData, context: context)
-            .then((value) {
-          Navigator.of(context).pop();
-        });
-        print("✅ User signed in: ${result.user?.email}");
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => UserFillDetails(
+              name: result?.user?.displayName ?? '',
+              email: result?.user?.email ?? '',
+              phone: result?.user?.phoneNumber ?? ''), // your login widget
+        ),
+      );
 
-        // close the bottom sheet
-      } else {
-        print("❌ Google Sign-In cancelled or failed");
-      }
+      // if (result != null) {
+      //   final Map<String, dynamic> requestData = {
+      //     "firstName": result.user?.displayName,
+      //     // "lastName": "Sahni",
+      //     "contact": result.user?.phoneNumber ?? '000000000',
+      //     "contactCode": "91",
+      //     "countryName": "India",
+      //     // "address": "String",
+      //     // "city": "String",
+      //     "gender": "MALE",
+      //     // "postalCode": "String",
+      //     "emailID": result.user?.email
+      //     // "password": "String"
+      //     // "otp": {
+      //     //     "code": "Number",
+      //     //     "otpExpiry": ""
+      //     // }
+      //   };
+      //   await registerController
+      //       .verifySignup(requestData: requestData, context: context)
+      //       .then((value) {
+      //     Navigator.of(context).pop();
+      //   });
+      //   print("✅ User signed in: ${result.user?.email}");
+      //
+      //   // close the bottom sheet
+      // } else {
+      //   print("❌ Google Sign-In cancelled or failed");
+      // }
     }
 
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
@@ -1079,36 +1099,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                                                     if (showOtpField) {
                                                       try {
-                                                        final isVerified = await otpController.verifyOtp(
-                                                          mobile: phoneController.text.trim(),
-                                                          otp: otpTextEditingController.text.trim(),
+                                                        final isVerified =
+                                                            await otpController
+                                                                .verifyOtp(
+                                                          mobile:
+                                                              phoneController
+                                                                  .text
+                                                                  .trim(),
+                                                          otp:
+                                                              otpTextEditingController
+                                                                  .text
+                                                                  .trim(),
                                                           context: context,
                                                         );
 
-                                                        otpController.hasError.value = !isVerified;
+                                                        otpController.hasError
+                                                                .value =
+                                                            !isVerified;
 
                                                         if (isVerified) {
-
-
-
                                                           // Show popup loader
 
                                                           // Simulate 1-second wait
-                                                          await Future.delayed(const Duration(seconds: 3));
-
+                                                          await Future.delayed(
+                                                              const Duration(
+                                                                  seconds: 3));
+                                                          upcomingBookingController
+                                                              .isLoggedIn
+                                                              .value = true;
+                                                          await upcomingBookingController
+                                                              .fetchUpcomingBookingsData();
                                                           // Mark logged in
-                                                          await profileController.fetchData();
+                                                          await profileController
+                                                              .fetchData();
 
-                                                          GoRouter.of(context).go(AppRoutes.profile);
-
+                                                          GoRouter.of(context)
+                                                              .go(AppRoutes
+                                                                  .profile);
 
                                                           // Navigate
                                                         }
-
-
                                                       } catch (e) {
-                                                        otpController.hasError.value = true;
-
+                                                        otpController.hasError
+                                                            .value = true;
                                                       }
                                                     } else {
                                                       await mobileController
@@ -1462,9 +1495,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       child: Transform.translate(
                                         offset: Offset(0.0, -4.0),
                                         child: const CircleAvatar(
+                                          foregroundColor: Colors.transparent,
+                                          backgroundColor: Colors.transparent,
                                           radius: 14,
                                           backgroundImage: AssetImage(
-                                              'assets/images/user.png'),
+                                            'assets/images/user.png',
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1975,30 +2011,87 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(
                   width: double.infinity,
                   height: 124,
-                  child: CarouselSlider.builder(
-                    itemCount: bannerController.homepageImageResponse.value
-                        ?.result?.topBanner?.images?.length ?? 0,
-                    options: CarouselOptions(
-                      height: 124,
-                      viewportFraction: 1.0,
-                      enlargeCenterPage: false,
-                      autoPlay: true,
-                    ),
-                    itemBuilder: (context, index, realIdx) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0), // Clip image corners
-                          child: Image.network(
-                            "${bannerController.homepageImageResponse.value?.result?.baseUrl}${bannerController.homepageImageResponse.value?.result?.topBanner?.images?[index].url ?? ''}",
-                            fit: BoxFit.cover, // Keeps aspect ratio and fills space
-                            width: double.infinity,
-                            height: 124,
-                          ),
+                  child: Obx(() {
+                    if (bannerController.isLoading.value) {
+                      // 🔥 Shimmer loader while images load
+                      return Shimmer.fromColors(
+                        baseColor: Colors.grey.shade300,
+                        highlightColor: Colors.grey.shade100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 3, // dummy placeholders
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              width: MediaQuery.of(context).size.width -
+                                  32, // full width
+                              height: 124,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            );
+                          },
                         ),
                       );
-                    },
-                  ),
+                    }
+
+                    final images = bannerController
+                        .homepageImageResponse.value?.result?.topBanner?.images;
+
+                    if (images == null || images.isEmpty) {
+                      return const Center(child: Text("No banners available"));
+                    }
+
+                    return CarouselSlider.builder(
+                      itemCount: images.length,
+                      options: CarouselOptions(
+                        height: 124,
+                        viewportFraction: 1.0,
+                        enlargeCenterPage: false,
+                        autoPlay: true,
+                      ),
+                      itemBuilder: (context, index, realIdx) {
+                        final baseUrl = bannerController
+                                .homepageImageResponse.value?.result?.baseUrl ??
+                            '';
+                        final imageUrl = images[index].url ?? '';
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12.0),
+                            child: Image.network(
+                              "$baseUrl$imageUrl",
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: 124,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Shimmer.fromColors(
+                                  baseColor: Colors.grey.shade300,
+                                  highlightColor: Colors.grey.shade100,
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 124,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                    child: Icon(Icons.broken_image));
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }),
                 ),
                 SizedBox(
                   height: 20,
@@ -2053,34 +2146,87 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(
                   width: double.infinity,
                   height: 174,
-                  child: CarouselSlider.builder(
-                    itemCount: bannerController.homepageImageResponse.value
-                        ?.result?.bottomBanner?.images?.length ??
-                        0,
-                    options: CarouselOptions(
-                      height: 174,
-                      viewportFraction: 0.75, // Show 1 full + part of the next
-                      enlargeCenterPage: false, // Slight zoom effect for active
-                      autoPlay: true,
-                    ),
-                    itemBuilder: (context, index, realIdx) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: Image.network(
-                            "${bannerController.homepageImageResponse.value?.result?.baseUrl}${bannerController.homepageImageResponse.value?.result?.bottomBanner?.images?[index].url ?? ''}",
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
+                  child: Obx(() {
+                    if (bannerController.isLoading.value) {
+                      // 🔥 Shimmer placeholders while bottom banners load
+                      return Shimmer.fromColors(
+                        baseColor: Colors.grey.shade300,
+                        highlightColor: Colors.grey.shade100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 3, // dummy shimmer cards
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              width: MediaQuery.of(context).size.width * 0.75, // mimic viewportFraction
+                              height: 174,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            );
+                          },
                         ),
                       );
-                    },
-                  ),
+                    }
+
+                    final images = bannerController
+                        .homepageImageResponse.value?.result?.bottomBanner?.images;
+
+                    if (images == null || images.isEmpty) {
+                      return const Center(child: Text("No banners available"));
+                    }
+
+                    return CarouselSlider.builder(
+                      itemCount: images.length,
+                      options: CarouselOptions(
+                        height: 174,
+                        viewportFraction: 0.75, // Show 1 full + part of the next
+                        enlargeCenterPage: false,
+                        autoPlay: true,
+                      ),
+                      itemBuilder: (context, index, realIdx) {
+                        final baseUrl =
+                            bannerController.homepageImageResponse.value?.result?.baseUrl ?? '';
+                        final imageUrl = images[index].url ?? '';
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12.0),
+                            child: Image.network(
+                              "$baseUrl$imageUrl",
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Shimmer.fromColors(
+                                  baseColor: Colors.grey.shade300,
+                                  highlightColor: Colors.grey.shade100,
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 174,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(child: Icon(Icons.broken_image));
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }),
                 ),
-                SizedBox(height: 16,)
 
-
+                SizedBox(
+                  height: 16,
+                )
               ],
             ),
           ),
@@ -2099,128 +2245,202 @@ class CustomCarousel extends StatefulWidget {
 
 class _CustomCarouselState extends State<CustomCarousel> {
   final UspController uspController = Get.put(UspController());
-  final BannerController bannerController = Get.put(BannerController());
+
+  @override
+  void initState() {
+    super.initState();
+    uspController.fetchUsps(); // fetch USP data
+  }
+
+  Widget _buildShimmerItem(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // shimmer image
+        Container(
+          height: 106,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          ),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Container(color: Colors.grey, width: double.infinity),
+          ),
+        ),
+
+        // shimmer title
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Container(
+              height: 12,
+              color: Colors.grey,
+              width: double.infinity,
+            ),
+          ),
+        ),
+
+        // shimmer description
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Column(
+              children: [
+                Container(
+                    height: 10, color: Colors.grey, width: double.infinity),
+                const SizedBox(height: 6),
+                Container(
+                    height: 10, color: Colors.grey, width: double.infinity),
+              ],
+            ),
+          ),
+        ),
+
+        // bottom filler
+        Container(
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          height: 10,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> data = [
-      {
-        'image': 'assets/images/free_cancel.png',
-        'title': 'Free Cancellation',
-        'subtitle': 'Free cancellation on most bookings.',
-      },
-      {
-        'image': 'assets/images/ap_counter.png',
-        'title': 'Dedicated Airport Counters',
-        'subtitle':
-            'Kick off your journey with 20% off your first cab booking.',
-      },
-      {
-        'image': 'assets/images/sd_availbility.png',
-        'title': 'Self Drive Availibility',
-        'subtitle': 'Self Drive from the same platform',
-      },
-      {
-        'image': 'assets/images/part_payment.png',
-        'title': 'Part Payment',
-        'subtitle':
-            'Kick off your journey with 20% off your first cab booking.',
-      },
-    ];
+    return Obx(() {
+      if (uspController.isLoading.value) {
+        // show shimmer carousel
+        return CarouselSlider(
+          options: CarouselOptions(
+            height: 190,
+            viewportFraction: 0.47,
+            enableInfiniteScroll: false,
+            padEnds: false,
+          ),
+          items: List.generate(
+            4, // show 4 shimmer items
+            (_) => _buildShimmerItem(context),
+          ),
+        );
+      }
 
-    final List<Widget> items =
-        uspController.uspResponse.value?.data?.map((item) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    height: 106,
-                    width: MediaQuery.of(context).size.width * 0.56,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(8), // ✅ Only top corners
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Opacity(
-                      opacity: 1.0,
-                      child: ClipRRect(
-                        child: Image.network(
-                          item.imgUrl ?? '',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
-                    color: Colors.white,
-                    width: MediaQuery.of(context).size.width * 0.50,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      item.title ?? '',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  Container(
-                    height: 36,
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    color: Colors.white,
-                    width: MediaQuery.of(context).size.width * 0.56,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    // decoration: BoxDecoration(
-                    //   borderRadius: BorderRadius.vertical(
-                    //     bottom: Radius.circular(8), // ✅ Only top corners
-                    //   ),
-                    // ),
-                    child: Text(
-                      item.desc ?? '',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF4F4F4F)),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.56,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(8), // ✅ Only top corners
-                      ),
-                    ),
+      final uspData = uspController.uspResponse.value?.data ?? [];
+      if (uspData.isEmpty) {
+        return const Center(child: Text("No USP found"));
+      }
+
+      final items = uspData.map((item) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // image
+            Container(
+              height: 106,
+              width: MediaQuery.of(context).size.width * 0.56,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(8)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    offset: const Offset(0, 2),
                   ),
                 ],
-              );
-            }).toList() ??
-            [];
+              ),
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(8)),
+                child: Image.network(
+                  item.imgUrl ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.image_not_supported),
+                ),
+              ),
+            ),
 
-    return CarouselSlider(
-      options: CarouselOptions(
-        height: 190,
-        viewportFraction: 0.47,
-        enableInfiniteScroll: false,
-        padEnds: false,
-        enlargeCenterPage: false,
-      ),
-      items: items,
-    );
+            // title
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              color: Colors.white,
+              width: MediaQuery.of(context).size.width * 0.56,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                item.title ?? '',
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+
+            // description
+            Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              color: Colors.white,
+              width: MediaQuery.of(context).size.width * 0.56,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                item.desc ?? '',
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF4F4F4F)),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+
+            // bottom filler
+            Container(
+              width: MediaQuery.of(context).size.width * 0.56,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+              ),
+            ),
+          ],
+        );
+      }).toList();
+
+      return CarouselSlider(
+        options: CarouselOptions(
+          height: 190,
+          viewportFraction: 0.47,
+          enableInfiniteScroll: false,
+          padEnds: false,
+          enlargeCenterPage: false,
+        ),
+        items: items,
+      );
+    });
   }
 }
 
@@ -2570,8 +2790,9 @@ class _RecentTripListState extends State<RecentTripList> {
         position.latitude,
         position.longitude,
       );
-      
-      print('yash testing current lat/lng ${position.latitude}, ${position.longitude}');
+
+      print(
+          'yash testing current lat/lng ${position.latitude}, ${position.longitude}');
 
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
@@ -2595,8 +2816,7 @@ class _RecentTripListState extends State<RecentTripList> {
         await searchController
             .searchPlaces(fullAddress, context)
             .then((value) async {});
-        bookingRideController.prefilled.value =
-            address;
+        bookingRideController.prefilled.value = address;
         placeSearchController.placeId.value =
             placeSearchController.suggestions.first.placeId;
 
@@ -2682,26 +2902,30 @@ class _RecentTripListState extends State<RecentTripList> {
                       GoRouter.of(context).push(AppRoutes.chooseDrop);
 
                       // 🧠 3. Background work (fire-and-forget, non-blocking)
-                      Future.microtask(() async{
+                      Future.microtask(() async {
                         // LatLng for drop (non-blocking)
-                       await dropPlaceSearchController.searchDropPlaces(dropTitle, context);
-                       await dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController
-                           .dropSuggestions.first.placeId, context);
+                        await dropPlaceSearchController.searchDropPlaces(
+                            dropTitle, context);
+                        await dropPlaceSearchController.getLatLngForDrop(
+                            dropPlaceSearchController
+                                .dropSuggestions.first.placeId,
+                            context);
 
-                        if(dropPlaceSearchController.dropSuggestions.isNotEmpty) {
-                          var dropSuggestions = dropPlaceSearchController
-                              .dropSuggestions.first;
+                        if (dropPlaceSearchController
+                            .dropSuggestions.isNotEmpty) {
+                          var dropSuggestions =
+                              dropPlaceSearchController.dropSuggestions.first;
                           // Storage (fast, no await)
-                          StorageServices.instance.save('destinationPlaceId',
-                              dropSuggestions.placeId);
-                          StorageServices.instance.save('destinationTitle',
-                              dropSuggestions.primaryText);
-                          StorageServices.instance.save('destinationCity',
-                              dropSuggestions.city);
-                          StorageServices.instance.save('destinationState',
-                              dropSuggestions.state);
-                          StorageServices.instance.save('destinationCountry',
-                              dropSuggestions.country);
+                          StorageServices.instance.save(
+                              'destinationPlaceId', dropSuggestions.placeId);
+                          StorageServices.instance.save(
+                              'destinationTitle', dropSuggestions.primaryText);
+                          StorageServices.instance
+                              .save('destinationCity', dropSuggestions.city);
+                          StorageServices.instance
+                              .save('destinationState', dropSuggestions.state);
+                          StorageServices.instance.save(
+                              'destinationCountry', dropSuggestions.country);
 
                           if (dropSuggestions.types.isNotEmpty) {
                             StorageServices.instance.save('destinationTypes',
@@ -2725,12 +2949,11 @@ class _RecentTripListState extends State<RecentTripList> {
                           );
                         }
                       });
-
-
                     },
                     child: Container(
                       padding: EdgeInsets.zero,
-                      margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 12),
+                      margin: const EdgeInsets.only(
+                          bottom: 8, left: 16, right: 16, top: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -2782,7 +3005,6 @@ class _RecentTripListState extends State<RecentTripList> {
                       ),
                     ),
                   );
-
                 },
               ),
             );
@@ -2819,25 +3041,68 @@ class _RecentTripListState extends State<RecentTripList> {
               children: [
                 InkWell(
                   splashColor: Colors.transparent,
-                  onTap: () async {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const PopupLoader(
-                        message: "Go to Search Booking",
-                      ),
-                    );
-                    bookingRideController.prefilledDrop.value =
-                        popularTitleOutStation;
-                    dropPlaceSearchController.dropPlaceId.value =
-                        popularplaceIDOutStation;
+                  onTap: () {
+                    // 🚀 1. Instant local updates
+                    // 🚀 1. Instant UI updates (no waiting)
+                    fetchCurrentLocationAndAddress();
 
-                    await dropPlaceSearchController
-                        .getLatLngForDrop(popularPlaceId, context)
-                        .then((value) {
-                      GoRouter.of(context).push(AppRoutes.bookingRide);
+                    bookingRideController.prefilledDrop.value =
+                        popularMainPopularTitle;
+                    dropPlaceSearchController.dropPlaceId.value =
+                        popularMainPopularTitle;
+
+                    // 🚀 2. Navigate immediately
+                    FocusScope.of(context).unfocus();
+                    GoRouter.of(context).push(AppRoutes.chooseDrop);
+
+                    // 🧠 3. Background work (fire-and-forget, non-blocking)
+                    Future.microtask(() async {
+                      // LatLng for drop (non-blocking)
+                      await dropPlaceSearchController.searchDropPlaces(
+                          popularMainPopularTitle, context);
+                      await dropPlaceSearchController.getLatLngForDrop(
+                          dropPlaceSearchController
+                              .dropSuggestions.first.placeId,
+                          context);
+
+                      if (dropPlaceSearchController
+                          .dropSuggestions.isNotEmpty) {
+                        var dropSuggestions =
+                            dropPlaceSearchController.dropSuggestions.first;
+                        // Storage (fast, no await)
+                        StorageServices.instance.save(
+                            'destinationPlaceId', dropSuggestions.placeId);
+                        StorageServices.instance.save(
+                            'destinationTitle', dropSuggestions.primaryText);
+                        StorageServices.instance
+                            .save('destinationCity', dropSuggestions.city);
+                        StorageServices.instance
+                            .save('destinationState', dropSuggestions.state);
+                        StorageServices.instance.save(
+                            'destinationCountry', dropSuggestions.country);
+
+                        if (dropSuggestions.types.isNotEmpty) {
+                          StorageServices.instance.save('destinationTypes',
+                              jsonEncode(dropSuggestions.types));
+                        }
+
+                        if (dropSuggestions.terms.isNotEmpty) {
+                          StorageServices.instance.save('destinationTerms',
+                              jsonEncode(dropSuggestions.terms));
+                        }
+
+                        // Set in controller
+                        dropLocationController.setPlace(
+                          placeId: dropSuggestions.placeId,
+                          title: dropSuggestions.primaryText,
+                          city: dropSuggestions.city,
+                          state: dropSuggestions.state,
+                          country: dropSuggestions.country,
+                          types: dropSuggestions.types,
+                          terms: dropSuggestions.terms,
+                        );
+                      }
                     });
-                    GoRouter.of(context).pop();
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(

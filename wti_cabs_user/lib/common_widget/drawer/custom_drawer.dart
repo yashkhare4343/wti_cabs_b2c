@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
@@ -113,8 +114,18 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.of(dialogContext).pop(); // close popup
+                          onPressed: () async{
+                            Navigator.of(dialogContext).pop();
+                            // 🚀 Sign out from Google if logged in
+                            try {
+                              final googleSignIn = GoogleSignIn();
+                              if (await googleSignIn.isSignedIn()) {
+                            await googleSignIn.signOut();
+                            await googleSignIn.disconnect(); // optional but cleans up completely
+                            }
+                            } catch (e) {
+                            debugPrint("Google sign-out failed: $e");
+                            }// close popup
                             StorageServices.instance.clear();
                             // Get.deleteAll(force: true);
                             Navigator.of(dialogContext)

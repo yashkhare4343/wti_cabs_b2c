@@ -28,7 +28,7 @@ class BookingRideController extends GetxController {
     selectedIndex.value = index;
   }
 
-  var selectedPackage = ''.obs;
+  var selectedPackage = '4 hrs 40 kms'.obs;
 
 
   void setTabByName(String name) {

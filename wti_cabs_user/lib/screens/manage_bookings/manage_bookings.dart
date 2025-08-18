@@ -9,7 +9,10 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
+import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
+import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
+import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -22,6 +25,7 @@ import '../../core/controller/auth/otp_controller.dart';
 import '../../core/controller/auth/register_controller.dart';
 import '../../core/controller/auth/resend_otp_controller.dart';
 import '../../core/controller/download_receipt/download_receipt_controller.dart';
+import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
@@ -543,6 +547,11 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
     final ResendOtpController resendOtpController =
     Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
+    final UpcomingBookingController upcomingBookingController = Get.put(UpcomingBookingController());
+    final ProfileController profileController = Get.put(ProfileController());
+    final UspController uspController = Get.put(UspController());
+    final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
+    final BannerController bannerController = Get.put(BannerController());
     bool isGoogleLoading = false;
 
     Future<UserCredential?> signInWithGoogle() async {
@@ -860,10 +869,18 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
 
                                               // 2️⃣ Let the dialog paint
                                               await Future.delayed(Duration.zero);
-
                                               // 3️⃣ Start async work
                                               upcomingBookingController.isLoggedIn.value = true;
                                               await upcomingBookingController.fetchUpcomingBookingsData();
+                                              await profileController.fetchData();
+
+                                              GoRouter.of(context).go(AppRoutes.profile);
+                                              await popularDestinationController
+                                                  .fetchPopularDestinations();
+                                              await uspController
+                                                  .fetchUsps();
+                                              await bannerController
+                                                  .fetchImages();
 
                                               // 4️⃣ Optional delay so loader is visible
                                               await Future.delayed(const Duration(seconds: 1));

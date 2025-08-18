@@ -204,9 +204,6 @@ class _SelectDropState extends State<SelectDrop> {
                           // Storage (fast, no await)
                           StorageServices.instance.save('destinationPlaceId', place.placeId);
                           StorageServices.instance.save('destinationTitle', place.primaryText);
-                          StorageServices.instance.save('destinationCity', place.city);
-                          StorageServices.instance.save('destinationState', place.state);
-                          StorageServices.instance.save('destinationCountry', place.country);
 
                           if (place.types.isNotEmpty) {
                             StorageServices.instance.save('destinationTypes', jsonEncode(place.types));

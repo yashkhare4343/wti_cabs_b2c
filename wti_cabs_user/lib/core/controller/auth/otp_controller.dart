@@ -44,7 +44,7 @@ class OtpController extends GetxController {
           await StorageServices.instance.save('refreshToken', otpData.value?.refreshToken ?? '');
           await StorageServices.instance.save('token', otpData.value?.accessToken ?? '');
           otpMessage.value = body["description"] ?? "OTP verified successfully";
-          GoRouter.of(context).pop();
+          // GoRouter.of(context).pop();
           return true;
         } else {
           otpMessage.value = body["description"] ?? "OTP verification failed";

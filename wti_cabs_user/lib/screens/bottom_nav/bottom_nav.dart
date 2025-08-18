@@ -13,6 +13,7 @@ import 'package:wti_cabs_user/core/controller/auth/otp_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/register_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/resend_otp_controller.dart';
 import 'package:wti_cabs_user/core/controller/current_location/current_location_controller.dart';
+import 'package:wti_cabs_user/core/controller/profile_controller/profile_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/contact/contact.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
@@ -24,6 +25,7 @@ import '../../core/controller/banner/banner_controller.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
+import '../../core/controller/manage_booking/upcoming_booking_controller.dart';
 import '../../core/controller/popular_destination/popular_destination.dart';
 import '../../core/controller/source_controller/source_controller.dart';
 import '../../core/controller/usp_controller/usp_controller.dart';
@@ -73,6 +75,12 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       _showBottomSheet();
       locationController.fetchCurrentLocationAndAddress(context);
     });
+  }
+  void homeApiLoading() async{
+    await popularDestinationController.fetchPopularDestinations();
+    await uspController.fetchUsps();
+    await bannerController.fetchImages();
+
   }
 
   @override
@@ -532,6 +540,8 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     final ResendOtpController resendOtpController =
         Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
+    final UpcomingBookingController upcomingBookingController = Get.put(UpcomingBookingController());
+    final ProfileController profileController = Get.put(ProfileController());
     bool isGoogleLoading = false;
 
     Future<UserCredential?> signInWithGoogle() async {
@@ -873,6 +883,13 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                                                           .value = !isVerified;
 
                                                       if (isVerified) {
+                                                        await Future.delayed(const Duration(seconds: 3));
+                                                        upcomingBookingController.isLoggedIn.value = true;
+                                                        await upcomingBookingController.fetchUpcomingBookingsData();
+                                                        // Mark logged in
+                                                        await profileController.fetchData();
+
+                                                        GoRouter.of(context).go(AppRoutes.profile);
                                                         await popularDestinationController
                                                             .fetchPopularDestinations();
                                                         await uspController
@@ -1116,6 +1133,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
   @override
   Widget build(BuildContext context) {
+    homeApiLoading();
     return WillPopScope(
       onWillPop: () async {
         // Reapply status bar color when navigating back

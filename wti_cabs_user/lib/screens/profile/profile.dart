@@ -120,16 +120,21 @@ class _ProfileState extends State<Profile> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    profileController.fetchData();
-  }
+    profileController.fetchData().then((_) {
+      final result = profileController.profileResponse.value?.result;
+      if (result != null) {
+        setState(() {
+          firstNameController.text = result.firstName ?? '';
+          emailController.text = result.emailID ?? '';
+          countryController.text = result.countryName ?? '';
+          phoneNoController.text = result.contact?.toString() ?? '';
+        });
+      }
+    });  }
 
   @override
   Widget build(BuildContext context) {
-    firstNameController.text = profileController.profileResponse.value?.result?.firstName??'';
-    emailController.text = profileController.profileResponse.value?.result?.emailID??'';
-    countryController.text = profileController.profileResponse.value?.result?.countryName??'';
-    phoneNoController.text = profileController.profileResponse.value?.result?.contact.toString()??'';
-    return Scaffold(
+   return Scaffold(
       backgroundColor: AppColors.scaffoldBgPrimary2,
       appBar: AppBar(
         backgroundColor: AppColors.scaffoldBgPrimary2,
