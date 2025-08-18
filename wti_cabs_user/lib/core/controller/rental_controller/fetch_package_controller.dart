@@ -5,6 +5,9 @@ import '../../model/rental_response/fetch_package_response.dart';
 class FetchPackageController extends GetxController {
   Rx<PackageResponse?> packageModel = Rx<PackageResponse?>(null);
   RxBool isLoading = false.obs;
+  RxInt selectedHours = 0.obs;
+  RxInt selectedKms = 0.obs;
+
 
   // ✅ Global selected package
   RxString selectedPackage = ''.obs;
@@ -25,7 +28,7 @@ class FetchPackageController extends GetxController {
 
         // ✅ preselect the smallest package (after sorting)
         selectedPackage.value =
-        '${result.data[3].hours} hrs, ${result.data[3].kilometers} kms';
+        '${result.data[0].hours} hrs, ${result.data[0].kilometers} kms';
       }
     } catch (e) {
       print("Failed to fetch packages: $e");

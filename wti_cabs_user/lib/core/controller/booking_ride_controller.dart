@@ -6,6 +6,8 @@ import 'booking_validation.dart';
 class BookingRideController extends GetxController {
   var isLoading = false.obs;
   var errorMessage = ''.obs;
+  final RxBool isSwitching = false.obs;
+
 
   // Core datetime values
   Rx<DateTime> localStartTime = DateTime.now().obs;
@@ -16,6 +18,7 @@ class BookingRideController extends GetxController {
   // Prefilled text
   RxString prefilled = "".obs;
   RxString prefilledDrop = "".obs;
+  RxBool isInvalidTime = false.obs;
 
   // New: pickup & drop
   Rx<DateTime?> pickupDateTime = Rx<DateTime?>(null);
@@ -29,6 +32,7 @@ class BookingRideController extends GetxController {
   }
 
   var selectedPackage = '4 hrs 40 kms'.obs;
+
 
 
   void setTabByName(String name) {

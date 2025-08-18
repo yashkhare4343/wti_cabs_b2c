@@ -35,6 +35,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
   late dynamic timeZoneController;
   late Rx<DateTime> timeObservable;
   bool isInvalidTime = false;
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
 
   @override
   void initState() {
@@ -171,6 +172,9 @@ class _TimePickerTileState extends State<TimePickerTile> {
                       isInvalidTime = isSameDay && selectedDateTime.isBefore(actualComparable);
 
                     });
+
+
+                    bookingRideController.isInvalidTime.value = isSameDay && selectedDateTime.isBefore(actualComparable);
 
 
                     // Round to nearest 30 min as per your logic

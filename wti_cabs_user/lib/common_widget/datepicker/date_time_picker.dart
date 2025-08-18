@@ -178,10 +178,7 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                         fontSize: 12,
                         letterSpacing: 1.1,
                       ),),
-                      Text(formattedDate, style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),),
+                      Text(formattedDate, style: CommonFonts.bodyText1Black,),
                     ],
                   ),
                 ],
@@ -214,10 +211,7 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                         fontSize: 12,
                         letterSpacing: 1.1,
                       ),),
-                      Text(formattedTime, style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),),
+                      Text(formattedTime, style: CommonFonts.bodyText1Black,),
                     ],
                   ),
                 ],

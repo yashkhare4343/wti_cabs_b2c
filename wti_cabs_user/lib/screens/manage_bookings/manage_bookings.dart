@@ -66,7 +66,8 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
   }
 
   void isLogin() async{
-    if(await StorageServices.instance.read('token')==null){
+    if((await StorageServices.instance.read('token')==null) && ( upcomingBookingController.isLoggedIn.value = false)
+    ){
       _showAuthBottomSheet();
 
         upcomingBookingController.isLoggedIn.value = true;
@@ -1114,7 +1115,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                      child: BookingCardShimmer());
               });
         }
-       return upcomingBookingController.isLoggedIn.value ?  _buildLoginPrompt(context) : Column(
+       return upcomingBookingController.isLoggedIn.value!= true ?  _buildLoginPrompt(context) : Column(
           children: [
             SizedBox(height: 12),
             // Drive Type Toggle

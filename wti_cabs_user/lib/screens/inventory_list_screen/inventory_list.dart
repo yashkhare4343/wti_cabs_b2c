@@ -194,6 +194,7 @@ class _InventoryListState extends State<InventoryList> {
         canPop: false, // 🚀 Stops the default "pop and close app"
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value =0;
+          GoRouter.of(context).pop();
           GoRouter.of(context).go(
             '${AppRoutes.bookingRide}?tab=airport',
           );
@@ -1862,6 +1863,10 @@ class SelectedPackageCard extends StatelessWidget {
       return Card(
         color: Colors.white,
         elevation: 0.3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8), // adjust radius
+        ),
+        borderOnForeground: false,
         margin: EdgeInsets.only(left: 0, right: 0, top: 12),
         child: Padding(
           padding: const EdgeInsets.all(12.0),

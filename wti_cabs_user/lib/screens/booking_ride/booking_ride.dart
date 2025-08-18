@@ -267,79 +267,99 @@ class _OutStationState extends State<OutStation> {
     super.dispose();
   }
 
-  // void setLocation(){
-  //   setState(() {
-  //     pickupController.text = bookingRideController.prefilled.value;
-  //
-  //       placeSearchController.placeId.value = placeSearchController.suggestions.value.first.placeId;
-  //       dropPlaceSearchController.dropPlaceId.value = dropPlaceSearchController.dropSuggestions.value.first.placeId;
-  //
-  //
-  //     dropController.text = bookingRideController.prefilledDrop.value;
-  //   });
-  // }
+  final RxBool isSwitching = false.obs;
 
-  void switchPickupAndDrop({
+
+  Future<void> switchPickupAndDrop({
     required BuildContext context,
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    print('switch button hit ho gya hai');
-    // Step 1: Swap place IDs
-    final oldPickupId = placeSearchController.placeId.value;
-    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
-    placeSearchController.placeId.value = oldDropId;
-    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+    // ✅ Debounce: ignore if already switching
+    if (bookingRideController.isSwitching.value) return;
 
-    // Step 2: Swap prefilled values (shown in UI + used in controllers)
-    final oldPickupText = bookingRideController.prefilled.value;
-    final oldDropText = bookingRideController.prefilledDrop.value;
-    bookingRideController.prefilled.value = oldDropText;
-    bookingRideController.prefilledDrop.value = oldPickupText;
+    bookingRideController.isSwitching.value = true;
+    FocusScope.of(context).unfocus(); // avoid onChanged side-effects during swap
 
-    // Step 3: Update text controllers (if used in text fields)
-    pickupController.text = bookingRideController.prefilled.value;
-    dropController.text = bookingRideController.prefilledDrop.value;
+    try {
+      // Snapshot current values
+      final oldPickupId   = placeSearchController.placeId.value.trim();
+      final oldDropId     = dropPlaceSearchController.dropPlaceId.value.trim();
+      final oldPickupText = bookingRideController.prefilled.value;
+      final oldDropText   = bookingRideController.prefilledDrop.value;
 
-    // Step 4: Re-fetch lat/lng details based on new placeIds
-    if (placeSearchController.placeId.value.isNotEmpty) {
-      placeSearchController.getLatLngDetails(
-          placeSearchController.placeId.value, context);
-    }
-    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-      dropPlaceSearchController.getLatLngForDrop(
-          dropPlaceSearchController.dropPlaceId.value, context);
-    }
+      // Nothing to do?
+      final idsSame   = oldPickupId == oldDropId;
+      final textsSame = oldPickupText == oldDropText;
+      if (idsSame && textsSame) return;
 
-    // Swap stored values (local storage)
-    final sourceKeys = [
-      'sourcePlaceId',
-      'sourceTitle',
-      'sourceCity',
-      'sourceState',
-      'sourceCountry',
-      'sourceTypes',
-      'sourceTerms'
-    ];
-    final destinationKeys = [
-      'destinationPlaceId',
-      'destinationTitle',
-      'destinationCity',
-      'destinationState',
-      'destinationCountry',
-      'destinationTypes',
-      'destinationTerms'
-    ];
+      // ---------- 1) Swap observables (single source of truth) ----------
+      placeSearchController.placeId.value              = oldDropId;
+      dropPlaceSearchController.dropPlaceId.value      = oldPickupId;
 
-    for (int i = 0; i < sourceKeys.length; i++) {
-      final srcKey = sourceKeys[i];
-      final destKey = destinationKeys[i];
+      bookingRideController.prefilled.value            = oldDropText;
+      bookingRideController.prefilledDrop.value        = oldPickupText;
 
-      final srcVal = await StorageServices.instance.read(srcKey);
-      final destVal = await StorageServices.instance.read(destKey);
+      // ---------- 2) Update text fields (cursor at end, minimal noise) ----------
+      pickupController.value = TextEditingValue(
+        text: bookingRideController.prefilled.value,
+        selection: TextSelection.collapsed(offset: bookingRideController.prefilled.value.length),
+      );
+      dropController.value = TextEditingValue(
+        text: bookingRideController.prefilledDrop.value,
+        selection: TextSelection.collapsed(offset: bookingRideController.prefilledDrop.value.length),
+      );
 
-      await StorageServices.instance.save(srcKey, destVal ?? '');
-      await StorageServices.instance.save(destKey, srcVal ?? '');
+      // ---------- 3) Refresh geocode/latlng IN PARALLEL ----------
+      final futures = <Future>[];
+      final newPickupId = placeSearchController.placeId.value;
+      final newDropId   = dropPlaceSearchController.dropPlaceId.value;
+
+      if (newPickupId.isNotEmpty) {
+        futures.add(placeSearchController.getLatLngDetails(newPickupId, context));
+      }
+      if (newDropId.isNotEmpty) {
+        futures.add(dropPlaceSearchController.getLatLngForDrop(newDropId, context));
+      }
+      await Future.wait(futures); // ensures consistent state before moving on
+
+      // ---------- 4) Swap cached/local storage IN PARALLEL ----------
+      const sourceKeys = [
+        'sourcePlaceId',
+        'sourceTitle',
+        'sourceCity',
+        'sourceState',
+        'sourceCountry',
+        'sourceTypes',
+        'sourceTerms',
+      ];
+      const destinationKeys = [
+        'destinationPlaceId',
+        'destinationTitle',
+        'destinationCity',
+        'destinationState',
+        'destinationCountry',
+        'destinationTypes',
+        'destinationTerms',
+      ];
+
+      // Read both sets concurrently
+      final srcVals  = await Future.wait(sourceKeys.map(StorageServices.instance.read));
+      final destVals = await Future.wait(destinationKeys.map(StorageServices.instance.read));
+
+      // Write both directions concurrently
+      await Future.wait([
+        ...List.generate(sourceKeys.length, (i) =>
+            StorageServices.instance.save(sourceKeys[i], (destVals[i] ?? '').toString())),
+        ...List.generate(destinationKeys.length, (i) =>
+            StorageServices.instance.save(destinationKeys[i], (srcVals[i] ?? '').toString())),
+      ]);
+    } catch (e, st) {
+      // Optional: log your error handler
+      debugPrint('switchPickupAndDrop error: $e');
+      debugPrintStack(stackTrace: st);
+    } finally {
+      bookingRideController.isSwitching.value = false;
     }
   }
 
@@ -699,84 +719,97 @@ class _OutStationState extends State<OutStation> {
               }),
             ),
             SizedBox(
+              height: 12,
+            ),
+      Obx(() {
+        final isInvalid = bookingRideController.isInvalidTime.value;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // error message
+            if (isInvalid)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Text(
+                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent,
+                  ),
+                  maxLines: 2,
+                ),
+              ),
+
+            ],
+        );
+      }),
+            SizedBox(
               height: 28,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
+             Obx(() {
+              final pickupId = placeSearchController.placeId.value;
+              final dropId = dropPlaceSearchController.dropPlaceId.value;
+
+              final samePlace = pickupId.isNotEmpty &&
+                  dropId.isNotEmpty &&
+                  pickupId == dropId;
+
+              final hasSourceError = placeSearchController
+                  .findCntryDateTimeResponse.value?.sourceInput ==
+                  true ||
+                  dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput ==
+                      true;
+
+              final hasDestinationError = placeSearchController
+                  .findCntryDateTimeResponse.value?.destinationInputFalse ==
+                  true ||
+                  dropPlaceSearchController
+                      .dropDateTimeResponse.value?.destinationInputFalse ==
+                      true;
+
+              final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
+
+              final canProceed = !samePlace &&
+                  !hasSourceError &&
+                  !hasDestinationError &&
+                  !isPlaceMissing &&
+                  (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage ==
+                      true ||
+                      placeSearchController.findCntryDateTimeResponse.value?.sameCountry ==
+                          true ||
+                      dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry ==
+                          true ||
+                      dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage ==
+                          true);
+
+              final forceDisable = samePlace || hasSourceError || hasDestinationError;
+
+              // ✅ final condition to enable button
+              final isEnabled =
+                  canProceed && !forceDisable && !bookingRideController.isInvalidTime.value;
+
+              return Opacity(
+                opacity: isEnabled ? 1.0 : 0.6,
+                child: SizedBox(
                   width: double.infinity,
-                  height: 50,
-                  child: Obx(() {
-                    final pickupId = placeSearchController.placeId.value;
-                    final dropId = dropPlaceSearchController.dropPlaceId.value;
-
-                    final samePlace = pickupId.isNotEmpty &&
-                        dropId.isNotEmpty &&
-                        pickupId == dropId;
-
-                    final hasSourceError = placeSearchController
-                                .findCntryDateTimeResponse.value?.sourceInput ==
-                            true ||
-                        dropPlaceSearchController
-                                .dropDateTimeResponse.value?.sourceInput ==
-                            true;
-
-                    final hasDestinationError = placeSearchController
-                                .findCntryDateTimeResponse
-                                .value
-                                ?.destinationInputFalse ==
-                            true ||
-                        dropPlaceSearchController.dropDateTimeResponse.value
-                                ?.destinationInputFalse ==
-                            true;
-
-                    final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
-
-                    final canProceed =
-                        !samePlace &&
-                            !hasSourceError &&
-                            !hasDestinationError &&
-                            !isPlaceMissing &&
-                            (placeSearchController.findCntryDateTimeResponse
-                                        .value?.goToNextPage ==
-                                    true ||
-                                placeSearchController.findCntryDateTimeResponse
-                                        .value?.sameCountry ==
-                                    true ||
-                                dropPlaceSearchController.dropDateTimeResponse
-                                        .value?.sameCountry ==
-                                    true ||
-                                dropPlaceSearchController.dropDateTimeResponse
-                                        .value?.goToNextPage ==
-                                    true);
-
-                    final forceDisable =
-                        samePlace || hasSourceError || hasDestinationError;
-
-                    return Opacity(
-                      opacity: forceDisable
-                          ? 0.6
-                          : canProceed
-                              ? 1.0
-                              : 0.6,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: PrimaryButton(
-                          text: 'Search Now',
-                          onPressed: () async {
-                            final requestData =
-                                await _buildOutstationRequestData(context);
-                            GoRouter.of(context).push(
-                              AppRoutes.inventoryList,
-                              extra: requestData,
-                            );
-                            GoRouter.of(context).pop();
-                          },
-                        ),
-                      ),
-                    );
-                  })),
-            ),
+                  child: PrimaryButton(
+                    text: 'Search Now',
+                    onPressed: isEnabled
+                        ? () async {
+                      final requestData = await _buildOutstationRequestData(context);
+                      GoRouter.of(context).push(
+                        AppRoutes.inventoryList,
+                        extra: requestData,
+                      );
+                      GoRouter.of(context).pop();
+                    }
+                        : (){}, // ✅ null = disabled
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -785,8 +818,10 @@ class _OutStationState extends State<OutStation> {
 
   Future<Map<String, dynamic>> _buildOutstationRequestData(
       BuildContext context) async {
-    final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
-    final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+    final DropPlaceSearchController dropPlaceSearchController =
+        Get.put(DropPlaceSearchController());
+    final PlaceSearchController placeSearchController =
+        Get.put(PlaceSearchController());
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -829,6 +864,8 @@ class _OutStationState extends State<OutStation> {
     final values = await Future.wait(keys.map(StorageServices.instance.read));
     final Map<String, dynamic> data = Map.fromIterables(keys, values);
     final isRoundTrip = selectedTrip != 'oneWay';
+    GoRouter.of(context).pop();
+
     return {
       "timeOffSet": -offset,
       "countryName": data['country'],
@@ -841,23 +878,33 @@ class _OutStationState extends State<OutStation> {
       "source": {
         "sourceTitle": data['sourceTitle'],
         "sourcePlaceId": data['sourcePlaceId'],
-        "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString(),
-        "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString(),
-        "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString(),
+        "sourceCity":
+            placeSearchController.getPlacesLatLng.value?.city.toString(),
+        "sourceState":
+            placeSearchController.getPlacesLatLng.value?.state.toString(),
+        "sourceCountry":
+            placeSearchController.getPlacesLatLng.value?.country.toString(),
         "sourceType": _parseList<String>(data['sourceTypes']),
-        "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-        "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+        "sourceLat":
+            placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+        "sourceLng":
+            placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
         "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
       },
       "destination": {
         "destinationTitle": data['destinationTitle'],
         "destinationPlaceId": data['destinationPlaceId'],
-        "destinationCity": dropPlaceSearchController.dropLatLng.value!.city.toString(),
-        "destinationState": dropPlaceSearchController.dropLatLng.value!.state.toString(),
-        "destinationCountry": dropPlaceSearchController.dropLatLng.value!.country.toString(),
+        "destinationCity":
+            dropPlaceSearchController.dropLatLng.value!.city.toString(),
+        "destinationState":
+            dropPlaceSearchController.dropLatLng.value!.state.toString(),
+        "destinationCountry":
+            dropPlaceSearchController.dropLatLng.value!.country.toString(),
         "destinationType": _parseList<String>(data['destinationTypes']),
-        "destinationLat": dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
-        "destinationLng": dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
+        "destinationLat":
+            dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
+        "destinationLng":
+            dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
         "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
       },
       "packageSelected": {"km": "", "hours": ""},
@@ -939,70 +986,102 @@ class _RidesState extends State<Rides> {
   late Worker _ridePickupWorker;
   late Worker _rideDropWorker;
   bool _isLoading = false;
+  final RxBool isSwitching = false.obs;
 
-  void switchPickupAndDrop({
+
+  Future<void> switchPickupAndDrop({
     required BuildContext context,
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    print('switch button hit ho gya hai');
-    // Step 1: Swap place IDs
-    final oldPickupId = placeSearchController.placeId.value;
-    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
-    placeSearchController.placeId.value = oldDropId;
-    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+    // ✅ Debounce: ignore if already switching
+    if (bookingRideController.isSwitching.value) return;
 
-    // Step 2: Swap prefilled values (shown in UI + used in controllers)
-    final oldPickupText = bookingRideController.prefilled.value;
-    final oldDropText = bookingRideController.prefilledDrop.value;
-    bookingRideController.prefilled.value = oldDropText;
-    bookingRideController.prefilledDrop.value = oldPickupText;
+    bookingRideController.isSwitching.value = true;
+    FocusScope.of(context).unfocus(); // avoid onChanged side-effects during swap
 
-    // Step 3: Update text controllers (if used in text fields)
-    pickupController.text = bookingRideController.prefilled.value;
-    dropController.text = bookingRideController.prefilledDrop.value;
+    try {
+      // Snapshot current values
+      final oldPickupId   = placeSearchController.placeId.value.trim();
+      final oldDropId     = dropPlaceSearchController.dropPlaceId.value.trim();
+      final oldPickupText = bookingRideController.prefilled.value;
+      final oldDropText   = bookingRideController.prefilledDrop.value;
 
-    // Step 4: Re-fetch lat/lng details based on new placeIds
-    if (placeSearchController.placeId.value.isNotEmpty) {
-      placeSearchController.getLatLngDetails(
-          placeSearchController.placeId.value, context);
-    }
-    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-      dropPlaceSearchController.getLatLngForDrop(
-          dropPlaceSearchController.dropPlaceId.value, context);
-    }
+      // Nothing to do?
+      final idsSame   = oldPickupId == oldDropId;
+      final textsSame = oldPickupText == oldDropText;
+      if (idsSame && textsSame) return;
 
-    // Swap stored values (local storage)
-    final sourceKeys = [
-      'sourcePlaceId',
-      'sourceTitle',
-      'sourceCity',
-      'sourceState',
-      'sourceCountry',
-      'sourceTypes',
-      'sourceTerms'
-    ];
-    final destinationKeys = [
-      'destinationPlaceId',
-      'destinationTitle',
-      'destinationCity',
-      'destinationState',
-      'destinationCountry',
-      'destinationTypes',
-      'destinationTerms'
-    ];
+      // ---------- 1) Swap observables (single source of truth) ----------
+      placeSearchController.placeId.value              = oldDropId;
+      dropPlaceSearchController.dropPlaceId.value      = oldPickupId;
 
-    for (int i = 0; i < sourceKeys.length; i++) {
-      final srcKey = sourceKeys[i];
-      final destKey = destinationKeys[i];
+      bookingRideController.prefilled.value            = oldDropText;
+      bookingRideController.prefilledDrop.value        = oldPickupText;
 
-      final srcVal = await StorageServices.instance.read(srcKey);
-      final destVal = await StorageServices.instance.read(destKey);
+      // ---------- 2) Update text fields (cursor at end, minimal noise) ----------
+      pickupController.value = TextEditingValue(
+        text: bookingRideController.prefilled.value,
+        selection: TextSelection.collapsed(offset: bookingRideController.prefilled.value.length),
+      );
+      dropController.value = TextEditingValue(
+        text: bookingRideController.prefilledDrop.value,
+        selection: TextSelection.collapsed(offset: bookingRideController.prefilledDrop.value.length),
+      );
 
-      await StorageServices.instance.save(srcKey, destVal ?? '');
-      await StorageServices.instance.save(destKey, srcVal ?? '');
+      // ---------- 3) Refresh geocode/latlng IN PARALLEL ----------
+      final futures = <Future>[];
+      final newPickupId = placeSearchController.placeId.value;
+      final newDropId   = dropPlaceSearchController.dropPlaceId.value;
+
+      if (newPickupId.isNotEmpty) {
+        futures.add(placeSearchController.getLatLngDetails(newPickupId, context));
+      }
+      if (newDropId.isNotEmpty) {
+        futures.add(dropPlaceSearchController.getLatLngForDrop(newDropId, context));
+      }
+      await Future.wait(futures); // ensures consistent state before moving on
+
+      // ---------- 4) Swap cached/local storage IN PARALLEL ----------
+      const sourceKeys = [
+        'sourcePlaceId',
+        'sourceTitle',
+        'sourceCity',
+        'sourceState',
+        'sourceCountry',
+        'sourceTypes',
+        'sourceTerms',
+      ];
+      const destinationKeys = [
+        'destinationPlaceId',
+        'destinationTitle',
+        'destinationCity',
+        'destinationState',
+        'destinationCountry',
+        'destinationTypes',
+        'destinationTerms',
+      ];
+
+      // Read both sets concurrently
+      final srcVals  = await Future.wait(sourceKeys.map(StorageServices.instance.read));
+      final destVals = await Future.wait(destinationKeys.map(StorageServices.instance.read));
+
+      // Write both directions concurrently
+      await Future.wait([
+        ...List.generate(sourceKeys.length, (i) =>
+            StorageServices.instance.save(sourceKeys[i], (destVals[i] ?? '').toString())),
+        ...List.generate(destinationKeys.length, (i) =>
+            StorageServices.instance.save(destinationKeys[i], (srcVals[i] ?? '').toString())),
+      ]);
+    } catch (e, st) {
+      // Optional: log your error handler
+      debugPrint('switchPickupAndDrop error: $e');
+      debugPrintStack(stackTrace: st);
+    } finally {
+      bookingRideController.isSwitching.value = false;
     }
   }
+
 
   @override
   void initState() {
@@ -1355,6 +1434,21 @@ class _RidesState extends State<Rides> {
                 );
               }),
             ),
+            Obx(() {
+              return bookingRideController.isInvalidTime.value
+                  ? Container(
+                      margin: EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent),
+                        maxLines: 2,
+                      ))
+                  : SizedBox();
+            }),
             const SizedBox(height: 28),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1369,19 +1463,16 @@ class _RidesState extends State<Rides> {
                       pickupId == dropId;
 
                   final hasSourceError = placeSearchController
-                              .findCntryDateTimeResponse.value?.sourceInput ==
-                          true ||
-                      dropPlaceSearchController
-                              .dropDateTimeResponse.value?.sourceInput ==
+                      .findCntryDateTimeResponse.value?.sourceInput ==
+                      true ||
+                      dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput ==
                           true;
 
                   final hasDestinationError = placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.destinationInputFalse ==
-                          true ||
-                      dropPlaceSearchController.dropDateTimeResponse.value
-                              ?.destinationInputFalse ==
+                      .findCntryDateTimeResponse.value?.destinationInputFalse ==
+                      true ||
+                      dropPlaceSearchController
+                          .dropDateTimeResponse.value?.destinationInputFalse ==
                           true;
 
                   final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
@@ -1390,47 +1481,38 @@ class _RidesState extends State<Rides> {
                       !hasSourceError &&
                       !hasDestinationError &&
                       !isPlaceMissing &&
-                      (placeSearchController
-                                  .findCntryDateTimeResponse.value?.goToNextPage ==
+                      (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage ==
+                          true ||
+                          placeSearchController.findCntryDateTimeResponse.value?.sameCountry ==
                               true ||
-                          placeSearchController.findCntryDateTimeResponse.value
-                                  ?.sameCountry ==
+                          dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry ==
                               true ||
-                          dropPlaceSearchController
-                                  .dropDateTimeResponse.value?.sameCountry ==
-                              true ||
-                          dropPlaceSearchController
-                                  .dropDateTimeResponse.value?.goToNextPage ==
+                          dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage ==
                               true);
 
-                  final forceDisable =
-                      samePlace || hasSourceError || hasDestinationError;
+                  final forceDisable = samePlace || hasSourceError || hasDestinationError;
 
-                  return Stack(
-                    children: [
-                      Opacity(
-                        opacity: forceDisable
-                            ? 0.6
-                            : canProceed
-                                ? 1.0
-                                : 0.6,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: PrimaryButton(
-                            text: 'Search Now',
-                            onPressed: () async {
-                              final requestData =
-                                  await _buildRequestData(context);
-                              GoRouter.of(context).push(
-                                AppRoutes.inventoryList,
-                                extra: requestData,
-                              );
-                              GoRouter.of(context).pop();
-                            },
-                          ),
-                        ),
+                  // final condition to enable button
+                  final isEnabled = canProceed && !forceDisable && !bookingRideController.isInvalidTime.value;
+
+                  return Opacity(
+                    opacity: isEnabled ? 1.0 : 0.6,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: PrimaryButton(
+                        text: 'Search Now',
+                        onPressed: isEnabled
+                            ? () async {
+                          final requestData = await _buildRequestData(context);
+                          GoRouter.of(context).push(
+                            AppRoutes.inventoryList,
+                            extra: requestData,
+                          );
+                          GoRouter.of(context).pop();
+                        }
+                            : (){}, // null disables the button
                       ),
-                    ],
+                    ),
                   );
                 }),
               ),
@@ -1443,8 +1525,10 @@ class _RidesState extends State<Rides> {
 }
 
 Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
-  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
-  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.put(DropPlaceSearchController());
+  final PlaceSearchController placeSearchController =
+      Get.put(PlaceSearchController());
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -1486,6 +1570,7 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
 
   final values = await Future.wait(keys.map(StorageServices.instance.read));
   final Map<String, dynamic> data = Map.fromIterables(keys, values);
+  GoRouter.of(context).pop();
 
   return {
     "timeOffSet": -offset,
@@ -1499,23 +1584,33 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
     "source": {
       "sourceTitle": data['sourceTitle'],
       "sourcePlaceId": data['sourcePlaceId'],
-      "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString(),
-      "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString(),
-      "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString(),
+      "sourceCity":
+          placeSearchController.getPlacesLatLng.value?.city.toString(),
+      "sourceState":
+          placeSearchController.getPlacesLatLng.value?.state.toString(),
+      "sourceCountry":
+          placeSearchController.getPlacesLatLng.value?.country.toString(),
       "sourceType": _parseList<String>(data['sourceTypes']),
-      "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-      "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "sourceLat":
+          placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+      "sourceLng":
+          placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
       "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {
       "destinationTitle": data['destinationTitle'],
       "destinationPlaceId": data['destinationPlaceId'],
-      "destinationCity": dropPlaceSearchController.dropLatLng.value!.city.toString(),
-      "destinationState": dropPlaceSearchController.dropLatLng.value!.state.toString(),
-      "destinationCountry": dropPlaceSearchController.dropLatLng.value!.country.toString(),
+      "destinationCity":
+          dropPlaceSearchController.dropLatLng.value!.city.toString(),
+      "destinationState":
+          dropPlaceSearchController.dropLatLng.value!.state.toString(),
+      "destinationCountry":
+          dropPlaceSearchController.dropLatLng.value!.country.toString(),
       "destinationType": _parseList<String>(data['destinationTypes']),
-      "destinationLat": dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
-      "destinationLng": dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
+      "destinationLat":
+          dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
+      "destinationLng":
+          dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
       "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
     },
     "packageSelected": {"km": "", "hours": ""},
@@ -1553,15 +1648,15 @@ class Rental extends StatefulWidget {
 
 class _RentalState extends State<Rental> {
   final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
+      Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
+      Get.put(PlaceSearchController());
   final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
+      Get.put(DropPlaceSearchController());
   final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
+      Get.put(SearchCabInventoryController());
   final FetchPackageController fetchPackageController =
-  Get.put(FetchPackageController());
+      Get.put(FetchPackageController());
 
   final RxString selectedField = ''.obs;
 
@@ -1593,18 +1688,32 @@ class _RentalState extends State<Rental> {
 
     // Step 4: Re-fetch lat/lng details based on new placeIds
     if (placeSearchController.placeId.value.isNotEmpty) {
-      placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+      placeSearchController.getLatLngDetails(
+          placeSearchController.placeId.value, context);
     }
     if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-      dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context);
+      dropPlaceSearchController.getLatLngForDrop(
+          dropPlaceSearchController.dropPlaceId.value, context);
     }
 
     // Swap stored values (local storage)
     final sourceKeys = [
-      'sourcePlaceId', 'sourceTitle', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceTypes', 'sourceTerms'
+      'sourcePlaceId',
+      'sourceTitle',
+      'sourceCity',
+      'sourceState',
+      'sourceCountry',
+      'sourceTypes',
+      'sourceTerms'
     ];
     final destinationKeys = [
-      'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms'
+      'destinationPlaceId',
+      'destinationTitle',
+      'destinationCity',
+      'destinationState',
+      'destinationCountry',
+      'destinationTypes',
+      'destinationTerms'
     ];
 
     for (int i = 0; i < sourceKeys.length; i++) {
@@ -1634,12 +1743,13 @@ class _RentalState extends State<Rental> {
         TextEditingController(text: bookingRideController.prefilledDrop.value);
 
     // Listen to changes in prefilled and prefilledDrop to update controllers
-    rentalPickupWorker =  ever(bookingRideController.prefilled, (String value) {
+    rentalPickupWorker = ever(bookingRideController.prefilled, (String value) {
       if (ridePickupController.text != value) {
         ridePickupController.text = value;
       }
     });
-    rentalDropWorker = ever(bookingRideController.prefilledDrop, (String value) {
+    rentalDropWorker =
+        ever(bookingRideController.prefilledDrop, (String value) {
       if (rideDropController.text != value) {
         rideDropController.text = value;
       }
@@ -1749,44 +1859,44 @@ class _RentalState extends State<Rental> {
                 children: [
                   Expanded(
                     child: Obx(() => Column(
-                      children: [
-                        BookingTextFormField(
-                          hintText: 'Enter Pickup Location',
-                          controller: ridePickupController,
-                          errorText: (() {
-                            final placeId =
-                                placeSearchController.placeId.value;
-                            final dropId =
-                                dropPlaceSearchController.dropPlaceId.value;
+                          children: [
+                            BookingTextFormField(
+                              hintText: 'Enter Pickup Location',
+                              controller: ridePickupController,
+                              errorText: (() {
+                                final placeId =
+                                    placeSearchController.placeId.value;
+                                final dropId =
+                                    dropPlaceSearchController.dropPlaceId.value;
 
-                            if (placeId.isNotEmpty &&
-                                dropId.isNotEmpty &&
-                                placeId == dropId) {
-                              return "Pickup and Drop cannot be the same";
-                            }
+                                if (placeId.isNotEmpty &&
+                                    dropId.isNotEmpty &&
+                                    placeId == dropId) {
+                                  return "Pickup and Drop cannot be the same";
+                                }
 
-                            if (placeSearchController
-                                .findCntryDateTimeResponse
-                                .value
-                                ?.sourceInput ==
-                                true ||
-                                dropPlaceSearchController
-                                    .dropDateTimeResponse
-                                    .value
-                                    ?.sourceInput ==
-                                    true) {
-                              return "We don't offer services from this region";
-                            }
+                                if (placeSearchController
+                                            .findCntryDateTimeResponse
+                                            .value
+                                            ?.sourceInput ==
+                                        true ||
+                                    dropPlaceSearchController
+                                            .dropDateTimeResponse
+                                            .value
+                                            ?.sourceInput ==
+                                        true) {
+                                  return "We don't offer services from this region";
+                                }
 
-                            return null;
-                          })(),
-                          onTap: () async {
-                            await GoRouter.of(context)
-                                .push(AppRoutes.choosePickup);
-                          },
-                        ),
-                      ],
-                    )),
+                                return null;
+                              })(),
+                              onTap: () async {
+                                await GoRouter.of(context)
+                                    .push(AppRoutes.choosePickup);
+                              },
+                            ),
+                          ],
+                        )),
                   ),
                 ],
               ),
@@ -1805,7 +1915,6 @@ class _RentalState extends State<Rental> {
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                   children: [
                     Expanded(
                       child: DatePickerTile(
@@ -1817,12 +1926,13 @@ class _RentalState extends State<Rental> {
                               .value
                               ?.actualDateTimeObject
                               ?.actualDateTime;
-                      
+
                           if (actualDateTimeStr != null) {
                             final actualMinDateTime =
-                            DateTime.parse(actualDateTimeStr).toLocal();
-                      
-                            if (DateUtils.isSameDay(newDate, actualMinDateTime)) {
+                                DateTime.parse(actualDateTimeStr).toLocal();
+
+                            if (DateUtils.isSameDay(
+                                newDate, actualMinDateTime)) {
                               final updatedTime = DateTime(
                                 newDate.year,
                                 newDate.month,
@@ -1830,7 +1940,7 @@ class _RentalState extends State<Rental> {
                                 actualMinDateTime.hour,
                                 actualMinDateTime.minute,
                               );
-                      
+
                               if (!updatedTime.isAtSameMomentAs(
                                   bookingRideController.localStartTime.value)) {
                                 updateLocalStartTime(updatedTime);
@@ -1874,7 +1984,7 @@ class _RentalState extends State<Rental> {
                             newTime.hour,
                             newTime.minute,
                           );
-                      
+
                           if (!updatedTime.isAtSameMomentAs(
                               bookingRideController.localStartTime.value)) {
                             updateLocalStartTime(updatedTime);
@@ -1895,8 +2005,9 @@ class _RentalState extends State<Rental> {
             const SizedBox(height: 16),
             Obx(() {
               final items = fetchPackageController.packageModel.value?.data
-                  .map((value) => '${value.hours} hrs, ${value.kilometers} kms')
-                  .toList() ??
+                      .map((value) =>
+                          '${value.hours} hrs, ${value.kilometers} kms')
+                      .toList() ??
                   [];
 
               return Padding(
@@ -1907,7 +2018,8 @@ class _RentalState extends State<Rental> {
                       context: context,
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(16)),
                       ),
                       builder: (context) {
                         return ListView.separated(
@@ -1917,41 +2029,50 @@ class _RentalState extends State<Rental> {
                           itemBuilder: (context, index) {
                             final item = items[index];
                             final isSelected =
-                                fetchPackageController.selectedPackage.value == item;
+                                fetchPackageController.selectedPackage.value ==
+                                    item;
 
                             return ListTile(
                               title: Text(
                                 item,
                                 style: TextStyle(
-                                  fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                   color: Colors.black,
                                 ),
                               ),
                               trailing: isSelected
                                   ? const Icon(Icons.check_circle,
-                                  color: Colors.green, size: 20)
+                                      color: Colors.green, size: 20)
                                   : null,
                               onTap: () async {
-                                fetchPackageController.updateSelectedPackage(item);
+                                fetchPackageController
+                                    .updateSelectedPackage(item);
                                 Navigator.pop(context);
 
                                 print('✅ Selected package is: $item');
 
                                 // Extract hours & kms
                                 final packageRegex =
-                                RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
+                                    RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
                                 final match = packageRegex.firstMatch(item);
 
                                 if (match != null) {
-                                  final extractedHours = int.tryParse(match.group(1)!);
-                                  final extractedKms = int.tryParse(match.group(2)!);
+                                  final extractedHours =
+                                      int.tryParse(match.group(1)!);
+                                  final extractedKms =
+                                      int.tryParse(match.group(2)!);
+
+                                  fetchPackageController.selectedHours.value = extractedHours??0;
+                                  fetchPackageController.selectedKms.value = extractedKms??0;
 
                                   print('📦 Extracted Hours: $extractedHours');
                                   print('📦 Extracted KMs: $extractedKms');
 
                                   await StorageServices.instance.save(
-                                      'selectedHours', extractedHours.toString());
+                                      'selectedHours',
+                                      extractedHours.toString());
                                   await StorageServices.instance.save(
                                       'selectedKms', extractedKms.toString());
                                 }
@@ -1963,7 +2084,8 @@ class _RentalState extends State<Rental> {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -1973,10 +2095,12 @@ class _RentalState extends State<Rental> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          fetchPackageController.selectedPackage.value.isNotEmpty
+                          fetchPackageController
+                                  .selectedPackage.value.isNotEmpty
                               ? fetchPackageController.selectedPackage.value
                               : "Select Packages",
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              color: Colors.black, fontWeight: FontWeight.w600),
                         ),
                         const Icon(Icons.keyboard_arrow_down_rounded,
                             color: Colors.grey),
@@ -1986,85 +2110,77 @@ class _RentalState extends State<Rental> {
                 ),
               );
             }),
+            const SizedBox(height: 12),
+            Obx(() {
+              return bookingRideController.isInvalidTime.value
+                  ? Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent),
+                        maxLines: 2,
+                      ))
+                  : SizedBox();
+            }),
             const SizedBox(height: 28),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: Obx(() {
-                  final pickupId = placeSearchController.placeId.value;
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: Obx(() {
+            final pickupId = placeSearchController.placeId.value;
 
-                  final hasSourceError = placeSearchController
-                      .findCntryDateTimeResponse.value?.sourceInput ==
-                      true;
+            final hasSourceError =
+                placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true;
 
-                  final isPlaceMissing = pickupId.isEmpty;
+            final isPlaceMissing = pickupId.isEmpty;
 
-                  final canProceed = !hasSourceError &&
-                      !isPlaceMissing &&
-                      (placeSearchController
-                          .findCntryDateTimeResponse.value?.goToNextPage ==
-                          true ||
-                          placeSearchController.findCntryDateTimeResponse.value
-                              ?.sameCountry ==
-                              true ||
-                          dropPlaceSearchController
-                              .dropDateTimeResponse.value?.sameCountry ==
-                              true ||
-                          dropPlaceSearchController
-                              .dropDateTimeResponse.value?.goToNextPage ==
-                              true);
+            final canProceed = !hasSourceError &&
+                !isPlaceMissing &&
+                (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true ||
+                    placeSearchController.findCntryDateTimeResponse.value?.sameCountry == true ||
+                    dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry == true ||
+                    dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage == true);
 
-                  final forceDisable = hasSourceError;
+            // 🚨 force disable conditions
+            final forceDisable = hasSourceError || bookingRideController.isInvalidTime.value;
 
-                  return Opacity(
-                    opacity: forceDisable
-                        ? 0.6
-                        : canProceed
-                        ? 1.0
-                        : 0.6,
-                    child: PrimaryButton(
-                        text: 'Search Now',
-                        onPressed: forceDisable || !canProceed
-                            ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              backgroundColor: Colors.redAccent,
-                              content: Text(
-                                  "Selected drop location is not available for this pickup."),
-                            ),
-                          );
-                        }
-                            : () async {
-                          final requestData =
-                          await _buildRentalRequestData(context);
-                          setState(() => _isLoading = true); // show loader
+            // ✅ final flag
+            final isEnabled = canProceed && !forceDisable;
 
-                          final success = await searchCabInventoryController.fetchBookingData(
-                            country: requestData['countryName'],
-                            requestData: requestData,
-                            context: context,
-                            isSecondPage: true,
-                          ).then((value){
-                            GoRouter.of(context).push(
-                              AppRoutes.inventoryList,
-                              extra: requestData,
-                            );
-                          });
+            return Opacity(
+              opacity: isEnabled ? 1.0 : 0.6,
+              child: PrimaryButton(
+                text: 'Search Now',
+                onPressed: isEnabled
+                    ? () async {
+                  final requestData = await _buildRentalRequestData(context);
+                  setState(() => _isLoading = true);
 
-                          setState(() => _isLoading = false);
+                  await searchCabInventoryController.fetchBookingData(
+                    country: requestData['countryName'],
+                    requestData: requestData,
+                    context: context,
+                    isSecondPage: true,
+                  ).then((_) {
+                    GoRouter.of(context).push(
+                      AppRoutes.inventoryList,
+                      extra: requestData,
+                    );
+                  });
 
-                          if (!mounted) return;
-
-
-                          // ✅ Navigate only if API worked
-
-                        }
-                    ),
-                  );
-                }),
+                  if (!mounted) return;
+                  setState(() => _isLoading = false);
+                }
+                    : (){}, // ✅ null disables the button properly
               ),
-            ),
+            );
+          }),
+        ),
+      )
           ],
         ),
       ),
@@ -2072,10 +2188,11 @@ class _RentalState extends State<Rental> {
   }
 }
 
-
 Future<Map<String, dynamic>> _buildRentalRequestData(
     BuildContext context) async {
-  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final PlaceSearchController placeSearchController =
+      Get.put(PlaceSearchController());
+  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -2124,18 +2241,27 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     "source": {
       "sourceTitle": data['sourceTitle'],
       "sourcePlaceId": data['sourcePlaceId'],
-      "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString(),
-      "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString(),
-      "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString(),
+      "sourceCity":
+          placeSearchController.getPlacesLatLng.value?.city.toString(),
+      "sourceState":
+          placeSearchController.getPlacesLatLng.value?.state.toString(),
+      "sourceCountry":
+          placeSearchController.getPlacesLatLng.value?.country.toString(),
       "sourceType": _parseList<String>(data['sourceTypes']),
-      "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-      "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "sourceLat":
+          placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+      "sourceLng":
+          placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
       "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {},
+    // "packageSelected": {
+    //   "km": data['selectedKms'],
+    //   "hours": data['selectedHours']
+    // },
     "packageSelected": {
-      "km": data['selectedKms'],
-      "hours": data['selectedHours']
+      "km": fetchPackageController.selectedKms.value,
+      "hours": fetchPackageController.selectedHours.value
     },
     "stopsArray": [],
     "pickUpTime": {
@@ -2152,4 +2278,5 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     },
     "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
   };
+
 }

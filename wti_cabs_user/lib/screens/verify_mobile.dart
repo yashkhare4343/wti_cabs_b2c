@@ -185,27 +185,20 @@ class _AuthScreenState extends State<AuthScreen> {
       );
 
       if (isVerified) {
-        await Future.delayed(const Duration(seconds: 3));
+        // ✅ Run all fetches in parallel
+        await Future.wait([
+          profileController.fetchData(),
+        ]);
 
-        // Mark logged in
-        await profileController.fetchData();
-        await popularDestinationController
-            .fetchPopularDestinations();
-        await uspController
-            .fetchUsps();
-        await bannerController
-            .fetchImages();
-        // Show popup loader
+        // ✅ Mark logged in (triggers Obx immediately if used in UI)
         upcomingBookingController.isLoggedIn.value = true;
-        await upcomingBookingController.fetchUpcomingBookingsData();
-        // Simulate 1-second wait
-        await Future.delayed(
-            const Duration(
-                seconds: 3));
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => BottomNavScreen(),
-          ),
+
+        // ✅ Fetch bookings but don’t block navigation
+        upcomingBookingController.fetchUpcomingBookingsData();
+
+        // ✅ Navigate immediately without extra delay
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => BottomNavScreen()),
         );
       }
     } else {

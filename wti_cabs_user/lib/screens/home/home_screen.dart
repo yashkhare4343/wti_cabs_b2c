@@ -2113,11 +2113,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 SizedBox(
-                  height: 12,
+                  height: 20,
                 ),
                 Padding(
                     padding: EdgeInsets.only(left: 12),
                     child: CustomCarousel()),
+                SizedBox(height: 20,),
                 // special offers
                 // SizedBox(
                 //   height: 20,

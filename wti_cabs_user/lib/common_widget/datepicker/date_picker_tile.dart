@@ -79,6 +79,7 @@ class _DatePickerTileState extends State<DatePickerTile> {
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.date,
                 minimumDate: minDate,
+                maximumYear:( minDate.year + 1),
                 initialDateTime: selectedDate.isBefore(minDate) ? minDate : selectedDate,
                 use24hFormat: true,
                 minuteInterval: 1,
