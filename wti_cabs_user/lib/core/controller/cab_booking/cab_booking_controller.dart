@@ -164,7 +164,8 @@ class CabBookingController extends GetxController {
   var isFormValid = false.obs;
 
   void validateForm() {
-    isFormValid.value = formKey.currentState?.validate() ?? false;
+    final isValid = formKey.currentState?.validate() ?? false;
+    isFormValid.value = isValid;
   }
 
   Future<void> fetchBookingData({

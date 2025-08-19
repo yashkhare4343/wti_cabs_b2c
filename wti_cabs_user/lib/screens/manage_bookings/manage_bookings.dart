@@ -1122,7 +1122,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                      child: BookingCardShimmer());
               });
         }
-       return upcomingBookingController.isLoggedIn.value!= true ?  _buildLoginPrompt(context) : Column(
+       return upcomingBookingController.isLoggedIn.value != true ?  _buildLoginPrompt(context) : Column(
           children: [
             SizedBox(height: 12),
             // Drive Type Toggle
