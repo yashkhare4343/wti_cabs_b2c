@@ -23,6 +23,9 @@ class AppColors {
   static const lightBlue1 = Color(0xFFF6F6FF);
   static const lightBlue2 = Color(0xFFE9E9F6);
   static const lightGrey1 = Color(0xFFB2B2B2);
+  static const greyBorder3 = Color(0xffe6e6e6);
+  static const inclusionIcon = Color(0xff15b395);
+  static const exclusionIcon = Color(0xfffd5959);
 
   //Text Color
   static const bodyTextPrimary = Color(0xFF373737);

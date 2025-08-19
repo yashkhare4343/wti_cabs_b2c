@@ -1163,7 +1163,7 @@ class _InventoryListState extends State<InventoryList> {
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             Text(
-                              "USD ${fareDetails.baseFare ?? ''}",
+                              "USD ${fareDetails.baseFare?.toStringAsFixed(2) ?? ''}",
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 16),
                             ),

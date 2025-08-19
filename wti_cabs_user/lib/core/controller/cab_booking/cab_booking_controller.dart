@@ -6,6 +6,7 @@ import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
+import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../model/inventory/global_response.dart';
 import '../../route_management/app_routes.dart';
@@ -117,6 +118,20 @@ class CabBookingController extends GetxController {
     return total;
   }
 
+  double get taxCharge{
+   final subtotal = baseFare +
+        nightCharges +
+        tollCharges +
+        waitingCharges +
+        parkingCharges +
+        stateTax +
+        driverCharge +
+        extraFacilityCharges;
+    final value = totalFare - subtotal;
+    return value;
+
+  }
+
   double get partFare {
     final value = totalFare * 0.20;
     debugPrint('Part fare (20% of totalFare): $value');
@@ -167,6 +182,108 @@ class CabBookingController extends GetxController {
     final isValid = formKey.currentState?.validate() ?? false;
     isFormValid.value = isValid;
   }
+
+  void showAllChargesBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      backgroundColor: Colors.white,
+      context: context,
+      isScrollControlled: true, // ✅ makes sheet scrollable if needed
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+        builder: (_) {
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.6,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (_, controller) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: ListView(
+                  controller: controller,
+                  children: [
+                    Center(
+                      child: Container(
+                        height: 5,
+                        width: 40,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      "Fare Breakdown",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ✅ Only wrap where reactive values are used
+                    Obx(() => _buildRow("Base Fare", "₹${baseFare.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Night Charges", "₹${nightCharges.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Toll Charges", "₹${tollCharges.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Waiting Charges", "₹${waitingCharges.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Parking Charges", "₹${parkingCharges.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("State Tax", "₹${stateTax.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Driver Charge", "₹${driverCharge.toStringAsFixed(2)}")),
+                    Obx(() => _buildRow("Extras", "₹${extraFacilityCharges.toStringAsFixed(2)}")),
+
+                    const Divider(thickness: 1, height: 24),
+
+                    Obx(() => _buildRow("Subtotal", "₹${actualFare.toStringAsFixed(2)}", isBold: true)),
+                    Obx(() => _buildRow("Tax include (5%)", "₹${taxCharge.toStringAsFixed(2)}", isBold: true)),
+
+                    Obx(() {
+                      if (applyCouponController.isCouponApplied.value) {
+                        return _buildRow(
+                          "Coupon Applied",
+                          "-₹${applyCouponController.applyCouponResponse.value?.discountAmount ?? 0}",
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+
+                    Obx(() => _buildRow("Total Fare", "₹${totalFare.toStringAsFixed(2)}",
+                        isBold: true, highlight: true)),
+
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          );
+        }
+    );
+  }
+
+  /// Helper row widget
+  Widget _buildRow(String label, String value,
+      {bool isBold = false, bool highlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isBold ? FontWeight.w600 : FontWeight.w400)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isBold ? FontWeight.w500 : FontWeight.w400,
+              color: highlight ? AppColors.mainButtonBg : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Future<void> fetchBookingData({
     required String country,
