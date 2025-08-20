@@ -4,9 +4,11 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
+import '../../core/services/cache_services.dart';
 import '../../core/services/storage_services.dart';
 import '../../main.dart';
 
@@ -123,10 +125,22 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                             await googleSignIn.signOut();
                             await googleSignIn.disconnect(); // optional but cleans up completely
                             }
+                              StorageServices.instance.clear();
+                              await CacheHelper.clearAllCache();
+
+                              // 🚀 Also clear in-memory observables
+                              final upcomingBookingController = Get.find<UpcomingBookingController>();
+                              upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                              upcomingBookingController.isLoggedIn.value = false;
+                              // Get.delete<BookingController>(force: true);
+// Remove controller from memory
+                              upcomingBookingController.reset();
+
+                              // or completely reset the controller
+                              // Get.delete<BookingController>(force: true);
                             } catch (e) {
                             debugPrint("Google sign-out failed: $e");
                             }// close popup
-                            StorageServices.instance.clear();
                             // Get.deleteAll(force: true);
                             Navigator.of(dialogContext)
                                 .pop(); // close popup first

@@ -62,18 +62,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    upcomingBookingController.fetchUpcomingBookingsData();
-    isLogin();
-  }
-
-  void isLogin() async{
-    if((await StorageServices.instance.read('token')==null) && ( upcomingBookingController.isLoggedIn.value = false)
-    ){
-      _showAuthBottomSheet();
-
-        upcomingBookingController.isLoggedIn.value = true;
-
-    }
+    upcomingBookingController.isLoggedIn.value == true ? upcomingBookingController.fetchUpcomingBookingsData() : upcomingBookingController.reset();
   }
 
   Widget _buildLoginPrompt(BuildContext context) {
@@ -1093,123 +1082,133 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
   Widget build(BuildContext context) {
     final driveTypes = ["Chauffeur's Drive", "Self Drive"];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Manage Bookings",
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: Colors.black)),
-        centerTitle: true,
-        elevation: 0,
+    return PopScope(
+      canPop: false, // 🚀 Stops the default "pop and close app"
+      onPopInvoked: (didPop) {
+        // This will be called for hardware back and gesture
+        GoRouter.of(context).go(AppRoutes.initialPage);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text("Manage Bookings",
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black)),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: AppColors.scaffoldBgPrimary1,
+          automaticallyImplyLeading: false,
+          // leading: Icon(
+          //   Icons.arrow_back,
+          //   color: Colors.black,
+          //   size: 20,
+          // ),
+        ),
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        automaticallyImplyLeading: false,
-        // leading: Icon(
-        //   Icons.arrow_back,
-        //   color: Colors.black,
-        //   size: 20,
-        // ),
-      ),
-      backgroundColor: AppColors.scaffoldBgPrimary1,
-      body: Obx((){
-        if(upcomingBookingController.isLoading.value){
-          return ListView.builder(
-               itemCount: 5,
-              itemBuilder: (context, index){
-                 return Container(
-                   height: 120,
-                     margin: EdgeInsets.only(bottom: 8, left: 16, ),
-                     child: BookingCardShimmer());
-              });
-        }
-       return upcomingBookingController.isLoggedIn.value != true ?  _buildLoginPrompt(context) : Column(
-          children: [
-            SizedBox(height: 12),
-            // Drive Type Toggle
-            Container(
-              // height: 46,
-              width: MediaQuery.of(context).size.width * 0.8,
-              // padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: StorageServices.instance.read('token')==null ? Center(
-                  child: MainButton(text: 'Login/Register', onPressed: (){
-                  }),
-                ) : Row(
-                  children: List.generate(2, (index) {
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => selectedDriveType = index),
-                        child: Container(
-                          padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: selectedDriveType == index
-                                ? Color(0xFF002CC0)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            driveTypes[index],
-                            style: TextStyle(
-                              fontSize: 14,
+        body: Obx((){
+          if(upcomingBookingController.isLoading.value){
+            return ListView.builder(
+                 itemCount: 5,
+                itemBuilder: (context, index){
+                   return Container(
+                     height: 120,
+                       margin: EdgeInsets.only(bottom: 8, left: 16, ),
+                       child: BookingCardShimmer());
+                });
+          }
+          if (upcomingBookingController.isLoggedIn.value == false) {
+            return _buildLoginPrompt(context);
+          }
+         return Column(
+            children: [
+              SizedBox(height: 12),
+              // Drive Type Toggle
+              Container(
+                // height: 46,
+                width: MediaQuery.of(context).size.width * 0.8,
+                // padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: StorageServices.instance.read('token')==null ? Center(
+                    child: MainButton(text: 'Login/Register', onPressed: (){
+                    }),
+                  ) : Row(
+                    children: List.generate(2, (index) {
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => selectedDriveType = index),
+                          child: Container(
+                            padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
                               color: selectedDriveType == index
-                                  ? Colors.white
-                                  : Colors.black,
-                              fontWeight: FontWeight.w400,
+                                  ? Color(0xFF002CC0)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              driveTypes[index],
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: selectedDriveType == index
+                                    ? Colors.white
+                                    : Colors.black,
+                                fontWeight: FontWeight.w400,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-            // Tabs
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TabBar(
-                controller: _tabController,
-                labelColor: Color(0xFF002CC0),
-                unselectedLabelColor: Color(0xFF494949),
-                indicatorColor: Color(0xFF002CC0),
-                labelStyle: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF002CC0)),
-                tabs: [
-                  Tab(
-                    text: "Upcoming",
-                  ),
-                  Tab(text: "Completed"),
-                  Tab(text: "Cancelled"),
-                ],
+              SizedBox(height: 20),
+              // Tabs
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Color(0xFF002CC0),
+                  unselectedLabelColor: Color(0xFF494949),
+                  indicatorColor: Color(0xFF002CC0),
+                  labelStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF002CC0)),
+                  tabs: [
+                    Tab(
+                      text: "Upcoming",
+                    ),
+                    Tab(text: "Completed"),
+                    Tab(text: "Cancelled"),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Upcoming
-                  BookingList(),
-                  // Completed (empty for now)
-                  CompletedBookingList(),
-                  // Cancelled (empty for now)
-                  CanceledBookingList(),
-                ],
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Upcoming
+                    BookingList(),
+                    // Completed (empty for now)
+                    CompletedBookingList(),
+                    // Cancelled (empty for now)
+                    CanceledBookingList(),
+                  ],
+                ),
               ),
-            ),
-          ],
-        );
-      })
+            ],
+          );
+        })
+      ),
     );
   }
 }

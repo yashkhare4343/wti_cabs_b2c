@@ -181,88 +181,83 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> fetchCurrentLocationAndAddress() async {
-    location.Location loc = location.Location();
+    final loc = location.Location();
 
-    bool serviceEnabled = await loc.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await loc.requestService();
-      if (!serviceEnabled) return;
+    // ✅ Ensure service is enabled
+    if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
+
+    // ✅ Ensure permission
+    var permission = await loc.hasPermission();
+    if (permission == location.PermissionStatus.denied) {
+      permission = await loc.requestPermission();
+      if (permission != location.PermissionStatus.granted) return;
     }
 
-    location.PermissionStatus permissionGranted = await loc.hasPermission();
-    if (permissionGranted == location.PermissionStatus.denied) {
-      permissionGranted = await loc.requestPermission();
-      if (permissionGranted != location.PermissionStatus.granted) return;
-    }
-
+    // ✅ Fetch current location
     final locData = await loc.getLocation();
-    if (locData.latitude != null && locData.longitude != null) {
-      final LatLng latLng = LatLng(locData.latitude!, locData.longitude!);
-      await _getAddressAndPrefillFromLatLng(latLng);
-    }
+    if (locData.latitude == null || locData.longitude == null) return;
+
+    await _getAddressAndPrefillFromLatLng(
+      LatLng(locData.latitude!, locData.longitude!),
+    );
   }
 
   Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
     try {
-      // 1. Get placemark (required for address)
+      debugPrint('📍 Current lat/lng: ${latLng.latitude}, ${latLng.longitude}');
+
+      // ✅ Get placemark
       final placemarks = await geocoding.placemarkFromCoordinates(
         latLng.latitude,
         latLng.longitude,
       );
-      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
-        setState(() {
-          address = 'Address not found';
-        });
+        setState(() => address = 'Address not found');
         return;
       }
 
       final place = placemarks.first;
-      final components = <String>[
-        // place.street ?? '',
-        place.locality ?? '',
-        place.administrativeArea ?? '',
-        place.postalCode ?? '',
-        place.country ?? '',
-      ];
-      String? fullAddress =
-          components.where((s) => s.trim().isNotEmpty).join(', ');
 
-      // 2. Immediately update the visible address
-      setState(() {
-        address = fullAddress;
-      });
+      // ✅ Build full address
+      final fullAddress = [
+        place.name,
+        place.street,
+        place.locality,
+        place.administrativeArea,
+        place.postalCode,
+        place.country,
+      ].where((e) => e?.trim().isNotEmpty ?? false).join(', ');
 
-      // 3. Start place search
+      // ✅ Update UI immediately
+      setState(() => address = fullAddress);
+
+      // ✅ Start place search
       await searchController.searchPlaces(fullAddress, context);
-
       if (placeSearchController.suggestions.isEmpty) return;
 
       final suggestion = placeSearchController.suggestions.first;
 
-      // 4. Immediate UI values
-      bookingRideController.prefilled.value = address;
+      // ✅ Update controllers immediately
+      bookingRideController.prefilled.value = fullAddress;
       placeSearchController.placeId.value = suggestion.placeId;
 
-      // 5. Fire-and-forget async logic in background
-      Future.microtask(() {
+      // ✅ Fire-and-forget background persistence
+      Future.microtask(() async {
         placeSearchController.getLatLngDetails(suggestion.placeId, context);
 
-        StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
-        StorageServices.instance.save('sourceTitle', suggestion.primaryText);
-        StorageServices.instance.save('sourceCity', suggestion.city);
-        StorageServices.instance.save('sourceState', suggestion.state);
-        StorageServices.instance.save('sourceCountry', suggestion.country);
+        final storage = StorageServices.instance;
+        await storage.save('sourcePlaceId', suggestion.placeId);
+        await storage.save('sourceTitle', suggestion.primaryText);
+        await storage.save('sourceCity', suggestion.city);
+        await storage.save('sourceState', suggestion.state);
+        await storage.save('sourceCountry', suggestion.country);
 
         if (suggestion.types.isNotEmpty) {
-          StorageServices.instance
-              .save('sourceTypes', jsonEncode(suggestion.types));
+          await storage.save('sourceTypes', jsonEncode(suggestion.types));
         }
-
         if (suggestion.terms.isNotEmpty) {
-          StorageServices.instance
-              .save('sourceTerms', jsonEncode(suggestion.terms));
+          await storage.save('sourceTerms', jsonEncode(suggestion.terms));
         }
 
         sourceController.setPlace(
@@ -275,16 +270,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           terms: suggestion.terms,
         );
 
-        print('akash country: ${suggestion.country}');
-        print('Current location address: $address');
+        debugPrint('✅ Saved country: ${suggestion.country}');
+        debugPrint('🏠 Current location address: $address');
       });
-    } catch (e) {
-      print('Error fetching location/address: $e');
-      setState(() {
-        address = 'Error fetching address';
-      });
+    } catch (e, s) {
+      debugPrint('❌ Error fetching location/address: $e\n$s');
+      setState(() => address = 'Error fetching address');
     }
   }
+
 
   void _showBottomSheet() {
     showModalBottomSheet(
@@ -2895,9 +2889,9 @@ class _RecentTripListState extends State<RecentTripList> {
                     fetchCurrentLocationAndAddress();
 
                     bookingRideController.prefilledDrop.value =
-                        popularMainPopularTitle;
+                        popularTitle;
                     dropPlaceSearchController.dropPlaceId.value =
-                        popularMainPopularTitle;
+                        popularPlaceId;
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
@@ -2907,7 +2901,7 @@ class _RecentTripListState extends State<RecentTripList> {
                     Future.microtask(() async {
                       // LatLng for drop (non-blocking)
                       await dropPlaceSearchController.searchDropPlaces(
-                          popularMainPopularTitle, context);
+                          popularTitle, context);
                       await dropPlaceSearchController.getLatLngForDrop(
                           dropPlaceSearchController
                               .dropSuggestions.first.placeId,

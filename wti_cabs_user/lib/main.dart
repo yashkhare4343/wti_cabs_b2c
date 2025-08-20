@@ -25,6 +25,7 @@ import 'core/controller/drop_location_controller/drop_location_controller.dart';
 import 'core/controller/popular_destination/popular_destination.dart';
 import 'core/controller/usp_controller/usp_controller.dart';
 import 'core/route_management/app_page.dart';
+import 'core/services/cache_services.dart';
 import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -59,6 +60,7 @@ void serviceLocator() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   print('🟢 Starting main');
 
   try {
@@ -72,6 +74,7 @@ void main() async {
 
     print('📦 Initializing StorageServices');
     await StorageServices.instance.init();
+    // await CacheHelper.clearAllCache();
 
     print('🔧 Registering services');
     serviceLocator();
@@ -194,7 +197,7 @@ class _MyAppState extends State<MyApp> {
       });
 
       // 3. Start place search
-      await searchController.searchPlaces(fullAddress, context);
+      await placeSearchController.searchPlaces(fullAddress, context);
 
       if (placeSearchController.suggestions.isEmpty) return;
 

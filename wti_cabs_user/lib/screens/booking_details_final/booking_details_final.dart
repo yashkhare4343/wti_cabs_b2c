@@ -43,12 +43,13 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   String? contact;
   String? contactCode;
   final CabBookingController cabBookingController =
-      Get.put(CabBookingController());
+  Get.put(CabBookingController());
   final ProfileController profileController = Get.put(ProfileController());
   final CouponController couponController = Get.put(CouponController());
   final GlobalKey<FormState> travelerFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
+  final CouponController fetchCouponController = Get.put(CouponController());
 
 
   @override
@@ -62,6 +63,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
+   await fetchCouponController.fetchCoupons(context);
+
     print('📦 3rd page country: $_country');
     firstName =
         profileController.profileResponse.value?.result?.firstName ?? '';
@@ -134,178 +137,179 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                       return _buildGlobalCard();
                     },
                   ),
-              GetBuilder<CabBookingController>(
-                builder: (cabBookingController) {
-                  final indiaData = cabBookingController.indiaData.value;
-                  if (indiaData == null) {
-                    return Center(child: buildShimmer());
-                  }
+                  GetBuilder<CabBookingController>(
+                    builder: (cabBookingController) {
+                      final indiaData = cabBookingController.indiaData.value;
+                      if (indiaData == null) {
+                        return Center(child: buildShimmer());
+                      }
 
-                  final extraCharges = indiaData.inventory?.carTypes?.fareDetails?.extraCharges;
+                      final extraCharges = indiaData.inventory?.carTypes?.fareDetails?.extraCharges;
 
-                  // Dynamic charge checks
-                  final stateTax = extraCharges?.stateTax;
-                  final isStateChargeExcluded = stateTax?.isIncludedInBaseFare == false &&
-                      stateTax?.isIncludedInGrandTotal == false;
+                      // Dynamic charge checks
+                      final stateTax = extraCharges?.stateTax;
+                      final isStateChargeExcluded = stateTax?.isIncludedInBaseFare == false &&
+                          stateTax?.isIncludedInGrandTotal == false;
 
-                  final tollTax = extraCharges?.tollCharges;
-                  final isTollExcluded = tollTax?.isIncludedInBaseFare == false &&
-                      tollTax?.isIncludedInGrandTotal == false;
+                      final tollTax = extraCharges?.tollCharges;
+                      final isTollExcluded = tollTax?.isIncludedInBaseFare == false &&
+                          tollTax?.isIncludedInGrandTotal == false;
 
-                  final nightTax = extraCharges?.nightCharges;
-                  final isNightExcluded = nightTax?.isIncludedInBaseFare == false &&
-                      nightTax?.isIncludedInGrandTotal == false;
+                      final nightTax = extraCharges?.nightCharges;
+                      final isNightExcluded = nightTax?.isIncludedInBaseFare == false &&
+                          nightTax?.isIncludedInGrandTotal == false;
 
-                  final waitingTax = extraCharges?.waitingCharges;
-                  final isWaitingExcluded = waitingTax?.isIncludedInBaseFare == false &&
-                      waitingTax?.isIncludedInGrandTotal == false;
+                      final waitingTax = extraCharges?.waitingCharges;
+                      final isWaitingExcluded = waitingTax?.isIncludedInBaseFare == false &&
+                          waitingTax?.isIncludedInGrandTotal == false;
 
-                  final parkingTax = extraCharges?.parkingCharges;
-                  final isParkingExcluded = parkingTax?.isIncludedInBaseFare == false &&
-                      parkingTax?.isIncludedInGrandTotal == false;
+                      final parkingTax = extraCharges?.parkingCharges;
+                      final isParkingExcluded = parkingTax?.isIncludedInBaseFare == false &&
+                          parkingTax?.isIncludedInGrandTotal == false;
 
-                  // Build dynamic lists
-                  final inclusions = <Widget>[
-                    _buildInclusionItem(
-                      icon: Icons.speed,
-                      title: "${indiaData.inventory?.distanceBooked} Km included",
-                      subtitle: "₹ ${indiaData.inventory?.carTypes?.fareDetails?.perKmExtraCharge}/km will apply beyond the included kms",
-                    ),
-                    _buildInclusionItem(
-                      icon: Icons.person,
-                      title: "Driver allowance",
-                      subtitle: "Driver food and accommodation(stay) charges are included",
-                    ),
-                  ];
+                      // Build dynamic lists
+                      final inclusions = <Widget>[
+                        _buildInclusionItem(
+                          icon: Icons.speed,
+                          title: "${indiaData.inventory?.distanceBooked} Km included",
+                          subtitle: "₹ ${indiaData.inventory?.carTypes?.fareDetails?.perKmExtraCharge}/km will apply beyond the included kms",
+                        ),
+                        _buildInclusionItem(
+                          icon: Icons.person,
+                          title: "Driver allowance",
+                          subtitle: "Driver food and accommodation(stay) charges are included",
+                        ),
+                      ];
 
-                  final exclusions = <Widget>[
-                    // _buildExclusionItem(
-                    //   icon: Icons.location_off,
-                    //   title: "Sightseeing not included",
-                    //   subtitle:
-                    //   "Visiting tourist places or stopping more than once for refreshments isn’t allowed",
-                    // ),
-                  ];
+                      final exclusions = <Widget>[
+                        // _buildExclusionItem(
+                        //   icon: Icons.location_off,
+                        //   title: "Sightseeing not included",
+                        //   subtitle:
+                        //   "Visiting tourist places or stopping more than once for refreshments isn’t allowed",
+                        // ),
+                      ];
 
-                  // Handle dynamic inclusions/exclusions
-                  if (isStateChargeExcluded) {
-                    exclusions.add(_buildExclusionItem(
-                      icon: Icons.receipt_long,
-                      title: "State Tax excluded",
-                      subtitle: "State tax is not covered in base fare",
-                    ));
-                  } else {
-                    inclusions.add(_buildInclusionItem(
-                      icon: Icons.receipt_long,
-                      title: "State Tax included",
-                      subtitle: "State tax is included",
-                    ));
-                  }
+                      // Handle dynamic inclusions/exclusions
+                      if (isStateChargeExcluded) {
+                        exclusions.add(_buildExclusionItem(
+                          icon: Icons.receipt_long,
+                          title: "State Tax excluded",
+                          subtitle: "State tax is not covered in base fare",
+                        ));
+                      } else {
+                        inclusions.add(_buildInclusionItem(
+                          icon: Icons.receipt_long,
+                          title: "State Tax included",
+                          subtitle: "State tax is included",
+                        ));
+                      }
 
-                  if (isTollExcluded) {
-                    exclusions.add(_buildExclusionItem(
-                      icon: Icons.local_taxi,
-                      title: "Toll Charges excluded",
-                      subtitle: "Toll charges need to be paid separately",
-                    ));
-                  } else {
-                    inclusions.add(_buildInclusionItem(
-                      icon: Icons.local_taxi,
-                      title: "Toll Charges included",
-                      subtitle: "Toll charges are included",
-                    ));
-                  }
+                      if (isTollExcluded) {
+                        exclusions.add(_buildExclusionItem(
+                          icon: Icons.local_taxi,
+                          title: "Toll Charges excluded",
+                          subtitle: "Toll charges need to be paid separately",
+                        ));
+                      } else {
+                        inclusions.add(_buildInclusionItem(
+                          icon: Icons.local_taxi,
+                          title: "Toll Charges included",
+                          subtitle: "Toll charges are included",
+                        ));
+                      }
 
-                  if (isParkingExcluded) {
-                    exclusions.add(_buildExclusionItem(
-                      icon: Icons.local_parking,
-                      title: "Parking Charges excluded",
-                      subtitle: "Parking charges need to be paid separately",
-                    ));
-                  } else {
-                    inclusions.add(_buildInclusionItem(
-                      icon: Icons.local_parking,
-                      title: "Parking Charges included",
-                      subtitle: "Parking charges are included",
-                    ));
-                  }
+                      if (isParkingExcluded) {
+                        exclusions.add(_buildExclusionItem(
+                          icon: Icons.local_parking,
+                          title: "Parking Charges excluded",
+                          subtitle: "Parking charges need to be paid separately",
+                        ));
+                      } else {
+                        inclusions.add(_buildInclusionItem(
+                          icon: Icons.local_parking,
+                          title: "Parking Charges included",
+                          subtitle: "Parking charges are included",
+                        ));
+                      }
 
-                  if (isNightExcluded) {
-                    exclusions.add(_buildExclusionItem(
-                      icon: Icons.nightlight_round,
-                      title: "Night Charges excluded",
-                      subtitle: "Night travel charges are extra",
-                    ));
-                  } else {
-                    inclusions.add(_buildInclusionItem(
-                      icon: Icons.nightlight_round,
-                      title: "Night Charges included",
-                      subtitle: "Night charges are covered",
-                    ));
-                  }
+                      if (isNightExcluded) {
+                        exclusions.add(_buildExclusionItem(
+                          icon: Icons.nightlight_round,
+                          title: "Night Charges excluded",
+                          subtitle: "Night travel charges are extra",
+                        ));
+                      } else {
+                        inclusions.add(_buildInclusionItem(
+                          icon: Icons.nightlight_round,
+                          title: "Night Charges included",
+                          subtitle: "Night charges are covered",
+                        ));
+                      }
 
-                  if (isWaitingExcluded) {
-                    exclusions.add(_buildExclusionItem(
-                      icon: Icons.access_time,
-                      title: "Waiting Charges excluded",
-                      subtitle: "Waiting charges are extra beyond free limit",
-                    ));
-                  } else {
-                    inclusions.add(_buildInclusionItem(
-                      icon: Icons.access_time,
-                      title: "Waiting time upto 45 mins for pickup",
-                      subtitle: "₹ ${extraCharges?.waitingCharges?.amount}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
-                    ));
-                  }
+                      if (isWaitingExcluded) {
+                        exclusions.add(_buildExclusionItem(
+                          icon: Icons.access_time,
+                          title: "Waiting Charges excluded",
+                          subtitle: "Waiting charges are extra beyond free limit",
+                        ));
+                      } else {
+                        inclusions.add(_buildInclusionItem(
+                          icon: Icons.access_time,
+                          title: "Waiting time upto 45 mins for pickup",
+                          subtitle: "₹ ${extraCharges?.waitingCharges?.amount}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
+                        ));
+                      }
 
-                  return Card(
-                    color: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: AppColors.greyBorder1, width: 1),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ✅ Inclusions Section
-                          Text(
-                            "INCLUSIONS",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
-                            ),
+                      return Card(
+                        color: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: AppColors.greyBorder1, width: 1),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ✅ Inclusions Section
+                              Text(
+                                "INCLUSIONS",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ...inclusions,
+
+
+                              // ✅ Exclusions Section
+                              Text(
+                                "EXCLUSIONS",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ...exclusions,
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          ...inclusions,
-
-
-                          // ✅ Exclusions Section
-                          Text(
-                            "EXCLUSIONS",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...exclusions,
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),                  SizedBox(
+                        ),
+                      );
+                    },
+                  ),                  SizedBox(
                     height: 12,
                   ),
                   ExtrasSelectionCard(),
                   SizedBox(
                     height: 8,
                   ),
+
                   // CouponScreen(),
                   // SizedBox(
                   //   height: 16,
@@ -313,8 +317,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                   TravelerDetailsForm(
                     formKey: cabBookingController.formKey,
                   ),
+                  DiscountCouponsCard(),
 
-                  DiscountCouponsCard()
                 ],
               ),
             )),
@@ -337,7 +341,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
           ),
           child: Padding(
             padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -757,7 +761,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
   }
 
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   String? tripCode;
 
   void getCurrentTripCode() async {
@@ -796,7 +800,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
           ),
           child: ListTile(
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
             leading: GestureDetector(
                 onTap: () {
                   GoRouter.of(context).pop();
@@ -806,31 +810,31 @@ class _BookingTopBarState extends State<BookingTopBar> {
               children: [
                 tripCode == '3'
                     ? Obx(() {
-                        return Expanded(
-                          child: Text(
-                            '${trimAfterTwoSpaces(bookingRideController.prefilled.value)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      })
+                  return Expanded(
+                    child: Text(
+                      '${trimAfterTwoSpaces(bookingRideController.prefilled.value)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                })
                     : Obx(() {
-                        return Expanded(
-                          child: Text(
-                            '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }),
+                  return Expanded(
+                    child: Text(
+                      '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }),
                 // GestureDetector(
                 //     onTap: () {},
                 //     child: Icon(Icons.edit,
@@ -1120,11 +1124,11 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   final TextEditingController remarkController = TextEditingController();
   final TextEditingController gstController = TextEditingController();
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
   final CabBookingController cabBookingController =
-      Get.put(CabBookingController());
+  Get.put(CabBookingController());
   bool isGstSelected = false;
   @override
   void initState() {
@@ -1198,7 +1202,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                 children: [
                   Text("Travelers Details",
                       style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 ],
               ),
               SizedBox(height: 8),
@@ -1382,7 +1386,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
 
               /// Flight No only for trip code 2
               if (searchCabInventoryController
-                      .indiaData.value?.result?.tripType?.currentTripCode ==
+                  .indiaData.value?.result?.tripType?.currentTripCode ==
                   '2')
                 _buildTextField(
                   label: 'Enter Flight Nu,ber',
@@ -1446,13 +1450,13 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
 
   Widget _buildTextField(
       {required String label,
-      required String hint,
-      required TextEditingController controller,
-      String? Function(String?)? validator,
-      String? tag,
-      bool? isReadOnly}) {
+        required String hint,
+        required TextEditingController controller,
+        String? Function(String?)? validator,
+        String? tag,
+        bool? isReadOnly}) {
     final CabBookingController cabBookingController =
-        Get.put(CabBookingController());
+    Get.put(CabBookingController());
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Column(
@@ -1462,9 +1466,9 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.black38
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black38
             ),
           ),
           const SizedBox(height: 4), // Small space between label and field
@@ -1599,7 +1603,7 @@ class _CouponScreenState extends State<CouponScreen> {
   final TextEditingController couponController = TextEditingController();
   final CouponController fetchCouponController = Get.put(CouponController());
   final ApplyCouponController applyCouponController =
-      Get.put(ApplyCouponController());
+  Get.put(ApplyCouponController());
 
   @override
   Widget build(BuildContext context) {
@@ -1673,7 +1677,7 @@ class _CouponScreenState extends State<CouponScreen> {
                     backgroundColor: Colors.green.shade500,
                     foregroundColor: Colors.white,
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -1693,7 +1697,7 @@ class _CouponScreenState extends State<CouponScreen> {
                       child: Text(
                         'Coupon "$selectedCouponCode" applied',
                         style:
-                            const TextStyle(fontSize: 12, color: Colors.green),
+                        const TextStyle(fontSize: 12, color: Colors.green),
                       ),
                     ),
                     Chip(
@@ -1740,13 +1744,13 @@ class _CouponScreenState extends State<CouponScreen> {
 
   Widget _buildCouponCard(CouponData coupon) {
     final ApplyCouponController applyCouponController =
-        Get.put(ApplyCouponController());
+    Get.put(ApplyCouponController());
     final BookingRideController bookingRideController =
-        Get.put(BookingRideController());
+    Get.put(BookingRideController());
     final CabBookingController cabBookingController =
-        Get.put(CabBookingController());
+    Get.put(CabBookingController());
     final SearchCabInventoryController searchCabInventoryController =
-        Get.put(SearchCabInventoryController());
+    Get.put(SearchCabInventoryController());
     final isSelected = selectedCouponCode == coupon.codeName;
     return GestureDetector(
         onTap: () async {
@@ -1761,13 +1765,13 @@ class _CouponScreenState extends State<CouponScreen> {
             "bankName": null,
             "userType": "CUSTOMER",
             "bookingDateTime":
-                await StorageServices.instance.read('userDateTime'),
+            await StorageServices.instance.read('userDateTime'),
             "appliedCoupon": token != null ? 1 : 0,
             "payNow": token != null ? 1 : 0,
             "tripType": searchCabInventoryController
                 .indiaData.value?.result?.tripType?.currentTripCode,
             "vehicleType": cabBookingController
-                    .indiaData.value?.inventory?.carTypes?.type ??
+                .indiaData.value?.inventory?.carTypes?.type ??
                 ''
           };
           setState(() {
@@ -1792,7 +1796,7 @@ class _CouponScreenState extends State<CouponScreen> {
               color: isSelected ? Colors.grey.shade100 : Colors.grey.shade100,
               border: Border.all(
                 color:
-                    isSelected ? AppColors.mainButtonBg : Colors.grey.shade300,
+                isSelected ? AppColors.mainButtonBg : Colors.grey.shade300,
                 width: 1.3,
               ),
               borderRadius: BorderRadius.circular(12),
@@ -2363,7 +2367,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                               0,
                           "total_fare": cabBookingController
                               .totalFare, //(full payment)
-                          "total_tax": cabBookingController.taxCharge.toStringAsFixed(2),
+                          "total_tax": double.parse(cabBookingController.taxCharge.toStringAsFixed(2)),
                           "extra_time_fare": cabBookingController
                               .indiaData
                               .value
@@ -2821,7 +2825,7 @@ void showRazorpaySkeletonLoader(BuildContext context) {
         onWillPop: () async => false, // disables back button
         child: Dialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
@@ -2854,13 +2858,14 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
   String? selectedCoupon;
   final CouponController fetchCouponController = Get.put(CouponController());
   final ApplyCouponController applyCouponController =
-      Get.put(ApplyCouponController());
+  Get.put(ApplyCouponController());
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final CabBookingController cabBookingController =
-      Get.put(CabBookingController());
+  Get.put(CabBookingController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
+
 
   @override
   Widget build(BuildContext context) {
@@ -2881,10 +2886,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
               children: [
                 const Text(
                   'Discounts Coupons',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w400, color: Colors.black),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -2896,23 +2898,14 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           Text(
                             selectedCoupon ?? 'No coupon applied',
                             style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF333333)),
+                                fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF333333)),
                           ),
-                          SizedBox(
-                            height: 8,
-                          ),
-                          Container(
-                            height: 1,
-                            color: Color(0xFFE8E8E8),
-                          )
+                          SizedBox(height: 8,),
+                          Container(height: 1, color: Color(0xFFE8E8E8),)
                         ],
                       ),
                     ),
-                    SizedBox(
-                      width: 8,
-                    ),
+                    SizedBox(width: 8,),
                     Opacity(
                       opacity: 0.3,
                       child: SizedBox(
@@ -2926,8 +2919,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           },
                           style: TextButton.styleFrom(
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 6, horizontal: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 6,horizontal: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                               side: const BorderSide(color: Color(0xFF333333)),
@@ -2935,10 +2927,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                           ),
                           child: const Text(
                             'CLEAR',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF333333)),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF333333)),
                           ),
                         ),
                       ),
@@ -2949,10 +2938,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                   const SizedBox(height: 4),
                   const Text(
                     'Congratulations! Your discount has been applied successfully.',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF00C310)),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Color(0xFF00C310)),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -2961,27 +2947,25 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                     title: coupon.codeName ?? '',
                     subtitle: coupon.codeDescription!,
                     selected: selectedCoupon == coupon.codeName.toString(),
-                    onTap: () async {
-                      final token =
-                          await StorageServices.instance.read('token');
+                    onTap: () async{
+                      final token = await StorageServices.instance.read('token');
                       final Map<String, dynamic> requestData = {
                         "userID": null,
                         "couponID": coupon.id,
                         "totalAmount": cabBookingController.totalFare,
                         "sourceLocation": bookingRideController.prefilled.value,
-                        "destinationLocation":
-                            bookingRideController.prefilledDrop.value,
+                        "destinationLocation": bookingRideController.prefilledDrop.value,
                         "serviceType": null,
                         "bankName": null,
                         "userType": "CUSTOMER",
                         "bookingDateTime":
-                            await StorageServices.instance.read('userDateTime'),
+                        await StorageServices.instance.read('userDateTime'),
                         "appliedCoupon": token != null ? 1 : 0,
                         "payNow": cabBookingController.actualFare,
                         "tripType": searchCabInventoryController
                             .indiaData.value?.result?.tripType?.currentTripCode,
-                        "vehicleType": cabBookingController
-                                .indiaData.value?.inventory?.carTypes?.type ??
+                        "vehicleType":
+                        cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
                             ''
                       };
                       await applyCouponController.applyCoupon(
@@ -2989,6 +2973,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                       setState(() {
                         selectedCoupon = coupon.codeName.toString();
                       });
+
                     },
                   ),
               ],
@@ -3005,7 +2990,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
               final coupon = fetchCouponController.coupons[index];
               return CouponCard(
                 code: coupon.codeName!,
-                id: coupon.id ?? '',
+                id: coupon.id??'',
                 title: coupon.codeDescription!,
                 subtitle: coupon.codePercentage.toString()!,
                 imageUrl: 'https://test.wticabs.com:5001${coupon.imageUrl!}',
@@ -3037,6 +3022,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+
     return Column(
       children: [
         InkWell(
@@ -3062,14 +3048,14 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                       width: 2,
                     ),
                     color:
-                        selected ? AppColors.mainButtonBg : Colors.transparent,
+                    selected ? AppColors.mainButtonBg : Colors.transparent,
                   ),
                   child: selected
                       ? const Icon(
-                          Icons.check,
-                          size: 14,
-                          color: Colors.white,
-                        )
+                    Icons.check,
+                    size: 14,
+                    color: Colors.white,
+                  )
                       : null,
                 ),
 
@@ -3080,16 +3066,11 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                     children: [
                       Text(title,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                              color: Color(0xFF333333))),
+                              fontWeight: FontWeight.w500, fontSize: 12, color: Color(0xFF333333))),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF727272)),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF727272)),
                       ),
                     ],
                   ),
@@ -3125,8 +3106,7 @@ class CouponCard extends StatefulWidget {
     required this.imageUrl,
     required this.onApply,
     required this.selectedCoupon,
-    required this.onSelected,
-    required this.id,
+    required this.onSelected, required this.id,
   }) : super(key: key);
 
   @override
@@ -3135,18 +3115,18 @@ class CouponCard extends StatefulWidget {
 
 class _CouponCardState extends State<CouponCard> {
   final ApplyCouponController applyCouponController =
-      Get.put(ApplyCouponController());
+  Get.put(ApplyCouponController());
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final CabBookingController cabBookingController =
-      Get.put(CabBookingController());
+  Get.put(CabBookingController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
   @override
   Widget build(BuildContext context) {
     return InkWell(
       splashColor: Colors.transparent,
-      onTap: () async {
+      onTap: () async{
         final token = await StorageServices.instance.read('token');
         final Map<String, dynamic> requestData = {
           "userID": null,
@@ -3158,14 +3138,14 @@ class _CouponCardState extends State<CouponCard> {
           "bankName": null,
           "userType": "CUSTOMER",
           "bookingDateTime":
-              await StorageServices.instance.read('userDateTime'),
+          await StorageServices.instance.read('userDateTime'),
           "appliedCoupon": token != null ? 1 : 0,
           "payNow": cabBookingController.actualFare,
           "tripType": searchCabInventoryController
               .indiaData.value?.result?.tripType?.currentTripCode,
           "vehicleType":
-              cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
-                  ''
+          cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
+              ''
         };
         await applyCouponController.applyCoupon(
             requestData: requestData, context: context);
@@ -3183,14 +3163,12 @@ class _CouponCardState extends State<CouponCard> {
                 decoration: BoxDecoration(
                   gradient: widget.selectedCoupon == widget.code
                       ? const LinearGradient(
-                          colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
+                    colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
                       : null,
-                  color: widget.selectedCoupon == widget.code
-                      ? null
-                      : Colors.white,
+                  color: widget.selectedCoupon == widget.code ? null : Colors.white,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(12),
                     bottomLeft: Radius.circular(12),
@@ -3203,8 +3181,7 @@ class _CouponCardState extends State<CouponCard> {
                     Padding(
                       padding: EdgeInsets.only(left: 16, top: 16),
                       child: ClipRRect(
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(12)),
+                        borderRadius: const BorderRadius.all(Radius.circular(12)),
                         child: Image.asset(
                           'assets/images/coupon_image.png',
                           width: 64,
@@ -3241,16 +3218,13 @@ class _CouponCardState extends State<CouponCard> {
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
+
                             const SizedBox(height: 2),
-                            Text(
-                              'Save ₹25 on all transactions above ₹250.',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF676767)),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
+                            Text('Save ₹25 on all transactions above ₹250.', style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF676767)
+
+                            ), overflow: TextOverflow.ellipsis,
+                              maxLines: 1,),
                             const SizedBox(height: 2),
                             Text(
                               '*Terms & conditions applicable',
@@ -3265,19 +3239,14 @@ class _CouponCardState extends State<CouponCard> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                       margin: EdgeInsets.only(top: 16, left: 16),
                       decoration: BoxDecoration(
-                        color: widget.selectedCoupon == widget.code
-                            ? Color(0xFF00C400)
-                            : Color(0xFFBBBBBB),
+                        color: widget.selectedCoupon == widget.code ? Color(0xFF00C400) :  Color(0xFFBBBBBB),
                         borderRadius: BorderRadius.circular(2),
                       ),
                       child: Text(
-                        widget.selectedCoupon == widget.code
-                            ? 'Applied'
-                            : 'Apply',
+                        widget.selectedCoupon == widget.code ? 'Applied' : 'Apply',
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
@@ -3285,6 +3254,7 @@ class _CouponCardState extends State<CouponCard> {
                         ),
                       ),
                     )
+
 
                     // Apply button
                   ],
@@ -3294,9 +3264,7 @@ class _CouponCardState extends State<CouponCard> {
 
             // Right cut image
             Image.asset(
-              widget.selectedCoupon == widget.code
-                  ? 'assets/images/coupon_gradient.png'
-                  : 'assets/images/coupon_white_cut.png',
+              widget.selectedCoupon == widget.code ? 'assets/images/coupon_gradient.png' : 'assets/images/coupon_white_cut.png',
               width: 30,
               height: 95,
               fit: BoxFit.fill,
@@ -3428,3 +3396,4 @@ Widget _buildExclusionItem({
     ),
   );
 }
+

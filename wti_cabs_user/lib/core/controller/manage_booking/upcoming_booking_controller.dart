@@ -15,8 +15,28 @@ class UpcomingBookingController extends GetxController {
   RxBool isLoggedIn = false.obs;
   RxBool isLoading = false.obs;
 
-  // upcoming bookings
+  @override
+  void onInit() {
+    super.onInit();
+    _checkLoginStatus();
+  }
 
+  void reset() {
+    upcomingBookingResponse.value = null; // or new UpcomingBookingResponse()
+    isLoggedIn.value = false;
+  }
+
+  void _checkLoginStatus() async{
+    final token = await StorageServices.instance.read('token');
+    if (token!=null) {
+      isLoggedIn.value = true;
+      fetchUpcomingBookingsData();
+    } else {
+      isLoggedIn.value = false;
+    }
+  }
+
+  // upcoming bookings
   Future<void> fetchUpcomingBookingsData() async {
     isLoading.value = true;
 

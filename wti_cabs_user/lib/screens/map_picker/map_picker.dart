@@ -2,13 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 
+import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
 import '../../core/controller/popular_destination/popular_destination.dart';
@@ -18,22 +17,19 @@ import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../trip_history_controller/trip_history_controller.dart';
-final BookingRideController bookingRideController =
-Get.put(BookingRideController());
-final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
-final UspController uspController = Get.put(UspController());
 
-final TripHistoryController tripController = Get.put(TripHistoryController());
-final PlaceSearchController searchController = Get.put(PlaceSearchController());
-final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
-final SourceLocationController sourceController = Get.put(SourceLocationController());
-
-
+/// ✅ Initialize controllers once at top-level
+final bookingRideController = Get.put(BookingRideController());
+final popularDestinationController = Get.put(PopularDestinationController());
+final uspController = Get.put(UspController());
+final tripController = Get.put(TripHistoryController());
+final placeSearchController = Get.put(PlaceSearchController());
+final sourceController = Get.put(SourceLocationController());
 
 class MapPickerScreen extends StatefulWidget {
   final Function(double lat, double lng, String address) onLocationSelected;
 
-  MapPickerScreen({required this.onLocationSelected});
+  const MapPickerScreen({required this.onLocationSelected, super.key});
 
   @override
   State<MapPickerScreen> createState() => _MapPickerScreenState();
@@ -41,18 +37,18 @@ class MapPickerScreen extends StatefulWidget {
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
   GoogleMapController? mapController;
-  LatLng currentLocation = LatLng(28.7041, 77.1025);
-  LatLng selectedLocation = LatLng(28.7041, 77.1025);
+  LatLng currentLocation = const LatLng(28.7041, 77.1025);
+  LatLng selectedLocation = const LatLng(28.7041, 77.1025);
+
   String selectedAddress = 'Fetching address...';
-  BitmapDescriptor? customMarkerIcon;
   bool isFetchingAddress = false;
   bool isLoading = true;
+
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _preloadCustomMarker();
     _getCurrentLocation();
   }
 
@@ -62,44 +58,32 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     super.dispose();
   }
 
-  Future<void> _preloadCustomMarker() async {
-    customMarkerIcon = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(size: Size(48, 48)),
-      'assets/images/source.png',
-    );
-  }
-
+  /// ✅ Get current location & center map
   Future<void> _getCurrentLocation() async {
-    location.Location loc = location.Location();
+    final loc = location.Location();
 
-    bool serviceEnabled = await loc.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await loc.requestService();
-      if (!serviceEnabled) return;
-    }
+    if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
 
-    location.PermissionStatus permissionGranted = await loc.hasPermission();
-    if (permissionGranted == location.PermissionStatus.denied) {
-      permissionGranted = await loc.requestPermission();
-      if (permissionGranted != location.PermissionStatus.granted) return;
+    var permission = await loc.hasPermission();
+    if (permission == location.PermissionStatus.denied) {
+      permission = await loc.requestPermission();
+      if (permission != location.PermissionStatus.granted) return;
     }
 
     final locData = await loc.getLocation();
-    if (locData.latitude != null && locData.longitude != null) {
-      setState(() {
-        currentLocation = LatLng(locData.latitude!, locData.longitude!);
-        selectedLocation = currentLocation;
-        isLoading = false;
-      });
+    if (locData.latitude == null || locData.longitude == null) return;
 
-      mapController?.animateCamera(
-        CameraUpdate.newLatLng(currentLocation),
-      );
+    setState(() {
+      currentLocation = LatLng(locData.latitude!, locData.longitude!);
+      selectedLocation = currentLocation;
+      isLoading = false;
+    });
 
-      _getAddressFromLatLng(currentLocation);
-    }
+    mapController?.animateCamera(CameraUpdate.newLatLng(currentLocation));
+    _getAddressFromLatLng(currentLocation);
   }
 
+  /// ✅ Get address from LatLng
   Future<void> _getAddressFromLatLng(LatLng latLng) async {
     if (isFetchingAddress) return;
 
@@ -109,34 +93,28 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     });
 
     try {
-      List<geocoding.Placemark> placemarks = await geocoding
-          .placemarkFromCoordinates(latLng.latitude, latLng.longitude);
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
 
       if (placemarks.isNotEmpty) {
-        geocoding.Placemark place = placemarks.first;
-        setState(() {
-          selectedAddress =
-          '${place.locality}';
-          bookingRideController.prefilled.value = place.name??'';
-        });
+        final place = placemarks.first;
+        selectedAddress = place.name ?? 'Unknown location';
+        bookingRideController.prefilled.value = selectedAddress;
       } else {
-        setState(() {
-          selectedAddress = 'Address not found';
-        });
+        selectedAddress = 'Address not found';
       }
-    } catch (e) {
-      setState(() {
-        selectedAddress = 'Error fetching address';
-      });
+    } catch (_) {
+      selectedAddress = 'Error fetching address';
     } finally {
-      setState(() {
-        isFetchingAddress = false;
-      });
+      setState(() => isFetchingAddress = false);
     }
   }
 
+  /// ✅ Debounced map movement handler
   void _onCameraMove(CameraPosition position) {
-    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
         selectedLocation = position.target;
@@ -146,50 +124,39 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     });
   }
 
-  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
+  /// ✅ Save location and prefill controllers
+  Future<void> _saveLocation(LatLng latLng) async {
     try {
-      List<geocoding.Placemark> placemarks =
-      await geocoding.placemarkFromCoordinates(
+      final placemarks = await geocoding.placemarkFromCoordinates(
         latLng.latitude,
         latLng.longitude,
       );
-
-      if (placemarks.isEmpty) {
-        return;
-      }
+      if (placemarks.isEmpty) return;
 
       final place = placemarks.first;
-      final components = <String>[
-        place.name ?? '',
-        place.street ?? '',
-        place.subLocality ?? '',
-        place.locality ?? '',
-        place.administrativeArea ?? '',
-        place.postalCode ?? '',
-        place.country ?? '',
-      ];
-      final fullAddress =
-      components.where((s) => s.trim().isNotEmpty).join(', ');
+      final fullAddress = [
+        place.name,
+        place.street,
+        place.locality,
+        place.administrativeArea,
+        place.postalCode,
+        place.country,
+      ].where((e) => e?.isNotEmpty ?? false).join(', ');
 
-      await searchController.searchPlaces(fullAddress, context);
-
+      await placeSearchController.searchPlaces(fullAddress, context);
       final suggestion = placeSearchController.suggestions.first;
 
       bookingRideController.prefilled.value = suggestion.primaryText;
       placeSearchController.placeId.value = suggestion.placeId;
-
       placeSearchController.getLatLngDetails(suggestion.placeId, context);
 
-      await StorageServices.instance.save(
-          'sourcePlaceId', suggestion.placeId);
-      await StorageServices.instance.save(
-          'sourceTitle', suggestion.primaryText);
-      await StorageServices.instance.save(
-          'sourceCity', suggestion.city);
-      await StorageServices.instance.save(
-          'sourceState', suggestion.state);
-      await StorageServices.instance.save(
-          'sourceCountry', suggestion.country);
+      /// ✅ Persist data
+      final storage = StorageServices.instance;
+      await storage.save('sourcePlaceId', suggestion.placeId);
+      await storage.save('sourceTitle', suggestion.primaryText);
+      await storage.save('sourceCity', suggestion.city);
+      await storage.save('sourceState', suggestion.state);
+      await storage.save('sourceCountry', suggestion.country);
 
       sourceController.setPlace(
         placeId: suggestion.placeId,
@@ -202,17 +169,13 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       );
 
       if (suggestion.types.isNotEmpty) {
-        await StorageServices.instance.save(
-            'sourceTypes', jsonEncode(suggestion.types));
+        await storage.save('sourceTypes', jsonEncode(suggestion.types));
       }
       if (suggestion.terms.isNotEmpty) {
-        await StorageServices.instance.save(
-            'sourceTerms', jsonEncode(suggestion.terms));
+        await storage.save('sourceTerms', jsonEncode(suggestion.terms));
       }
-
-      print('Saved country: ${suggestion.country}');
     } catch (e) {
-      print('Error in prefill: $e');
+      debugPrint('Error saving location: $e');
     }
   }
 
@@ -225,7 +188,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.polylineGrey),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
         ),
         title: Text("Choose location", style: CommonFonts.appBarText),
       ),
@@ -235,132 +198,114 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         children: [
           Column(
             children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    SizedBox(height: 16),
-                    Container(
-                      width: MediaQuery.of(context).size.width * 0.93,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12.0),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x1F000000),
-                            offset: Offset(0, 3),
-                            blurRadius: 12.0,
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding:
-                        EdgeInsets.symmetric(horizontal: 8.0),
-                        leading: Icon(
-                          Icons.location_on,
-                          color: Color(0xFFE5383F),
-                        ),
-                        title: Text(
-                          selectedAddress,
-                          style: CommonFonts.prefixTextAuth,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                            onPressed: () {
-                              GoRouter.of(context).pop();
-                            },
-                            icon: Icon(
-                              Icons.cancel_outlined,
-                              color: AppColors.greyText2,
-                            )),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Expanded(
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: selectedLocation,
-                          zoom: 14,
-                        ),
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
-                        onCameraMove: _onCameraMove,
-                        markers: {},
-                        onMapCreated: (controller) {
-                          mapController = controller;
-                        },
-                      ),
+              const SizedBox(height: 16),
+              /// Address bar
+              Container(
+                width: MediaQuery.of(context).size.width * 0.93,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1F000000),
+                      offset: Offset(0, 3),
+                      blurRadius: 12,
                     ),
                   ],
                 ),
+                child: ListTile(
+                  contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 8),
+                  leading: const Icon(Icons.location_on,
+                      color: Color(0xFFE5383F)),
+                  title: Text(
+                    selectedAddress,
+                    style: CommonFonts.prefixTextAuth,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: IconButton(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(Icons.cancel_outlined,
+                        color: AppColors.greyText2),
+                  ),
+                ),
               ),
-              Container(
-                height: 50,
-                margin: EdgeInsets.only(
-                    bottom: 16, left: 16, right: 16),
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await PopupLoader(message: 'Saving Location...');
-                    await _getAddressAndPrefillFromLatLng(
-                        selectedLocation);
-                    Navigator.pop(context); // close loader
-                    widget.onLocationSelected(
-                      selectedLocation.latitude,
-                      selectedLocation.longitude,
-                      selectedAddress,
-                    );
-                    Navigator.pop(context); // close screen
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+              const SizedBox(height: 16),
+
+              /// Google Map
+              Expanded(
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: selectedLocation,
+                    zoom: 14,
                   ),
-                  child: Text(
-                    "Confirm Location",
-                    style: CommonFonts.primaryButtonText,
-                  ),
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  onCameraMove: _onCameraMove,
+                  markers: const {},
+                  onMapCreated: (controller) => mapController = controller,
                 ),
               ),
             ],
           ),
 
-          // Marker
+          /// Confirm Button
           Positioned(
-            top: MediaQuery.of(context).size.height / 2 - 24,
-            left: MediaQuery.of(context).size.width / 2 - 24,
-            child: Image.asset(
-              'assets/images/source.png',
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: SizedBox(
               height: 50,
+              child: ElevatedButton(
+                onPressed: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const PopupLoader(message: 'Saving...'),
+                  );
+                  await _saveLocation(selectedLocation);
+                  if (context.mounted) Navigator.pop(context); // close loader
+                  widget.onLocationSelected(
+                    selectedLocation.latitude,
+                    selectedLocation.longitude,
+                    selectedAddress,
+                  );
+                  if (context.mounted) context.pop(); // close screen
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text("Confirm Location",
+                    style: CommonFonts.primaryButtonText),
+              ),
             ),
           ),
 
+          /// Marker image overlay
+          Center(
+            child: Image.asset('assets/images/source.png', height: 50),
+          ),
+
+          /// My location button
           Positioned(
             right: 12,
             bottom: MediaQuery.of(context).size.height * 0.24,
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: FloatingActionButton(
-                onPressed: () {
-                  mapController?.animateCamera(
-                    CameraUpdate.newLatLng(currentLocation),
-                  );
-                  setState(() {
-                    selectedLocation = currentLocation;
-                  });
-                },
-                backgroundColor: AppColors.bgGreen2,
-                child: Icon(
-                  Icons.my_location,
-                  color: AppColors.prefixAuthText,
-                  size: 20,
-                ),
-              ),
+            child: FloatingActionButton(
+              mini: true,
+              onPressed: () {
+                mapController?.animateCamera(
+                  CameraUpdate.newLatLng(currentLocation),
+                );
+                setState(() => selectedLocation = currentLocation);
+              },
+              backgroundColor: AppColors.bgGreen2,
+              child: const Icon(Icons.my_location,
+                  color: AppColors.prefixAuthText, size: 20),
             ),
           ),
         ],
