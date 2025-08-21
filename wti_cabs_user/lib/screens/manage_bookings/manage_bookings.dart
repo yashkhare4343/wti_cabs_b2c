@@ -1583,7 +1583,24 @@ class _BookingCardState extends State<BookingCard> {
                         SizedBox(width: 16),
                         ElevatedButton(
                           onPressed: () {
-// Handle button press
+                            final booking = upcomingBookingController.confirmedBookings?[index];
+                            if (booking != null) {
+                              final bookingMap = {
+                                "id": booking.id,
+                                "vehicleType": booking.vehicleDetails?.type,
+                                "pickup": booking.source?.address,
+                                "drop": booking.destination?.address,
+                                "tripType": booking.tripTypeDetails?.tripType,
+                                "amountPaid": booking.recieptId?.fareDetails?.amountPaid,
+                                "startTime": booking.startTime,
+                                "endTime": booking.endTime,
+                                "timezone": booking.timezone,
+                                "paymentId" : booking.razorpayPaymentId,
+                                "recieptId" : booking.razorpayReceiptId
+                              };
+
+                              context.push('/cancelBooking', extra: bookingMap);
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor:

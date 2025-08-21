@@ -12,6 +12,8 @@ class AppRoutes{
   static const String offers = '/offers';
   static const String profile = '/profile';
   static const String manageBookings = '/manageBookings';
+  static const String cancelBooking = '/cancelBooking';
+  static const String cancelledBooking = '/cancelledBooking';
 
 
 

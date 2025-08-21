@@ -14,6 +14,7 @@ import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/booking_textformfield.dart';
 import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/button_state_controller/button_state_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -978,6 +979,13 @@ class _RidesState extends State<Rides> {
       Get.put(DropPlaceSearchController());
   final SearchCabInventoryController searchCabInventoryController =
       Get.put(SearchCabInventoryController());
+  final ButtonStateController buttonStateController = Get.put(
+    ButtonStateController(
+      placeSearchController: Get.find<PlaceSearchController>(),
+      dropPlaceSearchController: Get.find<DropPlaceSearchController>(),
+      bookingRideController: Get.find<BookingRideController>(),
+    ),
+  );
   final RxString selectedField = ''.obs;
 
   // Declare TextEditingControllers as class-level variables
@@ -1455,45 +1463,7 @@ class _RidesState extends State<Rides> {
               child: SizedBox(
                 width: double.infinity,
                 child: Obx(() {
-                  final pickupId = placeSearchController.placeId.value;
-                  final dropId = dropPlaceSearchController.dropPlaceId.value;
-
-                  final samePlace = pickupId.isNotEmpty &&
-                      dropId.isNotEmpty &&
-                      pickupId == dropId;
-
-                  final hasSourceError = placeSearchController
-                      .findCntryDateTimeResponse.value?.sourceInput ==
-                      true ||
-                      dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput ==
-                          true;
-
-                  final hasDestinationError = placeSearchController
-                      .findCntryDateTimeResponse.value?.destinationInputFalse ==
-                      true ||
-                      dropPlaceSearchController
-                          .dropDateTimeResponse.value?.destinationInputFalse ==
-                          true;
-
-                  final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
-
-                  final canProceed = !samePlace &&
-                      !hasSourceError &&
-                      !hasDestinationError &&
-                      !isPlaceMissing &&
-                      (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage ==
-                          true ||
-                          placeSearchController.findCntryDateTimeResponse.value?.sameCountry ==
-                              true ||
-                          dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry ==
-                              true ||
-                          dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage ==
-                              true);
-
-                  final forceDisable = samePlace || hasSourceError || hasDestinationError;
-
-                  // final condition to enable button
-                  final isEnabled = canProceed && !forceDisable && !bookingRideController.isInvalidTime.value;
+                  final isEnabled = buttonStateController.isEnabled.value;
 
                   return Opacity(
                     opacity: isEnabled ? 1.0 : 0.6,
@@ -1510,7 +1480,7 @@ class _RidesState extends State<Rides> {
                           );
                           GoRouter.of(context).pop();
                         }
-                            : (){}, // null disables the button
+                            : (){}, // ✅ null = properly disabled
                       ),
                     ),
                   );

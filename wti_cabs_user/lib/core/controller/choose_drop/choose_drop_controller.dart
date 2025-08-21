@@ -187,9 +187,9 @@ class DropPlaceSearchController extends GetxController {
       if (pickupLatLng == null) throw Exception('Pickup LatLng not available for drop time calculation');
 
       final requestData = {
-        "sourceLat": pickupLatLng.latLong.lat,
-        "sourceLng": pickupLatLng.latLong.lng,
-        "sourceCountry": pickupLatLng.country,
+        "sourceLat": pickupController.getPlacesLatLng.value?.latLong.lat,
+        "sourceLng": pickupController.getPlacesLatLng.value?.latLong.lng,
+        "sourceCountry": pickupController.getPlacesLatLng.value?.country,
         "destinationLat": dLat,
         "destinationLng": dLng,
         "destinationCountry": dCountry,

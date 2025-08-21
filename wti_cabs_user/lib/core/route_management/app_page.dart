@@ -16,6 +16,8 @@ import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
 
 import '../../main.dart';
+import '../../screens/cancel_screen/cancel_booking_screen.dart';
+import '../../screens/cancel_screen/cancelled booking.dart';
 
 class AppPages{
    static final GoRouter router = GoRouter(
@@ -78,6 +80,20 @@ class AppPages{
         GoRoute(
           path: AppRoutes.manageBookings,
           builder: (context, state) => ManageBookings(),
+        ),
+        GoRoute(
+          path: AppRoutes.cancelBooking,
+          builder: (context, state) {
+            final bookingMap = state.extra as Map<String, dynamic>;
+            return CancelBookingScreen(booking: bookingMap);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.cancelledBooking,
+          builder: (context, state) {
+            final bookingMap = state.extra as Map<String, dynamic>;
+            return CancelledBookingScreen(booking: bookingMap);
+          },
         ),
 
       ],

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -15,9 +14,9 @@ import 'package:wti_cabs_user/core/controller/payment/global/global_provisional_
 import 'package:wti_cabs_user/core/controller/payment/india/provisional_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/profile_controller.dart';
 import 'package:wti_cabs_user/core/model/fetch_coupon/fetch_coupon_response.dart';
-
 import '../../core/api/api_services.dart';
 import '../../core/controller/booking_ride_controller.dart';
+import '../../core/controller/country/country_controller.dart';
 import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import '../../core/controller/inventory/search_cab_inventory_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
@@ -1871,7 +1870,7 @@ class BottomPaymentBar extends StatefulWidget {
 }
 
 class _BottomPaymentBarState extends State<BottomPaymentBar> {
-  final CabBookingController cabBookingController = Get.find();
+  final cabBookingController = Get.find<CabBookingController>();
   final FetchReservationBookingData fetchReservationBookingData =
   Get.put(FetchReservationBookingData());
   final SourceLocationController sourceController =
@@ -1887,6 +1886,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
   Get.put(GlobalPaymentController());
   final SearchCabInventoryController searchCabInventoryController =
   Get.put(SearchCabInventoryController());
+  final countryController = Get.put(CountryController());
+
 
   String? token, firstName, email, contact, contactCode, flightNo, remark, gstValue;
 
@@ -1928,26 +1929,45 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
         children: [
           Expanded(
             child: Container(
-              height: 48, // reduced
+              height: 48,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(6), // smaller radius
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Obx(() {
+                final isIndia = countryController.isIndia;
+
+                // 🚀 Show shimmer while fare is loading
+                final controller = Get.find<CountryController>();
+
+                if (controller.isLoading.value) {
+                  return Shimmer.fromColors(
+                    baseColor: Colors.grey.shade300,
+                    highlightColor: Colors.grey.shade100,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  );
+                }
+
+                // 🚀 Normal UI after data loaded
                 return Row(
                   children: [
-                    _country?.toLowerCase().trim() == 'india'
-                        ? _buildRadioOption(
-                      index: 0,
-                      title: 'Part Pay',
-                      amount: '₹ ${cabBookingController.partFare.toStringAsFixed(0)}',
-                    )
-                        : const SizedBox(),
+                    if (isIndia)
+                      _buildRadioOption(
+                        index: 0,
+                        title: 'Part Pay',
+                        amount: '₹ ${cabBookingController.partFare.toStringAsFixed(0)}',
+                      ),
                     VerticalDivider(width: 1, color: Colors.grey.shade300),
                     _buildRadioOption(
                       index: 1,
                       title: 'Full Pay',
-                      amount: _country?.toLowerCase() == 'india'
+                      amount: isIndia
                           ? '₹ ${cabBookingController.totalFare.toStringAsFixed(0)}'
                           : 'USD ${cabBookingController.totalFare.toStringAsFixed(0)}',
                     ),
@@ -1962,7 +1982,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                 final controller = Get.find<CabBookingController>();
                 controller.showAllChargesBottomSheet(context);
               },
-              icon: const Icon(Icons.info_outline, size: 16), // smaller
+              icon: const Icon(Icons.info_outline, size: 16),
               color: Colors.black87,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -2814,6 +2834,23 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
       ),
     );
   }
+}
+
+Widget _buildShimmerBox() {
+  return Expanded(
+    child: Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        height: 16,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    ),
+  );
 }
 
 void showRazorpaySkeletonLoader(BuildContext context) {

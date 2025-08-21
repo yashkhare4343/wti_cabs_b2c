@@ -59,6 +59,7 @@ class _InventoryListState extends State<InventoryList> {
     _country = await StorageServices.instance.read('country');
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await loadTripCode(context);
+      if (!mounted) return; // ✅ prevents setState on disposed widget
       setState(() {
         isLoading = false;
       });
@@ -170,9 +171,19 @@ class _InventoryListState extends State<InventoryList> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.scaffoldBgPrimary1,
-        body: FullPageShimmer(),
+      return PopScope(
+        canPop: false, // 🚀 Stops the default "pop and close app"
+        onPopInvoked: (didPop) {
+          bookingRideController.selectedIndex.value =0;
+          GoRouter.of(context).pop();
+          GoRouter.of(context).go(
+            '${AppRoutes.bookingRide}?tab=airport',
+          );
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.scaffoldBgPrimary1,
+          body: FullPageShimmer(),
+        ),
       );
     }
     final isIndia = _country?.toLowerCase() == 'india';
@@ -182,8 +193,18 @@ class _InventoryListState extends State<InventoryList> {
     if (_country == null ||
         (isIndia && indiaData == null) ||
         (!isIndia && globalData == null)) {
-      return Scaffold(
-        body: Center(child: FullPageShimmer()),
+      return PopScope(
+        canPop: false, // 🚀 Stops the default "pop and close app"
+        onPopInvoked: (didPop) {
+          bookingRideController.selectedIndex.value =0;
+          GoRouter.of(context).pop();
+          GoRouter.of(context).go(
+            '${AppRoutes.bookingRide}?tab=airport',
+          );
+        },
+        child: Scaffold(
+          body: Center(child: FullPageShimmer()),
+        ),
       );
     }
 
