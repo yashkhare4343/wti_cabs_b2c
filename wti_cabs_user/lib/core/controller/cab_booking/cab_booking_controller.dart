@@ -80,6 +80,7 @@ class CabBookingController extends GetxController {
     return value;
   }
 
+
   double get actualFare {
     final subtotal = baseFare +
         nightCharges +

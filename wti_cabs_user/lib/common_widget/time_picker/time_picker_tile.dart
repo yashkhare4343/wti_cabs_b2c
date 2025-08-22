@@ -87,6 +87,7 @@ class _TimePickerTileState extends State<TimePickerTile> {
     final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
         ?.actualDateTimeObject?.actualOffSet;
 
+
     return _convertUtcWithOffsetToLocal(utcIsoString, offsetMinutes);
   }
 
@@ -157,6 +158,8 @@ class _TimePickerTileState extends State<TimePickerTile> {
                       newDuration.inMinutes % 60,
                     );
 
+                    print('yash 22 aug $selectedDateTime');
+
                     final bool isSameDay = _isSameDate(selectedDateTime, actualDateTime);
 
                     /// 👇 Truncate seconds and milliseconds from actualDateTime to ensure fair comparison
@@ -176,7 +179,9 @@ class _TimePickerTileState extends State<TimePickerTile> {
 
                     bookingRideController.isInvalidTime.value = isSameDay && selectedDateTime.isBefore(actualComparable);
 
-
+                    final offsetMinutes = timeZoneController.findCntryDateTimeResponse.value
+                        ?.actualDateTimeObject?.actualOffSet;
+                    bookingRideController.offsetMinutes?.value = offsetMinutes;
                     // Round to nearest 30 min as per your logic
                     final clampedDuration = roundToNearestInterval(newDuration, 30);
 
@@ -190,7 +195,11 @@ class _TimePickerTileState extends State<TimePickerTile> {
 
                     setState(() => selectedTime = adjustedDateTime);
                     timeObservable.value = adjustedDateTime;
+                    bookingRideController.selectedDateTime.value = adjustedDateTime;
+
                     widget.onTimeSelected(adjustedDateTime);
+                    print('yash adjusted selected time : $adjustedDateTime');
+
                   }
               ),
             ),

@@ -64,6 +64,8 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       Get.put(SourceLocationController());
   final DestinationLocationController destinationLocationController =
       Get.put(DestinationLocationController());
+  final UpcomingBookingController upcomingBookingController =
+  Get.put(UpcomingBookingController());
   @override
   void initState() {
     super.initState();
@@ -73,10 +75,12 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     // Fetch location and show bottom sheet
     _setStatusBarColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showAuthBottomSheet();
-      locationController.fetchCurrentLocationAndAddress(context);
+      upcomingBookingController.isLoggedIn.value == true ? null : _showAuthBottomSheet();
     });
   }
+
+
+
   void homeApiLoading() async{
     await popularDestinationController.fetchPopularDestinations();
     await uspController.fetchUsps();

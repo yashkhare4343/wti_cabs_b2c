@@ -9,11 +9,13 @@ import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_con
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
+import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 
 import '../../common_widget/dropdown/common_dropdown.dart';
 import '../../core/controller/cab_booking/cab_booking_controller.dart';
+import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/inventory_dialog_controller/inventory_dialog_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/model/inventory/india_response.dart';
@@ -59,7 +61,7 @@ class _InventoryListState extends State<InventoryList> {
     _country = await StorageServices.instance.read('country');
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await loadTripCode(context);
-      if (!mounted) return; // ✅ prevents setState on disposed widget
+// ✅ prevents setState on disposed widget
       setState(() {
         isLoading = false;
       });
@@ -167,6 +169,8 @@ class _InventoryListState extends State<InventoryList> {
       (baseFare * 100) / (100 - percent);
 
   num getFivePercentOfBaseFare(num baseFare) => baseFare * 0.05;
+  final DropPlaceSearchController dropPlaceSearchController =
+  Get.put(DropPlaceSearchController());
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +193,23 @@ class _InventoryListState extends State<InventoryList> {
     final isIndia = _country?.toLowerCase() == 'india';
     final indiaData = searchCabInventoryController.indiaData.value;
     final globalData = searchCabInventoryController.globalData.value;
+
+    if (isLoading) {
+      return PopScope(
+        canPop: false, // 🚀 Stops the default "pop and close app"
+        onPopInvoked: (didPop) {
+          bookingRideController.selectedIndex.value =0;
+          GoRouter.of(context).pop();
+          GoRouter.of(context).go(
+            '${AppRoutes.bookingRide}?tab=airport',
+          );
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.scaffoldBgPrimary1,
+          body: FullPageShimmer(),
+        ),
+      );
+    }
 
     if (_country == null ||
         (isIndia && indiaData == null) ||
@@ -244,6 +265,7 @@ class _InventoryListState extends State<InventoryList> {
                       ),
                       Expanded(
                         child: Obx(() {
+
                           final isIndia =
                               searchCabInventoryController.indiaData.value !=
                                   null;
@@ -262,6 +284,16 @@ class _InventoryListState extends State<InventoryList> {
                             return const Center(
                               child: Text(
                                 "No cabs available on this route",
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w500),
+                              ),
+                            );
+                          }
+
+                          if(placeSearchController.getPlacesLatLng.value?.country != dropPlaceSearchController.dropLatLng.value?.country){
+                            return const Center(
+                              child: Text(
+                                "No cabs available on this route, Please search on same country for pickup and drop",
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.w500),
                               ),
@@ -364,7 +396,7 @@ class _InventoryListState extends State<InventoryList> {
       style: TextStyle(
         decoration: TextDecoration.lineThrough,
         color: Colors.grey,
-        fontSize: 13,
+        fontSize: 12,
       ),
     );
     Text(
@@ -372,7 +404,7 @@ class _InventoryListState extends State<InventoryList> {
       style: TextStyle(
         decoration: TextDecoration.lineThrough,
         color: Colors.grey,
-        fontSize: 13,
+        fontSize: 12,
       ),
     );
     return InkWell(
@@ -387,6 +419,7 @@ class _InventoryListState extends State<InventoryList> {
 
         print(
             "inventory start time and endtime : ${tripTypeDetails?.startTime?.toIso8601String() ?? ''}, ${tripTypeDetails?.endTime?.toIso8601String() ?? ''}");
+        print('selected km is ${fetchPackageController.selectedKms.value}');
 
         final Map<String, dynamic> requestData = {
           "isGlobal": false,
@@ -396,7 +429,7 @@ class _InventoryListState extends State<InventoryList> {
           "trip_type": carType.tripType,
           "pickUpDateTime": tripTypeDetails?.startTime?.toIso8601String() ?? '',
           "dropDateTime": tripTypeDetails?.endTime?.toIso8601String() ?? '',
-          "totalKilometers": tripTypeDetails?.distanceBooked ?? 0,
+          "totalKilometers": carType.tripType == '3'? fetchPackageController.selectedKms.value : tripTypeDetails?.distanceBooked ?? 0,
           "package_id": tripTypeDetails?.packageId ?? '',
           "source": {
             "address": tripTypeDetails?.source?.address ?? '',
@@ -441,7 +474,7 @@ class _InventoryListState extends State<InventoryList> {
                       children: [
                         Image.network(
                           carType.carImageUrl ?? '',
-                          width: 70,
+                          width: 60,
                           height: 50,
                         ),
                         OutlinedButton(
@@ -463,12 +496,12 @@ class _InventoryListState extends State<InventoryList> {
                           child: Text(
                             carType.type ?? '',
                             style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600),
+                                fontSize: 10, fontWeight: FontWeight.w600),
                           ),
                         )
                       ],
                     ),
-                    SizedBox(width: 6),
+                    SizedBox(width: 5),
                     Expanded(
                       flex: 0,
                       child: Column(
@@ -477,12 +510,12 @@ class _InventoryListState extends State<InventoryList> {
                           Row(
                             children: [
                               SizedBox(
-                                width: 60,
+                                width: 55,
                                 child: Text(
                                   carType.carTagLine ?? '',
                                   style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 18),
+                                      fontSize: 16),
                                   overflow: TextOverflow.clip,
                                   maxLines: 1,
                                 ),
@@ -509,7 +542,7 @@ class _InventoryListState extends State<InventoryList> {
                                       ? carType.combustionType ?? ''
                                       : "",
                                   style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w600),
                                 ),
                               )
@@ -518,7 +551,7 @@ class _InventoryListState extends State<InventoryList> {
                           Text('or similar',
                               style: TextStyle(
                                   fontWeight: FontWeight.w400,
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   color: Colors.grey[600])),
                           SizedBox(height: 6),
                           Row(
@@ -526,13 +559,13 @@ class _InventoryListState extends State<InventoryList> {
                               Text("${carType.seats} Seats",
                                   style: TextStyle(
                                       fontWeight: FontWeight.w400,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Colors.grey[700])),
-                              SizedBox(width: 8),
+                              SizedBox(width: 7),
                               Text("• ${carType.luggageCapacity}",
                                   style: TextStyle(
                                       fontWeight: FontWeight.w400,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Colors.grey[700])),
                             ],
                           )
@@ -552,7 +585,7 @@ class _InventoryListState extends State<InventoryList> {
                                   Text(
                                       "${carType.fakePercentageOff.toString() ?? ''}%",
                                       style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 13,
                                           color: Colors.green.shade700,
                                           fontWeight: FontWeight.w600)),
                                   SizedBox(width: 6),
@@ -561,7 +594,7 @@ class _InventoryListState extends State<InventoryList> {
                                     style: TextStyle(
                                       decoration: TextDecoration.lineThrough,
                                       color: Colors.grey,
-                                      fontSize: 14,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],
@@ -575,7 +608,7 @@ class _InventoryListState extends State<InventoryList> {
                                     "₹ ${carType.fareDetails?.baseFare?.toInt() ?? ''}",
                                     style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 18),
+                                        fontSize: 16),
                                   ),
                                 ],
                               ),
@@ -583,7 +616,7 @@ class _InventoryListState extends State<InventoryList> {
                               Text(
                                   '+ ${getFivePercentOfBaseFare(carType.fareDetails?.baseFare?.toInt() ?? 0).truncate()} (taxes & charges)',
                                   style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 12)),
+                                      color: Colors.grey[600], fontSize: 11)),
                             ],
                           ),
                         ],
@@ -1041,7 +1074,7 @@ class _InventoryListState extends State<InventoryList> {
                       children: [
                         Image.network(
                           vehicleDetails.vehicleImageLink ?? '',
-                          width: 80,
+                          width: 65,
                           height: 50,
                         ),
                         SizedBox(
@@ -1066,7 +1099,7 @@ class _InventoryListState extends State<InventoryList> {
                           child: Text(
                             vehicleDetails.filterCategory ?? '',
                             style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
+                                fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         )
                       ],
@@ -1132,7 +1165,7 @@ class _InventoryListState extends State<InventoryList> {
                             child: Text(
                               vehicleDetails.fuelType,
                               style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600),
+                                  fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
 
@@ -1142,14 +1175,14 @@ class _InventoryListState extends State<InventoryList> {
                               Text("${vehicleDetails.passengerCapacity} Seats",
                                   style: TextStyle(
                                       fontWeight: FontWeight.w400,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Colors.grey[700])),
                               SizedBox(width: 8),
                               Text(
                                   "• ${vehicleDetails.checkinLuggageCapacity} bags",
                                   style: TextStyle(
                                       fontWeight: FontWeight.w400,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Colors.grey[700])),
                             ],
                           )
@@ -1194,7 +1227,7 @@ class _InventoryListState extends State<InventoryList> {
                         Text(
                             '+ ${getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).truncate()} (taxes & charges)',
                             style: TextStyle(
-                                color: Colors.grey[600], fontSize: 11)),
+                                color: Colors.grey[600], fontSize: 10)),
                       ],
                     )
                   ],

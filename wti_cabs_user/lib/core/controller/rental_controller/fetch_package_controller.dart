@@ -29,6 +29,8 @@ class FetchPackageController extends GetxController {
         // ✅ preselect the smallest package (after sorting)
         selectedPackage.value =
         '${result.data[0].hours} hrs, ${result.data[0].kilometers} kms';
+        selectedHours.value = result.data[0].hours ?? 0;
+        selectedKms.value = result.data[0].kilometers ?? 0;
       }
     } catch (e) {
       print("Failed to fetch packages: $e");

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
+import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 
 class FullScreenGifLoader extends StatefulWidget {
   const FullScreenGifLoader({Key? key}) : super(key: key);
@@ -43,19 +44,25 @@ class _FullScreenGifLoaderState extends State<FullScreenGifLoader> {
   //     ),
   //   );
   // }
-  @override
+  // @override
+  // Widget build(BuildContext context) {
+  //   return const MaterialApp(
+  //     home: Scaffold(
+  //       backgroundColor: Colors.white,
+  //       body: Center(
+  //         child: RideWithUsAvatar(
+  //           imageUrl:
+  //           "https://play-lh.googleusercontent.com/aOe2OpZYo3hFu7EzQzkWDr6GobXQxW53JUrRsiIZx5mlz2VwAUQGLrPR3_BlYQbwzw",
+  //           radius: 30,
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: RideWithUsAvatar(
-            imageUrl:
-            "https://play-lh.googleusercontent.com/aOe2OpZYo3hFu7EzQzkWDr6GobXQxW53JUrRsiIZx5mlz2VwAUQGLrPR3_BlYQbwzw",
-            radius: 30,
-          ),
-        ),
-      ),
+      debugShowCheckedModeBanner: false,
+      home: FullPageShimmer(),
     );
   }
 }

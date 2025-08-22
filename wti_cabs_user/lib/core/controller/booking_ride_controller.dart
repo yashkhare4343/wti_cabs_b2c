@@ -2,11 +2,17 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 import 'booking_validation.dart';
+import 'package:timezone/timezone.dart' as tz;
+
+import 'choose_pickup/choose_pickup_controller.dart';
 
 class BookingRideController extends GetxController {
   var isLoading = false.obs;
   var errorMessage = ''.obs;
   final RxBool isSwitching = false.obs;
+  Rx<DateTime?> selectedDateTime = Rx<DateTime?>(null);
+  RxInt? offsetMinutes = RxInt(0);   // ✅ stores timezone offset
+
 
 
   // Core datetime values
@@ -88,6 +94,25 @@ class BookingRideController extends GetxController {
     if (dropDateTime.value == null) {
       dropDateTime.value = minValidDrop;
     }
+  }
+
+  // convert local to utc based on timezone
+  String convertLocalToUtc() {
+    // Get location by name (e.g. Asia/Kolkata, Europe/London)
+    final placeSearchController = Get.find<PlaceSearchController>();
+
+    // read timezone from API response stored in controller
+    final timeZone = placeSearchController.findCntryDateTimeResponse.value?.timeZone;
+    final location = tz.getLocation(timeZone!);
+
+    // Interpret the localDateTime as being in that timezone
+    final tz.TZDateTime tzDateTime = tz.TZDateTime.from(localStartTime.value, location);
+
+    // Convert to UTC
+    final utcDateTime = tzDateTime.toUtc();
+
+    // Format as ISO8601 and force `Z` at the end
+    return utcDateTime.toIso8601String();
   }
 
   // // ✅ Update drop date, keeping time

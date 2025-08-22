@@ -8,7 +8,23 @@ import '../../services/storage_services.dart';
 
 class ProfileController extends GetxController {
   var isLoading = false.obs;
-  var profileResponse = Rxn<ProfileResponse>(); // Holds API response
+  var profileResponse = Rxn<ProfileResponse>();
+  RxBool isLoggedIn = false.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    checkLoginStatus();
+  }
+
+  void checkLoginStatus() async{
+    final token = await StorageServices.instance.read('token');
+    if (token!=null) {
+      isLoggedIn.value = true;
+     } else {
+      isLoggedIn.value = false;
+    }
+  }// Holds API response
 
   // Inject your API service or use directly
   Future<void> fetchData() async {

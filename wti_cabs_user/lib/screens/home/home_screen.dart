@@ -28,6 +28,7 @@ import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 import '../../common_widget/buttons/main_button.dart';
 import '../../common_widget/drawer/custom_drawer.dart';
 import '../../common_widget/loader/popup_loader.dart';
+import '../../common_widget/name_initials/name_initial.dart';
 import '../../core/controller/auth/mobile_controller.dart';
 import '../../core/controller/auth/otp_controller.dart';
 import '../../core/controller/auth/register_controller.dart';
@@ -75,7 +76,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final DestinationLocationController destinationLocationController =
       Get.put(DestinationLocationController());
   final ProfileController profileController = Get.put(ProfileController());
-
+  final UpcomingBookingController upcomingBookingController =
+  Get.put(UpcomingBookingController());
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
       context: context,
@@ -130,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Register as WidgetsBindingObserver to listen for lifecycle changes
     WidgetsBinding.instance.addObserver(this);
     // Fetch location and show bottom sheet
+    profileController.checkLoginStatus();
+
     popularDestinationController.fetchPopularDestinations();
     uspController.fetchUsps();
     bannerController.fetchImages();
@@ -138,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _setStatusBarColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchData();
       // _showBottomSheet();
     });
   }
@@ -204,13 +209,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
     try {
-      debugPrint('📍 Current lat/lng: ${latLng.latitude}, ${latLng.longitude}');
-
-      // ✅ Get placemark
+      // 1. Reverse geocode to get human-readable address
       final placemarks = await geocoding.placemarkFromCoordinates(
         latLng.latitude,
         latLng.longitude,
       );
+      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
         setState(() => address = 'Address not found');
@@ -218,63 +222,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       final place = placemarks.first;
+      final components = <String>[
+        place.name ?? '',
+        place.street ?? '',
+        place.subLocality ?? '',
+        place.locality ?? '',
+        place.administrativeArea ?? '',
+        place.postalCode ?? '',
+        place.country ?? '',
+      ];
+      final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
 
-      // ✅ Build full address
-      final fullAddress = [
-        place.name,
-        place.street,
-        place.locality,
-        place.administrativeArea,
-        place.postalCode,
-        place.country,
-      ].where((e) => e?.trim().isNotEmpty ?? false).join(', ');
-
-      // ✅ Update UI immediately
+      // 2. Show address on UI immediately
       setState(() => address = fullAddress);
 
-      // ✅ Start place search
-      await searchController.searchPlaces(fullAddress, context);
-      if (placeSearchController.suggestions.isEmpty) return;
+      // 3. Try searching the place (may fail or return empty)
+      await placeSearchController.searchPlaces(fullAddress, context);
+
+      if (placeSearchController.suggestions.isEmpty) {
+        print("No search suggestions found for $fullAddress");
+        return; // stop here – do not prefill controllers/storage
+      }
 
       final suggestion = placeSearchController.suggestions.first;
 
-      // ✅ Update controllers immediately
+      // 4. Update booking controller ONLY if valid suggestion exists
       bookingRideController.prefilled.value = fullAddress;
       placeSearchController.placeId.value = suggestion.placeId;
 
-      // ✅ Fire-and-forget background persistence
+      // 5. Fire-and-forget details/storage update
       Future.microtask(() async {
-        placeSearchController.getLatLngDetails(suggestion.placeId, context);
+        try {
+          await placeSearchController.getLatLngDetails(suggestion.placeId, context);
 
-        final storage = StorageServices.instance;
-        await storage.save('sourcePlaceId', suggestion.placeId);
-        await storage.save('sourceTitle', suggestion.primaryText);
-        await storage.save('sourceCity', suggestion.city);
-        await storage.save('sourceState', suggestion.state);
-        await storage.save('sourceCountry', suggestion.country);
+          StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+          StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+          StorageServices.instance.save('sourceCity', suggestion.city);
+          StorageServices.instance.save('sourceState', suggestion.state);
+          StorageServices.instance.save('sourceCountry', suggestion.country);
 
-        if (suggestion.types.isNotEmpty) {
-          await storage.save('sourceTypes', jsonEncode(suggestion.types));
+          if (suggestion.types.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTypes',
+              jsonEncode(suggestion.types),
+            );
+          }
+
+          if (suggestion.terms.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTerms',
+              jsonEncode(suggestion.terms),
+            );
+          }
+
+          sourceController.setPlace(
+            placeId: suggestion.placeId,
+            title: suggestion.primaryText,
+            city: suggestion.city,
+            state: suggestion.state,
+            country: suggestion.country,
+            types: suggestion.types,
+            terms: suggestion.terms,
+          );
+
+          print('akash country: ${suggestion.country}');
+          print('Current location address saved: $fullAddress');
+        } catch (err) {
+          print('Background save failed: $err');
         }
-        if (suggestion.terms.isNotEmpty) {
-          await storage.save('sourceTerms', jsonEncode(suggestion.terms));
-        }
-
-        sourceController.setPlace(
-          placeId: suggestion.placeId,
-          title: suggestion.primaryText,
-          city: suggestion.city,
-          state: suggestion.state,
-          country: suggestion.country,
-          types: suggestion.types,
-          terms: suggestion.terms,
-        );
-
-        debugPrint('✅ Saved country: ${suggestion.country}');
-        debugPrint('🏠 Current location address: $address');
       });
-    } catch (e, s) {
-      debugPrint('❌ Error fetching location/address: $e\n$s');
+    } catch (e) {
+      print('Error fetching location/address: $e');
       setState(() => address = 'Error fetching address');
     }
   }
@@ -1457,7 +1475,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ],
                                   ),
                                 ),
-                                Row(
+                                Obx(() {
+                                  return Row(
                                   children: [
                                     // Transform.translate(
                                     //     offset: Offset(0.0, -4.0),
@@ -1469,24 +1488,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     SizedBox(
                                       width: 12,
                                     ),
-                                    InkWell(
+                                    upcomingBookingController.isLoggedIn.value == true ?  InkWell(
                                       splashColor: Colors.transparent,
                                       onTap: () async {
                                         print(
                                             'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
                                         if (await StorageServices.instance
-                                                .read('token') ==
+                                            .read('token') ==
                                             null) {
                                           _showAuthBottomSheet();
                                         }
                                         if (await StorageServices.instance
-                                                .read('token') !=
+                                            .read('token') !=
                                             null) {
                                           GoRouter.of(context)
                                               .push(AppRoutes.profile);
                                         }
                                       },
-                                      child: Transform.translate(
+                                      child: SizedBox(
+                                        width:30,height: 30,
+                                        child: NameInitialHomeCircle(
+                                            name: profileController.profileResponse
+                                                .value?.result?.firstName ??
+                                                ''),
+                                      ),
+                                    ) :  InkWell(
+                                      splashColor: Colors.transparent,
+                                      onTap: () async {
+                                        print(
+                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                        if (await StorageServices.instance
+                                            .read('token') ==
+                                            null) {
+                                          _showAuthBottomSheet();
+                                        }
+                                        if (await StorageServices.instance
+                                            .read('token') !=
+                                            null) {
+                                          GoRouter.of(context)
+                                              .push(AppRoutes.profile);
+                                        }
+                                      },
+                                      child:
+                                      Transform.translate(
                                         offset: Offset(0.0, -4.0),
                                         child: const CircleAvatar(
                                           foregroundColor: Colors.transparent,
@@ -1499,7 +1543,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       ),
                                     ),
                                   ],
-                                )
+                                );
+                                })
+
                               ],
                             ),
                           ),
@@ -1611,241 +1657,194 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
+                      child: GridView.count(
+                        crossAxisCount: 4, // 🔑 exactly 4 items in a row
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
                         children: [
-                          Expanded(
-                            child: InkWell(
-                              splashColor: Colors.transparent,
-                              onTap: () {
-                                bookingRideController.selectedIndex.value = 0;
-                                GoRouter.of(context)
-                                    .push(AppRoutes.bookingRide);
-                              },
-                              child: Container(
-                                width: 80,
-                                height: 80,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  // border: Border.all(
-                                  //   color: Color(0xFFD9D9D9),
-                                  //   width: 1,
-                                  // ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1F192653),
-                                      offset: Offset(0, 3),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Image.asset(
-                                          'assets/images/airport.png',
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Airport',
-                                        style: CommonFonts.blueText1,
-                                      ),
-                                    ],
+                          InkWell(
+                            splashColor: Colors.transparent,
+                            onTap: () {
+                              bookingRideController.selectedIndex.value = 0;
+                              GoRouter.of(context).push(AppRoutes.bookingRide);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x1F192653),
+                                    offset: Offset(0, 3),
+                                    blurRadius: 12,
                                   ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/airport.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    Text('Airport', style: CommonFonts.blueText1),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                InkWell(
-                                  splashColor: Colors.transparent,
-                                  onTap: () {
-                                    bookingRideController.selectedIndex.value =
-                                        1;
-                                    GoRouter.of(context)
-                                        .push(AppRoutes.bookingRide);
-                                  },
-                                  child: Container(
-                                    width: 80,
-                                    height: 80,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Color(0x1F192653),
-                                          offset: Offset(0, 3),
-                                          blurRadius: 12,
+                      Container(
+                        color: Colors.transparent,
+                        child: SizedBox.expand(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.topCenter, // 👈 ensures "Popular" centers horizontally
+                            children: [
+                              InkWell(
+                                splashColor: Colors.transparent,
+                                onTap: () {
+                                  bookingRideController.selectedIndex.value = 1;
+                                  GoRouter.of(context).push(AppRoutes.bookingRide);
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x1F192653),
+                                        offset: Offset(0, 3),
+                                        blurRadius: 12,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Image.asset(
+                                            'assets/images/outstation.png',
+                                            fit: BoxFit.contain,
+                                          ),
                                         ),
+                                        Text('Outstation', style: CommonFonts.blueText1),
                                       ],
                                     ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Image.asset(
-                                              'assets/images/outstation.png',
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Outstation',
-                                            style: CommonFonts.blueText1,
-                                          ),
-                                        ],
-                                      ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: -8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 2,
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'Popular',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                Opacity(
-                                  opacity: 0.9,
-                                  child: Transform.translate(
-                                    offset: Offset(14.0, -12.0),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 4, horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFFC6CD00),
-                                            Color(0xFF00DC3E)
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                          top: Radius.circular(
-                                              12), // Only top corners
-                                          bottom: Radius.circular(
-                                              12), // Only top corners
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Popular',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: InkWell(
-                              splashColor: Colors.transparent,
-                              onTap: () {
-                                bookingRideController.selectedIndex.value = 2;
-                                GoRouter.of(context)
-                                    .push(AppRoutes.bookingRide);
-                              },
-                              child: Container(
-                                height: 80,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1F192653),
-                                      offset: Offset(0, 3),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Image.asset(
-                                          'assets/images/rental.png',
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Rental',
-                                        style: CommonFonts.blueText1,
-                                      ),
-                                    ],
+                        ),
+                      ),
+                          InkWell(
+                            splashColor: Colors.transparent,
+                            onTap: () {
+                              bookingRideController.selectedIndex.value = 2;
+                              GoRouter.of(context).push(AppRoutes.bookingRide);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x1F192653),
+                                    offset: Offset(0, 3),
+                                    blurRadius: 12,
                                   ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/rental.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    Text('Rental', style: CommonFonts.blueText1),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: InkWell(
-                              splashColor: Colors.transparent,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        "Self Service service is coming soon!"),
-                                    duration: Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.fixed,
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                height: 80,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1F192653),
-                                      offset: Offset(0, 3),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
+                          InkWell(
+                            splashColor: Colors.transparent,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Self Service service is coming soon!"),
+                                  duration: Duration(seconds: 2),
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Image.asset(
-                                          'assets/images/self_drive.png',
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Self Drive',
-                                        style: CommonFonts.blueText1,
-                                      ),
-                                    ],
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x1F192653),
+                                    offset: Offset(0, 3),
+                                    blurRadius: 12,
                                   ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/self_drive.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    Text('Self Drive', style: CommonFonts.blueText1),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    )
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -3173,4 +3172,74 @@ class _BottomCarouselBannerState extends State<BottomCarouselBanner> {
       items: items,
     );
   }
+}
+
+Widget _buildCategoryCard(
+    BuildContext context, {
+      required String label,
+      required String image,
+      required VoidCallback onTap,
+      String? badge,
+    }) {
+  final size = MediaQuery.of(context).size.width / 5; // 🔑 responsive size
+
+  return InkWell(
+    splashColor: Colors.transparent,
+    onTap: onTap,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F192653),
+                offset: Offset(0, 3),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Image.asset(image, fit: BoxFit.contain),
+                ),
+                Text(label, style: CommonFonts.blueText1),
+              ],
+            ),
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            top: -8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }

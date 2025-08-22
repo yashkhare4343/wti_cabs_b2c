@@ -164,7 +164,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
     try {
-      // 1. Get placemark (required for address)
+      // 1. Reverse geocode to get human-readable address
       final placemarks = await geocoding.placemarkFromCoordinates(
         latLng.latitude,
         latLng.longitude,
@@ -172,9 +172,7 @@ class _MyAppState extends State<MyApp> {
       print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
-        setState(() {
-          address = 'Address not found';
-        });
+        setState(() => address = 'Address not found');
         return;
       }
 
@@ -188,63 +186,69 @@ class _MyAppState extends State<MyApp> {
         place.postalCode ?? '',
         place.country ?? '',
       ];
-      final fullAddress =
-      components.where((s) => s.trim().isNotEmpty).join(', ');
+      final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
 
-      // 2. Immediately update the visible address
-      setState(() {
-        address = fullAddress;
-      });
+      // 2. Show address on UI immediately
+      setState(() => address = fullAddress);
 
-      // 3. Start place search
+      // 3. Try searching the place (may fail or return empty)
       await placeSearchController.searchPlaces(fullAddress, context);
 
-      if (placeSearchController.suggestions.isEmpty) return;
+      if (placeSearchController.suggestions.isEmpty) {
+        print("No search suggestions found for $fullAddress");
+        return; // stop here – do not prefill controllers/storage
+      }
 
       final suggestion = placeSearchController.suggestions.first;
 
-      // 4. Immediate UI values
-      bookingRideController.prefilled.value = address;
+      // 4. Update booking controller ONLY if valid suggestion exists
+      bookingRideController.prefilled.value = fullAddress;
       placeSearchController.placeId.value = suggestion.placeId;
 
-      // 5. Fire-and-forget async logic in background
-      Future.microtask(() {
-        placeSearchController.getLatLngDetails(suggestion.placeId, context);
+      // 5. Fire-and-forget details/storage update
+      Future.microtask(() async {
+        try {
+          await placeSearchController.getLatLngDetails(suggestion.placeId, context);
 
-        StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
-        StorageServices.instance.save('sourceTitle', suggestion.primaryText);
-        StorageServices.instance.save('sourceCity', suggestion.city);
-        StorageServices.instance.save('sourceState', suggestion.state);
-        StorageServices.instance.save('sourceCountry', suggestion.country);
+          StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+          StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+          StorageServices.instance.save('sourceCity', suggestion.city);
+          StorageServices.instance.save('sourceState', suggestion.state);
+          StorageServices.instance.save('sourceCountry', suggestion.country);
 
-        if (suggestion.types.isNotEmpty) {
-          StorageServices.instance
-              .save('sourceTypes', jsonEncode(suggestion.types));
+          if (suggestion.types.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTypes',
+              jsonEncode(suggestion.types),
+            );
+          }
+
+          if (suggestion.terms.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTerms',
+              jsonEncode(suggestion.terms),
+            );
+          }
+
+          sourceController.setPlace(
+            placeId: suggestion.placeId,
+            title: suggestion.primaryText,
+            city: suggestion.city,
+            state: suggestion.state,
+            country: suggestion.country,
+            types: suggestion.types,
+            terms: suggestion.terms,
+          );
+
+          print('akash country: ${suggestion.country}');
+          print('Current location address saved: $fullAddress');
+        } catch (err) {
+          print('Background save failed: $err');
         }
-
-        if (suggestion.terms.isNotEmpty) {
-          StorageServices.instance
-              .save('sourceTerms', jsonEncode(suggestion.terms));
-        }
-
-        sourceController.setPlace(
-          placeId: suggestion.placeId,
-          title: suggestion.primaryText,
-          city: suggestion.city,
-          state: suggestion.state,
-          country: suggestion.country,
-          types: suggestion.types,
-          terms: suggestion.terms,
-        );
-
-        print('akash country: ${suggestion.country}');
-        print('Current location address: $address');
       });
     } catch (e) {
       print('Error fetching location/address: $e');
-      setState(() {
-        address = 'Error fetching address';
-      });
+      setState(() => address = 'Error fetching address');
     }
   }
 

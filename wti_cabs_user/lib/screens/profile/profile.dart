@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/custom_loader.dart';
+import 'package:wti_cabs_user/common_widget/name_initials/name_initial.dart';
+import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/update_profile_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
@@ -16,13 +18,12 @@ import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 
 class Profile extends StatefulWidget {
-   Profile({super.key});
+  Profile({super.key});
 
   @override
   State<Profile> createState() => _ProfileState();
 
   bool isActive = false;
-
 }
 
 void _showLoader(String message, BuildContext context) {
@@ -48,8 +49,7 @@ void _showLoader(String message, BuildContext context) {
                   size: 48.0,
                 ),
                 SizedBox(height: 16),
-                Text(message,
-                    style: TextStyle(fontSize: 16)),
+                Text(message, style: TextStyle(fontSize: 16)),
               ],
             ),
           ),
@@ -62,8 +62,8 @@ void _showLoader(String message, BuildContext context) {
   Future.delayed(const Duration(seconds: 3), () {
     Navigator.pop(context); // Close loader
   });
-
 }
+
 void _successLoader(String message, BuildContext outerContext) {
   showDialog(
     context: outerContext,
@@ -106,16 +106,19 @@ void _successLoader(String message, BuildContext outerContext) {
 }
 
 bool isEdit = true;
-String ? selectedGender;
+String? selectedGender;
 
 class _ProfileState extends State<Profile> {
   final ProfileController profileController = Get.put(ProfileController());
-  final UpdateProfileController updateProfileController = Get.put(UpdateProfileController());
+  final UpdateProfileController updateProfileController =
+      Get.put(UpdateProfileController());
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneNoController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
+  final UpcomingBookingController upcomingBookingController =
+      Get.put(UpcomingBookingController());
 
   @override
   void initState() {
@@ -123,6 +126,7 @@ class _ProfileState extends State<Profile> {
     super.initState();
     profileController.fetchData().then((_) {
       final result = profileController.profileResponse.value?.result;
+      profileController.checkLoginStatus();
       if (result != null) {
         setState(() {
           firstNameController.text = result.firstName ?? '';
@@ -131,17 +135,18 @@ class _ProfileState extends State<Profile> {
           phoneNoController.text = result.contact?.toString() ?? '';
         });
       }
-    });  }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-   return PopScope(
-       canPop: false, // 🚀 Stops the default "pop and close app"
-       onPopInvoked: (didPop) {
-         // This will be called for hardware back and gesture
-         GoRouter.of(context).go(AppRoutes.initialPage);
-       },
-     child: Scaffold(
+    return PopScope(
+      canPop: false, // 🚀 Stops the default "pop and close app"
+      onPopInvoked: (didPop) {
+        // This will be called for hardware back and gesture
+        GoRouter.of(context).go(AppRoutes.initialPage);
+      },
+      child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary2,
         appBar: AppBar(
           backgroundColor: AppColors.scaffoldBgPrimary2,
@@ -170,11 +175,11 @@ class _ProfileState extends State<Profile> {
           ),
         ),
         body: SingleChildScrollView(
-          child:Obx((){
-            if(profileController.isLoading==true){
+          child: Obx(() {
+            if (profileController.isLoading == true) {
               return PopupLoader(message: 'Loading...');
             }
-           return Stack(
+            return Stack(
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
@@ -188,56 +193,101 @@ class _ProfileState extends State<Profile> {
                     ),
                     child: Column(
                       children: [
-                        SizedBox(height: 32,),
+                        SizedBox(
+                          height: 32,
+                        ),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Padding(
-                            padding:  EdgeInsets.only(left: 16.0, bottom: isEdit != true ? 12 : 2),
+                            padding: EdgeInsets.only(
+                                left: 16.0, bottom: isEdit != true ? 12 : 2),
                             child: Text(
                               "General Details",
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: Colors.black
-                              ),
+                                  color: Colors.black),
                             ),
                           ),
                         ),
-                        Container(padding: EdgeInsets.only(left: 16, right: 16,),
+                        Container(
+                          padding: EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              Text('Fields marked with * are mandatory', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF6D6D6D)),),
+                              Text(
+                                'Fields marked with * are mandatory',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF6D6D6D)),
+                              ),
                             ],
                           ),
                         ),
-                        SizedBox(height: 16,),
+                        SizedBox(
+                          height: 16,
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Column(
                             children: [
-                              EditableTextField(label: "Full name *", value: profileController.profileResponse.value?.result?.firstName??'', controller: firstNameController,),
+                              EditableTextField(
+                                label: "Full name *",
+                                value: profileController.profileResponse.value
+                                        ?.result?.firstName ??
+                                    '',
+                                controller: firstNameController,
+                              ),
                               const SizedBox(height: 12),
-                              EditableTextField(label: "Email ID *", value: profileController.profileResponse.value?.result?.emailID??'', controller: emailController,) ,
-                              const SizedBox(height: 12) ,
-                              EditableTextField(label: "Mobile No *", value: "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}", controller: phoneNoController,),
-                              const SizedBox(height: 12) ,
+                              EditableTextField(
+                                label: "Email ID *",
+                                value: profileController.profileResponse.value
+                                        ?.result?.emailID ??
+                                    '',
+                                controller: emailController,
+                              ),
+                              const SizedBox(height: 12),
+                              EditableTextField(
+                                label: "Mobile No *",
+                                value:
+                                    "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}",
+                                controller: phoneNoController,
+                              ),
+                              const SizedBox(height: 12),
                               Row(
                                 children: [
                                   Expanded(
-                                    child:
-                                    EditableTextField(label: "City", value: "", controller: cityController,),
+                                    child: EditableTextField(
+                                      label: "City",
+                                      value: "",
+                                      controller: cityController,
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child:
-                                    EditableTextField(label: "State", value: "",),
+                                    child: EditableTextField(
+                                      label: "State",
+                                      value: "",
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              EditableTextField(label: "Nationality", value: profileController.profileResponse.value?.result?.countryName??'',controller: countryController, readOnly: isEdit == false ? true : false,),
-                              SizedBox(height: 20,),
+                              EditableTextField(
+                                label: "Nationality",
+                                value: profileController.profileResponse.value
+                                        ?.result?.countryName ??
+                                    '',
+                                controller: countryController,
+                                readOnly: isEdit == false ? true : false,
+                              ),
+                              SizedBox(
+                                height: 20,
+                              ),
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -250,21 +300,28 @@ class _ProfileState extends State<Profile> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 10, vertical: 13),
                                   ),
-                                  onPressed: () async{
+                                  onPressed: () async {
                                     // Close loader
                                     _showLoader('Loading..', context);
                                     final Map<String, dynamic> requestData = {
                                       "firstName":
-                                      firstNameController.text.trim(),
+                                          firstNameController.text.trim(),
                                       "contact":
-                                      phoneNoController.text.trim()??'0000000000',
+                                          phoneNoController.text.trim() ??
+                                              '0000000000',
                                       "contactCode": "91",
                                       "countryName": "India",
                                       "gender": selectedGender,
                                       "emailID": emailController.text.trim()
                                     };
-                                    await updateProfileController.updateProfile(requestData: requestData, context: context).then((value){
-                                      _successLoader('Profile Updated Successfully', context);
+                                    await updateProfileController
+                                        .updateProfile(
+                                            requestData: requestData,
+                                            context: context)
+                                        .then((value) {
+                                      _successLoader(
+                                          'Profile Updated Successfully',
+                                          context);
                                     });
 
                                     // / GoRouter.of(context).pop();
@@ -274,10 +331,9 @@ class _ProfileState extends State<Profile> {
                                     style: TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontWeight: FontWeight.w400,
-                                        fontSize: 16
-                                    ),
+                                        fontSize: 16),
                                   ),
-                                ) ,
+                                ),
                               )
                             ],
                           ),
@@ -290,51 +346,64 @@ class _ProfileState extends State<Profile> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Stack(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.only(bottom: 16),
-                            child: CircleAvatar(
-                              backgroundColor: Colors.transparent,
-                                radius: 40,
-                                child: Image.asset('assets/images/user.png', width: 80, height: 80,)
-                            ),
-                          ),
-                          isEdit == true ?  Positioned(
-                            bottom: 5,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 28,
-                              width: 28,
-                              padding: EdgeInsets.all(4.0),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF002CC0),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.grey.shade300, width: 2),
-                              ),
-                              child: Icon(Icons.camera_alt, color: Colors.white, size: 16,),
-                            ),
-                          ) : SizedBox(),
-
-
-                        ],
-                      ),
+                      Obx(() {
+                        if(upcomingBookingController.isLoggedIn.value == true){
+                         return NameInitialCircle(
+                              name: profileController.profileResponse
+                                  .value?.result?.firstName ??
+                                  '');
+                        }
+                        return Stack(
+                          children: [
+                            Container(
+                                    padding: EdgeInsets.only(bottom: 16),
+                                    child: CircleAvatar(
+                                        backgroundColor: Colors.transparent,
+                                        radius: 40,
+                                        child: Image.asset(
+                                          'assets/images/user.png',
+                                          width: 80,
+                                          height: 80,
+                                        )),
+                                  ),
+                            isEdit == true
+                                ? Positioned(
+                                    bottom: 5,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      height: 28,
+                                      width: 28,
+                                      padding: EdgeInsets.all(4.0),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFF002CC0),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.grey.shade300,
+                                            width: 2),
+                                      ),
+                                      child: Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  )
+                                : SizedBox(),
+                          ],
+                        );
+                      })
                     ],
                   ),
                 ),
-
               ],
             );
-          })
-
-          ,
+          }),
         ),
       ),
-   );
+    );
   }
 }
-
 
 class CustomDropdownField extends StatefulWidget {
   final String label;
@@ -366,7 +435,6 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
     _focusNode = FocusNode();
     _focusNode.addListener(() => setState(() {}));
     selectedValue = widget.value;
-
   }
 
   @override
@@ -434,7 +502,6 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final bool isFocused = _focusNode.hasFocus;
@@ -456,7 +523,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
           controller: _controller,
           focusNode: _focusNode,
           readOnly: true,
-          onTap: (){
+          onTap: () {
             _showBottomSheet();
           },
           style: const TextStyle(
@@ -467,14 +534,20 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
           decoration: InputDecoration(
             suffixIcon: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Icon(Icons.arrow_drop_down_outlined, size: 24,),
+              child: Icon(
+                Icons.arrow_drop_down_outlined,
+                size: 24,
+              ),
             ),
-            label: ((isFocused)) ? Transform.translate(
-                offset: Offset(0, 4.0),
-                child: Text(widget.label)) : Container(
-                padding: EdgeInsets.symmetric(vertical: (_controller.text.isNotEmpty)? 8 : 0),
-                margin: EdgeInsets.only(bottom: (_controller.text.isNotEmpty)? 8 : 0),
-                child: Text(widget.label)),
+            label: ((isFocused))
+                ? Transform.translate(
+                    offset: Offset(0, 4.0), child: Text(widget.label))
+                : Container(
+                    padding: EdgeInsets.symmetric(
+                        vertical: (_controller.text.isNotEmpty) ? 8 : 0),
+                    margin: EdgeInsets.only(
+                        bottom: (_controller.text.isNotEmpty) ? 8 : 0),
+                    child: Text(widget.label)),
             labelStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -482,16 +555,14 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             ),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           ),
         ),
       ),
     );
   }
 }
-
-
 
 class EditableTextField extends StatefulWidget {
   final String label;
@@ -524,7 +595,8 @@ class _EditableTextFieldState extends State<EditableTextField> {
     _focusNode = FocusNode()..addListener(() => setState(() {}));
 
     _isExternalController = widget.controller != null;
-    _controller = widget.controller ?? TextEditingController(text: widget.value);
+    _controller =
+        widget.controller ?? TextEditingController(text: widget.value);
   }
 
   @override
@@ -554,7 +626,7 @@ class _EditableTextFieldState extends State<EditableTextField> {
       child: TextFormField(
         controller: _controller,
         focusNode: _focusNode,
-        readOnly: widget.readOnly?? false,
+        readOnly: widget.readOnly ?? false,
         onTap: widget.onTap,
         style: const TextStyle(
           fontSize: 14,
@@ -564,13 +636,14 @@ class _EditableTextFieldState extends State<EditableTextField> {
         decoration: InputDecoration(
           label: isFocused
               ? Transform.translate(
-            offset: const Offset(0, 8.0),
-            child: Text(widget.label),
-          )
+                  offset: const Offset(0, 8.0),
+                  child: Text(widget.label),
+                )
               : Padding(
-            padding: EdgeInsets.only(top: _controller.text.isNotEmpty ? 8 : 0),
-            child: Text(widget.label),
-          ),
+                  padding:
+                      EdgeInsets.only(top: _controller.text.isNotEmpty ? 8 : 0),
+                  child: Text(widget.label),
+                ),
           labelStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -578,7 +651,8 @@ class _EditableTextFieldState extends State<EditableTextField> {
           ),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         ),
       ),
     );
@@ -598,8 +672,7 @@ Widget buildShimmer() {
           side: BorderSide(color: Colors.grey.shade300, width: 1),
         ),
         child: Padding(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
