@@ -168,14 +168,13 @@ class _SelectDropState extends State<SelectDrop> {
                         FocusScope.of(context).unfocus();
                         final tabName = Get.find<BookingRideController>().currentTabName;
                         if (tabName == 'rental') {
-                          bookingRideController.selectedIndex.value =0;
+                          // bookingRideController.selectedIndex.value =0;
                           GoRouter.of(context).go(
-                            '${AppRoutes.bookingRide}?tab=airport',
+                            '${AppRoutes.bookingRide}?tab=rental',
                           );
                         } else {
-                          bookingRideController.selectedIndex.value =0;
                           GoRouter.of(context).go(
-                            '${AppRoutes.bookingRide}?tab=airport',
+                            '${AppRoutes.bookingRide}?tab=$tabName',
                           );
                         }
 

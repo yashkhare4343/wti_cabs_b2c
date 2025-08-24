@@ -226,10 +226,9 @@ class _SelectPickupState extends State<SelectPickup> {
                                   );
                                 }
                                 else{
-                                  bookingRideController.selectedIndex.value = 0;
 
                                   GoRouter.of(context).go(
-                                    '${AppRoutes.bookingRide}?tab=airport',
+                                    '${AppRoutes.bookingRide}?tab=$tabName',
                                   );
                                 }
 

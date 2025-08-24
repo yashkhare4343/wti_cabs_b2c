@@ -170,7 +170,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                       final inclusions = <Widget>[
                         _buildInclusionItem(
                           icon: Icons.speed,
-                          title: "${indiaData.inventory?.distanceBooked} Km included",
+                          title: "${indiaData.inventory?.distanceBooked} Km included ",
                           subtitle: "₹ ${indiaData.inventory?.carTypes?.fareDetails?.perKmExtraCharge}/km will apply beyond the included kms",
                         ),
                         _buildInclusionItem(
@@ -221,13 +221,13 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                       if (isParkingExcluded) {
                         exclusions.add(_buildExclusionItem(
                           icon: Icons.local_parking,
-                          title: "Parking Charges excluded",
+                          title: "Parking Charges excluded (Airport Parking)",
                           subtitle: "Parking charges need to be paid separately",
                         ));
                       } else {
                         inclusions.add(_buildInclusionItem(
                           icon: Icons.local_parking,
-                          title: "Parking Charges included",
+                          title: "Parking Charges included (Airport Parking)",
                           subtitle: "Parking charges are included",
                         ));
                       }
@@ -250,7 +250,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                         exclusions.add(_buildExclusionItem(
                           icon: Icons.access_time,
                           title: "Waiting Charges excluded",
-                          subtitle: "Waiting charges are extra beyond free limit",
+                          subtitle: "₹ ${extraCharges?.waitingCharges?.amount}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
                         ));
                       } else {
                         inclusions.add(_buildInclusionItem(
@@ -1293,6 +1293,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                           child: SizedBox(
                             height: 48,
                             child: InternationalPhoneNumberInput(
+
                               selectorConfig: const SelectorConfig(
                                 selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
                                 useBottomSheetSafeArea: true,
@@ -1312,11 +1313,16 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                               ),
                               onFieldSubmitted: (value) {
                                 cabBookingController.validateForm();
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  Form.of(context).validate();
+                                });
                               },
+
                               keyboardType:
                               const TextInputType.numberWithOptions(signed: true),
                               maxLength: 10,
                               validator: (value) {
+
                                 if (value == null || value.trim().isEmpty) {
                                   return "Mobile number is required";
                                 }
@@ -1324,6 +1330,8 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                                     !RegExp(r'^[0-9]+$').hasMatch(value)) {
                                   return "Enter valid 10-digit mobile number";
                                 }
+                                // trigger validation manually
+
                                 return null;
                               },
                               inputDecoration: const InputDecoration(
@@ -1340,6 +1348,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                               ),
                               formatInput: false,
                               onInputChanged: (PhoneNumber value) async {
+                                cabBookingController.validateForm();
                                 contact = (value.phoneNumber
                                     ?.replaceAll(' ', '')
                                     .replaceFirst(value.dialCode ?? '', '')) ??
@@ -1375,12 +1384,12 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                   label: 'Destination Address',
                   hint: "Enter Dropping Address",
                   controller: destinationController,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return "Drop address is required";
-                    }
-                    return null;
-                  },
+                  // validator: (v) {
+                  //   if (v == null || v.trim().isEmpty) {
+                  //     return "Drop address is required";
+                  //   }
+                  //   return null;
+                  // },
                   isReadOnly: true),
 
               /// Flight No only for trip code 2
@@ -2979,76 +2988,87 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                for (final coupon in fetchCouponController.coupons)
-                  _buildCouponOption(
-                    title: coupon.codeName ?? '',
-                    subtitle: coupon.codeDescription!,
-                    selected: selectedCoupon == coupon.codeName.toString(),
-                    onTap: () async{
-                      final token = await StorageServices.instance.read('token');
-                      final Map<String, dynamic> requestData = {
-                        "userID": null,
-                        "couponID": coupon.id,
-                        "totalAmount": cabBookingController.totalFare,
-                        "sourceLocation": bookingRideController.prefilled.value,
-                        "destinationLocation": bookingRideController.prefilledDrop.value,
-                        "serviceType": null,
-                        "bankName": null,
-                        "userType": "CUSTOMER",
-                        "bookingDateTime":
-                        await StorageServices.instance.read('userDateTime'),
-                        "appliedCoupon": token != null ? 1 : 0,
-                        "payNow": cabBookingController.actualFare,
-                        "tripType": searchCabInventoryController
-                            .indiaData.value?.result?.tripType?.currentTripCode,
-                        "vehicleType":
-                        cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
-                            ''
-                      };
-                      await applyCouponController.applyCoupon(
-                          requestData: requestData, context: context);
-                      setState(() {
-                        selectedCoupon = coupon.codeName.toString();
-                      });
+                // for (final coupon in fetchCouponController.coupons)
+                //   _buildCouponOption(
+                //     title: coupon.codeName ?? '',
+                //     subtitle: coupon.codeDescription!,
+                //     selected: selectedCoupon == coupon.codeName.toString(),
+                //     onTap: () async{
+                //       final token = await StorageServices.instance.read('token');
+                //       final Map<String, dynamic> requestData = {
+                //         "userID": null,
+                //         "couponID": coupon.id,
+                //         "totalAmount": cabBookingController.totalFare,
+                //         "sourceLocation": bookingRideController.prefilled.value,
+                //         "destinationLocation": bookingRideController.prefilledDrop.value,
+                //         "serviceType": null,
+                //         "bankName": null,
+                //         "userType": "CUSTOMER",
+                //         "bookingDateTime":
+                //         await StorageServices.instance.read('userDateTime'),
+                //         "appliedCoupon": token != null ? 1 : 0,
+                //         "payNow": cabBookingController.actualFare,
+                //         "tripType": searchCabInventoryController
+                //             .indiaData.value?.result?.tripType?.currentTripCode,
+                //         "vehicleType":
+                //         cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
+                //             ''
+                //       };
+                //       await applyCouponController.applyCoupon(
+                //           requestData: requestData, context: context);
+                //       setState(() {
+                //         selectedCoupon = coupon.codeName.toString();
+                //       });
+                //
+                //     },
+                //   ),
 
+                Container(
+                  height: 280,
+                  color: Colors.transparent,
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 0),
+                    itemCount: fetchCouponController.coupons.length,
+                    itemBuilder: (context, index) {
+                      final coupon = fetchCouponController.coupons[index];
+                      // return CouponCard(
+                      //   code: coupon.codeName!,
+                      //   id: coupon.id??'',
+                      //   title: coupon.codeDescription!,
+                      //   subtitle: coupon.codePercentage.toString()!,
+                      //   imageUrl: 'https://test.wticabs.com:5001${coupon.imageUrl!}',
+                      //   selectedCoupon: selectedCoupon ?? '',
+                      //   onApply: () {
+                      //     // Show a snackbar on apply
+                      //     ScaffoldMessenger.of(context).showSnackBar(
+                      //       SnackBar(
+                      //         content: Text('Coupon ${coupon.codeName} applied!'),
+                      //       ),
+                      //     );
+                      //   },
+                      //   onSelected: (String code) {
+                      //     setState(() {
+                      //       selectedCoupon = code;
+                      //     });
+                      //   },
+                      // );
+                      return CouponCardLatest(
+                        id: coupon.id??'',
+                        code: coupon.codeName!,
+                        description: coupon.codeDescription??'',
+                        codePercentage: coupon.codePercentage?.toInt()??0,
+                        onApply: () {
+                          print("Coupon Applied!");
+                        },
+                      );
                     },
                   ),
+                )
               ],
             ),
           ),
         ),
-        Container(
-          height: 280,
-          color: Colors.transparent,
-          child: ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 0),
-            itemCount: fetchCouponController.coupons.length,
-            itemBuilder: (context, index) {
-              final coupon = fetchCouponController.coupons[index];
-              return CouponCard(
-                code: coupon.codeName!,
-                id: coupon.id??'',
-                title: coupon.codeDescription!,
-                subtitle: coupon.codePercentage.toString()!,
-                imageUrl: 'https://test.wticabs.com:5001${coupon.imageUrl!}',
-                selectedCoupon: selectedCoupon ?? '',
-                onApply: () {
-                  // Show a snackbar on apply
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Coupon ${coupon.codeName} applied!'),
-                    ),
-                  );
-                },
-                onSelected: (String code) {
-                  setState(() {
-                    selectedCoupon = code;
-                  });
-                },
-              );
-            },
-          ),
-        )
+
       ],
     );
   }
@@ -3125,193 +3145,193 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
   }
 }
 
-class CouponCard extends StatefulWidget {
-  final String code;
-  final String id;
-  final String title;
-  final String subtitle;
-  final String imageUrl;
-  String selectedCoupon;
-  final VoidCallback onApply;
-  final ValueChanged<String> onSelected;
-
-  CouponCard({
-    Key? key,
-    required this.code,
-    required this.title,
-    required this.subtitle,
-    required this.imageUrl,
-    required this.onApply,
-    required this.selectedCoupon,
-    required this.onSelected, required this.id,
-  }) : super(key: key);
-
-  @override
-  State<CouponCard> createState() => _CouponCardState();
-}
-
-class _CouponCardState extends State<CouponCard> {
-  final ApplyCouponController applyCouponController =
-  Get.put(ApplyCouponController());
-  final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  final CabBookingController cabBookingController =
-  Get.put(CabBookingController());
-  final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      splashColor: Colors.transparent,
-      onTap: () async{
-        final token = await StorageServices.instance.read('token');
-        final Map<String, dynamic> requestData = {
-          "userID": null,
-          "couponID": widget.id,
-          "totalAmount": cabBookingController.totalFare,
-          "sourceLocation": bookingRideController.prefilled.value,
-          "destinationLocation": bookingRideController.prefilledDrop.value,
-          "serviceType": null,
-          "bankName": null,
-          "userType": "CUSTOMER",
-          "bookingDateTime":
-          await StorageServices.instance.read('userDateTime'),
-          "appliedCoupon": token != null ? 1 : 0,
-          "payNow": cabBookingController.actualFare,
-          "tripType": searchCabInventoryController
-              .indiaData.value?.result?.tripType?.currentTripCode,
-          "vehicleType":
-          cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
-              ''
-        };
-        await applyCouponController.applyCoupon(
-            requestData: requestData, context: context);
-        widget.onSelected(widget.code);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        color: Colors.transparent,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Card with gradient and content
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: widget.selectedCoupon == widget.code
-                      ? const LinearGradient(
-                    colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                      : null,
-                  color: widget.selectedCoupon == widget.code ? null : Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Coupon image
-                    Padding(
-                      padding: EdgeInsets.only(left: 16, top: 16),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(12)),
-                        child: Image.asset(
-                          'assets/images/coupon_image.png',
-                          width: 64,
-                          height: 64,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Coupon content
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.code,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF002CC0),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.title,
-                              style: const TextStyle(
-                                color: Color(0xFF363636),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-
-                            const SizedBox(height: 2),
-                            Text('Save ₹25 on all transactions above ₹250.', style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF676767)
-
-                            ), overflow: TextOverflow.ellipsis,
-                              maxLines: 1,),
-                            const SizedBox(height: 2),
-                            Text(
-                              '*Terms & conditions applicable',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFFE99F00),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-                      margin: EdgeInsets.only(top: 16, left: 16),
-                      decoration: BoxDecoration(
-                        color: widget.selectedCoupon == widget.code ? Color(0xFF00C400) :  Color(0xFFBBBBBB),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                      child: Text(
-                        widget.selectedCoupon == widget.code ? 'Applied' : 'Apply',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
-
-
-                    // Apply button
-                  ],
-                ),
-              ),
-            ),
-
-            // Right cut image
-            Image.asset(
-              widget.selectedCoupon == widget.code ? 'assets/images/coupon_gradient.png' : 'assets/images/coupon_white_cut.png',
-              width: 30,
-              height: 95,
-              fit: BoxFit.fill,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// class CouponCard extends StatefulWidget {
+//   final String code;
+//   final String id;
+//   final String title;
+//   final String subtitle;
+//   final String imageUrl;
+//   String selectedCoupon;
+//   final VoidCallback onApply;
+//   final ValueChanged<String> onSelected;
+//
+//   CouponCard({
+//     Key? key,
+//     required this.code,
+//     required this.title,
+//     required this.subtitle,
+//     required this.imageUrl,
+//     required this.onApply,
+//     required this.selectedCoupon,
+//     required this.onSelected, required this.id,
+//   }) : super(key: key);
+//
+//   @override
+//   State<CouponCard> createState() => _CouponCardState();
+// }
+//
+// class _CouponCardState extends State<CouponCard> {
+//   final ApplyCouponController applyCouponController =
+//   Get.put(ApplyCouponController());
+//   final BookingRideController bookingRideController =
+//   Get.put(BookingRideController());
+//   final CabBookingController cabBookingController =
+//   Get.put(CabBookingController());
+//   final SearchCabInventoryController searchCabInventoryController =
+//   Get.put(SearchCabInventoryController());
+//   @override
+//   Widget build(BuildContext context) {
+//     return InkWell(
+//       splashColor: Colors.transparent,
+//       onTap: () async{
+//         final token = await StorageServices.instance.read('token');
+//         final Map<String, dynamic> requestData = {
+//           "userID": null,
+//           "couponID": widget.id,
+//           "totalAmount": cabBookingController.totalFare,
+//           "sourceLocation": bookingRideController.prefilled.value,
+//           "destinationLocation": bookingRideController.prefilledDrop.value,
+//           "serviceType": null,
+//           "bankName": null,
+//           "userType": "CUSTOMER",
+//           "bookingDateTime":
+//           await StorageServices.instance.read('userDateTime'),
+//           "appliedCoupon": token != null ? 1 : 0,
+//           "payNow": cabBookingController.actualFare,
+//           "tripType": searchCabInventoryController
+//               .indiaData.value?.result?.tripType?.currentTripCode,
+//           "vehicleType":
+//           cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
+//               ''
+//         };
+//         await applyCouponController.applyCoupon(
+//             requestData: requestData, context: context);
+//         widget.onSelected(widget.code);
+//       },
+//       child: Container(
+//         margin: const EdgeInsets.only(bottom: 12),
+//         color: Colors.transparent,
+//         child: Row(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // Card with gradient and content
+//             Expanded(
+//               child: Container(
+//                 decoration: BoxDecoration(
+//                   gradient: widget.selectedCoupon == widget.code
+//                       ? const LinearGradient(
+//                     colors: [Color(0xFF92FF8A), Color(0xFFA0EEFF)],
+//                     begin: Alignment.topLeft,
+//                     end: Alignment.bottomRight,
+//                   )
+//                       : null,
+//                   color: widget.selectedCoupon == widget.code ? null : Colors.white,
+//                   borderRadius: const BorderRadius.only(
+//                     topLeft: Radius.circular(12),
+//                     bottomLeft: Radius.circular(12),
+//                   ),
+//                 ),
+//                 child: Row(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     // Coupon image
+//                     Padding(
+//                       padding: EdgeInsets.only(left: 16, top: 16),
+//                       child: ClipRRect(
+//                         borderRadius: const BorderRadius.all(Radius.circular(12)),
+//                         child: Image.asset(
+//                           'assets/images/coupon_image.png',
+//                           width: 64,
+//                           height: 64,
+//                           fit: BoxFit.cover,
+//                         ),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 12),
+//
+//                     // Coupon content
+//                     Expanded(
+//                       child: Padding(
+//                         padding: const EdgeInsets.symmetric(vertical: 12),
+//                         child: Column(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             Text(
+//                               widget.code,
+//                               style: const TextStyle(
+//                                 fontSize: 14,
+//                                 fontWeight: FontWeight.w500,
+//                                 color: Color(0xFF002CC0),
+//                               ),
+//                             ),
+//                             const SizedBox(height: 2),
+//                             Text(
+//                               widget.title,
+//                               style: const TextStyle(
+//                                 color: Color(0xFF363636),
+//                                 fontWeight: FontWeight.w500,
+//                                 fontSize: 12,
+//                               ),
+//                               overflow: TextOverflow.ellipsis,
+//                               maxLines: 1,
+//                             ),
+//
+//                             const SizedBox(height: 2),
+//                             Text('Save ₹25 on all transactions above ₹250.', style: TextStyle(
+//                                 fontSize: 10, fontWeight: FontWeight.w400, color: Color(0xFF676767)
+//
+//                             ), overflow: TextOverflow.ellipsis,
+//                               maxLines: 1,),
+//                             const SizedBox(height: 2),
+//                             Text(
+//                               '*Terms & conditions applicable',
+//                               style: TextStyle(
+//                                 fontSize: 10,
+//                                 fontWeight: FontWeight.w400,
+//                                 color: Color(0xFFE99F00),
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                     ),
+//                     Container(
+//                       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+//                       margin: EdgeInsets.only(top: 16, left: 16),
+//                       decoration: BoxDecoration(
+//                         color: widget.selectedCoupon == widget.code ? Color(0xFF00C400) :  Color(0xFFBBBBBB),
+//                         borderRadius: BorderRadius.circular(2),
+//                       ),
+//                       child: Text(
+//                         widget.selectedCoupon == widget.code ? 'Applied' : 'Apply',
+//                         style: const TextStyle(
+//                           fontSize: 10,
+//                           fontWeight: FontWeight.w400,
+//                           color: Colors.white,
+//                         ),
+//                       ),
+//                     )
+//
+//
+//                     // Apply button
+//                   ],
+//                 ),
+//               ),
+//             ),
+//
+//             // Right cut image
+//             Image.asset(
+//               widget.selectedCoupon == widget.code ? 'assets/images/coupon_gradient.png' : 'assets/images/coupon_white_cut.png',
+//               width: 30,
+//               height: 95,
+//               fit: BoxFit.fill,
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 Widget buildShimmer() {
   return Padding(
@@ -3433,4 +3453,192 @@ Widget _buildExclusionItem({
     ),
   );
 }
+
+
+class CouponCardLatest extends StatefulWidget {
+  final String id;
+  final String code;
+  final String description;
+  final int codePercentage;
+  final VoidCallback onApply;
+
+  const CouponCardLatest({
+    Key? key,
+    required this.id,
+    required this.code,
+    required this.description,
+    required this.codePercentage,
+    required this.onApply,
+  }) : super(key: key);
+
+  @override
+  State<CouponCardLatest> createState() => _CouponCardLatestState();
+}
+
+class _CouponCardLatestState extends State<CouponCardLatest> {
+  final ApplyCouponController applyCouponController =
+  Get.put(ApplyCouponController());
+  final BookingRideController bookingRideController =
+  Get.put(BookingRideController());
+  final CabBookingController cabBookingController =
+  Get.put(CabBookingController());
+  final SearchCabInventoryController searchCabInventoryController =
+  Get.put(SearchCabInventoryController());
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final isApplied =
+          applyCouponController.selectedCouponId.value == widget.id;
+
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isApplied ? Colors.green.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isApplied ? Colors.green : Colors.transparent,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left Discount strip
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  bottomLeft: Radius.circular(10),
+                ),
+              ),
+              width: 40,
+              height: 97,
+              alignment: Alignment.center,
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: Text(
+                  "${widget.codePercentage.toString()}% OFF",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // Main content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.code,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.description,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 28,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          backgroundColor: isApplied
+                              ? Colors.red.shade100
+                              : Colors.grey[200],
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () async {
+                          if (isApplied) {
+                            // Remove coupon
+                            applyCouponController.removeCoupon();
+                            cabBookingController.update(); // refresh fare
+                          } else if (applyCouponController
+                              .selectedCouponId.value ==
+                              null) {
+                            // Apply coupon
+                            final token =
+                            await StorageServices.instance.read('token');
+                            final Map<String, dynamic> requestData = {
+                              "userID": null,
+                              "couponID": widget.id,
+                              "totalAmount": cabBookingController.totalFare,
+                              "sourceLocation":
+                              bookingRideController.prefilled.value,
+                              "destinationLocation":
+                              bookingRideController.prefilledDrop.value,
+                              "serviceType": null,
+                              "bankName": null,
+                              "userType": "CUSTOMER",
+                              "bookingDateTime":
+                              await StorageServices.instance
+                                  .read('userDateTime'),
+                              "appliedCoupon": token != null ? 1 : 0,
+                              "payNow": cabBookingController.actualFare,
+                              "tripType": searchCabInventoryController
+                                  .indiaData
+                                  .value
+                                  ?.result
+                                  ?.tripType
+                                  ?.currentTripCode,
+                              "vehicleType": cabBookingController
+                                  .indiaData
+                                  .value
+                                  ?.inventory
+                                  ?.carTypes
+                                  ?.type ??
+                                  ''
+                            };
+                            await applyCouponController.applyCoupon(
+                                requestData: requestData, context: context);
+
+                            applyCouponController.selectedCouponId.value =
+                                widget.id;
+                            cabBookingController.update(); // refresh fare
+                          }
+                        },
+                        child: Text(
+                          isApplied ? "Remove Code" : "Apply Code",
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          ],
+        ),
+      );
+    });
+  }
+}
+
+
 

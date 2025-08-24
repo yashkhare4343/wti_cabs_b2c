@@ -178,7 +178,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                                   text: 'See My Bookings',
                                   onPressed: () {
                                       Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (context) => BottomNavScreen(initialIndex: 2,)),
+                                        MaterialPageRoute(builder: (context) => BottomNavScreen(initialIndex: 1,)),
                                       );
                                   },
 

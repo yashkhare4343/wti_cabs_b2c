@@ -8,15 +8,26 @@ class ApplyCouponController extends GetxController {
   Rx<ApplyCouponResponse?> applyCouponResponse = Rx<ApplyCouponResponse?>(null);
   RxBool isLoading = false.obs;
   RxBool isCouponApplied = false.obs;
+  RxnString selectedCouponId = RxnString();
+
+  /// Keep track of discount
+  RxDouble discountAmount = 0.0.obs;
+
+  void removeCoupon() {
+    selectedCouponId.value = null;
+    discountAmount.value = 0.0;
+    isCouponApplied.value = false;
+    applyCouponResponse.value = null;
+  }
 
   void showCouponAppliedDialog(BuildContext context, String message) {
     showDialog(
       context: context,
-      barrierDismissible: false, // prevent dismissing by tapping outside
+      barrierDismissible: false,
       builder: (context) {
-        Future.delayed(Duration(seconds: 3), () {
+        Future.delayed(const Duration(seconds: 3), () {
           if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop(); // auto-close after 3 seconds
+            Navigator.of(context).pop();
           }
         });
 
@@ -37,7 +48,11 @@ class ApplyCouponController extends GetxController {
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
               ],
             ),
@@ -47,12 +62,10 @@ class ApplyCouponController extends GetxController {
     );
   }
 
-  /// Fetch booking data based on the given country and request body
   Future<void> applyCoupon({
     required final Map<String, dynamic> requestData,
     required BuildContext context,
   }) async {
-
     isLoading.value = true;
     try {
       final response = await ApiService().postRequestNew<ApplyCouponResponse>(
@@ -63,13 +76,27 @@ class ApplyCouponController extends GetxController {
       );
       applyCouponResponse.value = response;
       isCouponApplied.value = true;
-      print('print apply coupon data : ${ApplyCouponResponse.fromJson(applyCouponResponse.value?.toJson()??{})}');
-      showCouponAppliedDialog(context, 'Woohoo! ₹${applyCouponResponse.value?.discountAmount} off added. Have a great trip!');
+
+      /// update discount amount
+      discountAmount.value = response.discountAmount?.toDouble() ?? 0.0;
+
+      showCouponAppliedDialog(
+        context,
+        'Woohoo! ₹${discountAmount.value} off added. Have a great trip!',
+      );
 
     } finally {
       isLoading.value = false;
     }
   }
 
-
+  /// Final fare after applying discount
+  double calculateFinalFare({
+    required double baseFare,
+    required double tax,
+  }) {
+    final total = baseFare + tax;
+    final finalFare = total - discountAmount.value;
+    return finalFare > 0 ? finalFare : 0.0; // safeguard
+  }
 }

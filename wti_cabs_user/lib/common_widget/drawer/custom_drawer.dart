@@ -11,6 +11,7 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../core/services/cache_services.dart';
 import '../../core/services/storage_services.dart';
 import '../../main.dart';
+import '../../screens/bottom_nav/bottom_nav.dart';
 
 class CustomDrawerSheet extends StatefulWidget {
   const CustomDrawerSheet({super.key});
@@ -161,8 +162,10 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                     if (Navigator.of(
                                             navigatorKey.currentContext!)
                                         .canPop()) {
-                                      Navigator.of(navigatorKey.currentContext!)
-                                          .pop();
+                                      Navigator.of(navigatorKey.currentContext!).pushReplacement(
+                                        MaterialPageRoute(builder: (_) => BottomNavScreen()),
+                                      );
+
                                       // 🚀 Optional: Navigate to login after close
                                       // context.go("/login");
                                     }

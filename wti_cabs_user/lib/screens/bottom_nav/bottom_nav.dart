@@ -1085,7 +1085,6 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
   final List<Widget> _screens = [
     HomeScreen(),
-    Offers(),
     ManageBookings(),
     Contact(),
   ];
@@ -1163,9 +1162,8 @@ class _BottomNavScreenState extends State<BottomNavScreen>
               type: BottomNavigationBarType.fixed,
               items: [
                 _buildBarItem(Icons.house, 'Home', 0),
-                _buildBarItem(Icons.local_offer_outlined, 'Services', 1),
-                _buildBarItem(Icons.work_outline, 'Bookings', 2),
-                _buildBarItem(Icons.phone, 'Contact', 3),
+                _buildBarItem(Icons.work_outline, 'Bookings', 1),
+                _buildBarItem(Icons.phone, 'Contact', 2),
               ],
             ),
           ),

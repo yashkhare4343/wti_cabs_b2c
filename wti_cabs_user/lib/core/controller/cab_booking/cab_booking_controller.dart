@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
@@ -99,6 +100,7 @@ class CabBookingController extends GetxController {
     double subtotal;
 
     if (applyCouponController.isCouponApplied == false) {
+      // No coupon → just sum all charges
       subtotal = baseFare +
           nightCharges +
           tollCharges +
@@ -109,28 +111,70 @@ class CabBookingController extends GetxController {
           extraFacilityCharges;
       debugPrint('Coupon not applied. Subtotal: $subtotal');
     } else {
-      final couponAmount = applyCouponController.applyCouponResponse.value?.newTotalAmount ?? 0;
-      subtotal = couponAmount.toDouble() + extraFacilityCharges;
-      debugPrint('Coupon applied. New total after coupon: $couponAmount, with extras: $subtotal');
+
+      // Coupon applied → take discounted amount (without tax from API)
+      final discountedFare =
+          applyCouponController.applyCouponResponse.value?.newTotalAmount ??
+              baseFare +
+                  nightCharges +
+                  tollCharges +
+                  waitingCharges +
+                  parkingCharges +
+                  stateTax +
+                  driverCharge +
+                  extraFacilityCharges;
+
+      subtotal = discountedFare.toDouble();
+
+      debugPrint('Coupon applied. Discounted subtotal (before tax): $subtotal');
     }
 
-    final total = isIndia ?  subtotal + (subtotal * 0.05) : subtotal;
-    debugPrint('Total Fare (with 5% tax if India): $total');
+    // Add tax locally (only once, based on subtotal)
+    final tax = isIndia ? subtotal * 0.05 : 0;
+    final total = subtotal + tax;
+
+    debugPrint('Tax (5% if India): $tax');
+    debugPrint('Total Fare: $total');
+
     return total;
   }
 
   double get taxCharge{
-   final subtotal = baseFare +
-        nightCharges +
-        tollCharges +
-        waitingCharges +
-        parkingCharges +
-        stateTax +
-        driverCharge +
-        extraFacilityCharges;
-    final value = totalFare - subtotal;
-    return value;
+    double subtotal;
 
+    if (applyCouponController.isCouponApplied == false) {
+      // No coupon → just sum all charges
+      subtotal = baseFare +
+          nightCharges +
+          tollCharges +
+          waitingCharges +
+          parkingCharges +
+          stateTax +
+          driverCharge +
+          extraFacilityCharges;
+      debugPrint('Coupon not applied. Subtotal: $subtotal');
+    } else {
+      // Coupon applied → take discounted amount (without tax from API)
+      final discountedFare =
+          applyCouponController.applyCouponResponse.value?.newTotalAmount ??
+              baseFare;
+
+      subtotal = discountedFare +
+          nightCharges +
+          tollCharges +
+          waitingCharges +
+          parkingCharges +
+          stateTax +
+          driverCharge +
+          extraFacilityCharges;
+
+      debugPrint('Coupon applied. Discounted subtotal (before tax): $subtotal');
+    }
+
+    final tax = isIndia ? subtotal * 0.05 : 0;
+    print('yash tAX : $tax');
+
+    return tax.toDouble();
   }
 
   double get partFare {
@@ -297,7 +341,7 @@ class CabBookingController extends GetxController {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const PopupLoader(message: 'Fetching Booking Data',),
+      builder: (_) => const FullScreenGifLoader(),
     );
 
     print('📤 Booking request: $requestData');

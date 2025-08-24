@@ -33,8 +33,10 @@ class InventoryList extends StatefulWidget {
 class _InventoryListState extends State<InventoryList> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
   final TripController tripController = Get.put(TripController());
-  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final FetchPackageController fetchPackageController =
+      Get.put(FetchPackageController());
+  final BookingRideController bookingRideController =
+      Get.put(BookingRideController());
 
   static const Map<String, String> tripMessages = {
     '0': 'Your selected trip type has changed to Outstation One Trip.',
@@ -66,7 +68,6 @@ class _InventoryListState extends State<InventoryList> {
         isLoading = false;
       });
     });
-
   }
 
   /// Check for trip code changes and show dialog if needed
@@ -170,7 +171,7 @@ class _InventoryListState extends State<InventoryList> {
 
   num getFivePercentOfBaseFare(num baseFare) => baseFare * 0.05;
   final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
+      Get.put(DropPlaceSearchController());
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +179,7 @@ class _InventoryListState extends State<InventoryList> {
       return PopScope(
         canPop: false, // 🚀 Stops the default "pop and close app"
         onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value =0;
+          bookingRideController.selectedIndex.value = 0;
           GoRouter.of(context).pop();
           GoRouter.of(context).go(
             '${AppRoutes.bookingRide}?tab=airport',
@@ -198,7 +199,7 @@ class _InventoryListState extends State<InventoryList> {
       return PopScope(
         canPop: false, // 🚀 Stops the default "pop and close app"
         onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value =0;
+          bookingRideController.selectedIndex.value = 0;
           GoRouter.of(context).pop();
           GoRouter.of(context).go(
             '${AppRoutes.bookingRide}?tab=airport',
@@ -217,7 +218,7 @@ class _InventoryListState extends State<InventoryList> {
       return PopScope(
         canPop: false, // 🚀 Stops the default "pop and close app"
         onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value =0;
+          bookingRideController.selectedIndex.value = 0;
           GoRouter.of(context).pop();
           GoRouter.of(context).go(
             '${AppRoutes.bookingRide}?tab=airport',
@@ -233,14 +234,14 @@ class _InventoryListState extends State<InventoryList> {
     final globalList = globalData?.result ?? [];
 
     return PopScope(
-        canPop: false, // 🚀 Stops the default "pop and close app"
-        onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value =0;
-          GoRouter.of(context).pop();
-          GoRouter.of(context).go(
-            '${AppRoutes.bookingRide}?tab=airport',
-          );
-        },
+      canPop: false, // 🚀 Stops the default "pop and close app"
+      onPopInvoked: (didPop) {
+        bookingRideController.selectedIndex.value = 0;
+        GoRouter.of(context).pop();
+        GoRouter.of(context).go(
+          '${AppRoutes.bookingRide}?tab=airport',
+        );
+      },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
         body: isLoading
@@ -256,21 +257,24 @@ class _InventoryListState extends State<InventoryList> {
                       Column(
                         children: [
                           // ✅ Highlighted card
-                          SelectedPackageCard(controller: fetchPackageController),
+                          SelectedPackageCard(
+                              controller: fetchPackageController),
                         ],
                       ),
-
                       SizedBox(
                         height: 16,
                       ),
                       Expanded(
                         child: Obx(() {
-
                           final isIndia =
                               searchCabInventoryController.indiaData.value !=
                                   null;
                           final indiaCarTypes = searchCabInventoryController
-                                  .indiaData.value?.result?.inventory?.carTypes ??
+                                  .indiaData
+                                  .value
+                                  ?.result
+                                  ?.inventory
+                                  ?.carTypes ??
                               [];
                           final globalList = searchCabInventoryController
                                   .globalData.value?.result ??
@@ -290,7 +294,10 @@ class _InventoryListState extends State<InventoryList> {
                             );
                           }
 
-                          if(placeSearchController.getPlacesLatLng.value?.country != dropPlaceSearchController.dropLatLng.value?.country){
+                          if ((placeSearchController
+                                  .getPlacesLatLng.value?.country !=
+                              dropPlaceSearchController
+                                  .dropLatLng.value?.country) && ((indiaCarTypes.first.tripType !='LOCAL_RENTAL'))) {
                             return const Center(
                               child: Text(
                                 "No cabs available on this route, Please search on same country for pickup and drop",
@@ -313,15 +320,15 @@ class _InventoryListState extends State<InventoryList> {
                                     TextSpan(text: 'Rates for '),
                                     TextSpan(
                                       text:
-                                          '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm} Kms',
-                                      style:
-                                          TextStyle(fontWeight: FontWeight.bold),
+                                          '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1]??'0')} Kms',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(text: ' approx distance | '),
                                     TextSpan(
                                       text: '4.5 hr(s)',
-                                      style:
-                                          TextStyle(fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(text: ' approx time'),
                                   ],
@@ -429,7 +436,8 @@ class _InventoryListState extends State<InventoryList> {
           "trip_type": carType.tripType,
           "pickUpDateTime": tripTypeDetails?.startTime?.toIso8601String() ?? '',
           "dropDateTime": tripTypeDetails?.endTime?.toIso8601String() ?? '',
-          "totalKilometers": carType.tripType == '3'? fetchPackageController.selectedKms.value : tripTypeDetails?.distanceBooked ?? 0,
+          // "totalKilometers": searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? tripTypeDetails?.distanceBooked,
+          "totalKilometers": tripTypeDetails?.distanceBooked??int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1]??'0'),
           "package_id": tripTypeDetails?.packageId ?? '',
           "source": {
             "address": tripTypeDetails?.source?.address ?? '',
@@ -1410,8 +1418,6 @@ class _BookingTopBarState extends State<BookingTopBar> {
     return parts.take(2).join(' '); // first 3 words (2 spaces)
   }
 
-
-
   Future<void> loadTripCode(BuildContext context) async {
     final tripMessages = {
       '0': 'Your selected trip type has changed to Outstation One Trip.',
@@ -1505,7 +1511,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             SizedBox(
-              width: MediaQuery.of(context).size.width*0.7,
+              width: MediaQuery.of(context).size.width * 0.7,
               child: Text(
                 tripCode == '3'
                     ? '${bookingRideController.prefilled.value}'
@@ -1897,10 +1903,10 @@ class StaticBookingTopBar extends StatelessWidget {
   }
 }
 
-
 class SelectedPackageCard extends StatelessWidget {
   final FetchPackageController controller;
-  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  final SearchCabInventoryController searchCabInventoryController =
+      Get.put(SearchCabInventoryController());
 
   SelectedPackageCard({super.key, required this.controller});
 
@@ -1909,8 +1915,8 @@ class SelectedPackageCard extends StatelessWidget {
     return Obx(() {
       if ((controller.selectedPackage.value.isEmpty)) {
         return const SizedBox(); // hide if nothing selected
-      }
-      else if((searchCabInventoryController.tripCode.value.toString()!= '3' )){
+      } else if ((searchCabInventoryController.tripCode.value.toString() !=
+          '3')) {
         return const SizedBox();
       }
 
@@ -1931,7 +1937,6 @@ class SelectedPackageCard extends StatelessWidget {
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
                     Text(
                       "Selected Package -",
