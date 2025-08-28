@@ -116,7 +116,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                           title: "Booking Details",
                           icon: Icons.assignment,
                           details: [
-                            _detailItem("Booking Id", booking.id ?? ''),
+                           _detailItem("Booking Id", fetchReservationBookingData.reservationId.value),
                             _detailItem("Booking Type",
                                 booking.tripTypeDetails?.tripType ?? ''),
                             _detailItem("Cab Category",
@@ -127,15 +127,15 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                                     booking.startTime ?? '', booking.timezone ?? '')),
                             _detailItem("Pickup", booking.source?.address ?? ''),
                             _detailItem("Drop", booking.destination?.address ?? ''),
-                            _detailItem(
+                            booking.startTime !=null ? _detailItem(
                                 "Pickup Date",
                                 convertUtcToLocal(
-                                    booking.startTime ?? '', booking.timezone ?? '')),
+                                    booking.startTime ?? '', booking.timezone ?? '')) : SizedBox(),
                             if (booking.tripTypeDetails?.basicTripType != 'LOCAL')
-                              _detailItem(
+                              booking.endTime!=null ? _detailItem(
                                   "Drop Date",
                                   convertUtcToLocal(
-                                      booking.endTime ?? '', booking.timezone ?? '')),
+                                      booking.endTime ?? '', booking.timezone ?? '')) : SizedBox(),
                           ],
                         ),
 

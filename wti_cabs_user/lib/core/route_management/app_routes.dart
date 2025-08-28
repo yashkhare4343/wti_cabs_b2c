@@ -14,6 +14,7 @@ class AppRoutes{
   static const String manageBookings = '/manageBookings';
   static const String cancelBooking = '/cancelBooking';
   static const String cancelledBooking = '/cancelledBooking';
+  static const String selectCurrency = '/selectCurrency';
 
 
 

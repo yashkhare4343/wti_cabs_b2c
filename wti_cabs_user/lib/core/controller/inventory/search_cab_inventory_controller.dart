@@ -5,11 +5,23 @@ import '../../api/api_services.dart';
 import '../../model/inventory/global_response.dart';
 import '../../model/inventory/india_response.dart';
 import '../../services/storage_services.dart';
+import '../currency_controller/currency_controller.dart';
 
 class SearchCabInventoryController extends GetxController {
   Rx<IndiaResponse?> indiaData = Rx<IndiaResponse?>(null);
   Rx<GlobalResponse?> globalData = Rx<GlobalResponse?>(null);
   RxBool isLoading = false.obs;
+  final CurrencyController currencyController = Get.put(CurrencyController());
+
+  @override
+  void onInit() {
+    super.onInit();
+    // detectLocation();    // ✅ Detect once at startup
+  }
+  void detectLocation() async{
+   await currencyController.detectLocationOnce();
+
+  }
 
   var tripCode = ''.obs;
   var previousTripCode = ''.obs;
@@ -87,7 +99,6 @@ class SearchCabInventoryController extends GetxController {
     isLoading.value = true;
 
     try {
-      // Old trip codes
       final oldCurrent = await StorageServices.instance.read('currentTripCode') ?? '';
       final oldPrevious = await StorageServices.instance.read('previousTripCode') ?? '';
 
@@ -106,6 +117,7 @@ class SearchCabInventoryController extends GetxController {
 
         newCurrent = response.result?.tripType?.currentTripCode ?? '';
         newPrevious = response.result?.tripType?.previousTripCode ?? '';
+
       } else {
         final response = await ApiService().postRequestNew<GlobalResponse>(
           'globalSearch/searchSwitchBasedOnCountry',
@@ -116,13 +128,16 @@ class SearchCabInventoryController extends GetxController {
         globalData.value = response;
         indiaData.value = null;
 
-        // Extract from global response
         final resultList = response.result;
         if (resultList != null && resultList.isNotEmpty) {
+          outerLoop:
           for (var outer in resultList) {
             for (var item in outer) {
-              newCurrent = item.tripDetails?.currentTripCode.toString() ?? newCurrent;
-              newPrevious = item.tripDetails?.previousTripCode ?? newPrevious;
+              if (item.tripDetails != null) {
+                newCurrent = item.tripDetails?.currentTripCode.toString() ?? '';
+                newPrevious = item.tripDetails?.previousTripCode ?? '';
+                break outerLoop;
+              }
             }
           }
         }
@@ -140,6 +155,17 @@ class SearchCabInventoryController extends GetxController {
       tripCode.value = newCurrent;
       previousTripCode.value = newPrevious;
 
+      // ✅ Detect location once
+
+      // ✅ Set currency base logic cleanly
+      final isIndiaInventory = country.toLowerCase() == 'india';
+      final isInIndiaLocation = currencyController.country.value.toLowerCase() == 'india';
+
+      currencyController.setBaseCurrency(
+        isIndiaInventory: isIndiaInventory,
+        isInIndiaLocation: isInIndiaLocation,
+      );
+
     } catch (e) {
       debugPrint("❌ Error fetching booking data: $e");
       if (Navigator.of(context, rootNavigator: true).canPop()) {
@@ -151,4 +177,5 @@ class SearchCabInventoryController extends GetxController {
       isLoading.value = false;
     }
   }
+
 }

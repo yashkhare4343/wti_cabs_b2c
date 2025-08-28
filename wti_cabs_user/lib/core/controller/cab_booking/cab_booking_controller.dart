@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
@@ -232,75 +233,124 @@ class CabBookingController extends GetxController {
     showModalBottomSheet(
       backgroundColor: Colors.white,
       context: context,
-      isScrollControlled: true, // ✅ makes sheet scrollable if needed
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-        builder: (_) {
-          return DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.6,
-            minChildSize: 0.4,
-            maxChildSize: 0.9,
-            builder: (_, controller) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: ListView(
-                  controller: controller,
-                  children: [
-                    Center(
-                      child: Container(
-                        height: 5,
-                        width: 40,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          borderRadius: BorderRadius.circular(10),
+      builder: (_) {
+        final currencyController = Get.find<CurrencyController>();
+
+        Future<Map<String, double>> loadConvertedValues() async {
+          final results = await Future.wait([
+            currencyController.convertPrice(baseFare),
+            currencyController.convertPrice(nightCharges),
+            currencyController.convertPrice(tollCharges),
+            currencyController.convertPrice(waitingCharges),
+            currencyController.convertPrice(parkingCharges),
+            currencyController.convertPrice(stateTax),
+            currencyController.convertPrice(driverCharge),
+            currencyController.convertPrice(extraFacilityCharges),
+            currencyController.convertPrice(actualFare),
+            currencyController.convertPrice(taxCharge),
+            currencyController.convertPrice(totalFare),
+            if (applyCouponController.isCouponApplied.value)
+              currencyController.convertPrice(
+                applyCouponController.applyCouponResponse.value?.discountAmount?.toDouble() ?? 0.0,
+              ),
+          ]);
+
+          return {
+            "baseFare": results[0],
+            "nightCharges": results[1],
+            "tollCharges": results[2],
+            "waitingCharges": results[3],
+            "parkingCharges": results[4],
+            "stateTax": results[5],
+            "driverCharge": results[6],
+            "extras": results[7],
+            "subtotal": results[8],
+            "tax": results[9],
+            "total": results[10],
+            if (applyCouponController.isCouponApplied.value)
+              "discount": results.last,
+          };
+        }
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          minChildSize: 0.65,
+          maxChildSize: 0.9,
+          builder: (_, controller) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: FutureBuilder<Map<String, double>>(
+                future: Future.delayed(
+                  const Duration(milliseconds: 500), // ⏳ fake loader
+                  loadConvertedValues,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Center(child: Text("Failed to load charges"));
+                  }
+
+                  final data = snapshot.data!;
+                  final symbol = currencyController.selectedCurrency.value.symbol;
+
+                  return ListView(
+                    controller: controller,
+                    children: [
+                      Center(
+                        child: Container(
+                          height: 5,
+                          width: 40,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
-                    ),
-                    const Text(
-                      "Fare Breakdown",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
+                      const Text(
+                        "Fare Breakdown",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
 
-                    // ✅ Only wrap where reactive values are used
-                    Obx(() => _buildRow("Base Fare", "₹${baseFare.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Night Charges", "₹${nightCharges.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Toll Charges", "₹${tollCharges.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Waiting Charges", "₹${waitingCharges.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Parking Charges", "₹${parkingCharges.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("State Tax", "₹${stateTax.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Driver Charge", "₹${driverCharge.toStringAsFixed(2)}")),
-                    Obx(() => _buildRow("Extras", "₹${extraFacilityCharges.toStringAsFixed(2)}")),
+                      _buildRow("Base Fare", "$symbol${data['baseFare']!.toStringAsFixed(2)}"),
+                      _buildRow("Night Charges", "$symbol${data['nightCharges']!.toStringAsFixed(2)}"),
+                      _buildRow("Toll Charges", "$symbol${data['tollCharges']!.toStringAsFixed(2)}"),
+                      _buildRow("Waiting Charges", "$symbol${data['waitingCharges']!.toStringAsFixed(2)}"),
+                      _buildRow("Parking Charges", "$symbol${data['parkingCharges']!.toStringAsFixed(2)}"),
+                      _buildRow("State Tax", "$symbol${data['stateTax']!.toStringAsFixed(2)}"),
+                      _buildRow("Driver Charge", "$symbol${data['driverCharge']!.toStringAsFixed(2)}"),
+                      _buildRow("Extras", "$symbol${data['extras']!.toStringAsFixed(2)}"),
 
-                    const Divider(thickness: 1, height: 24),
+                      const Divider(thickness: 1, height: 24),
 
-                    Obx(() => _buildRow("Subtotal", "₹${actualFare.toStringAsFixed(2)}", isBold: true)),
-                    Obx(() => _buildRow("Tax include (5%)", "₹${taxCharge.toStringAsFixed(2)}", isBold: true)),
+                      _buildRow("Subtotal", "$symbol${data['subtotal']!.toStringAsFixed(2)}", isBold: true),
+                      _buildRow("Tax include (5%)", "$symbol${data['tax']!.toStringAsFixed(2)}", isBold: true),
 
-                    Obx(() {
-                      if (applyCouponController.isCouponApplied.value) {
-                        return _buildRow(
-                          "Coupon Applied",
-                          "-₹${applyCouponController.applyCouponResponse.value?.discountAmount ?? 0}",
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    }),
+                      if (data.containsKey("discount"))
+                        _buildRow("Coupon Applied", "-$symbol${data['discount']!.toStringAsFixed(2)}"),
 
-                    Obx(() => _buildRow("Total Fare", "₹${totalFare.toStringAsFixed(2)}",
-                        isBold: true, highlight: true)),
-
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              );
-            },
-          );
-        }
+                      _buildRow("Total Fare", "$symbol${data['total']!.toStringAsFixed(2)}",
+                          isBold: true, highlight: true),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -379,9 +429,9 @@ class CabBookingController extends GetxController {
           'tripTypeDetails': response['tripTypeDetails'],
         });
 
-        if (context.mounted) {
-          GoRouter.of(context).push(AppRoutes.bookingDetailsFinal);
-        }
+        // if (context.mounted) {
+        //   GoRouter.of(context).push(AppRoutes.bookingDetailsFinal);
+        // }
         print('✅ Global booking result count: ${globalData.value?.vehicleDetails}');
         print('📌 tripTypeDetails: ${globalData.value?.tripTypeDetails?.tripType ?? "N/A"}');
             }

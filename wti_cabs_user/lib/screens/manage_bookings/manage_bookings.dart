@@ -24,6 +24,7 @@ import '../../core/controller/auth/mobile_controller.dart';
 import '../../core/controller/auth/otp_controller.dart';
 import '../../core/controller/auth/register_controller.dart';
 import '../../core/controller/auth/resend_otp_controller.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/download_receipt/download_receipt_controller.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/services/storage_services.dart';
@@ -1080,7 +1081,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final driveTypes = ["Chauffeur's Drive", "Self Drive"];
+    final driveTypes = ["Chauffeur's Drive"];
 
     return PopScope(
       canPop: false, // 🚀 Stops the default "pop and close app"
@@ -1139,7 +1140,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                     child: MainButton(text: 'Login/Register', onPressed: (){
                     }),
                   ) : Row(
-                    children: List.generate(2, (index) {
+                    children: List.generate(1, (index) {
                       return Expanded(
                         child: GestureDetector(
                           onTap: () => setState(() => selectedDriveType = index),
@@ -1230,6 +1231,7 @@ class _BookingCardState extends State<BookingCard> {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
   final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
@@ -1374,32 +1376,52 @@ class _BookingCardState extends State<BookingCard> {
                                 ),
                               ),
                               SizedBox(height: 2),
-                              Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: 'Paid Amount: ',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF929292),
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                    TextSpan(
-                                      text: upcomingBookingController
+                              FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  upcomingBookingController
+                                      .confirmedBookings?[index]
+                                      .recieptId
+                                      ?.fareDetails
+                                      ?.amountPaid
+                                      ?.toDouble() ??
+                                      0.0,
+                                ),
+                                builder: (context, snapshot) {
+                                  final convertedValue = snapshot.data ??
+                                      upcomingBookingController
                                           .confirmedBookings?[index]
                                           .recieptId
                                           ?.fareDetails
                                           ?.amountPaid
-                                          .toString() ??
-                                          '',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF2B2B2B),
-                                          fontWeight: FontWeight.w700),
+                                          ?.toDouble() ??
+                                      0.0;
+
+                                  return Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        const TextSpan(
+                                          text: 'Paid Amount: ',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF929292),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                          "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF2B2B2B),
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  );
+                                },
+                              )
+                              ,
                             ],
                           ),
                         )
@@ -1530,6 +1552,7 @@ class _BookingCardState extends State<BookingCard> {
                                   SizedBox(
                                     width: 4,
                                   ),
+                                  if(upcomingBookingController.confirmedBookings[index].countryName?.toLowerCase() == 'india')
                                   (upcomingBookingController
                                       .confirmedBookings[index].tripTypeDetails?.basicTripType == 'LOCAL') ? SizedBox() :  Text(
                                       convertUtcToLocal(
@@ -1547,6 +1570,23 @@ class _BookingCardState extends State<BookingCard> {
                                           fontSize: 12,
                                           color: Color(0xFF808080),
                                           fontWeight: FontWeight.w400)),
+                                  if(upcomingBookingController.confirmedBookings[index].countryName?.toLowerCase() != 'india')
+                                    Text(
+                                        convertUtcToLocal(
+                                            upcomingBookingController
+                                                .confirmedBookings[index]
+                                                .endTime
+                                                .toString() ??
+                                                '',
+                                            upcomingBookingController
+                                                .confirmedBookings[index]
+                                                .timezone ??
+                                                '') ??
+                                            'No Drop Date Found',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF808080),
+                                            fontWeight: FontWeight.w400)),
                                 ],
                               ),
                             ],
@@ -1673,6 +1713,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
   final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
@@ -1773,26 +1814,50 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                         color: Color(0xFF373737)),
                                   ),
                                   SizedBox(height: 2),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'Booking ID: ',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF929292),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                        TextSpan(
-                                          text: upcomingBookingController
-                                              .completedBookings?[index].id,
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF222222),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
+                                  FutureBuilder<double>(
+                                    future: currencyController.convertPrice(
+                                      upcomingBookingController
+                                          .completedBookings?[index]
+                                          .recieptId
+                                          ?.fareDetails
+                                          ?.amountPaid
+                                          ?.toDouble() ??
+                                          0.0,
                                     ),
+                                    builder: (context, snapshot) {
+                                      final convertedValue = snapshot.data ??
+                                          upcomingBookingController
+                                              .completedBookings?[index]
+                                              .recieptId
+                                              ?.fareDetails
+                                              ?.amountPaid
+                                              ?.toDouble() ??
+                                          0.0;
+
+                                      return Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            const TextSpan(
+                                              text: 'Paid Amount: ',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF929292),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text:
+                                              "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF2B2B2B),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                   SizedBox(height: 2),
                                   Text.rich(
@@ -2127,6 +2192,7 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
   final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
@@ -2228,26 +2294,50 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                         color: Color(0xFF373737)),
                                   ),
                                   SizedBox(height: 2),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'Booking ID: ',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF929292),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                        TextSpan(
-                                          text: upcomingBookingController
-                                              .cancelledBookings?[index].id,
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF222222),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
+                                  FutureBuilder<double>(
+                                    future: currencyController.convertPrice(
+                                      upcomingBookingController
+                                          .cancelledBookings?[index]
+                                          .recieptId
+                                          ?.fareDetails
+                                          ?.amountPaid
+                                          ?.toDouble() ??
+                                          0.0,
                                     ),
+                                    builder: (context, snapshot) {
+                                      final convertedValue = snapshot.data ??
+                                          upcomingBookingController
+                                              .cancelledBookings?[index]
+                                              .recieptId
+                                              ?.fareDetails
+                                              ?.amountPaid
+                                              ?.toDouble() ??
+                                          0.0;
+
+                                      return Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            const TextSpan(
+                                              text: 'Paid Amount: ',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF929292),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text:
+                                              "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF2B2B2B),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                   SizedBox(height: 2),
                                   Text.rich(
@@ -2363,24 +2453,26 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                       SizedBox(
                                         width: 4,
                                       ),
-                                      Text(
+                                      Expanded(
+                                        child: Text(
                                           convertUtcToLocal(
                                               upcomingBookingController
-                                                  .cancelledBookings?[
-                                              index]
+                                                  .cancelledBookings?[index]
                                                   .startTime
                                                   .toString() ??
                                                   '',
                                               upcomingBookingController
-                                                  .cancelledBookings?[
-                                              index]
+                                                  . cancelledBookings?[index]
                                                   .timezone ??
                                                   '') ??
                                               'No Pickup Date Found',
                                           style: TextStyle(
                                               fontSize: 12,
                                               color: Color(0xFF808080),
-                                              fontWeight: FontWeight.w400)),
+                                              fontWeight: FontWeight.w400),
+                                          maxLines: 2,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -2435,24 +2527,27 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                       SizedBox(
                                         width: 4,
                                       ),
-                                      Text(
-                                          convertUtcToLocal(
-                                              upcomingBookingController
-                                                  .cancelledBookings?[
-                                              index]
-                                                  .endTime
-                                                  .toString() ??
-                                                  '',
-                                              upcomingBookingController
-                                                  .cancelledBookings?[
-                                              index]
-                                                  .timezone ??
-                                                  '') ??
-                                              'No Drop Date Found',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF808080),
-                                              fontWeight: FontWeight.w400)),
+                                      Expanded(
+                                        child: Text(
+                                            convertUtcToLocal(
+                                                upcomingBookingController
+                                                    .cancelledBookings?[
+                                                index]
+                                                    .endTime
+                                                    .toString() ??
+                                                    '',
+                                                upcomingBookingController
+                                                    .cancelledBookings?[
+                                                index]
+                                                    .timezone ??
+                                                    '') ??
+                                                'No Drop Date Found',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF808080),
+                                                overflow: TextOverflow.fade,
+                                                fontWeight: FontWeight.w400), maxLines: 2,),
+                                      ),
                                     ],
                                   ),
                                 ],

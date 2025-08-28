@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -58,6 +59,34 @@ void serviceLocator() {
   getIt.registerSingleton<ApiService>(ApiService());
 }
 
+Future<bool> requestLocationPermission() async {
+  LocationPermission permission;
+
+  // Check current permission status
+  permission = await Geolocator.checkPermission();
+
+  if (permission == LocationPermission.denied) {
+    // Request permission
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      // Permission denied
+      print("Location permission denied");
+      return false;
+    }
+  }
+
+  if (permission == LocationPermission.deniedForever) {
+    // Permissions are denied forever
+    print("Location permission denied forever. Open settings.");
+    return false;
+  }
+
+  // Permission granted
+  print("Location permission granted");
+  return true;
+}
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -100,7 +129,14 @@ void main() async {
 
     print('📥 Initializing FlutterDownloader');
     await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
-
+    bool locationGranted = await requestLocationPermission();
+    if (locationGranted) {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      print("🌍 Current location: ${position.latitude}, ${position.longitude}");
+    } else {
+      print("⚠️ Location permission not granted. You may need to request it later.");
+    }
     print('🏁 Running App');
     runApp(const MyApp());
   } catch (e, stack) {
@@ -108,6 +144,21 @@ void main() async {
     print('🪵 StackTrace:\n$stack');
   }
 }
+
+
+
+// Example usage
+void checkAndGetLocation() async {
+  bool granted = await requestLocationPermission();
+  if (granted) {
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    print("Current location: ${position.latitude}, ${position.longitude}");
+  } else {
+    // Show a dialog to open app settings if needed
+  }
+}
+
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

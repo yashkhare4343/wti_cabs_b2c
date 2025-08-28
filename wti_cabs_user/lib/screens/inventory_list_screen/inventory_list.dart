@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -16,6 +18,7 @@ import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../common_widget/dropdown/common_dropdown.dart';
 import '../../core/controller/cab_booking/cab_booking_controller.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/inventory_dialog_controller/inventory_dialog_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/model/inventory/india_response.dart';
@@ -34,9 +37,9 @@ class _InventoryListState extends State<InventoryList> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
   final TripController tripController = Get.put(TripController());
   final FetchPackageController fetchPackageController =
-      Get.put(FetchPackageController());
+  Get.put(FetchPackageController());
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
 
   static const Map<String, String> tripMessages = {
     '0': 'Your selected trip type has changed to Outstation One Trip.',
@@ -64,6 +67,7 @@ class _InventoryListState extends State<InventoryList> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await loadTripCode(context);
 // ✅ prevents setState on disposed widget
+
       setState(() {
         isLoading = false;
       });
@@ -101,7 +105,7 @@ class _InventoryListState extends State<InventoryList> {
                 SizedBox(width: 10),
                 Text('Trip Updated',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
             content: Padding(
@@ -171,7 +175,8 @@ class _InventoryListState extends State<InventoryList> {
 
   num getFivePercentOfBaseFare(num baseFare) => baseFare * 0.05;
   final DropPlaceSearchController dropPlaceSearchController =
-      Get.put(DropPlaceSearchController());
+  Get.put(DropPlaceSearchController());
+  final CurrencyController currencyController = Get.find<CurrencyController>();
 
   @override
   Widget build(BuildContext context) {
@@ -244,141 +249,143 @@ class _InventoryListState extends State<InventoryList> {
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        body: isLoading
+        body: (isLoading)
             ? FullPageShimmer()
             : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BookingTopBar(),
-                      Column(
-                        children: [
-                          // ✅ Highlighted card
-                          SelectedPackageCard(
-                              controller: fetchPackageController),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 16,
-                      ),
-                      Expanded(
-                        child: Obx(() {
-                          final isIndia =
-                              searchCabInventoryController.indiaData.value !=
-                                  null;
-                          final indiaCarTypes = searchCabInventoryController
-                                  .indiaData
-                                  .value
-                                  ?.result
-                                  ?.inventory
-                                  ?.carTypes ??
-                              [];
-                          final globalList = searchCabInventoryController
-                                  .globalData.value?.result ??
-                              [];
-
-                          final isEmptyList =
-                              (isIndia && indiaCarTypes.isEmpty) ||
-                                  (!isIndia && globalList.isEmpty);
-
-                          if (isEmptyList) {
-                            return const Center(
-                              child: Text(
-                                "No cabs available on this route",
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w500),
-                              ),
-                            );
-                          }
-
-                          if ((placeSearchController
-                                  .getPlacesLatLng.value?.country !=
-                              dropPlaceSearchController
-                                  .dropLatLng.value?.country) && ((indiaCarTypes.first.tripType !='LOCAL_RENTAL'))) {
-                            return const Center(
-                              child: Text(
-                                "No cabs available on this route, Please search on same country for pickup and drop",
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w500),
-                              ),
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              Text.rich(
-                                TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF333333),
-                                  ),
-                                  children: [
-                                    TextSpan(text: 'Rates for '),
-                                    TextSpan(
-                                      text:
-                                          '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1]??'0')} Kms',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(text: ' approx distance | '),
-                                    TextSpan(
-                                      text: '4.5 hr(s)',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(text: ' approx time'),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: isIndia
-                                      ? indiaCarTypes.length
-                                      : globalList.length,
-                                  itemBuilder: (context, index) {
-                                    if (isIndia) {
-                                      final carType = indiaCarTypes[index];
-                                      return _buildIndiaCard(carType);
-                                    } else {
-                                      final globalListItem = globalList[index];
-                                      final tripDetails = globalListItem
-                                          .firstWhereOrNull(
-                                              (e) => e.tripDetails != null)
-                                          ?.tripDetails;
-                                      final fareDetails = globalListItem
-                                          .firstWhereOrNull(
-                                              (e) => e.fareDetails != null)
-                                          ?.fareDetails;
-                                      final vehicleDetails = globalListItem
-                                          .firstWhereOrNull(
-                                              (e) => e.vehicleDetails != null)
-                                          ?.vehicleDetails;
-
-                                      if (tripDetails == null ||
-                                          fareDetails == null ||
-                                          vehicleDetails == null) {
-                                        return const SizedBox();
-                                      }
-
-                                      return _buildGlobalCard(tripDetails,
-                                          fareDetails, vehicleDetails);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      )
-                    ],
-                  ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BookingTopBar(),
+                Column(
+                  children: [
+                    // ✅ Highlighted card
+                    SelectedPackageCard(
+                        controller: fetchPackageController),
+                  ],
                 ),
-              ),
+                SizedBox(
+                  height: 16,
+                ),
+                Expanded(
+                  child: Obx(() {
+                    final isIndia =
+                        searchCabInventoryController.indiaData.value !=
+                            null;
+                    final indiaCarTypes = searchCabInventoryController
+                        .indiaData
+                        .value
+                        ?.result
+                        ?.inventory
+                        ?.carTypes ??
+                        [];
+                    final globalList = searchCabInventoryController
+                        .globalData.value?.result ??
+                        [];
+
+                    final isEmptyList =
+                        (isIndia && indiaCarTypes.isEmpty) ||
+                            (!isIndia && globalList.isEmpty);
+
+                    if (isEmptyList) {
+                      return const Center(
+                        child: Text(
+                          "No cabs available on this route",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      );
+                    }
+
+                    if ((placeSearchController
+                        .getPlacesLatLng.value?.country !=
+                        dropPlaceSearchController
+                            .dropLatLng.value?.country) &&
+                        ((indiaCarTypes.first.tripType !=
+                            'LOCAL_RENTAL'))) {
+                      return const Center(
+                        child: Text(
+                          "No cabs available on this route, Please search on same country for pickup and drop",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF333333),
+                            ),
+                            children: [
+                              TextSpan(text: 'Rates for '),
+                              TextSpan(
+                                text:
+                                '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0')} Kms',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: ' approx distance | '),
+                              TextSpan(
+                                text: '4.5 hr(s)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: ' approx time'),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: isIndia
+                                ? indiaCarTypes.length
+                                : globalList.length,
+                            itemBuilder: (context, index) {
+                              if (isIndia) {
+                                final carType = indiaCarTypes[index];
+                                return _buildIndiaCard(carType);
+                              } else {
+                                final globalListItem = globalList[index];
+                                final tripDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.tripDetails != null)
+                                    ?.tripDetails;
+                                final fareDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.fareDetails != null)
+                                    ?.fareDetails;
+                                final vehicleDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.vehicleDetails != null)
+                                    ?.vehicleDetails;
+
+                                if (tripDetails == null ||
+                                    fareDetails == null ||
+                                    vehicleDetails == null) {
+                                  return const SizedBox();
+                                }
+
+                                return _buildGlobalCard(tripDetails,
+                                    fareDetails, vehicleDetails);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -387,7 +394,9 @@ class _InventoryListState extends State<InventoryList> {
     final tripCode = searchCabInventoryController
         .indiaData.value?.result?.tripType?.currentTripCode;
     final CabBookingController cabBookingController =
-        Get.put(CabBookingController());
+    Get.put(CabBookingController());
+    final CurrencyController currencyController =
+    Get.put(CurrencyController());
     final tripTypeDetails =
         searchCabInventoryController.indiaData.value?.result?.tripType;
 
@@ -406,8 +415,8 @@ class _InventoryListState extends State<InventoryList> {
         fontSize: 12,
       ),
     );
-    Text(
-      '₹${originalPrice.toStringAsFixed(0)}',
+    buildConvertedPrice(
+      originalPrice.toDouble(),
       style: TextStyle(
         decoration: TextDecoration.lineThrough,
         color: Colors.grey,
@@ -437,7 +446,11 @@ class _InventoryListState extends State<InventoryList> {
           "pickUpDateTime": tripTypeDetails?.startTime?.toIso8601String() ?? '',
           "dropDateTime": tripTypeDetails?.endTime?.toIso8601String() ?? '',
           // "totalKilometers": searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? tripTypeDetails?.distanceBooked,
-          "totalKilometers": tripTypeDetails?.distanceBooked??int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1]??'0'),
+          "totalKilometers": tripTypeDetails?.distanceBooked ??
+              int.parse(searchCabInventoryController
+                  .indiaData.value?.result?.tripType?.packageId
+                  ?.split("_")[1] ??
+                  '0'),
           "package_id": tripTypeDetails?.packageId ?? '',
           "source": {
             "address": tripTypeDetails?.source?.address ?? '',
@@ -455,7 +468,7 @@ class _InventoryListState extends State<InventoryList> {
           // Conditional key based on global/india
           "trip_type_details": {
             "basic_trip_type":
-                tripTypeDetails?.tripTypeDetails?.basicTripType ?? '',
+            tripTypeDetails?.tripTypeDetails?.basicTripType ?? '',
             "airport_type": tripTypeDetails?.tripTypeDetails?.airportType ?? ''
           },
         };
@@ -538,7 +551,7 @@ class _InventoryListState extends State<InventoryList> {
                                       color: AppColors.mainButtonBg, width: 1),
                                   foregroundColor: Colors.white,
                                   tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
+                                  MaterialTapTargetSize.shrinkWrap,
                                   visualDensity: VisualDensity.compact,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
@@ -597,14 +610,15 @@ class _InventoryListState extends State<InventoryList> {
                                           color: Colors.green.shade700,
                                           fontWeight: FontWeight.w600)),
                                   SizedBox(width: 6),
-                                  Text(
-                                    "₹${originalPrice}",
+                                  buildConvertedPrice(
+                                    originalPrice.toDouble(),
+                                    prefix: currencyController.selectedCurrency.value.symbol,
                                     style: TextStyle(
                                       decoration: TextDecoration.lineThrough,
                                       color: Colors.grey,
-                                      fontSize: 13,
+                                      fontSize: 12,
                                     ),
-                                  ),
+                                  )
                                 ],
                               ),
                               SizedBox(height: 2),
@@ -612,8 +626,9 @@ class _InventoryListState extends State<InventoryList> {
                                 crossAxisAlignment: CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [
-                                  Text(
-                                    "₹ ${carType.fareDetails?.baseFare?.toInt() ?? ''}",
+                                  buildConvertedPrice(
+                                    carType.fareDetails?.baseFare?.toDouble()??0.0,
+                                    prefix: currencyController.selectedCurrency.value.symbol,
                                     style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16),
@@ -621,11 +636,30 @@ class _InventoryListState extends State<InventoryList> {
                                 ],
                               ),
                               SizedBox(height: 4),
-                              Text(
-                                  '+ ${getFivePercentOfBaseFare(carType.fareDetails?.baseFare?.toInt() ?? 0).truncate()} (taxes & charges)',
-                                  style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 11)),
-                            ],
+                              FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  getFivePercentOfBaseFare(carType.fareDetails?.baseFare ?? 0).toDouble(),
+                                ),
+                                builder: (context, snapshot) {
+                                  // 👇 Global + local loading check
+
+                                  if (snapshot.hasError) {
+                                    return Text(
+                                      "Error in conversion",
+                                      style: TextStyle(color: Colors.red, fontSize: 11),
+                                    );
+                                  }
+
+                                  final convertedTaxes = snapshot.data ??
+                                      getFivePercentOfBaseFare(carType.fareDetails?.baseFare ?? 0).toDouble();
+
+                                  return Text(
+                                    '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                                  );
+                                },
+                              )
+                ]
                           ),
                         ],
                       ),
@@ -785,7 +819,7 @@ class _InventoryListState extends State<InventoryList> {
                                     foregroundColor: Colors.white,
                                     backgroundColor: AppColors.mainButtonBg,
                                     tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                                    MaterialTapTargetSize.shrinkWrap,
                                     visualDensity: VisualDensity.compact,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6),
@@ -813,47 +847,47 @@ class _InventoryListState extends State<InventoryList> {
                                       "vehicleId": null,
                                       "trip_type": carType.tripType,
                                       "pickUpDateTime": tripTypeDetails
-                                              ?.startTime
-                                              ?.toIso8601String() ??
+                                          ?.startTime
+                                          ?.toIso8601String() ??
                                           '',
                                       "dropDateTime": tripTypeDetails?.endTime
-                                              ?.toIso8601String() ??
+                                          ?.toIso8601String() ??
                                           '',
                                       "totalKilometers":
-                                          tripTypeDetails?.distanceBooked ?? 0,
+                                      tripTypeDetails?.distanceBooked ?? 0,
                                       "package_id":
-                                          tripTypeDetails?.packageId ?? '',
+                                      tripTypeDetails?.packageId ?? '',
                                       "source": {
                                         "address":
-                                            tripTypeDetails?.source?.address ??
-                                                '',
+                                        tripTypeDetails?.source?.address ??
+                                            '',
                                         "latitude":
-                                            tripTypeDetails?.source?.latitude,
+                                        tripTypeDetails?.source?.latitude,
                                         "longitude":
-                                            tripTypeDetails?.source?.longitude,
+                                        tripTypeDetails?.source?.longitude,
                                         "city": tripTypeDetails?.source?.city
                                       },
                                       "destination": {
                                         "address": tripTypeDetails
-                                                ?.destination?.address ??
+                                            ?.destination?.address ??
                                             '',
                                         "latitude": tripTypeDetails
                                             ?.destination?.latitude,
                                         "longitude": tripTypeDetails
                                             ?.destination?.longitude,
                                         "city":
-                                            tripTypeDetails?.destination?.city
+                                        tripTypeDetails?.destination?.city
                                       },
                                       "tripCode": tripCode,
                                       // Conditional key based on global/india
                                       "trip_type_details": {
                                         "basic_trip_type": tripTypeDetails
-                                                ?.tripTypeDetails
-                                                ?.basicTripType ??
+                                            ?.tripTypeDetails
+                                            ?.basicTripType ??
                                             '',
                                         "airport_type": tripTypeDetails
-                                                ?.tripTypeDetails
-                                                ?.airportType ??
+                                            ?.tripTypeDetails
+                                            ?.airportType ??
                                             ''
                                       },
                                     };
@@ -1008,12 +1042,14 @@ class _InventoryListState extends State<InventoryList> {
 
   Widget _buildGlobalCard(GlobalTripDetails tripDetails,
       GlobalFareDetails fareDetails, GlobalVehicleDetails vehicleDetails) {
+    final CurrencyController currencyController =
+    Get.put(CurrencyController());
     return InkWell(
       splashColor: Colors.transparent,
       onTap: () async {
         final country = await StorageServices.instance.read('country');
         final CabBookingController cabBookingController =
-            Get.put(CabBookingController());
+        Get.put(CabBookingController());
         final Map<String, dynamic> requestData = {
           "isGlobal": false,
           "country": country,
@@ -1030,15 +1066,22 @@ class _InventoryListState extends State<InventoryList> {
           // Conditional key based on global/india
           "trip_type_details": {
             "basic_trip_type": searchCabInventoryController
-                    .globalData.value?.tripTypeDetails?.basicTripType ??
+                .globalData.value?.tripTypeDetails?.basicTripType ??
                 '',
             "airport_type": searchCabInventoryController
-                    .globalData.value?.tripTypeDetails?.airportType ??
+                .globalData.value?.tripTypeDetails?.airportType ??
                 ''
           },
         };
         cabBookingController.fetchBookingData(
-            country: country ?? '', requestData: requestData, context: context);
+            country: country ?? '', requestData: requestData, context: context).then((value){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BookingDetailsFinal(totalKms: tripDetails.totalDistance??0.0, endTime: tripDetails.dropDateTime,),
+            ),
+          );
+        });
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: 0.0),
@@ -1187,7 +1230,7 @@ class _InventoryListState extends State<InventoryList> {
                                       color: Colors.grey[700])),
                               SizedBox(width: 8),
                               Text(
-                                  "• ${vehicleDetails.checkinLuggageCapacity} bags",
+                                  "• ${vehicleDetails.checkInLuggageCapacity} bags",
                                   style: TextStyle(
                                       fontWeight: FontWeight.w400,
                                       fontSize: 10,
@@ -1224,18 +1267,42 @@ class _InventoryListState extends State<InventoryList> {
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Text(
-                              "USD ${fareDetails.baseFare?.toStringAsFixed(2) ?? ''}",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 16),
+                            FutureBuilder<double>(
+                              future: currencyController.convertPrice(
+                                  tripDetails.totalFare?.toDouble() ?? 0),
+                              builder: (context, snapshot) {
+                                final convertedValue = snapshot.data ?? tripDetails.totalFare;
+                                return Text(
+                                  '${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600, fontSize: 16),
+                                );
+                              },
                             ),
+                            // Text(
+                            //   "USD ${fareDetails.baseFare?.toStringAsFixed(2) ?? ''}",
+                            //   style: TextStyle(
+                            //       fontWeight: FontWeight.w600, fontSize: 16),
+                            // ),
                           ],
                         ),
                         SizedBox(height: 4),
-                        Text(
-                            '+ ${getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).truncate()} (taxes & charges)',
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 10)),
+                        FutureBuilder<double>(
+                          future: currencyController.convertPrice(
+                              getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).toDouble()),
+                          builder: (context, snapshot) {
+                            final convertedTaxes = snapshot.data ?? getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).toDouble();
+                            return Text(
+                              '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                            );
+                          },
+                        ),
+
+                        // Text(
+                        //     '+ ${getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).truncate()} (taxes & charges)',
+                        //     style: TextStyle(
+                        //         color: Colors.grey[600], fontSize: 10)),
                       ],
                     )
                   ],
@@ -1248,119 +1315,148 @@ class _InventoryListState extends State<InventoryList> {
     );
   }
 
+  Widget buildConvertedPrice(
+      double value, {
+        TextStyle? style,
+        bool strikeThrough = false,
+        String prefix = "₹",
+      }) {
+    final CurrencyController currencyController = Get.put(CurrencyController());
+
+    return FutureBuilder<double>(
+      future: currencyController.convertPrice(value),
+      builder: (context, snapshot) {
+        final converted = snapshot.data ?? value;
+        return Text(
+          "$prefix${converted.toStringAsFixed(2)}",
+          style: style?.copyWith(
+            decoration: strikeThrough
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
+          ) ??
+              TextStyle(
+                decoration: strikeThrough
+                    ? TextDecoration.lineThrough
+                    : TextDecoration.none,
+              ),
+        );
+      },
+    );
+  }
+
 // Widget _buildGlobalCard(GlobalTripDetails tripDetails, GlobalFareDetails fareDetails, GlobalVehicleDetails vehicleDetails) {
-  //   return Padding(
-  //     padding: const EdgeInsets.only(bottom: 16.0),
-  //     child: Card(
-  //       color: Colors.white,
-  //       elevation: 0,
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.circular(12),
-  //         side: BorderSide(color: AppColors.greyBorder1, width: 1),
-  //       ),
-  //       child: Padding(
-  //         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-  //         child: Column(
-  //           children: [
-  //             Row(
-  //               crossAxisAlignment: CrossAxisAlignment.end,
-  //               children: [
-  //                 Image.network(
-  //                   vehicleDetails?.vehicleImageLink??'',
-  //                   width: 66,
-  //                   height: 66,
-  //                   fit: BoxFit.contain,
-  //                   errorBuilder: (context, error, stackTrace) {
-  //                     return Image.asset(
-  //                       'assets/images/inventory_car.png',
-  //                       width: 66,
-  //                       height: 66,
-  //                       fit: BoxFit.contain,
-  //                     );
-  //                   },
-  //                 ),                    const SizedBox(width: 16),
-  //                 Expanded(
-  //                   child: Column(
-  //                     crossAxisAlignment: CrossAxisAlignment.start,
-  //                     children: [
-  //                       Text(vehicleDetails.title ?? '', style: CommonFonts.bodyText1Bold),
-  //                       const SizedBox(height: 4),
-  //                       Row(
-  //                         children: [
-  //                           Text(vehicleDetails.rating.toString(), style: CommonFonts.bodyText1),
-  //                           const SizedBox(width: 4),
-  //                           Icon(Icons.star, color: AppColors.yellow1, size: 12),
-  //                           const SizedBox(width: 4),
-  //                           Text('${vehicleDetails.reviews.toString()} Reviews', style: CommonFonts.bodyText1),
-  //                         ],
-  //                       ),
-  //                       const SizedBox(height: 6),
-  //                       Row(
-  //                         children: [
-  //                           Icon(Icons.luggage_outlined, size: 13),
-  //                           const SizedBox(width: 4),
-  //                           Text('${vehicleDetails.checkinLuggageCapacity} Check-in Luggage', style: CommonFonts.bodyTextXS),
-  //                           const SizedBox(width: 8),
-  //                           Icon(Icons.airline_seat_recline_extra, size: 13),
-  //                           const SizedBox(width: 4),
-  //                           Text('${vehicleDetails.passengerCapacity} Passenger', style: CommonFonts.bodyTextXS),
-  //                         ],
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //                 const Icon(Icons.info_outline, size: 16),
-  //               ],
-  //             ),
-  //             const Divider(height: 16),
-  //             Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //               children: [
-  //                 Column(
-  //                   crossAxisAlignment: CrossAxisAlignment.start,
-  //                   children: [
-  //                     Text("USD ${tripDetails.totalFare.toString()}", style: CommonFonts.greyText3Bold),
-  //                     Text('+ ${getFivePercentOfBaseFare(tripDetails.totalFare).truncate()} (taxes & charges)', style: CommonFonts.greyText3),
-  //                     const SizedBox(height: 6),
-  //                     Text(
-  //                       'Book Now and Get Rs ${(getFakePriceWithPercent(tripDetails.totalFare ?? 0, 20).truncate()) - (tripDetails.totalFare ?? 0)} OFF*',
-  //                       style: CommonFonts.organgeText1,
-  //                     ),
-  //                   ],
-  //                 ),
-  //                 MainButton(text: 'Book Now', onPressed: () async{
-  //                   final country = await StorageServices.instance
-  //                       .read('country');
-  //                   final CabBookingController cabBookingController = Get.put(CabBookingController());
-  //                   final Map<String, dynamic> requestData = {
-  //                     "isGlobal": false,
-  //                     "country": country,
-  //                     "routeInventoryId": fareDetails.id,
-  //                     "vehicleId": vehicleDetails.id,
-  //                     "trip_type": fareDetails.tripType,
-  //                     "pickUpDateTime": tripDetails?.pickupDateTime??'',
-  //                     "dropDateTime": tripDetails.dropDateTime??'',
-  //                     "totalKilometers": tripDetails.totalDistance??0,
-  //                     "package_id": null,
-  //                     "source": {},
-  //                     "destination": {},
-  //                     "tripCode": tripDetails.currentTripCode,
-  //                     // Conditional key based on global/india
-  //                     "trip_type_details": {
-  //                       "basic_trip_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.basicTripType??'',
-  //                       "airport_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.airportType??''
-  //                     },
-  //                   };
-  //                   cabBookingController.fetchBookingData(country: country??'', requestData: requestData, context: context);
-  //                 }),
-  //               ],
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
+//   return Padding(
+//     padding: const EdgeInsets.only(bottom: 16.0),
+//     child: Card(
+//       color: Colors.white,
+//       elevation: 0,
+//       shape: RoundedRectangleBorder(
+//         borderRadius: BorderRadius.circular(12),
+//         side: BorderSide(color: AppColors.greyBorder1, width: 1),
+//       ),
+//       child: Padding(
+//         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+//         child: Column(
+//           children: [
+//             Row(
+//               crossAxisAlignment: CrossAxisAlignment.end,
+//               children: [
+//                 Image.network(
+//                   vehicleDetails?.vehicleImageLink??'',
+//                   width: 66,
+//                   height: 66,
+//                   fit: BoxFit.contain,
+//                   errorBuilder: (context, error, stackTrace) {
+//                     return Image.asset(
+//                       'assets/images/inventory_car.png',
+//                       width: 66,
+//                       height: 66,
+//                       fit: BoxFit.contain,
+//                     );
+//                   },
+//                 ),                    const SizedBox(width: 16),
+//                 Expanded(
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Text(vehicleDetails.title ?? '', style: CommonFonts.bodyText1Bold),
+//                       const SizedBox(height: 4),
+//                       Row(
+//                         children: [
+//                           Text(vehicleDetails.rating.toString(), style: CommonFonts.bodyText1),
+//                           const SizedBox(width: 4),
+//                           Icon(Icons.star, color: AppColors.yellow1, size: 12),
+//                           const SizedBox(width: 4),
+//                           Text('${vehicleDetails.reviews.toString()} Reviews', style: CommonFonts.bodyText1),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 6),
+//                       Row(
+//                         children: [
+//                           Icon(Icons.luggage_outlined, size: 13),
+//                           const SizedBox(width: 4),
+//                           Text('${vehicleDetails.checkinLuggageCapacity} Check-in Luggage', style: CommonFonts.bodyTextXS),
+//                           const SizedBox(width: 8),
+//                           Icon(Icons.airline_seat_recline_extra, size: 13),
+//                           const SizedBox(width: 4),
+//                           Text('${vehicleDetails.passengerCapacity} Passenger', style: CommonFonts.bodyTextXS),
+//                         ],
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//                 const Icon(Icons.info_outline, size: 16),
+//               ],
+//             ),
+//             const Divider(height: 16),
+//             Row(
+//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//               children: [
+//                 Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text("USD ${tripDetails.totalFare.toString()}", style: CommonFonts.greyText3Bold),
+//                     Text('+ ${getFivePercentOfBaseFare(tripDetails.totalFare).truncate()} (taxes & charges)', style: CommonFonts.greyText3),
+//                     const SizedBox(height: 6),
+//                     Text(
+//                       'Book Now and Get Rs ${(getFakePriceWithPercent(tripDetails.totalFare ?? 0, 20).truncate()) - (tripDetails.totalFare ?? 0)} OFF*',
+//                       style: CommonFonts.organgeText1,
+//                     ),
+//                   ],
+//                 ),
+//                 MainButton(text: 'Book Now', onPressed: () async{
+//                   final country = await StorageServices.instance
+//                       .read('country');
+//                   final CabBookingController cabBookingController = Get.put(CabBookingController());
+//                   final Map<String, dynamic> requestData = {
+//                     "isGlobal": false,
+//                     "country": country,
+//                     "routeInventoryId": fareDetails.id,
+//                     "vehicleId": vehicleDetails.id,
+//                     "trip_type": fareDetails.tripType,
+//                     "pickUpDateTime": tripDetails?.pickupDateTime??'',
+//                     "dropDateTime": tripDetails.dropDateTime??'',
+//                     "totalKilometers": tripDetails.totalDistance??0,
+//                     "package_id": null,
+//                     "source": {},
+//                     "destination": {},
+//                     "tripCode": tripDetails.currentTripCode,
+//                     // Conditional key based on global/india
+//                     "trip_type_details": {
+//                       "basic_trip_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.basicTripType??'',
+//                       "airport_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.airportType??''
+//                     },
+//                   };
+//                   cabBookingController.fetchBookingData(country: country??'', requestData: requestData, context: context);
+//                 }),
+//               ],
+//             ),
+//           ],
+//         ),
+//       ),
+//     ),
+//   );
+// }
 }
 
 // Booking Top Bar
@@ -1398,7 +1494,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
   }
 
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   String? tripCode;
   String? previousCode;
 
@@ -1642,7 +1738,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
             child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Obx(
-                  () => Column(
+                      () => Column(
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
@@ -1780,17 +1876,17 @@ class ShimmerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          height: height,
-          width: width,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
+    baseColor: Colors.grey[300]!,
+    highlightColor: Colors.grey[100]!,
+    child: Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+    ),
+  );
 }
 
 class StaticBookingTopBar extends StatelessWidget {
@@ -1906,7 +2002,7 @@ class StaticBookingTopBar extends StatelessWidget {
 class SelectedPackageCard extends StatelessWidget {
   final FetchPackageController controller;
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
 
   SelectedPackageCard({super.key, required this.controller});
 
@@ -1965,3 +2061,4 @@ class SelectedPackageCard extends StatelessWidget {
     });
   }
 }
+

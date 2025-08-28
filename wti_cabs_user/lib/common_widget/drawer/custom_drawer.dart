@@ -4,8 +4,10 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/select_currency/select_currency.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../core/services/cache_services.dart';
@@ -22,6 +24,7 @@ class CustomDrawerSheet extends StatefulWidget {
 
 class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
   bool isLogin = false;
+  final CurrencyController currencyController = Get.put(CurrencyController());
   @override
   void initState() {
     // TODO: implement initState
@@ -310,36 +313,44 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                 ),
 
                 /// Drawer Items
-                _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/india_logo.svg',
-                    height: 16,
-                    width: 24,
-                  ),
-                  title: 'Country',
-                  subtitle: 'India',
-                  onTap: () {},
-                ),
-                _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/payments.svg',
-                    height: 20,
-                    width: 20,
-                  ),
-                  title: 'Currency',
-                  subtitle: 'Select Currency',
-                  onTap: () {},
-                ),
-                _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/refer.svg',
-                    height: 20,
-                    width: 20,
-                  ),
-                  title: 'Refer & Earn',
-                  subtitle: 'Driving Licence, Passport, ID etc.',
-                  onTap: () {},
-                ),
+                Obx((){
+                  return _buildDrawerItem(
+                    icon: SvgPicture.asset(
+                      'assets/images/india_logo.svg',
+                      height: 16,
+                      width: 24,
+                    ),
+                    title: 'Country',
+                    subtitle: currencyController.country.value,
+                    onTap: () {},
+                  );
+                }),
+
+                Obx((){
+                  return _buildDrawerItem(
+                    icon: SvgPicture.asset(
+                      'assets/images/payments.svg',
+                      height: 20,
+                      width: 20,
+                    ),
+                    title: 'Currency',
+                    subtitle: currencyController.selectedCurrency.value.code,
+                    onTap: () {
+                      GoRouter.of(context).push(AppRoutes.selectCurrency);
+                    },
+                  );
+                }),
+
+                // _buildDrawerItem(
+                //   icon: SvgPicture.asset(
+                //     'assets/images/refer.svg',
+                //     height: 20,
+                //     width: 20,
+                //   ),
+                //   title: 'Refer & Earn',
+                //   subtitle: 'Driving Licence, Passport, ID etc.',
+                //   onTap: () {},
+                // ),
                 _buildDrawerItem(
                   icon: SvgPicture.asset(
                     'assets/images/language.svg',
@@ -350,26 +361,26 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                   subtitle: 'English',
                   onTap: () {},
                 ),
-                _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/docs.svg',
-                    height: 20,
-                    width: 20,
-                  ),
-                  title: 'Documents',
-                  subtitle: 'Driving Licence, Passport, ID etc.',
-                  onTap: () {},
-                ),
-                _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/legal.svg',
-                    height: 20,
-                    width: 20,
-                  ),
-                  title: 'Legal',
-                  subtitle: 'Privacy Policy, Terms & Conditions',
-                  onTap: () {},
-                ),
+                // _buildDrawerItem(
+                //   icon: SvgPicture.asset(
+                //     'assets/images/docs.svg',
+                //     height: 20,
+                //     width: 20,
+                //   ),
+                //   title: 'Documents',
+                //   subtitle: 'Driving Licence, Passport, ID etc.',
+                //   onTap: () {},
+                // ),
+                // _buildDrawerItem(
+                //   icon: SvgPicture.asset(
+                //     'assets/images/legal.svg',
+                //     height: 20,
+                //     width: 20,
+                //   ),
+                //   title: 'Legal',
+                //   subtitle: 'Privacy Policy, Terms & Conditions',
+                //   onTap: () {},
+                // ),
                 isLogin == true ? _buildDrawerItem(
                   icon: SvgPicture.asset(
                     'assets/images/logout.svg',

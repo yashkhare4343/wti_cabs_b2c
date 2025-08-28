@@ -11,6 +11,7 @@ import 'package:wti_cabs_user/screens/offers/offers.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_failure.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_success.dart';
 import 'package:wti_cabs_user/screens/profile/profile.dart';
+import 'package:wti_cabs_user/screens/select_currency/select_currency.dart';
 import 'package:wti_cabs_user/screens/select_location/airport/airport_select_pickup.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
@@ -94,6 +95,10 @@ class AppPages{
             final bookingMap = state.extra as Map<String, dynamic>;
             return CancelledBookingScreen(booking: bookingMap);
           },
+        ),
+        GoRoute(
+          path: AppRoutes.selectCurrency,
+          builder: (context, state) => SelectCurrencyScreen(),
         ),
 
       ],

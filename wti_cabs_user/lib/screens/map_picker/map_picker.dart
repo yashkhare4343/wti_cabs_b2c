@@ -102,6 +102,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         final place = placemarks.first;
         selectedAddress = place.name ?? 'Unknown location';
         bookingRideController.prefilled.value = selectedAddress;
+
+        print('place name : ${place.name}, street :${place.street},address :${place.subLocality}, locality :${place.locality}, administrative :${place.administrativeArea} country: ${place.country},lat: ${latLng.latitude},lng: ${latLng.longitude} ');
       } else {
         selectedAddress = 'Address not found';
       }
@@ -143,7 +145,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         place.country,
       ].where((e) => e?.isNotEmpty ?? false).join(', ');
 
-      await placeSearchController.searchPlaces(fullAddress, context);
+      await placeSearchController.searchPlaces('${place.subLocality} ${place.locality}' ??'', context);
       final suggestion = placeSearchController.suggestions.first;
 
       bookingRideController.prefilled.value = suggestion.primaryText;

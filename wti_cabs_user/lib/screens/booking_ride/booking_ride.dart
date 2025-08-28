@@ -37,11 +37,11 @@ class BookingRide extends StatefulWidget {
 
 class _BookingRideState extends State<BookingRide> {
   final FetchPackageController fetchPackageController =
-      Get.put(FetchPackageController());
+  Get.put(FetchPackageController());
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+  Get.put(PlaceSearchController());
 
   @override
   void initState() {
@@ -84,7 +84,7 @@ class _BookingRideState extends State<BookingRide> {
               Container(
                 height: 56,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: Colors.white,
                 alignment: Alignment.centerLeft,
                 child: Row(
@@ -94,7 +94,7 @@ class _BookingRideState extends State<BookingRide> {
                         GoRouter.of(context).go(AppRoutes.initialPage);
                       },
                       child:
-                          const Icon(Icons.arrow_back, color: AppColors.blue4),
+                      const Icon(Icons.arrow_back, color: AppColors.blue4),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -110,7 +110,7 @@ class _BookingRideState extends State<BookingRide> {
               ),
               Flexible(
                 child:
-                    Container(color: Colors.white, child: CustomTabBarDemo()),
+                Container(color: Colors.white, child: CustomTabBarDemo()),
               ),
             ],
           ),
@@ -129,7 +129,7 @@ class CustomTabBarDemo extends StatefulWidget {
 
 class _CustomTabBarDemoState extends State<CustomTabBarDemo> {
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final tabs = ["Airport", "Outstation", "Rentals"];
 
   @override
@@ -169,12 +169,12 @@ class _CustomTabBarDemoState extends State<CustomTabBarDemo> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: isSelected
                           ? [
-                              BoxShadow(
-                                color: const Color(0x1F002CC0),
-                                offset: const Offset(8, 4),
-                                blurRadius: 12,
-                              ),
-                            ]
+                        BoxShadow(
+                          color: const Color(0x1F002CC0),
+                          offset: const Offset(8, 4),
+                          blurRadius: 12,
+                        ),
+                      ]
                           : [],
                     ),
                     child: Text(
@@ -221,13 +221,13 @@ class _OutStationState extends State<OutStation> {
   String selectedTrip = 'oneWay';
 
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+  Get.put(PlaceSearchController());
   final DropPlaceSearchController dropPlaceSearchController =
-      Get.put(DropPlaceSearchController());
+  Get.put(DropPlaceSearchController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
   final RxString selectedField = ''.obs;
 
   late final TextEditingController pickupController;
@@ -535,72 +535,72 @@ class _OutStationState extends State<OutStation> {
                 Image.asset('assets/images/circle.png', width: 40, height: 120),
                 Expanded(
                   child: Obx(() => Column(
-                        children: [
-                          BookingTextFormField(
-                            hintText: 'Enter Pickup Location',
-                            controller: pickupController,
-                            errorText: (() {
-                              final pickupId =
-                                  placeSearchController.placeId.value;
-                              final dropId =
-                                  dropPlaceSearchController.dropPlaceId.value;
+                    children: [
+                      BookingTextFormField(
+                        hintText: 'Enter Pickup Location',
+                        controller: pickupController,
+                        errorText: (() {
+                          final pickupId =
+                              placeSearchController.placeId.value;
+                          final dropId =
+                              dropPlaceSearchController.dropPlaceId.value;
 
-                              if (pickupId.isNotEmpty &&
-                                  dropId.isNotEmpty &&
-                                  pickupId == dropId) {
-                                return "Pickup and Drop cannot be the same";
-                              }
+                          if (pickupId.isNotEmpty &&
+                              dropId.isNotEmpty &&
+                              pickupId == dropId) {
+                            return "Pickup and Drop cannot be the same";
+                          }
 
-                              if (placeSearchController
-                                          .findCntryDateTimeResponse
-                                          .value
-                                          ?.sourceInput ==
-                                      true ||
-                                  dropPlaceSearchController.dropDateTimeResponse
-                                          .value?.sourceInput ==
-                                      true) {
-                                return "We don't offer services from this region";
-                              }
+                          if (placeSearchController
+                              .findCntryDateTimeResponse
+                              .value
+                              ?.sourceInput ==
+                              true ||
+                              dropPlaceSearchController.dropDateTimeResponse
+                                  .value?.sourceInput ==
+                                  true) {
+                            return "We don't offer services from this region";
+                          }
 
-                              return null;
-                            })(),
-                            onTap: () => GoRouter.of(context)
-                                .push(AppRoutes.choosePickup),
-                          ),
-                          const SizedBox(height: 12),
-                          BookingTextFormField(
-                            hintText: 'Enter Drop Location',
-                            controller: dropController,
-                            errorText: (() {
-                              final pickupId =
-                                  placeSearchController.placeId.value;
-                              final dropId =
-                                  dropPlaceSearchController.dropPlaceId.value;
+                          return null;
+                        })(),
+                        onTap: () => GoRouter.of(context)
+                            .push(AppRoutes.choosePickup),
+                      ),
+                      const SizedBox(height: 12),
+                      BookingTextFormField(
+                        hintText: 'Enter Drop Location',
+                        controller: dropController,
+                        errorText: (() {
+                          final pickupId =
+                              placeSearchController.placeId.value;
+                          final dropId =
+                              dropPlaceSearchController.dropPlaceId.value;
 
-                              if (pickupId.isNotEmpty &&
-                                  dropId.isNotEmpty &&
-                                  pickupId == dropId) {
-                                return "Pickup and Drop cannot be the same";
-                              }
+                          if (pickupId.isNotEmpty &&
+                              dropId.isNotEmpty &&
+                              pickupId == dropId) {
+                            return "Pickup and Drop cannot be the same";
+                          }
 
-                              if (placeSearchController
-                                          .findCntryDateTimeResponse
-                                          .value
-                                          ?.destinationInputFalse ==
-                                      true ||
-                                  dropPlaceSearchController.dropDateTimeResponse
-                                          .value?.destinationInputFalse ==
-                                      true) {
-                                return "We don't offer services from this region";
-                              }
+                          if (placeSearchController
+                              .findCntryDateTimeResponse
+                              .value
+                              ?.destinationInputFalse ==
+                              true ||
+                              dropPlaceSearchController.dropDateTimeResponse
+                                  .value?.destinationInputFalse ==
+                                  true) {
+                            return "We don't offer services from this region";
+                          }
 
-                              return null;
-                            })(),
-                            onTap: () =>
-                                GoRouter.of(context).push(AppRoutes.chooseDrop),
-                          ),
-                        ],
-                      )),
+                          return null;
+                        })(),
+                        onTap: () =>
+                            GoRouter.of(context).push(AppRoutes.chooseDrop),
+                      ),
+                    ],
+                  )),
                 ),
                 Column(
                   children: [
@@ -652,7 +652,7 @@ class _OutStationState extends State<OutStation> {
 
                               // If drop is same day and violates 4hr rule, auto adjust
                               final minDrop =
-                                  updated.add(const Duration(hours: 4));
+                              updated.add(const Duration(hours: 4));
                               final drop =
                                   bookingRideController.localEndTime.value;
                               if (DateUtils.isSameDay(drop, updated) &&
@@ -684,14 +684,14 @@ class _OutStationState extends State<OutStation> {
                               bookingRideController.localStartTime.refresh();
 
                               final minAllowedDrop =
-                                  updatedPickup.add(const Duration(hours: 4));
+                              updatedPickup.add(const Duration(hours: 4));
                               final existingDrop =
                                   bookingRideController.localEndTime.value;
 
                               final isSameDay = DateUtils.isSameDay(
                                   updatedPickup, existingDrop);
                               final isDropBeforeMin =
-                                  existingDrop.isBefore(minAllowedDrop);
+                              existingDrop.isBefore(minAllowedDrop);
 
                               if (isSameDay && isDropBeforeMin) {
                                 updateLocalEndTime(minAllowedDrop);
@@ -708,7 +708,7 @@ class _OutStationState extends State<OutStation> {
                       DateTimePickerTile(
                         label: 'Drop Date',
                         initialDateTime: localEnd.isBefore(
-                                localStart.add(const Duration(hours: 4)))
+                            localStart.add(const Duration(hours: 4)))
                             ? localStart.add(const Duration(hours: 4))
                             : localEnd,
                         minimumDate: localStart.add(const Duration(hours: 4)),
@@ -718,7 +718,7 @@ class _OutStationState extends State<OutStation> {
                               .add(const Duration(hours: 4));
 
                           final updated =
-                              picked.isBefore(minDrop) ? minDrop : picked;
+                          picked.isBefore(minDrop) ? minDrop : picked;
 
                           updateLocalEndTime(updated);
                           bookingRideController.localEndTime.refresh();
@@ -732,36 +732,36 @@ class _OutStationState extends State<OutStation> {
             SizedBox(
               height: 12,
             ),
-      Obx(() {
-        final isInvalid = bookingRideController.isInvalidTime.value;
+            Obx(() {
+              final isInvalid = bookingRideController.isInvalidTime.value;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // error message
-            if (isInvalid)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Text(
-                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.redAccent,
-                  ),
-                  maxLines: 2,
-                ),
-              ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // error message
+                  if (isInvalid)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent,
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
 
-            ],
-        );
-      }),
+                ],
+              );
+            }),
             SizedBox(
               height: 28,
             ),
-             Padding(
-               padding: EdgeInsets.symmetric(horizontal: 16),
-               child: Obx(() {
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Obx(() {
                 final pickupId = placeSearchController.placeId.value;
                 final dropId = dropPlaceSearchController.dropPlaceId.value;
 
@@ -822,8 +822,8 @@ class _OutStationState extends State<OutStation> {
                     ),
                   ),
                 );
-                           }),
-             ),
+              }),
+            ),
           ],
         ),
       ),
@@ -881,7 +881,6 @@ class _OutStationState extends State<OutStation> {
     final isRoundTrip = selectedTrip != 'oneWay';
     print('yash pickup time : ${data['userDateTime']}');
 
-    GoRouter.of(context).pop();
 
     return {
       "timeOffSet": -offset,
@@ -972,11 +971,11 @@ class _OutStationState extends State<OutStation> {
   }
 
   Widget _verticalDivider() => Container(
-        height: 32,
-        width: 1,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        color: Colors.grey.withOpacity(0.3),
-      );
+    height: 32,
+    width: 1,
+    margin: const EdgeInsets.symmetric(horizontal: 4),
+    color: Colors.grey.withOpacity(0.3),
+  );
 }
 
 // airport cabs
@@ -989,13 +988,13 @@ class Rides extends StatefulWidget {
 
 class _RidesState extends State<Rides> {
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+  Get.put(PlaceSearchController());
   final DropPlaceSearchController dropPlaceSearchController =
-      Get.put(DropPlaceSearchController());
+  Get.put(DropPlaceSearchController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
   final ButtonStateController buttonStateController = Get.put(
     ButtonStateController(
       placeSearchController: Get.find<PlaceSearchController>(),
@@ -1251,80 +1250,80 @@ class _RidesState extends State<Rides> {
                 Image.asset('assets/images/circle.png', width: 40, height: 120),
                 Expanded(
                   child: Obx(() => Column(
-                        children: [
-                          BookingTextFormField(
-                            hintText: 'Enter Pickup Location',
-                            controller: ridePickupController,
-                            errorText: (() {
-                              final placeId =
-                                  placeSearchController.placeId.value;
-                              final dropId =
-                                  dropPlaceSearchController.dropPlaceId.value;
+                    children: [
+                      BookingTextFormField(
+                        hintText: 'Enter Pickup Location',
+                        controller: ridePickupController,
+                        errorText: (() {
+                          final placeId =
+                              placeSearchController.placeId.value;
+                          final dropId =
+                              dropPlaceSearchController.dropPlaceId.value;
 
-                              if (placeId.isNotEmpty &&
-                                  dropId.isNotEmpty &&
-                                  placeId == dropId) {
-                                return "Pickup and Drop cannot be the same";
-                              }
+                          if (placeId.isNotEmpty &&
+                              dropId.isNotEmpty &&
+                              placeId == dropId) {
+                            return "Pickup and Drop cannot be the same";
+                          }
 
-                              if (placeSearchController
-                                          .findCntryDateTimeResponse
-                                          .value
-                                          ?.sourceInput ==
-                                      true ||
-                                  dropPlaceSearchController.dropDateTimeResponse
-                                          .value?.sourceInput ==
-                                      true) {
-                                return "We don't offer services from this region";
-                              }
+                          if (placeSearchController
+                              .findCntryDateTimeResponse
+                              .value
+                              ?.sourceInput ==
+                              true ||
+                              dropPlaceSearchController.dropDateTimeResponse
+                                  .value?.sourceInput ==
+                                  true) {
+                            return "We don't offer services from this region";
+                          }
 
-                              return null;
-                            })(),
-                            onTap: () async {
-                              setState(() {
-                                ridePickupController.text =
-                                    bookingRideController.prefilled.value;
-                                rideDropController.text =
-                                    bookingRideController.prefilledDrop.value;
-                              });
-                              await GoRouter.of(context)
-                                  .push(AppRoutes.choosePickup);
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          BookingTextFormField(
-                            hintText: 'Enter Drop Location',
-                            controller: rideDropController,
-                            errorText: (() {
-                              final pickupId =
-                                  placeSearchController.placeId.value;
-                              final dropId =
-                                  dropPlaceSearchController.dropPlaceId.value;
+                          return null;
+                        })(),
+                        onTap: () async {
+                          setState(() {
+                            ridePickupController.text =
+                                bookingRideController.prefilled.value;
+                            rideDropController.text =
+                                bookingRideController.prefilledDrop.value;
+                          });
+                          await GoRouter.of(context)
+                              .push(AppRoutes.choosePickup);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      BookingTextFormField(
+                        hintText: 'Enter Drop Location',
+                        controller: rideDropController,
+                        errorText: (() {
+                          final pickupId =
+                              placeSearchController.placeId.value;
+                          final dropId =
+                              dropPlaceSearchController.dropPlaceId.value;
 
-                              if (pickupId.isNotEmpty &&
-                                  dropId.isNotEmpty &&
-                                  pickupId == dropId) {
-                                return "Pickup and Drop cannot be the same";
-                              }
+                          if (pickupId.isNotEmpty &&
+                              dropId.isNotEmpty &&
+                              pickupId == dropId) {
+                            return "Pickup and Drop cannot be the same";
+                          }
 
-                              if (placeSearchController
-                                          .findCntryDateTimeResponse
-                                          .value
-                                          ?.destinationInputFalse ==
-                                      true ||
-                                  dropPlaceSearchController.dropDateTimeResponse
-                                          .value?.destinationInputFalse ==
-                                      true) {
-                                return "We don't offer services from this region";
-                              }
+                          if (placeSearchController
+                              .findCntryDateTimeResponse
+                              .value
+                              ?.destinationInputFalse ==
+                              true ||
+                              dropPlaceSearchController.dropDateTimeResponse
+                                  .value?.destinationInputFalse ==
+                                  true) {
+                            return "We don't offer services from this region";
+                          }
 
-                              return null;
-                            })(),
-                            onTap: () =>
-                                GoRouter.of(context).push(AppRoutes.chooseDrop),
-                          ),
-                        ],
-                      )),
+                          return null;
+                        })(),
+                        onTap: () =>
+                            GoRouter.of(context).push(AppRoutes.chooseDrop),
+                      ),
+                    ],
+                  )),
                 ),
                 Column(
                   children: [
@@ -1376,7 +1375,7 @@ class _RidesState extends State<Rides> {
 
                           if (actualDateTimeStr != null) {
                             final actualMinDateTime =
-                                DateTime.parse(actualDateTimeStr).toLocal();
+                            DateTime.parse(actualDateTimeStr).toLocal();
 
                             if (DateUtils.isSameDay(
                                 newDate, actualMinDateTime)) {
@@ -1474,16 +1473,16 @@ class _RidesState extends State<Rides> {
             Obx(() {
               return bookingRideController.isInvalidTime.value
                   ? Container(
-                      margin: EdgeInsets.only(top: 12),
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.redAccent),
-                        maxLines: 2,
-                      ))
+                  margin: EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.redAccent),
+                    maxLines: 2,
+                  ))
                   : SizedBox();
             }),
             const SizedBox(height: 28),
@@ -1651,15 +1650,15 @@ class Rental extends StatefulWidget {
 
 class _RentalState extends State<Rental> {
   final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
+  Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+  Get.put(PlaceSearchController());
   final DropPlaceSearchController dropPlaceSearchController =
-      Get.put(DropPlaceSearchController());
+  Get.put(DropPlaceSearchController());
   final SearchCabInventoryController searchCabInventoryController =
-      Get.put(SearchCabInventoryController());
+  Get.put(SearchCabInventoryController());
   final FetchPackageController fetchPackageController =
-      Get.put(FetchPackageController());
+  Get.put(FetchPackageController());
 
   final RxString selectedField = ''.obs;
 
@@ -1753,10 +1752,10 @@ class _RentalState extends State<Rental> {
     });
     rentalDropWorker =
         ever(bookingRideController.prefilledDrop, (String value) {
-      if (rideDropController.text != value) {
-        rideDropController.text = value;
-      }
-    });
+          if (rideDropController.text != value) {
+            rideDropController.text = value;
+          }
+        });
   }
 
   @override
@@ -1905,7 +1904,7 @@ class _RentalState extends State<Rental> {
 
                           if (actualDateTimeStr != null) {
                             final actualMinDateTime =
-                                DateTime.parse(actualDateTimeStr).toLocal();
+                            DateTime.parse(actualDateTimeStr).toLocal();
 
                             if (DateUtils.isSameDay(
                                 newDate, actualMinDateTime)) {
@@ -1981,9 +1980,9 @@ class _RentalState extends State<Rental> {
             const SizedBox(height: 16),
             Obx(() {
               final items = fetchPackageController.packageModel.value?.data
-                      .map((value) =>
-                          '${value.hours} hrs, ${value.kilometers} kms')
-                      .toList() ??
+                  .map((value) =>
+              '${value.hours} hrs, ${value.kilometers} kms')
+                  .toList() ??
                   [];
 
               return Padding(
@@ -1995,7 +1994,7 @@ class _RentalState extends State<Rental> {
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
                         borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(16)),
+                        BorderRadius.vertical(top: Radius.circular(16)),
                       ),
                       builder: (context) {
                         return ListView.separated(
@@ -2020,7 +2019,7 @@ class _RentalState extends State<Rental> {
                               ),
                               trailing: isSelected
                                   ? const Icon(Icons.check_circle,
-                                      color: Colors.green, size: 20)
+                                  color: Colors.green, size: 20)
                                   : null,
                               onTap: () async {
                                 fetchPackageController
@@ -2031,14 +2030,14 @@ class _RentalState extends State<Rental> {
 
                                 // Extract hours & kms
                                 final packageRegex =
-                                    RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
+                                RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
                                 final match = packageRegex.firstMatch(item);
 
                                 if (match != null) {
                                   final extractedHours =
-                                      int.tryParse(match.group(1)!);
+                                  int.tryParse(match.group(1)!);
                                   final extractedKms =
-                                      int.tryParse(match.group(2)!);
+                                  int.tryParse(match.group(2)!);
 
                                   fetchPackageController.selectedHours.value = extractedHours??0;
                                   fetchPackageController.selectedKms.value = extractedKms??0;
@@ -2072,7 +2071,7 @@ class _RentalState extends State<Rental> {
                       children: [
                         Text(
                           fetchPackageController
-                                  .selectedPackage.value.isNotEmpty
+                              .selectedPackage.value.isNotEmpty
                               ? fetchPackageController.selectedPackage.value
                               : "Select Packages",
                           style: const TextStyle(
@@ -2090,75 +2089,75 @@ class _RentalState extends State<Rental> {
             Obx(() {
               return bookingRideController.isInvalidTime.value
                   ? Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.redAccent),
-                        maxLines: 2,
-                      ))
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.redAccent),
+                    maxLines: 2,
+                  ))
                   : SizedBox();
             }),
             const SizedBox(height: 28),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: SizedBox(
-          width: double.infinity,
-          child: Obx(() {
-            final pickupId = placeSearchController.placeId.value;
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: Obx(() {
+                  final pickupId = placeSearchController.placeId.value;
 
-            final hasSourceError =
-                placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true;
+                  final hasSourceError =
+                      placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true;
 
-            final isPlaceMissing = pickupId.isEmpty;
+                  final isPlaceMissing = pickupId.isEmpty;
 
-            final canProceed = !hasSourceError &&
-                !isPlaceMissing &&
-                (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true);
+                  final canProceed = !hasSourceError &&
+                      !isPlaceMissing &&
+                      (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true);
 
-            // 🚨 force disable conditions
-            final forceDisable = hasSourceError || bookingRideController.isInvalidTime.value;
+                  // 🚨 force disable conditions
+                  final forceDisable = hasSourceError || bookingRideController.isInvalidTime.value;
 
-            // ✅ final flag
-            final isEnabled = canProceed && !forceDisable;
+                  // ✅ final flag
+                  final isEnabled = canProceed && !forceDisable;
 
-            return Opacity(
-              opacity: isEnabled ? 1.0 : 0.6,
-              child: PrimaryButton(
-                text: 'Search Now',
-                onPressed: isEnabled
-                    ? () async {
-                  final requestData = await _buildRentalRequestData(context);
+                  return Opacity(
+                    opacity: isEnabled ? 1.0 : 0.6,
+                    child: PrimaryButton(
+                      text: 'Search Now',
+                      onPressed: isEnabled
+                          ? () async {
+                        final requestData = await _buildRentalRequestData(context);
 
-                  setState(() => _isLoading = true);
+                        setState(() => _isLoading = true);
 
-                  await searchCabInventoryController.fetchBookingData(
-                    country: requestData['countryName'],
-                    requestData: requestData,
-                    context: context,
-                    isSecondPage: true,
-                  ).then((_) {
-                    GoRouter.of(context).push(
-                      AppRoutes.inventoryList,
-                      extra: requestData,
-                    );
+                        await searchCabInventoryController.fetchBookingData(
+                          country: requestData['countryName'],
+                          requestData: requestData,
+                          context: context,
+                          isSecondPage: true,
+                        ).then((_) {
+                          GoRouter.of(context).push(
+                            AppRoutes.inventoryList,
+                            extra: requestData,
+                          );
 
 
-                  });
+                        });
 
-                  if (!mounted) return;
-                  setState(() => _isLoading = false);
-                  GoRouter.of(context).pop();
+                        if (!mounted) return;
+                        setState(() => _isLoading = false);
+                        GoRouter.of(context).pop();
 
-                }
-                    : (){}, // ✅ null disables the button properly
+                      }
+                          : (){}, // ✅ null disables the button properly
+                    ),
+                  );
+                }),
               ),
-            );
-          }),
-        ),
-      )
+            )
           ],
         ),
       ),
@@ -2169,7 +2168,7 @@ class _RentalState extends State<Rental> {
 Future<Map<String, dynamic>> _buildRentalRequestData(
     BuildContext context) async {
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+  Get.put(PlaceSearchController());
   final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
   final BookingRideController bookingRideController = Get.put(BookingRideController());
 
@@ -2221,16 +2220,16 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
       "sourceTitle": data['sourceTitle'],
       "sourcePlaceId": data['sourcePlaceId'],
       "sourceCity":
-          placeSearchController.getPlacesLatLng.value?.city.toString(),
+      placeSearchController.getPlacesLatLng.value?.city.toString(),
       "sourceState":
-          placeSearchController.getPlacesLatLng.value?.state.toString(),
+      placeSearchController.getPlacesLatLng.value?.state.toString(),
       "sourceCountry":
-          placeSearchController.getPlacesLatLng.value?.country.toString(),
+      placeSearchController.getPlacesLatLng.value?.country.toString(),
       "sourceType": _parseList<String>(data['sourceTypes']),
       "sourceLat":
-          placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
       "sourceLng":
-          placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
       "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {},

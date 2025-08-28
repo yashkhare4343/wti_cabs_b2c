@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
@@ -15,6 +16,7 @@ class IndiaPaymentController extends GetxController {
 
   late Razorpay _razorpay;
   late BuildContext _currentContext;
+  final currencyController = Get.find<CurrencyController>();
 
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
@@ -87,7 +89,7 @@ class IndiaPaymentController extends GetxController {
     isLoading.value = true;
     try {
       requestData['reservation']['passenger'] = passengerId;
-
+     print('provision request data : ${requestData}');
       final res = await http.post(
         Uri.parse('https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
         headers: {
@@ -127,21 +129,25 @@ class IndiaPaymentController extends GetxController {
     }
   }
 
-  void _openRazorpayCheckout(Map<String, dynamic> order) {
-    final options = {
-      'key': 'rzp_test_Ymyq5LXpYAetuR',
-      'amount': (order['amount'] ?? 0).toInt(),
-      'name': 'WTI Cabs',
-      'description': 'Cab Booking Payment',
-      'order_id': order['id'],
-      'prefill': {
-        'contact': registeredUser?['number']?.toString() ?? '',
-        'email': registeredUser?['email'] ?? '',
-      },
-      'theme': {'color': '#212F62'},
-    };
-
+  void _openRazorpayCheckout(Map<String, dynamic> order) async {
     try {
+      // 🔹 Convert amount to selected currency
+      final rawAmount = (order['amount'] ?? 0).toDouble();
+      final options = {
+        'key': 'rzp_test_Ymyq5LXpYAetuR',
+        // Razorpay expects amount in paise for INR, multiply by 100 if needed
+        'amount': (rawAmount * 100),
+        'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.
+        'name': 'WTI Cabs',
+        'description': 'Cab Booking Payment',
+        'order_id': order['id'],
+        'prefill': {
+          'contact': registeredUser?['number']?.toString() ?? '',
+          'email': registeredUser?['email'] ?? '',
+        },
+        'theme': {'color': '#212F62'},
+      };
+
       _razorpay.open(options);
     } catch (e) {
       print('❌ Razorpay open error: $e');

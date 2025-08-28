@@ -175,11 +175,9 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                               child: SizedBox(
                                 height: 46,
                                 child: MainButton(
-                                  text: 'See My Bookings',
+                                  text: 'Retry Payment',
                                   onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (context) => BottomNavScreen(initialIndex: 1,)),
-                                    );
+                                    GoRouter.of(context).go(AppRoutes.bookingDetailsFinal);
                                   },
 
                                 ),

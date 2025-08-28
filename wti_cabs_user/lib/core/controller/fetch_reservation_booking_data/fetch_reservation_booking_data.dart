@@ -10,13 +10,14 @@ class FetchReservationBookingData extends GetxController {
   Rx<ChauffeurReservationsResponse?> chaufferReservationResponse = Rx<ChauffeurReservationsResponse?>(null);
   RxBool isLoading = false.obs;
   RxInt gatewayCode = 0.obs;
+  RxString reservationId = ''.obs;
 
   Future<void> fetchReservationData() async {
     isLoading.value = true;
     final gatewayUsed = await StorageServices.instance.read('country');
     gatewayCode.value =  gatewayUsed?.toLowerCase() == 'india' ? 1 : 0;
     String reservationID = await StorageServices.instance.read(gatewayUsed?.toLowerCase() != 'india'? 'orderReferenceNo': 'reservationId') ?? '';
-
+    reservationId.value = await StorageServices.instance.read(gatewayUsed?.toLowerCase() != 'india'? 'orderReferenceNo': 'reservationId') ?? '';
     try {
       final result = await ApiService().getRequestNew<ChauffeurReservationsResponse>(
         'chaufferReservation/getConfirmedReservationAndReceipts/$reservationID?gatewayUsed=$gatewayCode&role=CUSTOMER',

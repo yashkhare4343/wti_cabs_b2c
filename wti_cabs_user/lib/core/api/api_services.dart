@@ -68,6 +68,36 @@ class ApiService {
       throw Exception("Error: $e");
     }
   }
+//
+  Future<Map<String, dynamic>> getRequestCurrency(String endpoint) async {
+    final url = Uri.parse('$baseUrl/$endpoint');
+    // final token = await _getToken();
+    // print('yash token : $token');
+    // final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic aGFyc2g6MTIz',
+    };
+
+    print('url is : $baseUrl/$endpoint');
+    print('header is : $headers');
+
+
+    try {
+      final response = await http.get(url, headers: headers);
+      print('response is : ${response.body}');
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final errorResponse = json.decode(response.body);
+        throw Exception(
+            "Failed to get data. Status Code: ${response.statusCode}, Error: ${errorResponse['message'] ?? 'Unknown error'}");
+      }
+    } catch (e) {
+      throw Exception("Error: $e");
+    }
+  }
+
 
   // new get request
   Future<T> getRequestNew<T>(
@@ -110,25 +140,25 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> currencyConverter(String currency) async {
-    final url = Uri.parse('http://3.222.206.52:4000/global/app/v1/currency/currencyConversion/$currency');
+  Future<double> getCurrencyConversionRate({
+    required String from,
+  }) async {
+    final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Basic aGFyc2g6MTIz',
     };
+    final url = Uri.parse("$baseUrl/currency/convert?from=$from");
+    final res = await http.get(url, headers: headers);
 
-    try {
-      final response = await http.get(url, headers: headers);
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        final errorResponse = json.decode(response.body);
-        throw Exception(
-            "Failed to get data. Status Code: ${response.statusCode}, Error: ${errorResponse['message'] ?? 'Unknown error'}");
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      if (data["currencyConverted"] == true) {
+        return (data["data"] as num).toDouble();
       }
-    } catch (e) {
-      throw Exception("Error: $e");
     }
+
+    throw Exception("Failed to fetch rate $from");
   }
 
   Future<Map<String, dynamic>> postRequest(
