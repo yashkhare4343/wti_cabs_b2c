@@ -219,8 +219,8 @@ class _SelectPickupState extends State<SelectPickup> {
                                 // 🚀 2. Immediate navigation (unfocus + close current screen)
                                 FocusScope.of(context).unfocus();
                                 final tabName = Get.find<BookingRideController>().currentTabName;
-                                if(bookingRideController.selectedIndex.value == 2){
-                                  bookingRideController.selectedIndex.value = 2;
+                                if(bookingRideController.selectedIndex.value == 3){
+                                  bookingRideController.selectedIndex.value = 3;
                                   GoRouter.of(context).go(
                                     '${AppRoutes.bookingRide}?tab=rental',
                                   );
