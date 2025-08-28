@@ -951,9 +951,14 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                                             onPressed: () {
                                               Navigator.of(context)
                                                   .pop(); // close current sheet
-                                              _showRegisterSheet(
-                                                  context); // open register sheet
-                                            },
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => UserFillDetails(
+                                                      name: '',
+                                                      email: '',
+                                                      phone: ''), // your login widget
+                                                ),
+                                              );                                            },
                                             child: Text(
                                                 "Don't have an account? Register"),
                                           ),

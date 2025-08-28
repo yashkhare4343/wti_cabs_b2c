@@ -32,12 +32,12 @@ class _AuthScreenState extends State<AuthScreen> {
   final BannerController bannerController = Get.put(BannerController());
   final PopularDestinationController popularDestinationController = Get.put(PopularDestinationController());
 
-
-
   bool hasError = false;
   String? errorMessage;
   bool isButtonEnabled = false;
   bool showOtpField = false;
+  bool isLoading = false; // Tracks loading state for all button actions
+  bool canResendOtp = false; // Tracks if resend OTP is allowed
 
   @override
   void initState() {
@@ -112,6 +112,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       useBottomSheetSafeArea: true,
                       showFlags: true,
                     ),
+                    isEnabled: false,
                     initialValue: number,
                     textFieldController: phoneController,
                     maxLength: 10,
@@ -155,9 +156,20 @@ class _AuthScreenState extends State<AuthScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: isButtonEnabled ? _handleContinue : null,
-                  child: Text(
-                    showOtpField ? 'Verify' : 'Continue',
+                  onPressed: (isButtonEnabled && !isLoading) ? _handleContinue : null,
+                  child: isLoading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : Text(
+                    showOtpField
+                        ? (canResendOtp ? 'Resend OTP' : 'Verify')
+                        : 'Continue',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -177,42 +189,62 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _handleContinue() async {
-    if (showOtpField) {
-      final isVerified = await otpController.verifyOtp(
-        mobile: phoneController.text.trim(),
-        otp: otpTextEditingController.text.trim(),
-        context: context,
-      );
-
-      if (isVerified) {
-        // ✅ Run all fetches in parallel
-        await Future.wait([
-          profileController.fetchData(),
-        ]);
-
-        // ✅ Mark logged in (triggers Obx immediately if used in UI)
-        upcomingBookingController.isLoggedIn.value = true;
-
-        // ✅ Fetch bookings but don’t block navigation
-        upcomingBookingController.fetchUpcomingBookingsData();
-
-        // ✅ Navigate immediately without extra delay
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => BottomNavScreen()),
+    setState(() {
+      isLoading = true; // Start loading
+    });
+    try {
+      if (showOtpField && !canResendOtp) {
+        // Verify OTP
+        final isVerified = await otpController.verifyOtp(
+          mobile: phoneController.text.trim(),
+          otp: otpTextEditingController.text.trim(),
+          context: context,
         );
+
+        if (isVerified) {
+          await Future.wait([
+            profileController.fetchData(),
+          ]);
+
+          upcomingBookingController.isLoggedIn.value = true;
+          upcomingBookingController.fetchUpcomingBookingsData();
+
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => BottomNavScreen()),
+          );
+        } else {
+          // If OTP verification fails, allow resending OTP
+          setState(() {
+            canResendOtp = true;
+          });
+        }
+      } else {
+        // Send or resend OTP
+        await mobileController.verifyMobile(
+          mobile: phoneController.text.trim(),
+          context: context,
+        );
+        if (mobileController.mobileData.value?.userAssociated == true) {
+          setState(() {
+            showOtpField = true;
+            errorMessage = null;
+            isButtonEnabled = true;
+            canResendOtp = false; // Reset resend state
+            otpTextEditingController.clear(); // Clear OTP field on resend
+          });
+        }
       }
-    } else {
-      await mobileController.verifyMobile(
-        mobile: phoneController.text.trim(),
-        context: context,
-      );
-      if (mobileController.mobileData.value?.userAssociated == true) {
-        setState(() {
-          showOtpField = true;
-          errorMessage = null;
-          isButtonEnabled = true;
-        });
-      }
+    } finally {
+      setState(() {
+        isLoading = false; // Stop loading
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    otpTextEditingController.dispose();
+    super.dispose();
   }
 }

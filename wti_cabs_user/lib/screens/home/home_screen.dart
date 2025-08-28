@@ -1202,8 +1202,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                               onPressed: () {
                                                 Navigator.of(context)
                                                     .pop(); // close current sheet
-                                                _showRegisterSheet(
-                                                    context); // open register sheet
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => UserFillDetails(
+                                                        name: '',
+                                                        email: '',
+                                                        phone: ''), // your login widget
+                                                  ),
+                                                );   // open register sheet
                                               },
                                               child: Text(
                                                   "Don't have an account? Register"),
