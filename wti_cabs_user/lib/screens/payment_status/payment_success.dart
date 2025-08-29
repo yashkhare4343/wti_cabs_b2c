@@ -52,7 +52,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        GoRouter.of(context).go(AppRoutes.initialPage);
+        GoRouter.of(context).go(AppRoutes.bottomNav);
       },
       child: Scaffold(
         backgroundColor: Colors.grey.shade100,
@@ -158,7 +158,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                                     const EdgeInsets.symmetric(vertical: 8),
                                   ),
                                   onPressed: () {
-                                    GoRouter.of(context).go(AppRoutes.initialPage);
+                                    GoRouter.of(context).go(AppRoutes.bottomNav);
                                   },
                                   child: Text(
                                     'Go to Home',

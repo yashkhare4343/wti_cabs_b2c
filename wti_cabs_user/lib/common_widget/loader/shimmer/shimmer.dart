@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Added for SystemChrome
 import 'package:shimmer/shimmer.dart';
 
 class FullPageShimmer extends StatelessWidget {
@@ -6,6 +7,12 @@ class FullPageShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Set status bar color to white
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.white, // Status bar color set to white
+      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+    ));
+
     final baseColor = Colors.grey.shade300;
     final highlightColor = Colors.grey.shade100;
 

@@ -1,17 +1,14 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
-import '../../common_widget/buttons/quick_action_button.dart';
-import '../../common_widget/loader/popup_loader.dart';
 import '../../common_widget/textformfield/drop_google_place_text_field.dart';
-import '../../common_widget/textformfield/google_places_text_field.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/services/storage_services.dart';
@@ -26,34 +23,71 @@ class SelectDrop extends StatefulWidget {
 }
 
 class _SelectDropState extends State<SelectDrop> {
-  final BookingRideController bookingRideController = Get.find<BookingRideController>();
-  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
-  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  late final BookingRideController bookingRideController;
+  late final DropPlaceSearchController dropPlaceSearchController;
+  late final PlaceSearchController placeSearchController;
+  late final TripHistoryController tripController;
+  late final DestinationLocationController destinationController;
   final TextEditingController dropController = TextEditingController();
-  final TripHistoryController tripController = Get.put(TripHistoryController());
-  final DestinationLocationController destinationController = Get.put(DestinationLocationController());
-
-  List<String> _topRecentTrips = [];
+  bool _isProcessingTap = false; // Prevent multiple onTap executions
 
   @override
   void initState() {
     super.initState();
+    // Initialize controllers with Get.find or Get.put
+    try {
+      bookingRideController = Get.find<BookingRideController>();
+    } catch (_) {
+      bookingRideController = Get.put(BookingRideController());
+    }
+    try {
+      dropPlaceSearchController = Get.find<DropPlaceSearchController>();
+    } catch (_) {
+      dropPlaceSearchController = Get.put(DropPlaceSearchController());
+    }
+    try {
+      placeSearchController = Get.find<PlaceSearchController>();
+    } catch (_) {
+      placeSearchController = Get.put(PlaceSearchController());
+    }
+    try {
+      tripController = Get.find<TripHistoryController>();
+    } catch (_) {
+      tripController = Get.put(TripHistoryController());
+    }
+    try {
+      destinationController = Get.find<DestinationLocationController>();
+    } catch (_) {
+      destinationController = Get.put(DestinationLocationController());
+    }
+    // Set initial text for dropController
+    dropController.text = bookingRideController.prefilledDrop.value;
     bookingRideController.prefilledDrop.value = '';
+    // Load recent searches
+    _loadRecentSearches();
   }
 
+  void _loadRecentSearches() {
+    // Placeholder for preloading recent searches
+    // Example: dropPlaceSearchController.loadRecentSearches();
+  }
 
+  @override
+  void dispose() {
+    dropController.dispose();
+    // GetX manages controller disposal
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    dropController.text = bookingRideController.prefilledDrop.value;
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.scaffoldBgPrimary1,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        iconTheme: const IconThemeData(color: AppColors.blue4),
+        iconTheme: IconThemeData(color: AppColors.blue4),
         title: Text("Choose Drop", style: CommonFonts.appBarText),
         centerTitle: false,
       ),
@@ -61,91 +95,40 @@ class _SelectDropState extends State<SelectDrop> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔍 Drop Search Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: DropGooglePlacesTextField(
                 hintText: "Enter drop location",
                 controller: dropController,
                 onPlaceSelected: (newSuggestion) {
-                  setState(() {
-                    dropController.text = newSuggestion.primaryText;
-                    bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
-                    FocusScope.of(context).unfocus();
-                    GoRouter.of(context).pop();
-                  });
+                  dropController.text = newSuggestion.primaryText;
+                  bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
+                  FocusScope.of(context).unfocus();
+                  GoRouter.of(context).pop();
                 },
               ),
             ),
-
-            // const SizedBox(height: 16),
-
-            // // 📍 Quick Actions
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 16),
-            //   child: SingleChildScrollView(
-            //     scrollDirection: Axis.horizontal,
-            //     child: Row(
-            //       children: [
-            //         QuickAddLocationTile(
-            //           icon: Icons.home,
-            //           label: "Home",
-            //           onTap: () => print("🏠 Home tapped"),
-            //         ),
-            //         const SizedBox(width: 12),
-            //         QuickAddLocationTile(
-            //           icon: Icons.business,
-            //           label: "Office",
-            //           onTap: () => print("🏢 Office tapped"),
-            //         ),
-            //         const SizedBox(width: 12),
-            //         QuickAddLocationTile(
-            //           icon: Icons.add_location_alt,
-            //           label: "Add Place",
-            //           onTap: () => print("📍 Add Location tapped"),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
-            //
-            // const SizedBox(height: 16),
-
-            // 🌍 Set on Map
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 16),
-            //   child: Row(
-            //     children: [
-            //       Icon(Icons.location_searching_outlined, size: 18, color: AppColors.blue4),
-            //       const SizedBox(width: 6),
-            //       Text('Set Location on Map', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blue4)),
-            //     ],
-            //   ),
-            // ),
-
             const SizedBox(height: 16),
-
-            // 🕘 Recent Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: AppColors.bgGrey1,
-              child: Row(
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.history_outlined, size: 18, color: Colors.black),
-                  const SizedBox(width: 6),
-                  Text('Recent Searches', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Recent Searches',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
+                  ),
                 ],
               ),
             ),
-
             const SizedBox(height: 8),
-
-            // 📃 Drop Suggestions
             Obx(() {
               final suggestions = dropPlaceSearchController.dropSuggestions.value;
-
-              return suggestions.isNotEmpty
-                  ? ListView.separated(
+              if (suggestions.isEmpty) return const SizedBox.shrink();
+              return ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 0),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -156,84 +139,86 @@ class _SelectDropState extends State<SelectDrop> {
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                     leading: const Icon(Icons.location_on, size: 20),
-                    title: Text(place.primaryText.split(',').first.trim(), style: CommonFonts.bodyText1Black),
-                    subtitle: Text(place.secondaryText, style: CommonFonts.bodyText6Black),
-                      onTap: () {
-                        // 🚀 1. Instant UI updates (no waiting)
-                        dropController.text = place.primaryText;
-                        bookingRideController.prefilledDrop.value = place.primaryText;
-                        dropPlaceSearchController.dropPlaceId.value = place.placeId;
-
-                        // 🚀 2. Navigate immediately
-                        FocusScope.of(context).unfocus();
-                        final tabName = Get.find<BookingRideController>().currentTabName;
-                        if (tabName == 'rental') {
-                          // bookingRideController.selectedIndex.value =0;
-                          GoRouter.of(context).go(
-                            '${AppRoutes.bookingRide}?tab=rental',
-                          );
-                        } else {
-                          GoRouter.of(context).go(
-                            '${AppRoutes.bookingRide}?tab=$tabName',
-                          );
-                        }
-
-                        // 🧠 3. Background work (fire-and-forget, non-blocking)
-                        Future.microtask(() {
-                          // LatLng for drop (non-blocking)
-
-                          dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
-
-                          // Optional: recordTrip + pickup lat/lng in parallel
-                          final pickupTitle = bookingRideController.prefilled.value;
-                          final pickupPlaceId = placeSearchController.placeId.value;
-
-                          if (pickupPlaceId.isNotEmpty) {
-                            placeSearchController.getLatLngDetails(pickupPlaceId, context);
-                          }
-
-                          tripController.recordTrip(
-                            pickupTitle,
-                            pickupPlaceId,
-                            place.primaryText,
-                            place.placeId,
-                            context
-                          );
-
-                          // Storage (fast, no await)
-                          StorageServices.instance.save('destinationPlaceId', place.placeId);
-                          StorageServices.instance.save('destinationTitle', place.primaryText);
-
-                          if (place.types.isNotEmpty) {
-                            StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
-                          }
-
-                          if (place.terms.isNotEmpty) {
-                            StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
-                          }
-
-                          // Set in controller
-                          destinationController.setPlace(
-                            placeId: place.placeId,
-                            title: place.primaryText,
-                            city: place.city,
-                            state: place.state,
-                            country: place.country,
-                            types: place.types,
-                            terms: place.terms,
-                          );
-                        });
-                      }
-
-
+                    title: Text(
+                      place.primaryText.split(',').first.trim(),
+                      style: CommonFonts.bodyText1Black,
+                    ),
+                    subtitle: Text(
+                      place.secondaryText,
+                      style: CommonFonts.bodyText6Black,
+                    ),
+                    onTap: () {
+                      if (_isProcessingTap) return; // Prevent double tap
+                      setState(() => _isProcessingTap = true);
+                      dropController.text = place.primaryText;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _handlePlaceSelection(context, place);
+                        setState(() => _isProcessingTap = false);
+                      });
+                    },
                   );
                 },
-              )
-                  : const SizedBox();
+              );
             }),
           ],
         ),
       ),
     );
+  }
+
+  void _handlePlaceSelection(BuildContext context, SuggestionPlacesResponse place) {
+    // Update Rx variables
+    bookingRideController.prefilledDrop.value = place.primaryText;
+    dropPlaceSearchController.dropPlaceId.value = place.placeId;
+
+    // Navigation
+    final tabName = bookingRideController.currentTabName;
+    final route = tabName == 'rental'
+        ? '${AppRoutes.bookingRide}?tab=rental'
+        : '${AppRoutes.bookingRide}?tab=$tabName';
+    GoRouter.of(context).go(route);
+    FocusScope.of(context).unfocus();
+
+    // Background tasks
+    Future.microtask(() {
+      print('API Call: getLatLngForDrop for placeId: ${place.placeId}');
+      dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
+
+      final pickupPlaceId = placeSearchController.placeId.value;
+      if (pickupPlaceId.isNotEmpty) {
+        print('API Call: getLatLngDetails for pickupPlaceId: $pickupPlaceId');
+        placeSearchController.getLatLngDetails(pickupPlaceId, context);
+      }
+
+      // Record trip
+      tripController.recordTrip(
+        bookingRideController.prefilled.value,
+        pickupPlaceId,
+        place.primaryText,
+        place.placeId,
+        context,
+      );
+
+      // Storage operations
+      StorageServices.instance.save('destinationPlaceId', place.placeId);
+      StorageServices.instance.save('destinationTitle', place.primaryText);
+      if (place.types.isNotEmpty) {
+        StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
+      }
+      if (place.terms.isNotEmpty) {
+        StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+      }
+
+      // Update destination controller
+      destinationController.setPlace(
+        placeId: place.placeId,
+        title: place.primaryText,
+        city: place.city,
+        state: place.state,
+        country: place.country,
+        types: place.types,
+        terms: place.terms,
+      );
+    });
   }
 }

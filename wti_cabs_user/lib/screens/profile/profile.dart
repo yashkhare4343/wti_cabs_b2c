@@ -144,7 +144,7 @@ class _ProfileState extends State<Profile> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).go(AppRoutes.initialPage);
+        GoRouter.of(context).go(AppRoutes.bottomNav);
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary2,

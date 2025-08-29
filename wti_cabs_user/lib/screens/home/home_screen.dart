@@ -2721,7 +2721,7 @@ class _RecentTripListState extends State<RecentTripList> {
             return SizedBox(
               height: tripController.topRecentTrips.length != 1 ? 180 : 95,
               child: ListView.builder(
-                itemCount: tripController.topRecentTrips.length,
+                itemCount: tripController.topRecentTrips.length >= 2 ? 2 : tripController.topRecentTrips.length,
                 itemBuilder: (context, index) {
                   final trip = tripController.topRecentTrips[index];
                   final pickup = trip['pickup']['title'];

@@ -19,6 +19,8 @@ class DropPlaceSearchController extends GetxController {
   final BookingRideController bookingRideController = Get.find<BookingRideController>();
   final PlaceSearchController pickupController = Get.find<PlaceSearchController>();
   final DestinationLocationController destinationLocationController = Get.find<DestinationLocationController>();
+  final apiService = ApiService(); // Reuse single instance
+  final storage = StorageServices.instance; // Reuse storage instance
 
   var dropLatLng = Rxn<GetLatLngResponse>();
   var dropDateTimeResponse = Rxn<FindCntryDateTimeResponse>();
@@ -29,8 +31,8 @@ class DropPlaceSearchController extends GetxController {
   final RxString errorMessage = ''.obs;
   final RxString dropPlaceId = ''.obs;
 
-
   Timer? _debounce;
+  String? _cachedTimeZone; // Cache timezone to avoid repeated lookups
 
   @override
   void onInit() {
@@ -41,59 +43,54 @@ class DropPlaceSearchController extends GetxController {
   void _initializeCurrentDateTime() {
     try {
       tz.initializeTimeZones();
-      final timezoneName = getCurrentTimeZoneName();
-      final location = tz.getLocation(timezoneName);
-      final utcDateTime = DateTime.now().toUtc();
-      currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
+      _cachedTimeZone = getCurrentTimeZoneName();
+      final location = tz.getLocation(_cachedTimeZone!);
+      currentDateTime.value = tz.TZDateTime.from(DateTime.now().toUtc(), location);
     } catch (e) {
       currentDateTime.value = DateTime.now();
     }
   }
 
   String getCurrentTimeZoneName() {
+    if (_cachedTimeZone != null) return _cachedTimeZone!;
+
     tz.initializeTimeZones();
     final localOffset = DateTime.now().timeZoneOffset;
-    final locations = tz.timeZoneDatabase.locations;
-
-    for (final entry in locations.entries) {
-      final location = tz.getLocation(entry.key);
-      final now = tz.TZDateTime.now(location);
-      if (now.timeZoneOffset == localOffset) {
+    for (final entry in tz.timeZoneDatabase.locations.entries) {
+      if (tz.TZDateTime.now(tz.getLocation(entry.key)).timeZoneOffset == localOffset) {
+        _cachedTimeZone = entry.key;
         return entry.key;
       }
     }
+    _cachedTimeZone = 'UTC';
     return 'UTC';
   }
 
   int getOffsetFromTimeZone(String timeZoneName) {
     try {
-      final location = tz.getLocation(timeZoneName);
-      final now = tz.TZDateTime.now(location);
-      return -now.timeZoneOffset.inMinutes;
+      return -tz.TZDateTime.now(tz.getLocation(timeZoneName)).timeZoneOffset.inMinutes;
     } catch (e) {
       return -DateTime.now().timeZoneOffset.inMinutes;
     }
   }
 
   String convertDateTimeToUtcString(DateTime localDateTime) {
-    final timezone = dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
+    final timezone = _cachedTimeZone ?? dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
     final offset = getOffsetFromTimeZone(timezone);
-    final utcDateTime = localDateTime.subtract(Duration(minutes: -(offset)));
+    final utcDateTime = localDateTime.subtract(Duration(minutes: -offset));
     return '${utcDateTime.toIso8601String().split('.').first}.000Z';
   }
 
   Future<void> searchDropPlaces(String searchedText, BuildContext context) async {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
+    if (searchedText.isEmpty) {
+      dropSuggestions.clear();
+      return;
+    }
 
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      if (searchedText.isEmpty) {
-        dropSuggestions.clear();
-        return;
-      }
-
       try {
         isLoading.value = true;
-        final apiService = ApiService();
         final responseData = await apiService.postRequest(
           'google/ind/$searchedText?isMobileApp=true',
           {},
@@ -101,9 +98,7 @@ class DropPlaceSearchController extends GetxController {
         );
 
         final results = responseData['result'] as List?;
-        if (results == null) throw Exception('No "result" key in response');
-
-        dropSuggestions.value = results.map((e) => SuggestionPlacesResponse.fromJson(e)).toList();
+        dropSuggestions.value = results?.map((e) => SuggestionPlacesResponse.fromJson(e)).toList() ?? [];
       } catch (e) {
         errorMessage.value = e.toString();
         dropSuggestions.clear();
@@ -116,8 +111,6 @@ class DropPlaceSearchController extends GetxController {
   Future<void> getLatLngForDrop(String placeId, BuildContext context) async {
     try {
       isLoading.value = true;
-      final apiService = ApiService();
-
       final response = await apiService.postRequest(
         'google/getLatLongChauffeur?isMobileApp=true',
         {"place_id": placeId, "isLatLngAvailable": false},
@@ -127,35 +120,42 @@ class DropPlaceSearchController extends GetxController {
       dropLatLng.value = GetLatLngResponse.fromJson(response);
       if (dropLatLng.value == null) return;
 
-      final timeZone = dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
+      // Batch storage operations
+      final latLng = dropLatLng.value!.latLong;
+      final storageFutures = [
+        storage.save('destinationLat', latLng.lat.toString()),
+        storage.save('destinationLng', latLng.lng.toString()),
+        storage.save('destinationCountry', dropLatLng.value!.country),
+        storage.save('destinationCity', dropLatLng.value!.city),
+      ];
+      await Future.wait(storageFutures);
+
+      // Cache values for logging
+      final savedValues = await Future.wait([
+        storage.read('destinationLat'),
+        storage.read('destinationLng'),
+        storage.read('destinationCountry'),
+        storage.read('destinationCity'),
+      ]);
+
+      // Log only in debug mode
+      debugPrint('📍 Saved Destination:');
+      debugPrint('Latitude: ${savedValues[0]}');
+      debugPrint('Longitude: ${savedValues[1]}');
+      debugPrint('Country: ${savedValues[2]}');
+      debugPrint('City: ${savedValues[3]}');
+      debugPrint('======== from model direct ======');
+      debugPrint('Latitude: ${latLng.lat}');
+      debugPrint('Longitude: ${latLng.lng}');
+      debugPrint('Country: ${dropLatLng.value!.country}');
+      debugPrint('City: ${dropLatLng.value!.city}');
+
+      final timeZone = _cachedTimeZone ?? dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
 
-      await StorageServices.instance.save('destinationLat', dropLatLng.value!.latLong.lat.toString());
-      await StorageServices.instance.save('destinationLng', dropLatLng.value!.latLong.lng.toString());
-      await StorageServices.instance.save('destinationCountry', dropLatLng.value!.country);
-      await StorageServices.instance.save('destinationCity', dropLatLng.value!.city);
-
-      final savedLat = await StorageServices.instance.read('destinationLat');
-      final savedLng = await StorageServices.instance.read('destinationLng');
-      final savedCountry = await StorageServices.instance.read('destinationCountry');
-      final savedCity = await StorageServices.instance.read('destinationCity');
-
-      print("📍 Saved Destination:");
-      print("Latitude: $savedLat");
-      print("Longitude: $savedLng");
-      print("Country: $savedCountry");
-      print("City: $savedCity");
-
-      print('======== from model direct======' );
-      print("Latitude: ${dropLatLng.value!.latLong.lat.toString()}");
-      print("Longitude: ${dropLatLng.value!.latLong.lng.toString()}");
-      print("Country: ${dropLatLng.value!.country}");
-      print("City: ${dropLatLng.value!.city}");
-
-
       await findCountryDateTimeForDrop(
-        dropLatLng.value!.latLong.lat,
-        dropLatLng.value!.latLong.lng,
+        latLng.lat,
+        latLng.lng,
         dropLatLng.value!.country,
         convertDateTimeToUtcString(bookingRideController.localStartTime.value),
         offset,
@@ -181,15 +181,13 @@ class DropPlaceSearchController extends GetxController {
       BuildContext context,
       ) async {
     try {
-      final apiService = ApiService();
       final pickupLatLng = pickupController.getPlacesLatLng.value;
-
       if (pickupLatLng == null) throw Exception('Pickup LatLng not available for drop time calculation');
 
       final requestData = {
-        "sourceLat": pickupController.getPlacesLatLng.value?.latLong.lat,
-        "sourceLng": pickupController.getPlacesLatLng.value?.latLong.lng,
-        "sourceCountry": pickupController.getPlacesLatLng.value?.country,
+        "sourceLat": pickupLatLng.latLong.lat,
+        "sourceLng": pickupLatLng.latLong.lng,
+        "sourceCountry": pickupLatLng.country,
         "destinationLat": dLat,
         "destinationLng": dLng,
         "destinationCountry": dCountry,
@@ -199,7 +197,7 @@ class DropPlaceSearchController extends GetxController {
         "tripCode": tripCode,
       };
 
-      print('🚀 Request body for findCountryDateTimeForDrop: $requestData');
+      debugPrint('🚀 Request body for findCountryDateTimeForDrop: $requestData');
 
       final response = await apiService.postRequest(
         'globalSearch/findCountryAndDateTime',
@@ -208,15 +206,23 @@ class DropPlaceSearchController extends GetxController {
       );
 
       dropDateTimeResponse.value = FindCntryDateTimeResponse.fromJson(response);
-
-      if (dropDateTimeResponse.value != null) {
-        final utcDateTime = DateTime.parse(dropDateTimeResponse.value!.userDateTimeObject!.userDateTime!);
-        final location = tz.getLocation(dropDateTimeResponse.value!.timeZone ?? timezone);
-        currentDateTime.value = tz.TZDateTime.from(utcDateTime, location);
+      if (dropDateTimeResponse.value?.userDateTimeObject?.userDateTime != null) {
+        final timeZone = dropDateTimeResponse.value!.timeZone ?? timezone;
+        _cachedTimeZone = timeZone; // Update cache
+        currentDateTime.value = tz.TZDateTime.from(
+          DateTime.parse(dropDateTimeResponse.value!.userDateTimeObject!.userDateTime!),
+          tz.getLocation(timeZone),
+        );
       }
     } catch (e) {
       errorMessage.value = 'Drop DateTime API Error: $e';
-      print(errorMessage.value);
+      debugPrint(errorMessage.value);
     }
+  }
+
+  @override
+  void onClose() {
+    _debounce?.cancel();
+    super.onClose();
   }
 }

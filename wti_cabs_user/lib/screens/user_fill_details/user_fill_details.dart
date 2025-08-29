@@ -383,7 +383,7 @@ class _UserFillDetailsState extends State<UserFillDetails> {
                                                                         onPressed: () {
                                                                           Navigator.of(rootContext, rootNavigator: true).pop(); // close sheet
                                                                           Navigator.of(rootContext, rootNavigator: true).pop(); // close dialog
-                                                                          GoRouter.of(rootContext).go(AppRoutes.initialPage);
+                                                                          GoRouter.of(rootContext).go(AppRoutes.bottomNav);
                                                                         },
                                                                         child: Text("Go Home"),
                                                                       ),

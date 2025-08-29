@@ -254,7 +254,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                                 context,
                                     () {
                                   // ✅ Navigate only after loader closes
-                                  GoRouter.of(context).go(AppRoutes.initialPage);
+                                  GoRouter.of(context).go(AppRoutes.bottomNav);
                                 },
                               );
                             });
@@ -365,7 +365,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                   context,
                       () {
                     // ✅ Navigate only after loader closes
-                    GoRouter.of(context).go(AppRoutes.initialPage);
+                    GoRouter.of(context).go(AppRoutes.bottomNav);
                   },
                 );
               });

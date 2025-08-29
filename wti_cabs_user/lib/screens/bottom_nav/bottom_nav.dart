@@ -1257,6 +1257,10 @@ class _OtpTextFieldState extends State<OtpTextField> {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: AppColors.homebg, // Status bar color set to white
+      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+    ));
     return Obx(() {
       final otpLength = widget.otpController.text.length;
       final isLengthOkay = otpLength == 6;

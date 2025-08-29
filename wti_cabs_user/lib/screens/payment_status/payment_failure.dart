@@ -158,7 +158,7 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                                     const EdgeInsets.symmetric(vertical: 8),
                                   ),
                                   onPressed: () {
-                                    GoRouter.of(context).go(AppRoutes.initialPage);
+                                    GoRouter.of(context).go(AppRoutes.bottomNav);
                                   },
                                   child: Text(
                                     'Go to Home',

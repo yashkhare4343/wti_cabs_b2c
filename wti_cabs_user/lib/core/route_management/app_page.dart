@@ -15,92 +15,106 @@ import 'package:wti_cabs_user/screens/select_currency/select_currency.dart';
 import 'package:wti_cabs_user/screens/select_location/airport/airport_select_pickup.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
-
+import 'package:wti_cabs_user/screens/splash_screen.dart';
+import 'package:wti_cabs_user/screens/walkthrough/walkthrough.dart';
 import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 
 class AppPages{
-   static final GoRouter router = GoRouter(
-      navigatorKey: navigatorKey,
-      routes: [
-         GoRoute(
-           path: AppRoutes.initialPage,
-           builder: (context, state) => BottomNavScreen(),
-         ),
-        GoRoute(
-          path: AppRoutes.bookingRide,
-          builder: (context, state) {
-            final tab = state.uri.queryParameters['tab'];
-            return BookingRide(initialTab: tab);
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.choosePickup,
-          builder: (context, state) => SelectPickup(),
-        ),
-        GoRoute(
-          path: AppRoutes.chooseDrop,
-          builder: (context, state) => SelectDrop(),
-        ),
-        GoRoute(
-          path: AppRoutes.airportChoosePick,
-          builder: (context, state) => AirportSelectPickup(),
-        ),
-        GoRoute(
-          path: AppRoutes.airportChooseDrop,
-          builder: (context, state) => AirportSelectPickup(),
-        ),
-        GoRoute(
-          path: AppRoutes.inventoryList,
-          builder: (context, state) {
-            final requestData = state.extra as Map<String, dynamic>;
-            return InventoryList(requestData: requestData);
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.bookingDetailsFinal,
-          builder: (context, state) => BookingDetailsFinal(),
-        ),
-        GoRoute(
-          path: AppRoutes.paymentSuccess,
-          builder: (context, state) => PaymentSuccessPage(),
-        ),
-        GoRoute(
-          path: AppRoutes.paymentFailure,
-          builder: (context, state) => PaymentFailurePage(),
-        ),
-        GoRoute(
-          path: AppRoutes.offers,
-          builder: (context, state) => Offers(),
-        ),
-        GoRoute(
-          path: AppRoutes.profile,
-          builder: (context, state) => Profile(),
-        ),
-        GoRoute(
-          path: AppRoutes.manageBookings,
-          builder: (context, state) => ManageBookings(),
-        ),
-        GoRoute(
-          path: AppRoutes.cancelBooking,
-          builder: (context, state) {
-            final bookingMap = state.extra as Map<String, dynamic>;
-            return CancelBookingScreen(booking: bookingMap);
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.cancelledBooking,
-          builder: (context, state) {
-            final bookingMap = state.extra as Map<String, dynamic>;
-            return CancelledBookingScreen(booking: bookingMap);
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.selectCurrency,
-          builder: (context, state) => SelectCurrencyScreen(),
-        ),
+  static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
+    routes: [
+      GoRoute(
+        path: AppRoutes.initialPage,
+        builder: (context, state) => SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.walkthrough,
+        builder: (context, state) => Walkthrough(),
+      ),
+      GoRoute(
+        path: AppRoutes.bottomNav,
+        builder: (context, state) => BottomNavScreen(),
+      ),
 
-      ],
-   );
+      GoRoute(
+        path: AppRoutes.bookingRide,
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return BookingRide(initialTab: tab);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.choosePickup,
+        builder: (context, state) => SelectPickup(),
+      ),
+      GoRoute(
+        path: AppRoutes.chooseDrop,
+        builder: (context, state) => SelectDrop(),
+      ),
+      GoRoute(
+        path: AppRoutes.airportChoosePick,
+        builder: (context, state) => AirportSelectPickup(),
+      ),
+      GoRoute(
+        path: AppRoutes.airportChooseDrop,
+        builder: (context, state) => AirportSelectPickup(),
+      ),
+      GoRoute(
+        path: AppRoutes.inventoryList,
+        builder: (context, state) {
+          final requestData = state.extra as Map<String, dynamic>;
+          return InventoryList(requestData: requestData);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.bookingDetailsFinal,
+        builder: (context, state) => BookingDetailsFinal(),
+      ),
+      GoRoute(
+        path: AppRoutes.paymentSuccess,
+        builder: (context, state) => PaymentSuccessPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.paymentFailure,
+        builder: (context, state) => PaymentFailurePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.offers,
+        builder: (context, state) => Offers(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => Profile(),
+      ),
+      GoRoute(
+        path: AppRoutes.manageBookings,
+        builder: (context, state) => ManageBookings(),
+      ),
+      GoRoute(
+        path: AppRoutes.cancelBooking,
+        builder: (context, state) {
+          final bookingMap = state.extra as Map<String, dynamic>;
+          return CancelBookingScreen(booking: bookingMap);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.cancelledBooking,
+        builder: (context, state) {
+          final bookingMap = state.extra as Map<String, dynamic>;
+          return CancelledBookingScreen(booking: bookingMap);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.selectCurrency,
+        builder: (context, state) => SelectCurrencyScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.splash,
+        builder: (context, state) => SplashScreen(),
+      ),
+
+    ],
+  );
 }

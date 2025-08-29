@@ -117,7 +117,7 @@ class SelectCurrencyScreen extends StatelessWidget {
                   return GestureDetector(
                     onTap: () async {
                       await controller.changeCurrency(currency);
-                      GoRouter.of(context).go(AppRoutes.initialPage);
+                      GoRouter.of(context).go(AppRoutes.bottomNav);
                     },
                     child: Container(
                       margin:

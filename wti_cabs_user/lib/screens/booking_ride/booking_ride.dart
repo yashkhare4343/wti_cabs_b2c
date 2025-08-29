@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ import 'package:wti_cabs_user/core/controller/button_state_controller/button_sta
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import '../../common_widget/datepicker/drop_date_picker.dart';
 import '../../common_widget/time_picker/drop_time_picker.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
@@ -47,9 +49,7 @@ class _BookingRideState extends State<BookingRide> {
   void initState() {
     super.initState();
     // Initialize controllers to avoid LateInitializationError
-    if (widget.initialTab != null) {
-      bookingRideController.setTabByName(widget.initialTab!);
-    }
+
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
     fetchPackageController.fetchPackages();
@@ -73,7 +73,7 @@ class _BookingRideState extends State<BookingRide> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).go(AppRoutes.initialPage);
+        GoRouter.of(context).go(AppRoutes.bottomNav);
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
@@ -91,7 +91,7 @@ class _BookingRideState extends State<BookingRide> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        GoRouter.of(context).go(AppRoutes.initialPage);
+                        GoRouter.of(context).go(AppRoutes.bottomNav);
                       },
                       child:
                       const Icon(Icons.arrow_back, color: AppColors.blue4),
@@ -220,37 +220,39 @@ class OutStation extends StatefulWidget {
 class _OutStationState extends State<OutStation> {
   String selectedTrip = 'oneWay';
 
-  final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
-  final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
-  final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  final ButtonStateController buttonStateController = Get.put(
+    ButtonStateController(
+      placeSearchController: Get.find<PlaceSearchController>(),
+      dropPlaceSearchController: Get.find<DropPlaceSearchController>(),
+      bookingRideController: Get.find<BookingRideController>(),
+    ),
+  );
   final RxString selectedField = ''.obs;
 
   late final TextEditingController pickupController;
   late final TextEditingController dropController;
   late Worker _pickupWorker;
   late Worker _dropWorker;
+  late Worker _placeIdWorker;
+  late Worker _dropPlaceIdWorker;
 
   @override
   void initState() {
     super.initState();
 
-    pickupController =
-        TextEditingController(text: bookingRideController.prefilled.value);
-    dropController =
-        TextEditingController(text: bookingRideController.prefilledDrop.value);
-
-    // setLocation();
+    pickupController = TextEditingController(text: bookingRideController.prefilled.value);
+    dropController = TextEditingController(text: bookingRideController.prefilledDrop.value);
 
     _pickupWorker = ever<String>(bookingRideController.prefilled, (value) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && pickupController.text != value) {
           setState(() {
             pickupController.text = value;
+            pickupController.selection = TextSelection.collapsed(offset: value.length);
           });
         }
       });
@@ -261,57 +263,117 @@ class _OutStationState extends State<OutStation> {
         if (mounted && dropController.text != value) {
           setState(() {
             dropController.text = value;
+            dropController.selection = TextSelection.collapsed(offset: value.length);
           });
         }
       });
     });
 
+    // Validate prefilled placeId and dropPlaceId after build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (placeSearchController.placeId.value.isNotEmpty || dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+        buttonStateController.isEnabled.value = false; // Disable button initially
+        buttonStateController.isButtonLoading.value = true; // Show loader
+        Future(() async {
+          try {
+            final futures = <Future>[];
+            if (placeSearchController.placeId.value.isNotEmpty) {
+              futures.add(placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context));
+            }
+            if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+              futures.add(dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context));
+            }
+            await Future.wait(futures);
+          } catch (e, st) {
+            debugPrint('Prefilled validation error: $e\n$st');
+          } finally {
+            buttonStateController.isButtonLoading.value = false; // Hide loader
+            buttonStateController.validateButtonState();
+          }
+        });
+      }
+    });
+
+    // Monitor placeId changes
+    _placeIdWorker = ever(placeSearchController.placeId, (String placeId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        buttonStateController.isEnabled.value = false; // Disable immediately
+        buttonStateController.isButtonLoading.value = true; // Show loader
+        Future(() async {
+          if (placeId.isNotEmpty) {
+            try {
+              await placeSearchController.getLatLngDetails(placeId, context);
+            } catch (e, st) {
+              debugPrint('PlaceId validation error: $e\n$st');
+            }
+          }
+          buttonStateController.isButtonLoading.value = false; // Hide loader
+          buttonStateController.validateButtonState();
+        });
+      });
+    });
+
+    // Monitor dropPlaceId changes
+    _dropPlaceIdWorker = ever(dropPlaceSearchController.dropPlaceId, (String dropId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        buttonStateController.isEnabled.value = false; // Disable immediately
+        buttonStateController.isButtonLoading.value = true; // Show loader
+        Future(() async {
+          if (dropId.isNotEmpty) {
+            try {
+              await dropPlaceSearchController.getLatLngForDrop(dropId, context);
+            } catch (e, st) {
+              debugPrint('DropPlaceId validation error: $e\n$st');
+            }
+          }
+          buttonStateController.isButtonLoading.value = false; // Hide loader
+          buttonStateController.validateButtonState();
+        });
+      });
+    });
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     _pickupWorker.dispose();
     _dropWorker.dispose();
+    _placeIdWorker.dispose();
+    _dropPlaceIdWorker.dispose();
     pickupController.dispose();
     dropController.dispose();
     super.dispose();
   }
-
-  final RxBool isSwitching = false.obs;
-
 
   Future<void> switchPickupAndDrop({
     required BuildContext context,
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    // ✅ Debounce: ignore if already switching
     if (bookingRideController.isSwitching.value) return;
 
     bookingRideController.isSwitching.value = true;
-    FocusScope.of(context).unfocus(); // avoid onChanged side-effects during swap
+    buttonStateController.isButtonLoading.value = true; // Show loader during swap
+    FocusScope.of(context).unfocus();
 
     try {
-      // Snapshot current values
-      final oldPickupId   = placeSearchController.placeId.value.trim();
-      final oldDropId     = dropPlaceSearchController.dropPlaceId.value.trim();
+      final oldPickupId = placeSearchController.placeId.value.trim();
+      final oldDropId = dropPlaceSearchController.dropPlaceId.value.trim();
       final oldPickupText = bookingRideController.prefilled.value;
-      final oldDropText   = bookingRideController.prefilledDrop.value;
+      final oldDropText = bookingRideController.prefilledDrop.value;
 
-      // Nothing to do?
-      final idsSame   = oldPickupId == oldDropId;
+      final idsSame = oldPickupId == oldDropId;
       final textsSame = oldPickupText == oldDropText;
-      if (idsSame && textsSame) return;
+      if (idsSame && textsSame) {
+        bookingRideController.isSwitching.value = false;
+        buttonStateController.isButtonLoading.value = false;
+        return;
+      }
 
-      // ---------- 1) Swap observables (single source of truth) ----------
-      placeSearchController.placeId.value              = oldDropId;
-      dropPlaceSearchController.dropPlaceId.value      = oldPickupId;
+      placeSearchController.placeId.value = oldDropId;
+      dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+      bookingRideController.prefilled.value = oldDropText;
+      bookingRideController.prefilledDrop.value = oldPickupText;
 
-      bookingRideController.prefilled.value            = oldDropText;
-      bookingRideController.prefilledDrop.value        = oldPickupText;
-
-      // ---------- 2) Update text fields (cursor at end, minimal noise) ----------
       pickupController.value = TextEditingValue(
         text: bookingRideController.prefilled.value,
         selection: TextSelection.collapsed(offset: bookingRideController.prefilled.value.length),
@@ -321,10 +383,9 @@ class _OutStationState extends State<OutStation> {
         selection: TextSelection.collapsed(offset: bookingRideController.prefilledDrop.value.length),
       );
 
-      // ---------- 3) Refresh geocode/latlng IN PARALLEL ----------
       final futures = <Future>[];
       final newPickupId = placeSearchController.placeId.value;
-      final newDropId   = dropPlaceSearchController.dropPlaceId.value;
+      final newDropId = dropPlaceSearchController.dropPlaceId.value;
 
       if (newPickupId.isNotEmpty) {
         futures.add(placeSearchController.getLatLngDetails(newPickupId, context));
@@ -332,9 +393,8 @@ class _OutStationState extends State<OutStation> {
       if (newDropId.isNotEmpty) {
         futures.add(dropPlaceSearchController.getLatLngForDrop(newDropId, context));
       }
-      await Future.wait(futures); // ensures consistent state before moving on
+      await Future.wait(futures);
 
-      // ---------- 4) Swap cached/local storage IN PARALLEL ----------
       const sourceKeys = [
         'sourcePlaceId',
         'sourceTitle',
@@ -354,38 +414,32 @@ class _OutStationState extends State<OutStation> {
         'destinationTerms',
       ];
 
-      // Read both sets concurrently
-      final srcVals  = await Future.wait(sourceKeys.map(StorageServices.instance.read));
+      final srcVals = await Future.wait(sourceKeys.map(StorageServices.instance.read));
       final destVals = await Future.wait(destinationKeys.map(StorageServices.instance.read));
-
-      // Write both directions concurrently
       await Future.wait([
-        ...List.generate(sourceKeys.length, (i) =>
-            StorageServices.instance.save(sourceKeys[i], (destVals[i] ?? '').toString())),
-        ...List.generate(destinationKeys.length, (i) =>
-            StorageServices.instance.save(destinationKeys[i], (srcVals[i] ?? '').toString())),
+        ...List.generate(sourceKeys.length, (i) => StorageServices.instance.save(sourceKeys[i], (destVals[i] ?? '').toString())),
+        ...List.generate(destinationKeys.length, (i) => StorageServices.instance.save(destinationKeys[i], (srcVals[i] ?? '').toString())),
       ]);
+
+      buttonStateController.validateButtonState();
     } catch (e, st) {
-      // Optional: log your error handler
-      debugPrint('switchPickupAndDrop error: $e');
-      debugPrintStack(stackTrace: st);
+      debugPrint('switchPickupAndDrop error: $e\n$st');
     } finally {
       bookingRideController.isSwitching.value = false;
+      buttonStateController.isButtonLoading.value = false; // Hide loader
     }
   }
 
   DateTime getLocalDateTime() {
-    final userDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet;
+    final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet;
 
     if (userDateTimeStr != null) {
       try {
         final utc = DateTime.parse(userDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing userDateTime: $e");
+        debugPrint("Error parsing userDateTime: $e");
       }
     }
 
@@ -393,17 +447,15 @@ class _OutStationState extends State<OutStation> {
   }
 
   DateTime getInitialDateTime() {
-    final actualDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
+    final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
 
     if (actualDateTimeStr != null) {
       try {
         final utc = DateTime.parse(actualDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing actualDateTime: $e");
+        debugPrint("Error parsing actualDateTime: $e");
       }
     }
 
@@ -411,10 +463,8 @@ class _OutStationState extends State<OutStation> {
   }
 
   DateTime getDropLocalDateTime() {
-    final dropDateTimeStr = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final dropOffset = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userOffSet;
+    final dropDateTimeStr = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final dropOffset = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userOffSet;
 
     if (dropDateTimeStr != null) {
       try {
@@ -423,21 +473,16 @@ class _OutStationState extends State<OutStation> {
       } catch (_) {}
     }
 
-    return bookingRideController.localStartTime.value
-        .add(const Duration(hours: 4));
+    return bookingRideController.localStartTime.value.add(const Duration(hours: 4));
   }
 
   void updateLocalStartTime(DateTime newDateTime) {
-    final timezone =
-        placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
-            placeSearchController.getCurrentTimeZoneName();
+    final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? placeSearchController.getCurrentTimeZoneName();
     final offset = placeSearchController.getOffsetFromTimeZone(timezone);
 
     bookingRideController.localStartTime.value = newDateTime;
-    bookingRideController.utcStartTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcStartTime.value = newDateTime.subtract(Duration(minutes: offset));
 
-    // 🟢 Automatically update drop if it's on the same day and less than +4hrs
     final existingDrop = bookingRideController.localEndTime.value;
     final proposedDrop = newDateTime.add(const Duration(hours: 4));
 
@@ -447,20 +492,18 @@ class _OutStationState extends State<OutStation> {
     if (isSameDay && isBeforeMin) {
       updateLocalEndTime(proposedDrop);
     }
+
+    buttonStateController.validateButtonState(); // Re-validate after time change
   }
 
   void updateLocalEndTime(DateTime newDateTime) {
-    final timezone =
-        dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ??
-            dropPlaceSearchController.getCurrentTimeZoneName();
+    final timezone = dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ?? dropPlaceSearchController.getCurrentTimeZoneName();
     final offset = dropPlaceSearchController.getOffsetFromTimeZone(timezone);
 
     bookingRideController.localEndTime.value = newDateTime;
-    bookingRideController.utcEndTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcEndTime.value = newDateTime.subtract(Duration(minutes: offset));
+    buttonStateController.validateButtonState(); // Re-validate after time change
   }
-
-  Rx<DateTime?> dropDateTime = Rx<DateTime?>(null);
 
   @override
   Widget build(BuildContext context) {
@@ -495,19 +538,14 @@ class _OutStationState extends State<OutStation> {
             Row(
               children: [
                 _buildOption('One Way', 'oneWay', selectedTrip == 'oneWay'),
-                SizedBox(
-                  width: 16,
-                )
+                const SizedBox(width: 16),
               ],
             ),
             _verticalDivider(),
             Row(
               children: [
-                _buildOption(
-                    'Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
-                SizedBox(
-                  width: 16,
-                )
+                _buildOption('Round Trip', 'roundTrip', selectedTrip == 'roundTrip'),
+                const SizedBox(width: 16),
               ],
             ),
           ],
@@ -539,88 +577,60 @@ class _OutStationState extends State<OutStation> {
                       BookingTextFormField(
                         hintText: 'Enter Pickup Location',
                         controller: pickupController,
-                        errorText: (() {
-                          final pickupId =
-                              placeSearchController.placeId.value;
-                          final dropId =
-                              dropPlaceSearchController.dropPlaceId.value;
-
-                          if (pickupId.isNotEmpty &&
-                              dropId.isNotEmpty &&
-                              pickupId == dropId) {
+                        errorText: () {
+                          if (buttonStateController.isButtonLoading.value) return null; // Suppress errors during loading
+                          final pickupId = placeSearchController.placeId.value;
+                          final dropId = dropPlaceSearchController.dropPlaceId.value;
+                          if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) {
                             return "Pickup and Drop cannot be the same";
                           }
-
-                          if (placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.sourceInput ==
-                              true ||
-                              dropPlaceSearchController.dropDateTimeResponse
-                                  .value?.sourceInput ==
-                                  true) {
+                          if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+                              dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true) {
                             return "We don't offer services from this region";
                           }
-
                           return null;
-                        })(),
-                        onTap: () => GoRouter.of(context)
-                            .push(AppRoutes.choosePickup),
+                        }(),
+                        onTap: () => GoRouter.of(context).push(AppRoutes.choosePickup),
                       ),
                       const SizedBox(height: 12),
                       BookingTextFormField(
                         hintText: 'Enter Drop Location',
                         controller: dropController,
-                        errorText: (() {
-                          final pickupId =
-                              placeSearchController.placeId.value;
-                          final dropId =
-                              dropPlaceSearchController.dropPlaceId.value;
-
-                          if (pickupId.isNotEmpty &&
-                              dropId.isNotEmpty &&
-                              pickupId == dropId) {
+                        errorText: () {
+                          if (buttonStateController.isButtonLoading.value) return null; // Suppress errors during loading
+                          final pickupId = placeSearchController.placeId.value;
+                          final dropId = dropPlaceSearchController.dropPlaceId.value;
+                          if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) {
                             return "Pickup and Drop cannot be the same";
                           }
-
-                          if (placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.destinationInputFalse ==
-                              true ||
-                              dropPlaceSearchController.dropDateTimeResponse
-                                  .value?.destinationInputFalse ==
-                                  true) {
+                          if (placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+                              dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true) {
                             return "We don't offer services from this region";
                           }
-
                           return null;
-                        })(),
-                        onTap: () =>
-                            GoRouter.of(context).push(AppRoutes.chooseDrop),
+                        }(),
+                        onTap: () => GoRouter.of(context).push(AppRoutes.chooseDrop),
                       ),
                     ],
                   )),
                 ),
                 Column(
                   children: [
-                    // Icon(Icons.info_outline, color: AppColors.blue5),
                     const SizedBox(height: 10),
                     GestureDetector(
                       onTap: () {
                         switchPickupAndDrop(
-                            context: context,
-                            pickupController: pickupController,
-                            dropController: dropController);
+                          context: context,
+                          pickupController: pickupController,
+                          dropController: dropController,
+                        );
                       },
                       child: Transform.translate(
                         offset: const Offset(0, 0),
-                        child: Image.asset('assets/images/interchange.png',
-                            width: 30, height: 30),
+                        child: Image.asset('assets/images/interchange.png', width: 30, height: 30),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // Icon(Icons.add_circle_outline, color: AppColors.blue5),
                   ],
                 ),
               ],
@@ -650,13 +660,9 @@ class _OutStationState extends State<OutStation> {
                               );
                               updateLocalStartTime(updated);
 
-                              // If drop is same day and violates 4hr rule, auto adjust
-                              final minDrop =
-                              updated.add(const Duration(hours: 4));
-                              final drop =
-                                  bookingRideController.localEndTime.value;
-                              if (DateUtils.isSameDay(drop, updated) &&
-                                  drop.isBefore(minDrop)) {
+                              final minDrop = updated.add(const Duration(hours: 4));
+                              final drop = bookingRideController.localEndTime.value;
+                              if (DateUtils.isSameDay(drop, updated) && drop.isBefore(minDrop)) {
                                 updateLocalEndTime(minDrop);
                                 bookingRideController.localEndTime.refresh();
                               }
@@ -683,15 +689,11 @@ class _OutStationState extends State<OutStation> {
                               updateLocalStartTime(updatedPickup);
                               bookingRideController.localStartTime.refresh();
 
-                              final minAllowedDrop =
-                              updatedPickup.add(const Duration(hours: 4));
-                              final existingDrop =
-                                  bookingRideController.localEndTime.value;
+                              final minAllowedDrop = updatedPickup.add(const Duration(hours: 4));
+                              final existingDrop = bookingRideController.localEndTime.value;
 
-                              final isSameDay = DateUtils.isSameDay(
-                                  updatedPickup, existingDrop);
-                              final isDropBeforeMin =
-                              existingDrop.isBefore(minAllowedDrop);
+                              final isSameDay = DateUtils.isSameDay(updatedPickup, existingDrop);
+                              final isDropBeforeMin = existingDrop.isBefore(minAllowedDrop);
 
                               if (isSameDay && isDropBeforeMin) {
                                 updateLocalEndTime(minAllowedDrop);
@@ -707,80 +709,53 @@ class _OutStationState extends State<OutStation> {
                       const SizedBox(height: 16),
                       DateTimePickerTile(
                         label: 'Drop Date',
-                        initialDateTime: localEnd.isBefore(
-                            localStart.add(const Duration(hours: 4)))
+                        initialDateTime: localEnd.isBefore(localStart.add(const Duration(hours: 4)))
                             ? localStart.add(const Duration(hours: 4))
                             : localEnd,
                         minimumDate: localStart.add(const Duration(hours: 4)),
                         onDateTimeSelected: (picked) {
-                          final minDrop = bookingRideController
-                              .localStartTime.value
-                              .add(const Duration(hours: 4));
-
-                          final updated =
-                          picked.isBefore(minDrop) ? minDrop : picked;
-
+                          final minDrop = bookingRideController.localStartTime.value.add(const Duration(hours: 4));
+                          final updated = picked.isBefore(minDrop) ? minDrop : picked;
                           updateLocalEndTime(updated);
                           bookingRideController.localEndTime.refresh();
                         },
                       ),
-                    ]
+                    ],
                   ],
                 );
               }),
             ),
-            SizedBox(
-              height: 12,
-            ),
+            const SizedBox(height: 12),
             Obx(() {
-              final isInvalid = bookingRideController.isInvalidTime.value;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // error message
-                  if (isInvalid)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(
-                        "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.redAccent,
-                        ),
-                        maxLines: 2,
-                      ),
-                    ),
-
-                ],
-              );
+              return bookingRideController.isInvalidTime.value && !buttonStateController.isButtonLoading.value
+                  ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: const Text(
+                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent,
+                  ),
+                  maxLines: 2,
+                ),
+              )
+                  : const SizedBox();
             }),
-            SizedBox(
-              height: 28,
-            ),
+            const SizedBox(height: 28),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Obx(() {
                 final pickupId = placeSearchController.placeId.value;
                 final dropId = dropPlaceSearchController.dropPlaceId.value;
 
-                final samePlace = pickupId.isNotEmpty &&
-                    dropId.isNotEmpty &&
-                    pickupId == dropId;
+                final samePlace = pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId;
 
-                final hasSourceError = placeSearchController
-                    .findCntryDateTimeResponse.value?.sourceInput ==
-                    true ||
-                    dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput ==
-                        true;
+                final hasSourceError = placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+                    dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true;
 
-                final hasDestinationError = placeSearchController
-                    .findCntryDateTimeResponse.value?.destinationInputFalse ==
-                    true ||
-                    dropPlaceSearchController
-                        .dropDateTimeResponse.value?.destinationInputFalse ==
-                        true;
+                final hasDestinationError = placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+                    dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true;
 
                 final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
 
@@ -788,37 +763,33 @@ class _OutStationState extends State<OutStation> {
                     !hasSourceError &&
                     !hasDestinationError &&
                     !isPlaceMissing &&
-                    (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage ==
-                        true ||
-                        placeSearchController.findCntryDateTimeResponse.value?.sameCountry ==
-                            true ||
-                        dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry ==
-                            true ||
-                        dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage ==
-                            true);
+                    (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true ||
+                        placeSearchController.findCntryDateTimeResponse.value?.sameCountry == true ||
+                        dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry == true ||
+                        dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage == true);
 
-                final forceDisable = samePlace || hasSourceError || hasDestinationError;
-
-                // ✅ final condition to enable button
-                final isEnabled =
-                    canProceed && !forceDisable && !bookingRideController.isInvalidTime.value;
+                final isEnabled = canProceed && !bookingRideController.isInvalidTime.value;
 
                 return Opacity(
-                  opacity: isEnabled ? 1.0 : 0.6,
+                  opacity: isEnabled && !buttonStateController.isButtonLoading.value ? 1.0 : 0.6,
                   child: SizedBox(
                     width: double.infinity,
                     child: PrimaryButton(
                       text: 'Search Now',
-                      onPressed: isEnabled
+                      isLoading: buttonStateController.isButtonLoading.value,
+                      isEnabled: isEnabled,
+                      onPressed: isEnabled && !buttonStateController.isButtonLoading.value
                           ? () async {
                         final requestData = await _buildOutstationRequestData(context);
-                        GoRouter.of(context).push(
-                          AppRoutes.inventoryList,
-                          extra: requestData,
+                        await searchCabInventoryController.fetchBookingData(
+                          country: requestData['countryName'],
+                          requestData: requestData,
+                          context: context,
+                          isSecondPage: true,
                         );
-
+                        GoRouter.of(context).push(AppRoutes.inventoryList, extra: requestData);
                       }
-                          : (){}, // ✅ null = disabled
+                          : () {},
                     ),
                   ),
                 );
@@ -830,21 +801,15 @@ class _OutStationState extends State<OutStation> {
     );
   }
 
-  Future<Map<String, dynamic>> _buildOutstationRequestData(
-      BuildContext context) async {
-    final DropPlaceSearchController dropPlaceSearchController =
-    Get.put(DropPlaceSearchController());
-    final PlaceSearchController placeSearchController =
-    Get.put(PlaceSearchController());
+  Future<Map<String, dynamic>> _buildOutstationRequestData(BuildContext context) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => FullScreenGifLoader(),
+      builder: (_) => const FullScreenGifLoader(),
     );
     final now = DateTime.now();
     final searchDate = now.toIso8601String().split('T').first;
-    final searchTime =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final offset = now.timeZoneOffset.inMinutes;
 
     final keys = [
@@ -859,7 +824,7 @@ class _OutStationState extends State<OutStation> {
       'sourcePlaceId',
       'sourceCity',
       'sourceState',
-      'country',
+      'sourceCountry',
       'sourceLat',
       'sourceLng',
       'sourceTypes',
@@ -872,15 +837,14 @@ class _OutStationState extends State<OutStation> {
       'destinationTypes',
       'destinationTerms',
       'destinationLat',
-      'destinationLng'
+      'destinationLng',
     ];
-
 
     final values = await Future.wait(keys.map(StorageServices.instance.read));
     final Map<String, dynamic> data = Map.fromIterables(keys, values);
     final isRoundTrip = selectedTrip != 'oneWay';
-    print('yash pickup time : ${data['userDateTime']}');
 
+    GoRouter.of(context).pop();
 
     return {
       "timeOffSet": -offset,
@@ -889,38 +853,28 @@ class _OutStationState extends State<OutStation> {
       "searchTime": searchTime,
       "offset": int.parse(data['userOffset'] ?? '0'),
       "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
-      "returnDateAndTime": "",
+      "returnDateAndTime": isRoundTrip ? bookingRideController.convertLocalToUtc() : "",
       "tripCode": isRoundTrip ? "1" : "0",
       "source": {
         "sourceTitle": data['sourceTitle'],
         "sourcePlaceId": data['sourcePlaceId'],
-        "sourceCity":
-        placeSearchController.getPlacesLatLng.value?.city.toString(),
-        "sourceState":
-        placeSearchController.getPlacesLatLng.value?.state.toString(),
-        "sourceCountry":
-        placeSearchController.getPlacesLatLng.value?.country.toString(),
+        "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString() ?? '',
+        "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString() ?? '',
+        "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString() ?? '',
         "sourceType": _parseList<String>(data['sourceTypes']),
-        "sourceLat":
-        placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-        "sourceLng":
-        placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+        "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+        "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
         "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
       },
       "destination": {
         "destinationTitle": data['destinationTitle'],
         "destinationPlaceId": data['destinationPlaceId'],
-        "destinationCity":
-        dropPlaceSearchController.dropLatLng.value!.city.toString(),
-        "destinationState":
-        dropPlaceSearchController.dropLatLng.value!.state.toString(),
-        "destinationCountry":
-        dropPlaceSearchController.dropLatLng.value!.country.toString(),
+        "destinationCity": dropPlaceSearchController.dropLatLng.value?.city.toString() ?? '',
+        "destinationState": dropPlaceSearchController.dropLatLng.value?.state.toString() ?? '',
+        "destinationCountry": dropPlaceSearchController.dropLatLng.value?.country.toString() ?? '',
         "destinationType": _parseList<String>(data['destinationTypes']),
-        "destinationLat":
-        dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
-        "destinationLng":
-        dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
+        "destinationLat": dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString() ?? '',
+        "destinationLng": dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString() ?? '',
         "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
       },
       "packageSelected": {"km": "", "hours": ""},
@@ -928,18 +882,24 @@ class _OutStationState extends State<OutStation> {
       "pickUpTime": {
         "time": data['actualTimeWithOffset'],
         "offset": data['actualOffset'],
-        "timeZone": data['timeZone']
+        "timeZone": data['timeZone'],
       },
-      "dropTime": {},
+      "dropTime": isRoundTrip
+          ? {
+        "time": bookingRideController.localEndTime.value.toIso8601String(),
+        "offset": dropPlaceSearchController.getOffsetFromTimeZone(
+            dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ?? dropPlaceSearchController.getCurrentTimeZoneName()),
+        "timeZone": dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ?? dropPlaceSearchController.getCurrentTimeZoneName(),
+      }
+          : {},
       "mindate": {
         "date": data['userTimeWithOffset'],
         "time": data['userTimeWithOffset'],
         "offset": data['userOffset'],
-        "timeZone": data['timeZone']
+        "timeZone": data['timeZone'],
       },
       "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
     };
-
   }
 
   Widget _buildOption(String title, String value, bool isSelected) {
@@ -978,7 +938,106 @@ class _OutStationState extends State<OutStation> {
   );
 }
 
-// airport cabs
+class ButtonStateController extends GetxController {
+  final PlaceSearchController placeSearchController;
+  final DropPlaceSearchController dropPlaceSearchController;
+  final BookingRideController bookingRideController;
+  final RxBool isEnabled = false.obs;
+  final RxBool isButtonLoading = false.obs;
+
+  ButtonStateController({
+    required this.placeSearchController,
+    required this.dropPlaceSearchController,
+    required this.bookingRideController,
+  }) {
+    ever(bookingRideController.isInvalidTime, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateButtonState()));
+    ever(placeSearchController.findCntryDateTimeResponse, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateButtonState()));
+    ever(dropPlaceSearchController.dropDateTimeResponse, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateButtonState()));
+    WidgetsBinding.instance.addPostFrameCallback((_) => validateButtonState());
+  }
+
+  void validateButtonState() {
+    isEnabled.value = false;
+
+    final placeId = placeSearchController.placeId.value;
+    final dropId = dropPlaceSearchController.dropPlaceId.value;
+    if (placeId.isEmpty || dropId.isEmpty) return;
+
+    if (placeId == dropId) return;
+
+    if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true ||
+        placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true) {
+      return;
+    }
+
+    if (bookingRideController.isInvalidTime.value) return;
+
+    final canProceed = (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true ||
+        placeSearchController.findCntryDateTimeResponse.value?.sameCountry == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage == true);
+
+    if (canProceed) {
+      isEnabled.value = true;
+    }
+  }
+}
+
+class PrimaryButton extends StatelessWidget {
+  final String text;
+  final bool isLoading;
+  final bool isEnabled;
+  final VoidCallback? onPressed;
+
+  const PrimaryButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: (isEnabled && !isLoading) ? onPressed : null,
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+          if (isLoading) return AppColors.mainButtonBg; // Blue when loading
+          if (states.contains(WidgetState.disabled)) return AppColors.mainButtonBg.withOpacity(0.8); // Reduced opacity when disabled
+          return AppColors.mainButtonBg; // Default background
+        }),
+        foregroundColor: WidgetStateProperty.all(Colors.white), // Always white for text/loader
+        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 12)),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      child: isLoading
+          ? const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white), // White loader
+        ),
+      )
+          : Text(
+        text,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.white, // Always white text
+        ),
+      ),
+    );
+  }
+}
+
+//
+
 class Rides extends StatefulWidget {
   const Rides({super.key});
 
@@ -987,14 +1046,10 @@ class Rides extends StatefulWidget {
 }
 
 class _RidesState extends State<Rides> {
-  final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
-  final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
-  final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
   final ButtonStateController buttonStateController = Get.put(
     ButtonStateController(
       placeSearchController: Get.find<PlaceSearchController>(),
@@ -1004,242 +1059,200 @@ class _RidesState extends State<Rides> {
   );
   final RxString selectedField = ''.obs;
 
-  // Declare TextEditingControllers as class-level variables
   late TextEditingController ridePickupController;
   late TextEditingController rideDropController;
   late Worker _ridePickupWorker;
   late Worker _rideDropWorker;
-  bool _isLoading = false;
-  final RxBool isSwitching = false.obs;
-
+  late Worker _placeIdWorker;
+  late Worker _dropPlaceIdWorker;
+  final RxBool _isLoading = false.obs;
 
   Future<void> switchPickupAndDrop({
     required BuildContext context,
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    // ✅ Debounce: ignore if already switching
     if (bookingRideController.isSwitching.value) return;
 
     bookingRideController.isSwitching.value = true;
-    FocusScope.of(context).unfocus(); // avoid onChanged side-effects during swap
+    buttonStateController.isButtonLoading.value = true; // Show loader during swap
+    FocusScope.of(context).unfocus();
 
     try {
-      // Snapshot current values
-      final oldPickupId   = placeSearchController.placeId.value.trim();
-      final oldDropId     = dropPlaceSearchController.dropPlaceId.value.trim();
+      final oldPickupId = placeSearchController.placeId.value;
+      final oldDropId = dropPlaceSearchController.dropPlaceId.value;
       final oldPickupText = bookingRideController.prefilled.value;
-      final oldDropText   = bookingRideController.prefilledDrop.value;
+      final oldDropText = bookingRideController.prefilledDrop.value;
 
-      // Nothing to do?
-      final idsSame   = oldPickupId == oldDropId;
-      final textsSame = oldPickupText == oldDropText;
-      if (idsSame && textsSame) return;
+      if (oldPickupId == oldDropId && oldPickupText == oldDropText) {
+        bookingRideController.isSwitching.value = false;
+        buttonStateController.isButtonLoading.value = false;
+        return;
+      }
 
-      // ---------- 1) Swap observables (single source of truth) ----------
-      placeSearchController.placeId.value              = oldDropId;
-      dropPlaceSearchController.dropPlaceId.value      = oldPickupId;
+      placeSearchController.placeId.value = oldDropId;
+      dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+      bookingRideController.prefilled.value = oldDropText;
+      bookingRideController.prefilledDrop.value = oldPickupText;
 
-      bookingRideController.prefilled.value            = oldDropText;
-      bookingRideController.prefilledDrop.value        = oldPickupText;
+      pickupController.text = oldDropText;
+      dropController.text = oldPickupText;
+      pickupController.selection = TextSelection.collapsed(offset: oldDropText.length);
+      dropController.selection = TextSelection.collapsed(offset: oldPickupText.length);
 
-      // ---------- 2) Update text fields (cursor at end, minimal noise) ----------
-      pickupController.value = TextEditingValue(
-        text: bookingRideController.prefilled.value,
-        selection: TextSelection.collapsed(offset: bookingRideController.prefilled.value.length),
-      );
-      dropController.value = TextEditingValue(
-        text: bookingRideController.prefilledDrop.value,
-        selection: TextSelection.collapsed(offset: bookingRideController.prefilledDrop.value.length),
-      );
-
-      // ---------- 3) Refresh geocode/latlng IN PARALLEL ----------
       final futures = <Future>[];
-      final newPickupId = placeSearchController.placeId.value;
-      final newDropId   = dropPlaceSearchController.dropPlaceId.value;
-
-      if (newPickupId.isNotEmpty) {
-        futures.add(placeSearchController.getLatLngDetails(newPickupId, context));
+      if (placeSearchController.placeId.isNotEmpty) {
+        futures.add(placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context));
       }
-      if (newDropId.isNotEmpty) {
-        futures.add(dropPlaceSearchController.getLatLngForDrop(newDropId, context));
+      if (dropPlaceSearchController.dropPlaceId.isNotEmpty) {
+        futures.add(dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context));
       }
-      await Future.wait(futures); // ensures consistent state before moving on
+      await Future.wait(futures);
 
-      // ---------- 4) Swap cached/local storage IN PARALLEL ----------
-      const sourceKeys = [
-        'sourcePlaceId',
-        'sourceTitle',
-        'sourceCity',
-        'sourceState',
-        'sourceCountry',
-        'sourceTypes',
-        'sourceTerms',
-      ];
-      const destinationKeys = [
-        'destinationPlaceId',
-        'destinationTitle',
-        'destinationCity',
-        'destinationState',
-        'destinationCountry',
-        'destinationTypes',
-        'destinationTerms',
-      ];
-
-      // Read both sets concurrently
-      final srcVals  = await Future.wait(sourceKeys.map(StorageServices.instance.read));
+      const sourceKeys = ['sourcePlaceId', 'sourceTitle', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceTypes', 'sourceTerms'];
+      const destinationKeys = ['destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms'];
+      final srcVals = await Future.wait(sourceKeys.map(StorageServices.instance.read));
       final destVals = await Future.wait(destinationKeys.map(StorageServices.instance.read));
-
-      // Write both directions concurrently
       await Future.wait([
-        ...List.generate(sourceKeys.length, (i) =>
-            StorageServices.instance.save(sourceKeys[i], (destVals[i] ?? '').toString())),
-        ...List.generate(destinationKeys.length, (i) =>
-            StorageServices.instance.save(destinationKeys[i], (srcVals[i] ?? '').toString())),
+        for (int i = 0; i < sourceKeys.length; i++) StorageServices.instance.save(sourceKeys[i], destVals[i] ?? ''),
+        for (int i = 0; i < destinationKeys.length; i++) StorageServices.instance.save(destinationKeys[i], srcVals[i] ?? ''),
       ]);
+
+      buttonStateController.validateButtonState();
     } catch (e, st) {
-      // Optional: log your error handler
-      debugPrint('switchPickupAndDrop error: $e');
-      debugPrintStack(stackTrace: st);
+      debugPrint('switchPickupAndDrop error: $e\n$st');
     } finally {
       bookingRideController.isSwitching.value = false;
+      buttonStateController.isButtonLoading.value = false; // Hide loader
     }
   }
-
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers
-    ridePickupController =
-        TextEditingController(text: bookingRideController.prefilled.value);
-    rideDropController =
-        TextEditingController(text: bookingRideController.prefilledDrop.value);
+    ridePickupController = TextEditingController(text: bookingRideController.prefilled.value);
+    rideDropController = TextEditingController(text: bookingRideController.prefilledDrop.value);
 
-    // setLocation();
+    _ridePickupWorker = debounce(bookingRideController.prefilled, (String val) {
+      if (mounted) {
+        ridePickupController.text = val;
+        ridePickupController.selection = TextSelection.collapsed(offset: val.length);
+      }
+    }, time: const Duration(milliseconds: 100));
 
-    // Listen to changes in prefilled and prefilledDrop to update controllers
-    _ridePickupWorker = ever<String>(bookingRideController.prefilled, (val) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            ridePickupController.text = val;
-          });
+    _rideDropWorker = debounce(bookingRideController.prefilledDrop, (String val) {
+      if (mounted) {
+        rideDropController.text = val;
+        rideDropController.selection = TextSelection.collapsed(offset: val.length);
+      }
+    }, time: const Duration(milliseconds: 100));
+
+    // Validate prefilled placeId and dropPlaceId
+    if (placeSearchController.placeId.value.isNotEmpty || dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+      buttonStateController.isEnabled.value = false; // Disable button initially
+      buttonStateController.isButtonLoading.value = true; // Show loader for prefilled validation
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final futures = <Future>[];
+          if (placeSearchController.placeId.value.isNotEmpty) {
+            futures.add(placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context));
+          }
+          if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+            futures.add(dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context));
+          }
+          await Future.wait(futures);
+        } catch (e, st) {
+          debugPrint('Prefilled validation error: $e\n$st');
+        } finally {
+          buttonStateController.isButtonLoading.value = false; // Hide loader
+          buttonStateController.validateButtonState();
         }
       });
+    }
+
+    // Monitor placeId and dropPlaceId changes, show loader and disable button
+    _placeIdWorker = ever(placeSearchController.placeId, (String placeId) async {
+      buttonStateController.isEnabled.value = false; // Disable immediately
+      buttonStateController.isButtonLoading.value = true; // Show loader
+      if (placeId.isNotEmpty) {
+        await placeSearchController.getLatLngDetails(placeId, context);
+      }
+      buttonStateController.isButtonLoading.value = false; // Hide loader
+      buttonStateController.validateButtonState();
     });
 
-    _rideDropWorker = ever<String>(bookingRideController.prefilledDrop, (val) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            rideDropController.text = val;
-          });
-        }
-      });
-    });
-
-  }
-
-  void setLocation() {
-    setState(() {
-      ridePickupController.text = bookingRideController.prefilled.value;
-      rideDropController.text = bookingRideController.prefilledDrop.value;
+    _dropPlaceIdWorker = ever(dropPlaceSearchController.dropPlaceId, (String dropId) async {
+      buttonStateController.isEnabled.value = false; // Disable immediately
+      buttonStateController.isButtonLoading.value = true; // Show loader
+      if (dropId.isNotEmpty) {
+        await dropPlaceSearchController.getLatLngForDrop(dropId, context);
+      }
+      buttonStateController.isButtonLoading.value = false; // Hide loader
+      buttonStateController.validateButtonState();
     });
   }
 
   @override
   void dispose() {
-    // Dispose controllers to prevent memory leaks
     _ridePickupWorker.dispose();
     _rideDropWorker.dispose();
+    _placeIdWorker.dispose();
+    _dropPlaceIdWorker.dispose();
     ridePickupController.dispose();
     rideDropController.dispose();
     super.dispose();
   }
 
   DateTime getLocalDateTime() {
-    final userDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet;
-
-    if (userDateTimeStr != null) {
-      try {
-        final utc = DateTime.parse(userDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0));
-      } catch (e) {
-        print("Error parsing userDateTime: $e");
-      }
+    final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet ?? 0;
+    try {
+      return userDateTimeStr != null ? DateTime.parse(userDateTimeStr).toUtc().add(Duration(minutes: offset)) : bookingRideController.localStartTime.value;
+    } catch (e) {
+      debugPrint('Error parsing userDateTime: $e');
+      return bookingRideController.localStartTime.value;
     }
-    return bookingRideController.localStartTime.value;
   }
 
   DateTime getInitialDateTime() {
-    final actualDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
-
-    if (actualDateTimeStr != null) {
-      try {
-        final utc = DateTime.parse(actualDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: offset ?? 0));
-      } catch (e) {
-        print("Error parsing actualDateTime: $e");
-      }
+    final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet ?? 0;
+    try {
+      return actualDateTimeStr != null ? DateTime.parse(actualDateTimeStr).toUtc().add(Duration(minutes: offset)) : getLocalDateTime();
+    } catch (e) {
+      debugPrint('Error parsing actualDateTime: $e');
+      return getLocalDateTime();
     }
-    return getLocalDateTime();
   }
 
   DateTime getDropLocalDateTime() {
-    final dropDateTimeStr = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final dropOffset = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userOffSet;
-
-    if (dropDateTimeStr != null) {
-      try {
-        final utc = DateTime.parse(dropDateTimeStr).toUtc();
-        return utc.add(Duration(minutes: dropOffset ?? 0));
-      } catch (_) {}
+    final dropDateTimeStr = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final dropOffset = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userOffSet ?? 0;
+    try {
+      return dropDateTimeStr != null ? DateTime.parse(dropDateTimeStr).toUtc().add(Duration(minutes: dropOffset)) : bookingRideController.localStartTime.value.add(const Duration(hours: 4));
+    } catch (_) {
+      return bookingRideController.localStartTime.value.add(const Duration(hours: 4));
     }
-    return bookingRideController.localStartTime.value
-        .add(const Duration(hours: 4));
   }
 
   void updateLocalStartTime(DateTime newDateTime) {
-    final timezone =
-        placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
-            placeSearchController.getCurrentTimeZoneName();
+    final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? placeSearchController.getCurrentTimeZoneName();
     final offset = placeSearchController.getOffsetFromTimeZone(timezone);
-
     bookingRideController.localStartTime.value = newDateTime;
-    bookingRideController.utcStartTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcStartTime.value = newDateTime.subtract(Duration(minutes: offset));
+    buttonStateController.validateButtonState(); // Re-validate after time change
   }
 
   void updateLocalEndTime(DateTime newDateTime) {
-    final timezone =
-        dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ??
-            dropPlaceSearchController.getCurrentTimeZoneName();
+    final timezone = dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ?? dropPlaceSearchController.getCurrentTimeZoneName();
     final offset = dropPlaceSearchController.getOffsetFromTimeZone(timezone);
-
     bookingRideController.localEndTime.value = newDateTime;
-    bookingRideController.utcEndTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcEndTime.value = newDateTime.subtract(Duration(minutes: offset));
+    buttonStateController.validateButtonState(); // Re-validate after time change
   }
 
   @override
   Widget build(BuildContext context) {
-    return _buildOneWayUI();
-  }
-
-  Widget _buildOneWayUI() {
-    return _buildPickupDropUI(showDropDateTime: false);
-  }
-
-  Widget _buildPickupDropUI({required bool showDropDateTime}) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -1254,96 +1267,31 @@ class _RidesState extends State<Rides> {
                       BookingTextFormField(
                         hintText: 'Enter Pickup Location',
                         controller: ridePickupController,
-                        errorText: (() {
-                          final placeId =
-                              placeSearchController.placeId.value;
-                          final dropId =
-                              dropPlaceSearchController.dropPlaceId.value;
-
-                          if (placeId.isNotEmpty &&
-                              dropId.isNotEmpty &&
-                              placeId == dropId) {
-                            return "Pickup and Drop cannot be the same";
-                          }
-
-                          if (placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.sourceInput ==
-                              true ||
-                              dropPlaceSearchController.dropDateTimeResponse
-                                  .value?.sourceInput ==
-                                  true) {
-                            return "We don't offer services from this region";
-                          }
-
-                          return null;
-                        })(),
-                        onTap: () async {
-                          setState(() {
-                            ridePickupController.text =
-                                bookingRideController.prefilled.value;
-                            rideDropController.text =
-                                bookingRideController.prefilledDrop.value;
-                          });
-                          await GoRouter.of(context)
-                              .push(AppRoutes.choosePickup);
-                        },
+                        errorText: _getPickupErrorText(),
+                        onTap: () => GoRouter.of(context).push(AppRoutes.choosePickup),
                       ),
                       const SizedBox(height: 12),
                       BookingTextFormField(
                         hintText: 'Enter Drop Location',
                         controller: rideDropController,
-                        errorText: (() {
-                          final pickupId =
-                              placeSearchController.placeId.value;
-                          final dropId =
-                              dropPlaceSearchController.dropPlaceId.value;
-
-                          if (pickupId.isNotEmpty &&
-                              dropId.isNotEmpty &&
-                              pickupId == dropId) {
-                            return "Pickup and Drop cannot be the same";
-                          }
-
-                          if (placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.destinationInputFalse ==
-                              true ||
-                              dropPlaceSearchController.dropDateTimeResponse
-                                  .value?.destinationInputFalse ==
-                                  true) {
-                            return "We don't offer services from this region";
-                          }
-
-                          return null;
-                        })(),
-                        onTap: () =>
-                            GoRouter.of(context).push(AppRoutes.chooseDrop),
+                        errorText: _getDropErrorText(),
+                        onTap: () => GoRouter.of(context).push(AppRoutes.chooseDrop),
                       ),
                     ],
                   )),
                 ),
                 Column(
                   children: [
-                    // Icon(Icons.info_outline, color: AppColors.blue5),
                     const SizedBox(height: 10),
                     GestureDetector(
-                      onTap: () {
-                        switchPickupAndDrop(
-                            context: context,
-                            pickupController: ridePickupController,
-                            dropController: rideDropController);
-                      },
-                      child: Transform.translate(
-                        offset: const Offset(0, 0),
-                        child: Image.asset('assets/images/interchange.png',
-                            width: 30, height: 30),
+                      onTap: () => switchPickupAndDrop(
+                        context: context,
+                        pickupController: ridePickupController,
+                        dropController: rideDropController,
                       ),
+                      child: Image.asset('assets/images/interchange.png', width: 30, height: 30),
                     ),
                     const SizedBox(height: 10),
-                    // Icon(Icons.add_circle_outline, color: AppColors.blue5),
                   ],
                 ),
               ],
@@ -1351,269 +1299,246 @@ class _RidesState extends State<Rides> {
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Obx(() {
-                final localStartTime =
-                    bookingRideController.localStartTime.value;
-                final dropoffDateTime = getDropLocalDateTime();
-
-                final dynamic activeController = selectedField.value == 'drop'
-                    ? dropPlaceSearchController
-                    : placeSearchController;
-
-                return Row(
-                  children: [
-                    Expanded(
-                      child: DatePickerTile(
-                        label: 'Pickup Date',
-                        initialDate: localStartTime,
-                        onDateSelected: (newDate) {
-                          final actualDateTimeStr = placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.actualDateTimeObject
-                              ?.actualDateTime;
-
-                          if (actualDateTimeStr != null) {
-                            final actualMinDateTime =
-                            DateTime.parse(actualDateTimeStr).toLocal();
-
-                            if (DateUtils.isSameDay(
-                                newDate, actualMinDateTime)) {
-                              final updatedTime = DateTime(
-                                newDate.year,
-                                newDate.month,
-                                newDate.day,
-                                actualMinDateTime.hour,
-                                actualMinDateTime.minute,
-                              );
-
-                              if (!updatedTime.isAtSameMomentAs(
-                                  bookingRideController.localStartTime.value)) {
-                                updateLocalStartTime(updatedTime);
-                              } else {
-                                bookingRideController.localStartTime.refresh();
-                              }
-                            } else {
-                              final newDateTime = DateTime(
-                                newDate.year,
-                                newDate.month,
-                                newDate.day,
-                                localStartTime.hour,
-                                localStartTime.minute,
-                              );
-                              updateLocalStartTime(newDateTime);
-                            }
-                          } else {
-                            final newDateTime = DateTime(
-                              newDate.year,
-                              newDate.month,
-                              newDate.day,
-                              localStartTime.hour,
-                              localStartTime.minute,
-                            );
-                            updateLocalStartTime(newDateTime);
-                          }
-                        },
-                        controller: placeSearchController,
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: TimePickerTile(
-                        label: 'Pickup Time',
-                        initialTime: localStartTime,
-                        onTimeSelected: (newTime) {
+              child: Obx(() => Row(
+                children: [
+                  Expanded(
+                    child: DatePickerTile(
+                      label: 'Pickup Date',
+                      initialDate: bookingRideController.localStartTime.value,
+                      onDateSelected: (newDate) {
+                        final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
+                        if (actualDateTimeStr != null) {
+                          final actualMinDateTime = DateTime.parse(actualDateTimeStr).toLocal();
                           final updatedTime = DateTime(
-                            localStartTime.year,
-                            localStartTime.month,
-                            localStartTime.day,
-                            newTime.hour,
-                            newTime.minute,
+                            newDate.year,
+                            newDate.month,
+                            newDate.day,
+                            DateUtils.isSameDay(newDate, actualMinDateTime) ? actualMinDateTime.hour : bookingRideController.localStartTime.value.hour,
+                            DateUtils.isSameDay(newDate, actualMinDateTime) ? actualMinDateTime.minute : bookingRideController.localStartTime.value.minute,
                           );
-
-                          if (!updatedTime.isAtSameMomentAs(
-                              bookingRideController.localStartTime.value)) {
-                            print('yash 22 local start time : ${bookingRideController.localStartTime.value}');
-                            updateLocalStartTime(updatedTime);
-                            bookingRideController.localStartTime
-                                .refresh(); // 🔁 Force rebuild on same value
-                          } else {
-                            print('yash 22 local start time : ${bookingRideController.localStartTime.value}');
-                            bookingRideController.localStartTime
-                                .refresh(); // 🔁 Force rebuild on same value
-                          }
-                        },
-                        controller: placeSearchController,
-                      ),
+                          updateLocalStartTime(updatedTime);
+                        } else {
+                          updateLocalStartTime(DateTime(
+                            newDate.year,
+                            newDate.month,
+                            newDate.day,
+                            bookingRideController.localStartTime.value.hour,
+                            bookingRideController.localStartTime.value.minute,
+                          ));
+                        }
+                      },
+                      controller: placeSearchController,
                     ),
-                    if (showDropDateTime) ...[
-                      const SizedBox(height: 16),
-                      DateTimePickerTile(
-                        label: 'Dropoff Date & Time',
-                        initialDateTime: dropoffDateTime,
-                        onDateTimeSelected: (pickedDateTime) {
-                          if (pickedDateTime.isBefore(
-                              localStartTime.add(const Duration(hours: 4)))) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(
-                              backgroundColor: Colors.redAccent,
-                              content: Text(
-                                  'Dropoff time must be at least 4 hours after pickup time.'),
-                            ));
-                            return;
-                          }
-                          updateLocalEndTime(pickedDateTime);
-                        },
-                      ),
-                    ],
-                  ],
-                );
-              }),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TimePickerTile(
+                      label: 'Pickup Time',
+                      initialTime: bookingRideController.localStartTime.value,
+                      onTimeSelected: (newTime) {
+                        updateLocalStartTime(DateTime(
+                          bookingRideController.localStartTime.value.year,
+                          bookingRideController.localStartTime.value.month,
+                          bookingRideController.localStartTime.value.day,
+                          newTime.hour,
+                          newTime.minute,
+                        ));
+                      },
+                      controller: placeSearchController,
+                    ),
+                  ),
+                ],
+              )),
             ),
-            Obx(() {
-              return bookingRideController.isInvalidTime.value
-                  ? Container(
-                  margin: EdgeInsets.only(top: 12),
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.redAccent),
-                    maxLines: 2,
-                  ))
-                  : SizedBox();
-            }),
+            Obx(() => bookingRideController.isInvalidTime.value
+                ? Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: const Text(
+                "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent),
+                maxLines: 2,
+              ),
+            )
+                : const SizedBox()),
             const SizedBox(height: 28),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: Obx(() {
-                  final isEnabled = buttonStateController.isEnabled.value;
-
-                  return Opacity(
-                    opacity: isEnabled ? 1.0 : 0.6,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: PrimaryButton(
-                        text: 'Search Now',
-                        onPressed: isEnabled
-                            ? () async {
-                          final requestData = await _buildRequestData(context);
-                          GoRouter.of(context).push(
-                            AppRoutes.inventoryList,
-                            extra: requestData,
-                          );
-                        }
-                            : (){}, // ✅ null = properly disabled
-                      ),
-                    ),
-                  );
-                }),
-              ),
+              child: Obx(() => Opacity(
+                opacity: buttonStateController.isEnabled.value && !buttonStateController.isButtonLoading.value ? 1.0 : 0.6,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    text: 'Search Now',
+                    isLoading: buttonStateController.isButtonLoading.value,
+                    onPressed: buttonStateController.isEnabled.value && !buttonStateController.isButtonLoading.value
+                        ? () async => GoRouter.of(context).push(AppRoutes.inventoryList, extra: await _buildRequestData(context))
+                        : () {},
+                  ),
+                ),
+              )),
             ),
           ],
         ),
       ),
     );
   }
+
+  String? _getPickupErrorText() {
+    // Suppress error text while loading
+    if (buttonStateController.isButtonLoading.value) return null;
+
+    final placeId = placeSearchController.placeId.value;
+    final dropId = dropPlaceSearchController.dropPlaceId.value;
+    if (placeId.isNotEmpty && dropId.isNotEmpty && placeId == dropId) {
+      return "Pickup and Drop cannot be the same";
+    }
+    if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true) {
+      return "We don't offer services from this region";
+    }
+    return null;
+  }
+
+  String? _getDropErrorText() {
+    // Suppress error text while loading
+    if (buttonStateController.isButtonLoading.value) return null;
+
+    final pickupId = placeSearchController.placeId.value;
+    final dropId = dropPlaceSearchController.dropPlaceId.value;
+    if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) {
+      return "Pickup and Drop cannot be the same";
+    }
+    if (placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse == true ||
+        dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse == true) {
+      return "We don't offer services from this region";
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
+    final now = DateTime.now();
+    final searchDate = now.toIso8601String().split('T').first;
+    final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final offset = now.timeZoneOffset.inMinutes;
+
+    showDialog(context: context, barrierDismissible: false, builder: (_) => FullScreenGifLoader());
+
+    const keys = [
+      'country', 'userOffset', 'userDateTime', 'userTimeWithOffset', 'actualTimeWithOffset', 'actualOffset', 'timeZone',
+      'sourceTitle', 'sourcePlaceId', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceLat', 'sourceLng', 'sourceTypes', 'sourceTerms',
+      'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms', 'destinationLat', 'destinationLng'
+    ];
+    final values = await Future.wait(keys.map(StorageServices.instance.read));
+    final data = Map<String, dynamic>.fromIterables(keys, values);
+
+    GoRouter.of(context).pop();
+
+    return {
+      "timeOffSet": -offset,
+      "countryName": data['country'],
+      "searchDate": searchDate,
+      "searchTime": searchTime,
+      "offset": int.parse(data['userOffset'] ?? '0'),
+      "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
+      "returnDateAndTime": "",
+      "tripCode": "2",
+      "source": {
+        "sourceTitle": data['sourceTitle'],
+        "sourcePlaceId": data['sourcePlaceId'],
+        "sourceCity": placeSearchController.getPlacesLatLng.value?.city?.toString() ?? '',
+        "sourceState": placeSearchController.getPlacesLatLng.value?.state?.toString() ?? '',
+        "sourceCountry": placeSearchController.getPlacesLatLng.value?.country?.toString() ?? '',
+        "sourceType": _parseList<String>(data['sourceTypes']),
+        "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+        "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
+        "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
+      },
+      "destination": {
+        "destinationTitle": data['destinationTitle'],
+        "destinationPlaceId": data['destinationPlaceId'],
+        "destinationCity": dropPlaceSearchController.dropLatLng.value?.city?.toString() ?? '',
+        "destinationState": dropPlaceSearchController.dropLatLng.value?.state?.toString() ?? '',
+        "destinationCountry": dropPlaceSearchController.dropLatLng.value?.country?.toString() ?? '',
+        "destinationType": _parseList<String>(data['destinationTypes']),
+        "destinationLat": dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString() ?? '',
+        "destinationLng": dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString() ?? '',
+        "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
+      },
+      "packageSelected": {"km": "", "hours": ""},
+      "stopsArray": [],
+      "pickUpTime": {
+        "time": data['actualTimeWithOffset'],
+        "offset": data['actualOffset'],
+        "timeZone": data['timeZone']
+      },
+      "dropTime": {},
+      "mindate": {
+        "date": data['userTimeWithOffset'],
+        "time": data['userTimeWithOffset'],
+        "offset": data['userOffset'],
+        "timeZone": data['timeZone']
+      },
+      "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
+    };
+  }
 }
 
+
 Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
-  final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
-  final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
-  final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => FullScreenGifLoader(),
-  );
   final now = DateTime.now();
   final searchDate = now.toIso8601String().split('T').first;
-  final searchTime =
-      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
+  final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
   final offset = now.timeZoneOffset.inMinutes;
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController =
+  Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController =
+  Get.put(DropPlaceSearchController());
 
-  final keys = [
-    'country',
-    'userOffset',
-    'userDateTime',
-    'userTimeWithOffset',
-    'actualTimeWithOffset',
-    'actualOffset',
-    'timeZone',
-    'sourceTitle',
-    'sourcePlaceId',
-    'sourceCity',
-    'sourceState',
-    'country',
-    'sourceLat',
-    'sourceLng',
-    'sourceTypes',
-    'sourceTerms',
-    'destinationPlaceId',
-    'destinationTitle',
-    'destinationCity',
-    'destinationState',
-    'destinationCountry',
-    'destinationTypes',
-    'destinationTerms',
-    'destinationLat',
-    'destinationLng'
+  // Show loader
+  showDialog(context: context, barrierDismissible: false, builder: (_) => FullScreenGifLoader());
+
+  // Fetch storage values in a single batch
+  const keys = [
+    'country', 'userOffset', 'userDateTime', 'userTimeWithOffset', 'actualTimeWithOffset', 'actualOffset', 'timeZone',
+    'sourceTitle', 'sourcePlaceId', 'sourceCity', 'sourceState', 'sourceCountry', 'sourceLat', 'sourceLng', 'sourceTypes', 'sourceTerms',
+    'destinationPlaceId', 'destinationTitle', 'destinationCity', 'destinationState', 'destinationCountry', 'destinationTypes', 'destinationTerms', 'destinationLat', 'destinationLng'
   ];
-
   final values = await Future.wait(keys.map(StorageServices.instance.read));
-  final Map<String, dynamic> data = Map.fromIterables(keys, values);
-  print('yash pickup utc time : ${data['userDateTime']}');
+  final data = Map<String, dynamic>.fromIterables(keys, values);
+
   GoRouter.of(context).pop();
-  print('yash 22aug local start time : ${bookingRideController.localStartTime.value}');
-  print('yash 22aug local selected time : ${bookingRideController.selectedDateTime.value}');
+
   return {
     "timeOffSet": -offset,
     "countryName": data['country'],
     "searchDate": searchDate,
     "searchTime": searchTime,
     "offset": int.parse(data['userOffset'] ?? '0'),
-    // "pickupDateAndTime": data['userDateTime'],
     "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
     "returnDateAndTime": "",
     "tripCode": "2",
     "source": {
       "sourceTitle": data['sourceTitle'],
       "sourcePlaceId": data['sourcePlaceId'],
-      "sourceCity":
-      placeSearchController.getPlacesLatLng.value?.city.toString(),
-      "sourceState":
-      placeSearchController.getPlacesLatLng.value?.state.toString(),
-      "sourceCountry":
-      placeSearchController.getPlacesLatLng.value?.country.toString(),
+      "sourceCity": placeSearchController.getPlacesLatLng.value?.city?.toString() ?? '',
+      "sourceState": placeSearchController.getPlacesLatLng.value?.state?.toString() ?? '',
+      "sourceCountry": placeSearchController.getPlacesLatLng.value?.country?.toString() ?? '',
       "sourceType": _parseList<String>(data['sourceTypes']),
-      "sourceLat":
-      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-      "sourceLng":
-      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+      "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
       "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {
       "destinationTitle": data['destinationTitle'],
       "destinationPlaceId": data['destinationPlaceId'],
-      "destinationCity":
-      dropPlaceSearchController.dropLatLng.value!.city.toString(),
-      "destinationState":
-      dropPlaceSearchController.dropLatLng.value!.state.toString(),
-      "destinationCountry":
-      dropPlaceSearchController.dropLatLng.value!.country.toString(),
+      "destinationCity": dropPlaceSearchController.dropLatLng.value?.city?.toString() ?? '',
+      "destinationState": dropPlaceSearchController.dropLatLng.value?.state?.toString() ?? '',
+      "destinationCountry": dropPlaceSearchController.dropLatLng.value?.country?.toString() ?? '',
       "destinationType": _parseList<String>(data['destinationTypes']),
-      "destinationLat":
-      dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
-      "destinationLng":
-      dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
+      "destinationLat": dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString() ?? '',
+      "destinationLng": dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString() ?? '',
       "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
     },
     "packageSelected": {"km": "", "hours": ""},
@@ -1633,14 +1558,13 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
     "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
   };
 }
-List<T> _parseList<T>(dynamic json) {
-  if (json != null && json.isNotEmpty) {
-    return List<T>.from(jsonDecode(json));
-  }
-  return [];
-}
+
+List<T> _parseList<T>(dynamic json) => json != null && json.isNotEmpty ? List<T>.from(jsonDecode(json)) : [];
 
 // hourly rental
+
+
+
 class Rental extends StatefulWidget {
   const Rental({super.key});
 
@@ -1649,164 +1573,211 @@ class Rental extends StatefulWidget {
 }
 
 class _RentalState extends State<Rental> {
-  final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
-  final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
-  final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
-  final SearchCabInventoryController searchCabInventoryController =
-  Get.put(SearchCabInventoryController());
-  final FetchPackageController fetchPackageController =
-  Get.put(FetchPackageController());
+  final BookingRideController bookingRideController = Get.find<BookingRideController>();
+  final PlaceSearchController placeSearchController = Get.find<PlaceSearchController>();
+  final DropPlaceSearchController dropPlaceSearchController = Get.find<DropPlaceSearchController>();
+  final SearchCabInventoryController searchCabInventoryController = Get.find<SearchCabInventoryController>();
+  final FetchPackageController fetchPackageController = Get.find<FetchPackageController>();
+  final ButtonRentalStateController buttonRentalStateController = Get.put(
+    ButtonRentalStateController(
+      placeSearchController: Get.find<PlaceSearchController>(),
+      bookingRideController: Get.find<BookingRideController>(),
+      fetchPackageController: Get.find<FetchPackageController>(),
+    ),
+  );
 
   final RxString selectedField = ''.obs;
 
-  // Declare TextEditingControllers as class-level variables
   late TextEditingController ridePickupController;
   late TextEditingController rideDropController;
+  late Worker rentalPickupWorker;
+  late Worker rentalDropWorker;
+  late Worker _placeIdWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    ridePickupController = TextEditingController(text: bookingRideController.prefilled.value);
+    rideDropController = TextEditingController(text: bookingRideController.prefilledDrop.value);
+
+    rentalPickupWorker = ever(bookingRideController.prefilled, (String value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ridePickupController.text != value) {
+          setState(() {
+            ridePickupController.text = value;
+            ridePickupController.selection = TextSelection.collapsed(offset: value.length);
+          });
+        }
+      });
+    });
+
+    rentalDropWorker = ever(bookingRideController.prefilledDrop, (String value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && rideDropController.text != value) {
+          setState(() {
+            rideDropController.text = value;
+            rideDropController.selection = TextSelection.collapsed(offset: value.length);
+          });
+        }
+      });
+    });
+
+    // Validate prefilled placeId after build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (placeSearchController.placeId.value.isNotEmpty) {
+        buttonRentalStateController.isEnabled.value = false; // Disable button initially
+        buttonRentalStateController.isButtonLoading.value = true; // Show loader
+        Future.microtask(() async {
+          try {
+            await placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context);
+          } catch (e, st) {
+            debugPrint('Prefilled validation error: $e\n$st');
+          } finally {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              buttonRentalStateController.isButtonLoading.value = false; // Hide loader
+              buttonRentalStateController.validateRentalButtonState();
+            });
+          }
+        });
+      }
+    });
+
+    // Monitor placeId changes
+    _placeIdWorker = ever(placeSearchController.placeId, (String placeId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        buttonRentalStateController.isEnabled.value = false; // Disable immediately
+        buttonRentalStateController.isButtonLoading.value = true; // Show loader
+        Future.microtask(() async {
+          if (placeId.isNotEmpty) {
+            try {
+              await placeSearchController.getLatLngDetails(placeId, context);
+            } catch (e, st) {
+              debugPrint('PlaceId validation error: $e\n$st');
+            }
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            buttonRentalStateController.isButtonLoading.value = false; // Hide loader
+            buttonRentalStateController.validateRentalButtonState();
+          });
+        });
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    rentalPickupWorker.dispose();
+    rentalDropWorker.dispose();
+    _placeIdWorker.dispose();
+    ridePickupController.dispose();
+    rideDropController.dispose();
+    super.dispose();
+  }
 
   void switchPickupAndDrop({
     required BuildContext context,
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    print('switch button hit ho gya hai');
-    // Step 1: Swap place IDs
-    final oldPickupId = placeSearchController.placeId.value;
-    final oldDropId = dropPlaceSearchController.dropPlaceId.value;
-    placeSearchController.placeId.value = oldDropId;
-    dropPlaceSearchController.dropPlaceId.value = oldPickupId;
-
-    // Step 2: Swap prefilled values (shown in UI + used in controllers)
-    final oldPickupText = bookingRideController.prefilled.value;
-    final oldDropText = bookingRideController.prefilledDrop.value;
-    bookingRideController.prefilled.value = oldDropText;
-    bookingRideController.prefilledDrop.value = oldPickupText;
-
-    // Step 3: Update text controllers (if used in text fields)
-    pickupController.text = bookingRideController.prefilled.value;
-    dropController.text = bookingRideController.prefilledDrop.value;
-
-    // Step 4: Re-fetch lat/lng details based on new placeIds
-    if (placeSearchController.placeId.value.isNotEmpty) {
-      placeSearchController.getLatLngDetails(
-          placeSearchController.placeId.value, context);
-    }
-    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-      dropPlaceSearchController.getLatLngForDrop(
-          dropPlaceSearchController.dropPlaceId.value, context);
-    }
-
-    // Swap stored values (local storage)
-    final sourceKeys = [
-      'sourcePlaceId',
-      'sourceTitle',
-      'sourceCity',
-      'sourceState',
-      'sourceCountry',
-      'sourceTypes',
-      'sourceTerms'
-    ];
-    final destinationKeys = [
-      'destinationPlaceId',
-      'destinationTitle',
-      'destinationCity',
-      'destinationState',
-      'destinationCountry',
-      'destinationTypes',
-      'destinationTerms'
-    ];
-
-    for (int i = 0; i < sourceKeys.length; i++) {
-      final srcKey = sourceKeys[i];
-      final destKey = destinationKeys[i];
-
-      final srcVal = await StorageServices.instance.read(srcKey);
-      final destVal = await StorageServices.instance.read(destKey);
-
-      await StorageServices.instance.save(srcKey, destVal ?? '');
-      await StorageServices.instance.save(destKey, srcVal ?? '');
-    }
-  }
-
-  String selectPackage = '';
-  late Worker rentalPickupWorker;
-  late Worker rentalDropWorker;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize controllers
-    ridePickupController =
-        TextEditingController(text: bookingRideController.prefilled.value);
-    rideDropController =
-        TextEditingController(text: bookingRideController.prefilledDrop.value);
-
-    // Listen to changes in prefilled and prefilledDrop to update controllers
-    rentalPickupWorker = ever(bookingRideController.prefilled, (String value) {
-      if (ridePickupController.text != value) {
-        ridePickupController.text = value;
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      buttonRentalStateController.isButtonLoading.value = true; // Show loader
     });
-    rentalDropWorker =
-        ever(bookingRideController.prefilledDrop, (String value) {
-          if (rideDropController.text != value) {
-            rideDropController.text = value;
-          }
-        });
-  }
+    print('switch button hit ho gya hai');
 
-  @override
-  void dispose() {
-    // Dispose controllers to prevent memory leaks
-    rentalPickupWorker.dispose();
-    rentalDropWorker.dispose();
-    ridePickupController.dispose();
-    rideDropController.dispose();
-    super.dispose();
+    try {
+      final oldPickupId = placeSearchController.placeId.value;
+      final oldDropId = dropPlaceSearchController.dropPlaceId.value;
+      placeSearchController.placeId.value = oldDropId;
+      dropPlaceSearchController.dropPlaceId.value = oldPickupId;
+
+      final oldPickupText = bookingRideController.prefilled.value;
+      final oldDropText = bookingRideController.prefilledDrop.value;
+      bookingRideController.prefilled.value = oldDropText;
+      bookingRideController.prefilledDrop.value = oldPickupText;
+
+      pickupController.text = bookingRideController.prefilled.value;
+      dropController.text = bookingRideController.prefilledDrop.value;
+
+      final futures = <Future>[];
+      if (placeSearchController.placeId.value.isNotEmpty) {
+        futures.add(placeSearchController.getLatLngDetails(placeSearchController.placeId.value, context));
+      }
+      if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
+        futures.add(dropPlaceSearchController.getLatLngForDrop(dropPlaceSearchController.dropPlaceId.value, context));
+      }
+      await Future.wait(futures);
+
+      final sourceKeys = [
+        'sourcePlaceId',
+        'sourceTitle',
+        'sourceCity',
+        'sourceState',
+        'sourceCountry',
+        'sourceTypes',
+        'sourceTerms',
+      ];
+      final destinationKeys = [
+        'destinationPlaceId',
+        'destinationTitle',
+        'destinationCity',
+        'destinationState',
+        'destinationCountry',
+        'destinationTypes',
+        'destinationTerms',
+      ];
+
+      final srcVals = await Future.wait(sourceKeys.map(StorageServices.instance.read));
+      final destVals = await Future.wait(destinationKeys.map(StorageServices.instance.read));
+      await Future.wait([
+        for (int i = 0; i < sourceKeys.length; i++) StorageServices.instance.save(sourceKeys[i], destVals[i] ?? ''),
+        for (int i = 0; i < destinationKeys.length; i++) StorageServices.instance.save(destinationKeys[i], srcVals[i] ?? ''),
+      ]);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        buttonRentalStateController.validateRentalButtonState();
+      });
+    } catch (e, st) {
+      debugPrint('switchPickupAndDrop error: $e\n$st');
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        buttonRentalStateController.isButtonLoading.value = false; // Hide loader
+      });
+    }
   }
 
   DateTime getLocalDateTime() {
-    final userDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet;
+    final userDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet;
 
     if (userDateTimeStr != null) {
       try {
         final utc = DateTime.parse(userDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing userDateTime: $e");
+        debugPrint("Error parsing userDateTime: $e");
       }
     }
     return bookingRideController.localStartTime.value;
   }
 
   DateTime getInitialDateTime() {
-    final actualDateTimeStr = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
-    final offset = placeSearchController
-        .findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
+    final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
+    final offset = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet;
 
     if (actualDateTimeStr != null) {
       try {
         final utc = DateTime.parse(actualDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing actualDateTime: $e");
+        debugPrint("Error parsing actualDateTime: $e");
       }
     }
     return getLocalDateTime();
   }
 
   DateTime getDropLocalDateTime() {
-    final dropDateTimeStr = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
-    final dropOffset = dropPlaceSearchController
-        .dropDateTimeResponse.value?.userDateTimeObject?.userOffSet;
+    final dropDateTimeStr = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userDateTime;
+    final dropOffset = dropPlaceSearchController.dropDateTimeResponse.value?.userDateTimeObject?.userOffSet;
 
     if (dropDateTimeStr != null) {
       try {
@@ -1814,30 +1785,29 @@ class _RentalState extends State<Rental> {
         return utc.add(Duration(minutes: dropOffset ?? 0));
       } catch (_) {}
     }
-    return bookingRideController.localStartTime.value
-        .add(const Duration(hours: 4));
+    return bookingRideController.localStartTime.value.add(const Duration(hours: 4));
   }
 
   void updateLocalStartTime(DateTime newDateTime) {
-    final timezone =
-        placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
-            placeSearchController.getCurrentTimeZoneName();
+    final timezone = placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? placeSearchController.getCurrentTimeZoneName();
     final offset = placeSearchController.getOffsetFromTimeZone(timezone);
 
     bookingRideController.localStartTime.value = newDateTime;
-    bookingRideController.utcStartTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcStartTime.value = newDateTime.subtract(Duration(minutes: offset));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      buttonRentalStateController.validateRentalButtonState(); // Re-validate after time change
+    });
   }
 
   void updateLocalEndTime(DateTime newDateTime) {
-    final timezone =
-        dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ??
-            dropPlaceSearchController.getCurrentTimeZoneName();
+    final timezone = dropPlaceSearchController.dropDateTimeResponse.value?.timeZone ?? dropPlaceSearchController.getCurrentTimeZoneName();
     final offset = dropPlaceSearchController.getOffsetFromTimeZone(timezone);
 
     bookingRideController.localEndTime.value = newDateTime;
-    bookingRideController.utcEndTime.value =
-        newDateTime.subtract(Duration(minutes: offset));
+    bookingRideController.utcEndTime.value = newDateTime.subtract(Duration(minutes: offset));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      buttonRentalStateController.validateRentalButtonState(); // Re-validate after time change
+    });
   }
 
   @override
@@ -1856,7 +1826,7 @@ class _RentalState extends State<Rental> {
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   Expanded(
@@ -1865,9 +1835,18 @@ class _RentalState extends State<Rental> {
                         BookingTextFormField(
                           hintText: 'Enter Pickup Location',
                           controller: ridePickupController,
+                          errorText: () {
+                            if (buttonRentalStateController.isButtonLoading.value) return null; // Suppress errors during loading
+                            if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true) {
+                              return "We don't offer services from this region";
+                            }
+                            if (placeSearchController.getPlacesLatLng.value?.country?.toLowerCase() != 'india') {
+                              return "Rental services are only available in India";
+                            }
+                            return null;
+                          }(),
                           onTap: () async {
-                            await GoRouter.of(context)
-                                .push(AppRoutes.choosePickup);
+                            await GoRouter.of(context).push(AppRoutes.choosePickup);
                           },
                         ),
                       ],
@@ -1880,13 +1859,7 @@ class _RentalState extends State<Rental> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Obx(() {
-                final localStartTime =
-                    bookingRideController.localStartTime.value;
-                final dropoffDateTime = getDropLocalDateTime();
-
-                final dynamic activeController = selectedField.value == 'drop'
-                    ? dropPlaceSearchController
-                    : placeSearchController;
+                final localStartTime = bookingRideController.localStartTime.value;
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1896,18 +1869,12 @@ class _RentalState extends State<Rental> {
                         label: 'Pickup Date',
                         initialDate: localStartTime,
                         onDateSelected: (newDate) {
-                          final actualDateTimeStr = placeSearchController
-                              .findCntryDateTimeResponse
-                              .value
-                              ?.actualDateTimeObject
-                              ?.actualDateTime;
+                          final actualDateTimeStr = placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime;
 
                           if (actualDateTimeStr != null) {
-                            final actualMinDateTime =
-                            DateTime.parse(actualDateTimeStr).toLocal();
+                            final actualMinDateTime = DateTime.parse(actualDateTimeStr).toLocal();
 
-                            if (DateUtils.isSameDay(
-                                newDate, actualMinDateTime)) {
+                            if (DateUtils.isSameDay(newDate, actualMinDateTime)) {
                               final updatedTime = DateTime(
                                 newDate.year,
                                 newDate.month,
@@ -1916,8 +1883,7 @@ class _RentalState extends State<Rental> {
                                 actualMinDateTime.minute,
                               );
 
-                              if (!updatedTime.isAtSameMomentAs(
-                                  bookingRideController.localStartTime.value)) {
+                              if (!updatedTime.isAtSameMomentAs(bookingRideController.localStartTime.value)) {
                                 updateLocalStartTime(updatedTime);
                               } else {
                                 bookingRideController.localStartTime.refresh();
@@ -1960,14 +1926,11 @@ class _RentalState extends State<Rental> {
                             newTime.minute,
                           );
 
-                          if (!updatedTime.isAtSameMomentAs(
-                              bookingRideController.localStartTime.value)) {
+                          if (!updatedTime.isAtSameMomentAs(bookingRideController.localStartTime.value)) {
                             updateLocalStartTime(updatedTime);
-                            bookingRideController.localStartTime
-                                .refresh(); // 🔁 Force rebuild on same value
+                            bookingRideController.localStartTime.refresh();
                           } else {
-                            bookingRideController.localStartTime
-                                .refresh(); // 🔁 Force rebuild on same value
+                            bookingRideController.localStartTime.refresh();
                           }
                         },
                         controller: placeSearchController,
@@ -1980,8 +1943,7 @@ class _RentalState extends State<Rental> {
             const SizedBox(height: 16),
             Obx(() {
               final items = fetchPackageController.packageModel.value?.data
-                  .map((value) =>
-              '${value.hours} hrs, ${value.kilometers} kms')
+                  .map((value) => '${value.hours} hrs, ${value.kilometers} kms')
                   .toList() ??
                   [];
 
@@ -1993,8 +1955,7 @@ class _RentalState extends State<Rental> {
                       context: context,
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
-                        borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                       ),
                       builder: (context) {
                         return ListView.separated(
@@ -2003,54 +1964,44 @@ class _RentalState extends State<Rental> {
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final item = items[index];
-                            final isSelected =
-                                fetchPackageController.selectedPackage.value ==
-                                    item;
+                            final isSelected = fetchPackageController.selectedPackage.value == item;
 
                             return ListTile(
                               title: Text(
                                 item,
                                 style: TextStyle(
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                   color: Colors.black,
                                 ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check_circle,
-                                  color: Colors.green, size: 20)
+                                  ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
                                   : null,
                               onTap: () async {
-                                fetchPackageController
-                                    .updateSelectedPackage(item);
+                                fetchPackageController.updateSelectedPackage(item);
                                 Navigator.pop(context);
 
                                 print('✅ Selected package is: $item');
 
-                                // Extract hours & kms
-                                final packageRegex =
-                                RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
+                                final packageRegex = RegExp(r'(\d+)\s*hrs?,\s*(\d+)\s*kms?');
                                 final match = packageRegex.firstMatch(item);
 
                                 if (match != null) {
-                                  final extractedHours =
-                                  int.tryParse(match.group(1)!);
-                                  final extractedKms =
-                                  int.tryParse(match.group(2)!);
+                                  final extractedHours = int.tryParse(match.group(1)!);
+                                  final extractedKms = int.tryParse(match.group(2)!);
 
-                                  fetchPackageController.selectedHours.value = extractedHours??0;
-                                  fetchPackageController.selectedKms.value = extractedKms??0;
+                                  fetchPackageController.selectedHours.value = extractedHours ?? 0;
+                                  fetchPackageController.selectedKms.value = extractedKms ?? 0;
 
                                   print('📦 Extracted Hours: $extractedHours');
-                                  print('📦 Extracted KMs: $extractedKms');
+                                  print('📦 Extracted Kms: $extractedKms');
 
-                                  await StorageServices.instance.save(
-                                      'selectedHours',
-                                      extractedHours.toString());
-                                  await StorageServices.instance.save(
-                                      'selectedKms', extractedKms.toString());
+                                  await StorageServices.instance.save('selectedHours', extractedHours.toString());
+                                  await StorageServices.instance.save('selectedKms', extractedKms.toString());
                                 }
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  buttonRentalStateController.validateRentalButtonState();
+                                });
                               },
                             );
                           },
@@ -2059,8 +2010,7 @@ class _RentalState extends State<Rental> {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -2070,15 +2020,12 @@ class _RentalState extends State<Rental> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          fetchPackageController
-                              .selectedPackage.value.isNotEmpty
+                          fetchPackageController.selectedPackage.value.isNotEmpty
                               ? fetchPackageController.selectedPackage.value
                               : "Select Packages",
-                          style: const TextStyle(
-                              color: Colors.black, fontWeight: FontWeight.w600),
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                         ),
-                        const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Colors.grey),
+                        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
                       ],
                     ),
                   ),
@@ -2087,18 +2034,16 @@ class _RentalState extends State<Rental> {
             }),
             const SizedBox(height: 12),
             Obx(() {
-              return bookingRideController.isInvalidTime.value
+              return bookingRideController.isInvalidTime.value && !buttonRentalStateController.isButtonLoading.value
                   ? Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.redAccent),
-                    maxLines: 2,
-                  ))
-                  : SizedBox();
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: const Text(
+                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent),
+                  maxLines: 2,
+                ),
+              )
+                  : const SizedBox();
             }),
             const SizedBox(height: 28),
             Padding(
@@ -2106,58 +2051,28 @@ class _RentalState extends State<Rental> {
               child: SizedBox(
                 width: double.infinity,
                 child: Obx(() {
-                  final pickupId = placeSearchController.placeId.value;
-
-                  final hasSourceError =
-                      placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true;
-
-                  final isPlaceMissing = pickupId.isEmpty;
-
-                  final canProceed = !hasSourceError &&
-                      !isPlaceMissing &&
-                      (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage == true);
-
-                  // 🚨 force disable conditions
-                  final forceDisable = hasSourceError || bookingRideController.isInvalidTime.value;
-
-                  // ✅ final flag
-                  final isEnabled = canProceed && !forceDisable;
-
                   return Opacity(
-                    opacity: isEnabled ? 1.0 : 0.6,
-                    child: PrimaryButton(
+                    opacity: buttonRentalStateController.isEnabled.value && !buttonRentalStateController.isButtonLoading.value ? 1.0 : 0.6,
+                    child: PrimaryRentalButton(
                       text: 'Search Now',
-                      onPressed: isEnabled
+                      isLoading: buttonRentalStateController.isButtonLoading.value,
+                      onPressed: buttonRentalStateController.isEnabled.value && !buttonRentalStateController.isButtonLoading.value
                           ? () async {
                         final requestData = await _buildRentalRequestData(context);
-
-                        setState(() => _isLoading = true);
-
                         await searchCabInventoryController.fetchBookingData(
                           country: requestData['countryName'],
                           requestData: requestData,
                           context: context,
                           isSecondPage: true,
-                        ).then((_) {
-                          GoRouter.of(context).push(
-                            AppRoutes.inventoryList,
-                            extra: requestData,
-                          );
-
-
-                        });
-
-                        if (!mounted) return;
-                        setState(() => _isLoading = false);
-                        GoRouter.of(context).pop();
-
+                        );
+                        GoRouter.of(context).push(AppRoutes.inventoryList, extra: requestData);
                       }
-                          : (){}, // ✅ null disables the button properly
+                          : () {},
                     ),
                   );
                 }),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -2165,23 +2080,17 @@ class _RentalState extends State<Rental> {
   }
 }
 
-Future<Map<String, dynamic>> _buildRentalRequestData(
-    BuildContext context) async {
-  final PlaceSearchController placeSearchController =
-  Get.put(PlaceSearchController());
-  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
-
+Future<Map<String, dynamic>> _buildRentalRequestData(BuildContext context) async {
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => FullScreenGifLoader(),
+    builder: (_) => const FullScreenGifLoader(),
   );
   final now = DateTime.now();
   final searchDate = now.toIso8601String().split('T').first;
-  final searchTime =
-      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
   final offset = now.timeZoneOffset.inMinutes;
+  final FetchPackageController fetchPackageController = FetchPackageController();
 
   final keys = [
     'country',
@@ -2205,7 +2114,9 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
   ];
 
   final values = await Future.wait(keys.map(StorageServices.instance.read));
-  final data = Map.fromIterables(keys, values);
+  final Map<String, dynamic> data = Map.fromIterables(keys, values);
+
+  GoRouter.of(context).pop();
 
   return {
     "timeOffSet": -offset,
@@ -2219,42 +2130,122 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     "source": {
       "sourceTitle": data['sourceTitle'],
       "sourcePlaceId": data['sourcePlaceId'],
-      "sourceCity":
-      placeSearchController.getPlacesLatLng.value?.city.toString(),
-      "sourceState":
-      placeSearchController.getPlacesLatLng.value?.state.toString(),
-      "sourceCountry":
-      placeSearchController.getPlacesLatLng.value?.country.toString(),
+      "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString() ?? '',
+      "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString() ?? '',
+      "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString() ?? '',
       "sourceType": _parseList<String>(data['sourceTypes']),
-      "sourceLat":
-      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-      "sourceLng":
-      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+      "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
       "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {},
-    // "packageSelected": {
-    //   "km": data['selectedKms'],
-    //   "hours": data['selectedHours']
-    // },
     "packageSelected": {
-      "km": fetchPackageController.selectedKms.value,
-      "hours": fetchPackageController.selectedHours.value
+      "km": fetchPackageController.selectedKms.value.toString(),
+      "hours": fetchPackageController.selectedHours.value.toString(),
     },
     "stopsArray": [],
     "pickUpTime": {
       "time": data['actualTimeWithOffset'],
       "offset": data['actualOffset'],
-      "timeZone": data['timeZone']
+      "timeZone": data['timeZone'],
     },
     "dropTime": {},
     "mindate": {
       "date": data['userTimeWithOffset'],
       "time": data['userTimeWithOffset'],
       "offset": data['userOffset'],
-      "timeZone": data['timeZone']
+      "timeZone": data['timeZone'],
     },
     "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
   };
+}
 
+class ButtonRentalStateController extends GetxController {
+  final PlaceSearchController placeSearchController;
+  final BookingRideController bookingRideController;
+  final FetchPackageController fetchPackageController;
+  final RxBool isEnabled = false.obs;
+  final RxBool isButtonLoading = false.obs;
+
+  ButtonRentalStateController({
+    required this.placeSearchController,
+    required this.bookingRideController,
+    required this.fetchPackageController,
+  }) {
+    // Defer all reactive updates to after build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ever(bookingRideController.isInvalidTime, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateRentalButtonState()));
+      ever(placeSearchController.findCntryDateTimeResponse, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateRentalButtonState()));
+      ever(fetchPackageController.selectedPackage, (_) => WidgetsBinding.instance.addPostFrameCallback((_) => validateRentalButtonState()));
+      validateRentalButtonState();
+    });
+  }
+
+  void validateRentalButtonState() {
+    isEnabled.value = false;
+
+    final placeId = placeSearchController.placeId.value;
+    if (placeId.isEmpty) return;
+
+    if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true) return;
+
+    if (placeSearchController.getPlacesLatLng.value?.country?.toLowerCase() != 'india') return;
+
+    if (fetchPackageController.selectedPackage.value.isEmpty) return;
+
+    if (bookingRideController.isInvalidTime.value) return;
+
+    isEnabled.value = true;
+  }
+}
+
+class PrimaryRentalButton extends StatelessWidget {
+  final String text;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  const PrimaryRentalButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isLoading ? AppColors.mainButtonBg.withOpacity(0.8) : AppColors.mainButtonBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        )
+            : Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
 }

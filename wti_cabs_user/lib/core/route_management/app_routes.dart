@@ -1,5 +1,7 @@
 class AppRoutes{
   static const String initialPage = '/';
+  static const String walkthrough = '/walkthrough';
+  static const String bottomNav = '/bottomNav';
   static const String bookingRide = '/bookingRide';
   static const String choosePickup = '/choosePickup';
   static const String chooseDrop = '/chooseDrop';
@@ -15,7 +17,5 @@ class AppRoutes{
   static const String cancelBooking = '/cancelBooking';
   static const String cancelledBooking = '/cancelledBooking';
   static const String selectCurrency = '/selectCurrency';
-
-
-
+  static const String splash = '/splash';
 }
