@@ -9,6 +9,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../../common_widget/loader/popup_loader.dart';
+import '../../../api/api_services.dart';
 
 class GlobalPaymentController extends GetxController {
   RxBool isLoading = false.obs;
@@ -40,7 +41,7 @@ class GlobalPaymentController extends GetxController {
 
       final res = await http.post(
         Uri.parse(
-            'https://test.wticabs.com:5001/global/app/v1/user/createUser'),
+            '${ApiService().baseUrl}/user/createUser'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -87,7 +88,7 @@ class GlobalPaymentController extends GetxController {
 
       final res = await http.post(
         Uri.parse(
-            'https://test.wticabs.com:5001/global/app/v1/stripe/createCustomer'),
+            '${ApiService().baseUrl}/stripe/createCustomer'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -130,7 +131,7 @@ class GlobalPaymentController extends GetxController {
 
       final res = await http.post(
         Uri.parse(
-            'https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
+            '${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -173,7 +174,7 @@ class GlobalPaymentController extends GetxController {
       requestData['userID'] = registeredUser?['user_obj_id'];
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/stripe/checkOutSessionForMobileSDK'),
+        Uri.parse('${ApiService().baseUrl}/stripe/checkOutSessionForMobileSDK'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',

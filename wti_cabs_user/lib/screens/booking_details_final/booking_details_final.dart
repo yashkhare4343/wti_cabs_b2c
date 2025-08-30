@@ -2756,7 +2756,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "currencyName": currencyController
                                         .selectedCurrency.value.code,
                                     "currencyRate":
-                                        currencyController.convertedRate.value
+                                        currencyController.convertedRate.value ?? 1
                                   },
                                   "addon_charges":
                                       cabBookingController.extraFacilityCharges,
@@ -3061,7 +3061,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "currencyName": currencyController
                                         .selectedCurrency.value.code,
                                     "currencyRate":
-                                        currencyController.convertedRate.value
+                                        currencyController.convertedRate.value ?? 1
                                   },
                                   "baseCurrency": currencyController
                                       .selectedCurrency.value.code,

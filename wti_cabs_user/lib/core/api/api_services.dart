@@ -30,8 +30,8 @@ class ApiService {
 
   // Base URLs
   // final String baseUrl = '${EnvironmentConfig.baseUrl}/global/app/v1';
-  final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
-  // final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
+  // final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
+  final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
@@ -389,7 +389,7 @@ class ApiService {
     required Map<String, String> headers,
     required String filePath,
   }) async {
-    final url = Uri.parse("https://test.wticabs.com:5001/global/app/v1/$endpoint");
+    final url = Uri.parse("$baseUrl/$endpoint");
 
     final response = await http.post(
       url,

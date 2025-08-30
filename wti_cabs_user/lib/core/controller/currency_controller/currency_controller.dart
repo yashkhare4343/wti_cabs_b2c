@@ -34,7 +34,7 @@ class CurrencyController extends GetxController {
   RxString country = 'india'.obs;
   RxBool isInIndiaLocation = false.obs; // ✅ cache location result
   Rx<Currency> baseCurrency = Currency(code: "INR", symbol: "₹", name: "Indian Rupee").obs;
-  RxDouble convertedRate = 0.0.obs;
+  RxDouble convertedRate = 1.0.obs;
 
   late final List<Currency> availableCurrencies =
   CurrencyUtils.currencies.map((e) => Currency.fromMap(e)).toList();

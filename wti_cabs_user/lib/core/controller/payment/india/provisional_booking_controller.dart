@@ -9,6 +9,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../../common_widget/loader/popup_loader.dart';
+import '../../../api/api_services.dart';
 import '../../fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 
 class IndiaPaymentController extends GetxController {
@@ -51,7 +52,7 @@ class IndiaPaymentController extends GetxController {
       print("📤 Signup request: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/user/createUser?isMobile=true'),
+        Uri.parse('${ApiService().baseUrl}/user/createUser?isMobile=true'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -91,7 +92,7 @@ class IndiaPaymentController extends GetxController {
       requestData['reservation']['passenger'] = passengerId;
      print('provision request data : ${requestData}');
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/chaufferReservation/createProvisionalReservation'),
+        Uri.parse('${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -134,7 +135,9 @@ class IndiaPaymentController extends GetxController {
       // 🔹 Convert amount to selected currency
       final rawAmount = (order['amount'] ?? 0).toDouble();
       final options = {
-        'key': 'rzp_test_Ymyq5LXpYAetuR',
+        // test key
+        // 'key': 'rzp_test_Ymyq5LXpYAetuR',
+        'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
         'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.
@@ -201,7 +204,7 @@ class IndiaPaymentController extends GetxController {
       print("📤 Verifying payment with: $requestData");
 
       final res = await http.post(
-        Uri.parse('https://test.wticabs.com:5001/global/app/v1/razorpay/chauffer/verify-payment'),
+        Uri.parse('${ApiService().baseUrl}/razorpay/chauffer/verify-payment'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
