@@ -5,6 +5,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/country/country_controller.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/reservation_cancellation_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
@@ -103,6 +104,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
       Get.put(ReservationCancellationController());
   final CountryController countryController = Get.put(CountryController());
   String? selectedReason;
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   void _showReasonBottomSheet(BuildContext context) {
     final reasons = [
@@ -292,6 +294,43 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
             _buildDetailRow("Pickup", booking["pickup"]),
             _buildDetailRow("Drop", booking["drop"]),
             _buildDetailRow("Trip Type", booking["tripType"]),
+            FutureBuilder<double>(
+              future: Future.delayed(
+                const Duration(milliseconds: 500), // 0.5s fake loader
+                    () => currencyController.convertPrice(booking["amountPaid"].toDouble()),
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SizedBox(
+                    height: 12,
+                    width: 20,
+                    child: Center(
+                      child: SizedBox(
+                        height: 10,
+                        width: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return const Text(
+                    "--",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  );
+                }
+
+                final convertedValue =
+                    snapshot.data ?? booking["amountPaid"].toDouble();
+
+                return _buildDetailRow("Trip Type",  "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(0)}");
+              },
+            ),
+
             _buildDetailRow("Amount Paid", booking["amountPaid"]),
             _buildDetailRow("Start Time", booking["startTime"]),
             _buildDetailRow("End Time", booking["endTime"]),

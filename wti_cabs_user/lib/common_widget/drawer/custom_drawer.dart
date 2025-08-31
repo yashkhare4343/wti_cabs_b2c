@@ -84,8 +84,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          clientId:
-          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow

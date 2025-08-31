@@ -17,6 +17,7 @@ class GlobalPaymentController extends GetxController {
   Map<String, dynamic>? createCustomer;
   Map<String, dynamic>? provisionalBooking;
   Map<String, dynamic>? stripeCheckout;
+  Map<String, dynamic>? lastProvisionalRequest;
 
   @override
   void onInit() {
@@ -85,6 +86,7 @@ class GlobalPaymentController extends GetxController {
     isLoading.value = true;
     try {
       print("📤 create customer request: $requestData");
+      lastProvisionalRequest = requestData;
 
       final res = await http.post(
         Uri.parse(
@@ -219,31 +221,59 @@ class GlobalPaymentController extends GetxController {
 
           } on StripeException catch (e) {
             print("❌ StripeException occurred: ${e.error.localizedMessage}");
-            Future.delayed(Duration(milliseconds: 1000), () {
-              GoRouter.of(context).push(AppRoutes.paymentFailure);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              GoRouter.of(context).push(
+                AppRoutes.paymentFailure,
+                extra: lastProvisionalRequest, // ✅ Pass request data
+              );
             });
+
+            GoRouter.of(context).pop();
           } catch (e) {
             print("❌ Unknown error presenting payment sheet: $e");
-            Future.delayed(Duration(milliseconds: 1000), () {
-              GoRouter.of(context).push(AppRoutes.paymentFailure);
-            });          }
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              GoRouter.of(context).push(
+                AppRoutes.paymentFailure,
+                extra: lastProvisionalRequest, // ✅ Pass request data
+              );
+            });
+
+            GoRouter.of(context).pop();          }
 
         } else {
           print("⚠️ clientSecret is empty or null!");
           Future.delayed(Duration(milliseconds: 1000), () {
-            GoRouter.of(context).push(AppRoutes.paymentFailure);
-          });        }
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              GoRouter.of(context).push(
+                AppRoutes.paymentFailure,
+                extra: lastProvisionalRequest, // ✅ Pass request data
+              );
+            });
+
+            GoRouter.of(context).pop();           });        }
 
       } else {
         print("❌ Stripe API call failed with status: ${res.statusCode}, body: ${res.body}");
-        GoRouter.of(context).push(AppRoutes.paymentFailure);
-      }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          GoRouter.of(context).push(
+            AppRoutes.paymentFailure,
+            extra: lastProvisionalRequest, // ✅ Pass request data
+          );
+        });
+
+        GoRouter.of(context).pop();       }
 
     } catch (e) {
       print("❌ Exception during Stripe checkout: $e");
       Future.delayed(Duration(milliseconds: 1000), () {
-        GoRouter.of(context).push(AppRoutes.paymentFailure);
-      });    } finally {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          GoRouter.of(context).push(
+            AppRoutes.paymentFailure,
+            extra: lastProvisionalRequest, // ✅ Pass request data
+          );
+        });
+
+        GoRouter.of(context).pop();       });    } finally {
       isLoading.value = false;
       hideLoader(context);
       print("✅ Finished openStripeCheckout");

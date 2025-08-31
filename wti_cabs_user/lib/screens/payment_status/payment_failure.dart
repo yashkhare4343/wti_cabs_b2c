@@ -9,185 +9,104 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
-import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 
-import '../bottom_nav/bottom_nav.dart';
-
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
-import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
-import 'package:wti_cabs_user/core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
-import 'package:intl/intl.dart';
-
-import '../bottom_nav/bottom_nav.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
 
 class PaymentFailurePage extends StatefulWidget {
+  final Map<String, dynamic>? provisionalData;
+
+  const PaymentFailurePage({Key? key, this.provisionalData}) : super(key: key);
+
   @override
   State<PaymentFailurePage> createState() => _PaymentFailurePageState();
 }
-
 class _PaymentFailurePageState extends State<PaymentFailurePage> {
-  final FetchReservationBookingData fetchReservationBookingData =
-  Get.put(FetchReservationBookingData());
+  // final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
 
   @override
   void initState() {
+    // TODO: implement initState
     super.initState();
-    fetchReservationBookingData.fetchReservationData();
+    // fetchReservationBookingData.fetchReservationData();
   }
+
 
   String convertUtcToLocal(String utcTimeString, String timezoneString) {
+    // Parse UTC time
     DateTime utcTime = DateTime.parse(utcTimeString);
-    final location = tz.getLocation(timezoneString);
-    final localTime = tz.TZDateTime.from(utcTime, location);
-    return DateFormat("d MMM yyyy, hh:mm a").format(localTime);
-  }
 
+    // Get the location based on timezone string like "Asia/Kolkata"
+    final location = tz.getLocation(timezoneString);
+
+    // Convert UTC to local time in given timezone
+    final localTime = tz.TZDateTime.from(utcTime, location);
+
+    // Format the local time as "28 July, 2025"
+    final formatted = DateFormat("d MMMM, yyyy, hh:mm a").format(localTime);
+
+    return formatted;
+  }
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        GoRouter.of(context).go(AppRoutes.bookingDetailsFinal);
-      },
-      child: Scaffold(
-        backgroundColor: Colors.grey.shade100,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Obx(() {
-                    final response =
-                        fetchReservationBookingData.chaufferReservationResponse.value;
+    final reservation = widget.provisionalData?['reservation'] ?? {};
+    final order = widget.provisionalData?['order'] ?? {};
 
-                    if (response == null ||
-                        response.result == null ||
-                        response.result!.isEmpty) {
-                      return const CircularProgressIndicator();
-                    }
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cancel, color: Colors.red, size: 60),
+                    SizedBox(height: 16),
+                    Text('Booking Failed',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 8),
+                    Text(
+                      'Something went wrong, Please try again!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                    SizedBox(height: 24),
 
-                    final booking = response.result!.first;
+                    bookingDetailRow('Booking Type',
+                        reservation['trip_type_details']?['trip_type'] ?? ''),
+                    bookingDetailRow('Cab Category',
+                        reservation['vehicle_details']?['model'] ?? ''),
+                    bookingDetailRow(
+                        'Pickup', reservation['source']?['address'] ?? ''),
+                    bookingDetailRow(
+                        'Drop', reservation['destination']?['address'] ?? ''),
+                    bookingDetailRow('Pickup Date',
+                        convertUtcToLocal(reservation['start_time'] ?? '', reservation['timezone'] ?? 'UTC')),
+                    bookingDetailRow('Drop Date',
+                        convertUtcToLocal(reservation['end_time'] ?? '', reservation['timezone'] ?? 'UTC')),
+                    bookingDetailRow('Amount',
+                        '${CurrencyController().selectedCurrency.value.symbol} ${order['amount']?.toString()}' ?? '0'),
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.cancel,
-                            color: Colors.redAccent, size: 50),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Booking Failed',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Booking failed! try again retry payment',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // 🚗 Car image
-                        if (booking.carImageUrl != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              booking.carImageUrl!,
-                              height: 100,
-                              width: 160,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-
-                        const SizedBox(height: 16),
-
-                        // 🔹 Booking Details Card (same as failure UI)
-                        _buildDetailCard(
-                          title: "Booking Details",
-                          icon: Icons.assignment,
-                          details: [
-                            _detailItem("Booking Id", booking.id ?? ''),
-                            _detailItem("Booking Type",
-                                booking.tripTypeDetails?.tripType ?? ''),
-                            _detailItem("Cab Category",
-                                booking.vehicleDetails?.model ?? ''),
-                            _detailItem(
-                                "Booking Date",
-                                convertUtcToLocal(
-                                    booking.startTime ?? '', booking.timezone ?? '')),
-                            _detailItem("Pickup", booking.source?.address ?? ''),
-                            _detailItem("Drop", booking.destination?.address ?? ''),
-                            _detailItem(
-                                "Pickup Date",
-                                convertUtcToLocal(
-                                    booking.startTime ?? '', booking.timezone ?? '')),
-                            if (booking.tripTypeDetails?.basicTripType != 'LOCAL')
-                              _detailItem(
-                                  "Drop Date",
-                                  convertUtcToLocal(
-                                      booking.endTime ?? '', booking.timezone ?? '')),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // 👉 Two buttons side by side (Home + Bookings)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 46,
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                        color: AppColors.mainButtonBg, width: 1.5),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                  ),
-                                  onPressed: () {
-                                    GoRouter.of(context).go(AppRoutes.bottomNav);
-                                  },
-                                  child: Text(
-                                    'Go to Home',
-                                    style: TextStyle(
-                                      color: AppColors.mainButtonBg,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: SizedBox(
-                                height: 46,
-                                child: MainButton(
-                                  text: 'Retry Payment',
-                                  onPressed: () {
-                                    GoRouter.of(context).go(AppRoutes.bookingDetailsFinal);
-                                  },
-
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }),
+                    SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: MainButton(
+                        text: 'Retry Payment',
+                        onPressed: () {
+                          GoRouter.of(context).go(AppRoutes.bookingDetailsFinal);
+                        },
+                      ),
+                    )
+                  ],
                 ),
               ),
             ),
@@ -197,68 +116,79 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
     );
   }
 
-  /// ✅ Detail Card Widget
-  Widget _buildDetailCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> details,
-  }) {
-    return Card(
-      elevation: 0.2,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: Colors.green),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const Divider(height: 16),
-            ...details,
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// ✅ Single Detail Item
-  Widget _detailItem(String label, String value) {
+  Widget bookingDetailRow(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Expanded(flex: 3, child: Text(title, style: TextStyle(color: Colors.grey.shade600))),
           Expanded(
             flex: 5,
-            child: Text(label,
-                style:
-                const TextStyle(fontSize: 14, color: Colors.black54)),
-          ),
-          Expanded(
-            flex: 7,
             child: Text(
               value,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500),
+              maxLines: 3,
             ),
           ),
         ],
       ),
     );
   }
-}
 
+  Widget attendeeRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: Text('Attendees', style: TextStyle(color: Colors.grey.shade600))),
+          Expanded(
+            flex: 5,
+            child: Row(
+              children: [
+                CircleAvatar(radius: 12, backgroundImage: AssetImage('assets/avatar1.png')),
+                SizedBox(width: 4),
+                CircleAvatar(radius: 12, backgroundImage: AssetImage('assets/avatar2.png')),
+                SizedBox(width: 4),
+                CircleAvatar(radius: 12, backgroundImage: AssetImage('assets/avatar3.png')),
+                SizedBox(width: 4),
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.grey.shade300,
+                  child: Text(
+                    '+1',
+                    style: TextStyle(fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget calendarButtonsRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        calendarIcon('assets/google_calendar.png'),
+        SizedBox(width: 12),
+        calendarIcon('assets/outlook.png'),
+        SizedBox(width: 12),
+        calendarIcon('assets/apple_calendar.png'),
+      ],
+    );
+  }
+
+  Widget calendarIcon(String assetPath) {
+    return InkWell(
+      onTap: () {},
+      child: Image.asset(assetPath, width: 36, height: 36),
+    );
+  }
+}
 
 Widget buildShimmer() {
   return Padding(

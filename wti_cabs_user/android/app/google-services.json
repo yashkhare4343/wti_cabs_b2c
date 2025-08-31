@@ -1,40 +1,56 @@
 {
   "project_info": {
-    "project_number": "350350132251",
-    "project_id": "wticabsuserb2c",
-    "storage_bucket": "wticabsuserb2c.firebasestorage.app"
+    "project_number": "880138699529",
+    "project_id": "wticabs-a98bb",
+    "storage_bucket": "wticabs-a98bb.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:350350132251:android:97d1945a8ee9c1dca3a4be",
+        "mobilesdk_app_id": "1:880138699529:android:914879337a647e73acc9d8",
         "android_client_info": {
-          "package_name": "com.wti.user.booking"
+          "package_name": "com.wti.cabbooking"
         }
       },
       "oauth_client": [
         {
-          "client_id": "350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com",
+          "client_id": "880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wti.cabbooking",
+            "certificate_hash": "26b80713ce5dc2a726921dfa7b1788cc1496c61d"
+          }
+        },
+        {
+          "client_id": "880138699529-r4ajjnfdamjhjrmjisbanlsb38ckulvc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wti.cabbooking",
+            "certificate_hash": "4e869369f520b7af41e8b4700f79b2de81d45767"
+          }
+        },
+        {
+          "client_id": "880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyB_ersFUK_sIYny13OIybnElH9y0vxLL40"
+          "current_key": "AIzaSyAlm4H5v-hSc61SMRm-Or54Gk-W82V3lPU"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com",
+              "client_id": "880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "350350132251-iq8792d726r8mrsa95d5n5tss8u90v83.apps.googleusercontent.com",
+              "client_id": "880138699529-e50rorhn6s3rt6d9n8o7m5jvb13c0575.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.wti.user.booking"
+                "bundle_id": "com.example.wtiCabsUser"
               }
             }
           ]

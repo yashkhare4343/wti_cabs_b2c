@@ -151,7 +151,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                             child: Text('No Global booking data available.'));
                       }
 
-                      return _buildGlobalCard();
+                      return _buildGlobalCard(widget.totalKms.toString());
                     },
                   ),
                   //inclusion/exclusion (india)
@@ -855,7 +855,7 @@ Widget _buildIndiaCard(IndiaCabBooking data) {
   );
 }
 
-Widget _buildGlobalCard() {
+Widget _buildGlobalCard(String totalDistance) {
   final CabBookingController cabBookingController =
       Get.find<CabBookingController>();
 
@@ -990,12 +990,12 @@ Widget _buildGlobalCard() {
                         const SizedBox(width: 6),
                         const Icon(Icons.luggage_outlined, size: 12),
                         const SizedBox(width: 3),
-                        Text('${results.cabinLuggageCapacity ?? '-'}',
+                        Text('${results.cabinLuggageCapacity ?? '-'} cabin luggage',
                             style: CommonFonts.bodyTextXS),
                         const SizedBox(width: 6),
                         const Icon(Icons.speed_outlined, size: 12),
                         const SizedBox(width: 3),
-                        Text('${globalBooking?.totalDistance ?? '-'} km',
+                        Text('${totalDistance ?? '-'} km',
                             style: CommonFonts.bodyTextXS),
                       ],
                     ),
@@ -3194,12 +3194,6 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              size: 16, // reduced
-              color: isSelected ? Colors.blue.shade700 : Colors.grey,
-            ),
-            const SizedBox(width: 4),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,

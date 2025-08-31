@@ -41,51 +41,53 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyD-0VaIu47ZmQfwfFPhr1asYh2Ux_DfydM',
-    appId: '1:350350132251:web:f96ce9cc7778fdc8a3a4be',
-    messagingSenderId: '350350132251',
-    projectId: 'wticabsuserb2c',
-    authDomain: 'wticabsuserb2c.firebaseapp.com',
-    storageBucket: 'wticabsuserb2c.firebasestorage.app',
-    measurementId: 'G-5KVKTK0M8V',
+    apiKey: 'AIzaSyBOKrlCP72fD5Oo_MS66A-HhIm1aaWCArY',
+    appId: '1:880138699529:web:edd78e64d432a523acc9d8',
+    messagingSenderId: '880138699529',
+    projectId: 'wticabs-a98bb',
+    authDomain: 'wticabs-a98bb.firebaseapp.com',
+    storageBucket: 'wticabs-a98bb.firebasestorage.app',
+    measurementId: 'G-TBRMH1ZYB1',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB_ersFUK_sIYny13OIybnElH9y0vxLL40',
-    appId: '1:350350132251:android:97d1945a8ee9c1dca3a4be',
-    messagingSenderId: '350350132251',
-    projectId: 'wticabsuserb2c',
-    storageBucket: 'wticabsuserb2c.firebasestorage.app',
+    apiKey: 'AIzaSyAlm4H5v-hSc61SMRm-Or54Gk-W82V3lPU',
+    appId: '1:880138699529:android:914879337a647e73acc9d8',
+    messagingSenderId: '880138699529',
+    projectId: 'wticabs-a98bb',
+    storageBucket: 'wticabs-a98bb.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCRU3VVcNJFU97NFbMT8kaf2loHxBxfhM8',
-    appId: '1:350350132251:ios:618d5f26dcf980cda3a4be',
-    messagingSenderId: '350350132251',
-    projectId: 'wticabsuserb2c',
-    storageBucket: 'wticabsuserb2c.firebasestorage.app',
-    iosClientId: '350350132251-oqnm5kahh5daerh0sob5rm49voeu2mpa.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDeB-dvxw6ZEfHAf1RaGLHsXqNc5LTPRGo',
+    appId: '1:880138699529:ios:d15afed9cc97e6dfacc9d8',
+    messagingSenderId: '880138699529',
+    projectId: 'wticabs-a98bb',
+    storageBucket: 'wticabs-a98bb.firebasestorage.app',
+    androidClientId: '880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com',
+    iosClientId: '880138699529-sk8hpragkimnim2g1s9ma48b6je2ov97.apps.googleusercontent.com',
     iosBundleId: 'com.wti.user.wtiCabsUser',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCRU3VVcNJFU97NFbMT8kaf2loHxBxfhM8',
-    appId: '1:350350132251:ios:1acbbabe68b39387a3a4be',
-    messagingSenderId: '350350132251',
-    projectId: 'wticabsuserb2c',
-    storageBucket: 'wticabsuserb2c.firebasestorage.app',
-    iosClientId: '350350132251-r6l30e84f570g5ggp9hht1phq3n1lflf.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDeB-dvxw6ZEfHAf1RaGLHsXqNc5LTPRGo',
+    appId: '1:880138699529:ios:a984d8e276a8a5a3acc9d8',
+    messagingSenderId: '880138699529',
+    projectId: 'wticabs-a98bb',
+    storageBucket: 'wticabs-a98bb.firebasestorage.app',
+    androidClientId: '880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com',
+    iosClientId: '880138699529-e50rorhn6s3rt6d9n8o7m5jvb13c0575.apps.googleusercontent.com',
     iosBundleId: 'com.example.wtiCabsUser',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyD-0VaIu47ZmQfwfFPhr1asYh2Ux_DfydM',
-    appId: '1:350350132251:web:9af5d5619623182ea3a4be',
-    messagingSenderId: '350350132251',
-    projectId: 'wticabsuserb2c',
-    authDomain: 'wticabsuserb2c.firebaseapp.com',
-    storageBucket: 'wticabsuserb2c.firebasestorage.app',
-    measurementId: 'G-J3ET8LP5BG',
+    apiKey: 'AIzaSyBOKrlCP72fD5Oo_MS66A-HhIm1aaWCArY',
+    appId: '1:880138699529:web:fb70345f85a5c062acc9d8',
+    messagingSenderId: '880138699529',
+    projectId: 'wticabs-a98bb',
+    authDomain: 'wticabs-a98bb.firebaseapp.com',
+    storageBucket: 'wticabs-a98bb.firebasestorage.app',
+    measurementId: 'G-PCVM6DCP75',
   );
 
 }

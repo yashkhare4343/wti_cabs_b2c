@@ -131,24 +131,27 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          clientId:
-          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
+        // Start the sign-in flow
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
           print("User cancelled the sign-in flow");
           return null;
         }
 
+        // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
         await googleUser.authentication;
 
+        // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
+        // Sign in to Firebase
         final userCredential =
         await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
@@ -549,8 +552,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          clientId:
-          '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -1104,7 +1106,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                   color: Colors.black)),
           centerTitle: true,
           elevation: 0,
-          backgroundColor: AppColors.scaffoldBgPrimary1,
+          backgroundColor: Colors.white,
           automaticallyImplyLeading: false,
           // leading: Icon(
           //   Icons.arrow_back,
@@ -1129,9 +1131,9 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
           }
          return Column(
             children: [
-              SizedBox(height: 12),
+              StorageServices.instance.read('token')==null ? SizedBox(height: 12) : SizedBox(),
               // Drive Type Toggle
-              Container(
+              StorageServices.instance.read('token')==null ?  Container(
                 // height: 46,
                 width: MediaQuery.of(context).size.width * 0.8,
                 // padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1176,7 +1178,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                     }),
                   ),
                 ),
-              ),
+              ) : SizedBox(),
               SizedBox(height: 20),
               // Tabs
               Padding(

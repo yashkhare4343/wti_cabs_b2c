@@ -18,6 +18,8 @@ class IndiaPaymentController extends GetxController {
   late Razorpay _razorpay;
   late BuildContext _currentContext;
   final currencyController = Get.find<CurrencyController>();
+  Map<String, dynamic>? lastProvisionalRequest;
+
 
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
@@ -90,7 +92,8 @@ class IndiaPaymentController extends GetxController {
     isLoading.value = true;
     try {
       requestData['reservation']['passenger'] = passengerId;
-     print('provision request data : ${requestData}');
+      lastProvisionalRequest = requestData;
+      print('provision request data : ${requestData}');
       final res = await http.post(
         Uri.parse('${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
         headers: {
@@ -182,12 +185,16 @@ class IndiaPaymentController extends GetxController {
   }
 
   // ✅ FIXED: No context in method signature, using stored _currentContext
-  void _handlePaymentError(PaymentFailureResponse response) {
+  void _handlePaymentError(PaymentFailureResponse response) async{
     print("❌ Payment Error: ${response.code} - ${response.message}");
     fetchReservationBookingData.fetchReservationData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
+      GoRouter.of(_currentContext).push(
+        AppRoutes.paymentFailure,
+        extra: lastProvisionalRequest, // ✅ Pass request data
+      );
     });
+
     GoRouter.of(_currentContext).pop();
   }
 

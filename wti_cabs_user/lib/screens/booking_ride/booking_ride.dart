@@ -730,15 +730,34 @@ class _OutStationState extends State<OutStation> {
               return bookingRideController.isInvalidTime.value && !buttonStateController.isButtonLoading.value
                   ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: const Text(
-                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.redAccent,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    border: Border.all(color: Colors.redAccent, width: 1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  maxLines: 2,
-                ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Invalid selection:\nYou cannot choose a past time. Please select a valid time to continue.",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+
               )
                   : const SizedBox();
             }),
@@ -1354,11 +1373,33 @@ class _RidesState extends State<Rides> {
                 ? Container(
               margin: const EdgeInsets.only(top: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: const Text(
-                "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent),
-                maxLines: 2,
-              ),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  border: Border.all(color: Colors.redAccent, width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Invalid selection:\nYou cannot choose a past time. Please select a valid time to continue.",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
             )
                 : const SizedBox()),
             const SizedBox(height: 28),
@@ -2037,10 +2078,32 @@ class _RentalState extends State<Rental> {
               return bookingRideController.isInvalidTime.value && !buttonRentalStateController.isButtonLoading.value
                   ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: const Text(
-                  "Invalid selection: You cannot choose a past time. Select a valid time to continue.",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent),
-                  maxLines: 2,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    border: Border.all(color: Colors.redAccent, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Invalid selection:\nYou cannot choose a past time. Please select a valid time to continue.",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               )
                   : const SizedBox();

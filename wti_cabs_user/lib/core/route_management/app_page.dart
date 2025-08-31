@@ -78,8 +78,10 @@ class AppPages{
       ),
       GoRoute(
         path: AppRoutes.paymentFailure,
-        builder: (context, state) => PaymentFailurePage(),
-      ),
+        builder: (context, state) {
+          final Map<String, dynamic>? provisionalData = state.extra as Map<String, dynamic>?;
+          return PaymentFailurePage(provisionalData: provisionalData);
+        },      ),
       GoRoute(
         path: AppRoutes.offers,
         builder: (context, state) => Offers(),

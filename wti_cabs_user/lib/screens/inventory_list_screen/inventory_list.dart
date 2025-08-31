@@ -35,8 +35,10 @@ class InventoryList extends StatefulWidget {
 class _InventoryListState extends State<InventoryList> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
   final TripController tripController = Get.put(TripController());
-  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final FetchPackageController fetchPackageController =
+      Get.put(FetchPackageController());
+  final BookingRideController bookingRideController =
+      Get.put(BookingRideController());
 
   static const Map<String, String> tripMessages = {
     '0': 'Your selected trip type has changed to Outstation One Trip.',
@@ -71,11 +73,14 @@ class _InventoryListState extends State<InventoryList> {
 
   /// Check for trip code changes and show dialog if needed
   Future<void> loadTripCode(BuildContext context) async {
-    final current = await StorageServices.instance.read('currentTripCode') ?? '';
-    final previous = await StorageServices.instance.read('previousTripCode') ?? '';
+    final current =
+        await StorageServices.instance.read('currentTripCode') ?? '';
+    final previous =
+        await StorageServices.instance.read('previousTripCode') ?? '';
 
     if (mounted && current.isNotEmpty && current != previous) {
-      final message = tripMessages[current] ?? 'Your selected trip type has changed.';
+      final message =
+          tripMessages[current] ?? 'Your selected trip type has changed.';
       await showDialog(
         context: context,
         builder: (context) {
@@ -94,7 +99,8 @@ class _InventoryListState extends State<InventoryList> {
                 Icon(Icons.update_outlined, color: Colors.blueAccent, size: 20),
                 SizedBox(width: 10),
                 Text('Trip Updated',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
             content: Padding(
@@ -144,9 +150,11 @@ class _InventoryListState extends State<InventoryList> {
     }
   }
 
-  num getFakePriceWithPercent(num baseFare, num percent) => (baseFare * 100) / (100 - percent);
+  num getFakePriceWithPercent(num baseFare, num percent) =>
+      (baseFare * 100) / (100 - percent);
   num getFivePercentOfBaseFare(num baseFare) => baseFare * 0.05;
-  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.put(DropPlaceSearchController());
   final CurrencyController currencyController = Get.find<CurrencyController>();
 
   @override
@@ -170,7 +178,9 @@ class _InventoryListState extends State<InventoryList> {
     final indiaData = searchCabInventoryController.indiaData.value;
     final globalData = searchCabInventoryController.globalData.value;
 
-    if (_country == null || (isIndia && indiaData == null) || (!isIndia && globalData == null)) {
+    if (_country == null ||
+        (isIndia && indiaData == null) ||
+        (!isIndia && globalData == null)) {
       return PopScope(
         canPop: false,
         onPopInvoked: (didPop) {
@@ -212,27 +222,37 @@ class _InventoryListState extends State<InventoryList> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() {
-                    final isIndia = searchCabInventoryController.indiaData.value != null;
-                    final indiaCarTypes = searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes ?? [];
-                    final globalList = searchCabInventoryController.globalData.value?.result ?? [];
-                    final isEmptyList = (isIndia && indiaCarTypes.isEmpty) || (!isIndia && globalList.isEmpty);
+                    final isIndia =
+                        searchCabInventoryController.indiaData.value != null;
+                    final indiaCarTypes = searchCabInventoryController
+                            .indiaData.value?.result?.inventory?.carTypes ??
+                        [];
+                    final globalList =
+                        searchCabInventoryController.globalData.value?.result ??
+                            [];
+                    final isEmptyList = (isIndia && indiaCarTypes.isEmpty) ||
+                        (!isIndia && globalList.isEmpty);
 
                     if (isEmptyList) {
                       return const Center(
                         child: Text(
                           "No cabs available on this route",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                       );
                     }
 
                     if ((placeSearchController.getPlacesLatLng.value?.country !=
-                        dropPlaceSearchController.dropLatLng.value?.country) &&
-                        (indiaCarTypes.isNotEmpty && indiaCarTypes.first.tripType != 'LOCAL_RENTAL')) {
+                            dropPlaceSearchController
+                                .dropLatLng.value?.country) &&
+                        (indiaCarTypes.isNotEmpty &&
+                            indiaCarTypes.first.tripType != 'LOCAL_RENTAL')) {
                       return const Center(
                         child: Text(
                           "No cabs available on this route, Please search on same country for pickup and drop",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                       );
                     }
@@ -248,15 +268,30 @@ class _InventoryListState extends State<InventoryList> {
                             ),
                             children: [
                               const TextSpan(text: 'Rates for '),
-                              TextSpan(
-                                text: '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0')} Kms',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                              _country?.toLowerCase() == 'india'
+                                  ? TextSpan(
+                                      text:
+                                          '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0')} Kms',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  : TextSpan(
+                                      text:
+                                          '${searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.totalDistance} kms'),
                               const TextSpan(text: ' approx distance | '),
-                              const TextSpan(
-                                text: '4.5 hr(s)',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                              _country?.toLowerCase() == 'india'
+                                  ? TextSpan(
+                                      text:
+                                          '${(DateTime.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.endTime.toString() ?? '').difference(DateTime.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.startTime.toString() ?? '')).inMinutes / 60).toStringAsFixed(2)} hrs',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  : TextSpan(
+                                      text:
+                                          '${(DateTime.parse(searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.dropDateTime ?? '').difference(DateTime.parse(searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.pickupDateTime ?? '')).inMinutes / 60).toStringAsFixed(2)} hrs',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
                               const TextSpan(text: ' approx time'),
                             ],
                           ),
@@ -264,22 +299,36 @@ class _InventoryListState extends State<InventoryList> {
                         const SizedBox(height: 8),
                         Expanded(
                           child: ListView.builder(
-                            itemCount: isIndia ? indiaCarTypes.length : globalList.length,
+                            itemCount: isIndia
+                                ? indiaCarTypes.length
+                                : globalList.length,
                             itemBuilder: (context, index) {
                               if (isIndia) {
                                 final carType = indiaCarTypes[index];
                                 return _buildIndiaCard(carType);
                               } else {
                                 final globalListItem = globalList[index];
-                                final tripDetails = globalListItem.firstWhereOrNull((e) => e.tripDetails != null)?.tripDetails;
-                                final fareDetails = globalListItem.firstWhereOrNull((e) => e.fareDetails != null)?.fareDetails;
-                                final vehicleDetails = globalListItem.firstWhereOrNull((e) => e.vehicleDetails != null)?.vehicleDetails;
+                                final tripDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.tripDetails != null)
+                                    ?.tripDetails;
+                                final fareDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.fareDetails != null)
+                                    ?.fareDetails;
+                                final vehicleDetails = globalListItem
+                                    .firstWhereOrNull(
+                                        (e) => e.vehicleDetails != null)
+                                    ?.vehicleDetails;
 
-                                if (tripDetails == null || fareDetails == null || vehicleDetails == null) {
+                                if (tripDetails == null ||
+                                    fareDetails == null ||
+                                    vehicleDetails == null) {
                                   return const SizedBox();
                                 }
 
-                                return _buildGlobalCard(tripDetails, fareDetails, vehicleDetails);
+                                return _buildGlobalCard(
+                                    tripDetails, fareDetails, vehicleDetails);
                               }
                             },
                           ),
@@ -297,16 +346,20 @@ class _InventoryListState extends State<InventoryList> {
   }
 
   Widget _buildIndiaCard(CarType carType) {
-    final tripCode = searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode;
-    final CabBookingController cabBookingController = Get.put(CabBookingController());
+    final tripCode = searchCabInventoryController
+        .indiaData.value?.result?.tripType?.currentTripCode;
+    final CabBookingController cabBookingController =
+        Get.put(CabBookingController());
     final CurrencyController currencyController = Get.put(CurrencyController());
-    final tripTypeDetails = searchCabInventoryController.indiaData.value?.result?.tripType;
+    final tripTypeDetails =
+        searchCabInventoryController.indiaData.value?.result?.tripType;
 
     num calculateOriginalPrice(num baseFare, num discountPercent) {
       return baseFare + (baseFare * discountPercent / 100);
     }
 
-    num originalPrice = calculateOriginalPrice(carType.fareDetails?.baseFare ?? 0, carType.fakePercentageOff ?? 0);
+    num originalPrice = calculateOriginalPrice(
+        carType.fareDetails?.baseFare ?? 0, carType.fakePercentageOff ?? 0);
 
     return InkWell(
       splashColor: Colors.transparent,
@@ -320,7 +373,11 @@ class _InventoryListState extends State<InventoryList> {
           "trip_type": carType.tripType,
           "pickUpDateTime": tripTypeDetails?.startTime?.toIso8601String() ?? '',
           "dropDateTime": tripTypeDetails?.endTime?.toIso8601String() ?? '',
-          "totalKilometers": tripTypeDetails?.distanceBooked ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0'),
+          "totalKilometers": tripTypeDetails?.distanceBooked ??
+              int.parse(searchCabInventoryController
+                      .indiaData.value?.result?.tripType?.packageId
+                      ?.split("_")[1] ??
+                  '0'),
           "package_id": tripTypeDetails?.packageId ?? '',
           "source": {
             "address": tripTypeDetails?.source?.address ?? '',
@@ -336,12 +393,14 @@ class _InventoryListState extends State<InventoryList> {
           },
           "tripCode": tripCode,
           "trip_type_details": {
-            "basic_trip_type": tripTypeDetails?.tripTypeDetails?.basicTripType ?? '',
+            "basic_trip_type":
+                tripTypeDetails?.tripTypeDetails?.basicTripType ?? '',
             "airport_type": tripTypeDetails?.tripTypeDetails?.airportType ?? ''
           },
         };
 
-        cabBookingController.fetchBookingData(country: country ?? '', requestData: requestData, context: context);
+        cabBookingController.fetchBookingData(
+            country: country ?? '', requestData: requestData, context: context);
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: 4.0),
@@ -364,9 +423,11 @@ class _InventoryListState extends State<InventoryList> {
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xFFE3F2FD),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
-                        side: const BorderSide(color: Colors.transparent, width: 1),
+                        side: const BorderSide(
+                            color: Colors.transparent, width: 1),
                         foregroundColor: const Color(0xFF1565C0),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
@@ -377,7 +438,8 @@ class _InventoryListState extends State<InventoryList> {
                       onPressed: () {},
                       child: Text(
                         carType.type ?? '',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w600),
                       ),
                     )
                   ],
@@ -394,7 +456,8 @@ class _InventoryListState extends State<InventoryList> {
                             width: 55,
                             child: Text(
                               carType.carTagLine ?? '',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 16),
                               overflow: TextOverflow.clip,
                               maxLines: 1,
                             ),
@@ -402,9 +465,11 @@ class _InventoryListState extends State<InventoryList> {
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               backgroundColor: AppColors.mainButtonBg,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
-                              side: const BorderSide(color: AppColors.mainButtonBg, width: 1),
+                              side: const BorderSide(
+                                  color: AppColors.mainButtonBg, width: 1),
                               foregroundColor: Colors.white,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
@@ -415,18 +480,31 @@ class _InventoryListState extends State<InventoryList> {
                             onPressed: () {},
                             child: Text(
                               carType.combustionType ?? '',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.w600),
                             ),
                           )
                         ],
                       ),
-                      Text('or similar', style: TextStyle(fontWeight: FontWeight.w400, fontSize: 13, color: Colors.grey[600])),
+                      Text('or similar',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              fontSize: 13,
+                              color: Colors.grey[600])),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Text("${carType.seats} Seats", style: TextStyle(fontWeight: FontWeight.w400, fontSize: 10, color: Colors.grey[700])),
+                          Text("${carType.seats} Seats",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 10,
+                                  color: Colors.grey[700])),
                           const SizedBox(width: 7),
-                          Text("• ${carType.luggageCapacity}", style: TextStyle(fontWeight: FontWeight.w400, fontSize: 10, color: Colors.grey[700])),
+                          Text("• ${carType.luggageCapacity}",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 10,
+                                  color: Colors.grey[700])),
                         ],
                       )
                     ],
@@ -442,12 +520,21 @@ class _InventoryListState extends State<InventoryList> {
                         children: [
                           Row(
                             children: [
-                              Text("${carType.fakePercentageOff.toString() ?? ''}%", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                              Text(
+                                  "${carType.fakePercentageOff.toString() ?? ''}%",
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w600)),
                               const SizedBox(width: 6),
                               buildConvertedPrice(
                                 originalPrice.toDouble(),
-                                prefix: currencyController.selectedCurrency.value.symbol,
-                                style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey, fontSize: 12),
+                                prefix: currencyController
+                                    .selectedCurrency.value.symbol,
+                                style: const TextStyle(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.grey,
+                                    fontSize: 12),
                               )
                             ],
                           ),
@@ -457,23 +544,35 @@ class _InventoryListState extends State<InventoryList> {
                             textBaseline: TextBaseline.alphabetic,
                             children: [
                               buildConvertedPrice(
-                                carType.fareDetails?.baseFare?.toDouble() ?? 0.0,
-                                prefix: currencyController.selectedCurrency.value.symbol,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                carType.fareDetails?.baseFare?.toDouble() ??
+                                    0.0,
+                                prefix: currencyController
+                                    .selectedCurrency.value.symbol,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 16),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
                           FutureBuilder<double>(
-                            future: currencyController.convertPrice(getFivePercentOfBaseFare(carType.fareDetails?.baseFare ?? 0).toDouble()),
+                            future: currencyController.convertPrice(
+                                getFivePercentOfBaseFare(
+                                        carType.fareDetails?.baseFare ?? 0)
+                                    .toDouble()),
                             builder: (context, snapshot) {
                               if (snapshot.hasError) {
-                                return const Text("Error in conversion", style: TextStyle(color: Colors.red, fontSize: 11));
+                                return const Text("Error in conversion",
+                                    style: TextStyle(
+                                        color: Colors.red, fontSize: 11));
                               }
-                              final convertedTaxes = snapshot.data ?? getFivePercentOfBaseFare(carType.fareDetails?.baseFare ?? 0).toDouble();
+                              final convertedTaxes = snapshot.data ??
+                                  getFivePercentOfBaseFare(
+                                          carType.fareDetails?.baseFare ?? 0)
+                                      .toDouble();
                               return Text(
                                 '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                                style: TextStyle(
+                                    color: Colors.grey[600], fontSize: 11),
                               );
                             },
                           )
@@ -490,13 +589,15 @@ class _InventoryListState extends State<InventoryList> {
     );
   }
 
-  Widget _buildGlobalCard(GlobalTripDetails tripDetails, GlobalFareDetails fareDetails, GlobalVehicleDetails vehicleDetails) {
+  Widget _buildGlobalCard(GlobalTripDetails tripDetails,
+      GlobalFareDetails fareDetails, GlobalVehicleDetails vehicleDetails) {
     final CurrencyController currencyController = Get.put(CurrencyController());
     return InkWell(
       splashColor: Colors.transparent,
       onTap: () async {
         final country = await StorageServices.instance.read('country');
-        final CabBookingController cabBookingController = Get.put(CabBookingController());
+        final CabBookingController cabBookingController =
+            Get.put(CabBookingController());
         final Map<String, dynamic> requestData = {
           "isGlobal": false,
           "country": country,
@@ -511,15 +612,26 @@ class _InventoryListState extends State<InventoryList> {
           "destination": {},
           "tripCode": tripDetails.currentTripCode,
           "trip_type_details": {
-            "basic_trip_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.basicTripType ?? '',
-            "airport_type": searchCabInventoryController.globalData.value?.tripTypeDetails?.airportType ?? ''
+            "basic_trip_type": searchCabInventoryController
+                    .globalData.value?.tripTypeDetails?.basicTripType ??
+                '',
+            "airport_type": searchCabInventoryController
+                    .globalData.value?.tripTypeDetails?.airportType ??
+                ''
           },
         };
-        cabBookingController.fetchBookingData(country: country ?? '', requestData: requestData, context: context).then((value) {
+        cabBookingController
+            .fetchBookingData(
+                country: country ?? '',
+                requestData: requestData,
+                context: context)
+            .then((value) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => BookingDetailsFinal(totalKms: tripDetails.totalDistance ?? 0.0, endTime: tripDetails.dropDateTime),
+              builder: (context) => BookingDetailsFinal(
+                  totalKms: tripDetails.totalDistance ?? 0.0,
+                  endTime: tripDetails.dropDateTime),
             ),
           );
         });
@@ -530,7 +642,6 @@ class _InventoryListState extends State<InventoryList> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
             Card(
               color: Colors.white,
               elevation: 0.3,
@@ -550,9 +661,11 @@ class _InventoryListState extends State<InventoryList> {
                         OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             backgroundColor: const Color(0xFFE3F2FD),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             minimumSize: Size.zero,
-                            side: const BorderSide(color: Colors.transparent, width: 1),
+                            side: const BorderSide(
+                                color: Colors.transparent, width: 1),
                             foregroundColor: const Color(0xFF1565C0),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
@@ -563,7 +676,8 @@ class _InventoryListState extends State<InventoryList> {
                           onPressed: () {},
                           child: Text(
                             vehicleDetails.filterCategory ?? '',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         )
                       ],
@@ -579,19 +693,24 @@ class _InventoryListState extends State<InventoryList> {
                                 width: 100,
                                 child: Text(
                                   vehicleDetails.title ?? '',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16),
                                   overflow: TextOverflow.clip,
                                   maxLines: 1,
                                 ),
                               ),
                             ],
                           ),
+                          SizedBox(height: 4,),
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               backgroundColor: AppColors.mainButtonBg,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
-                              side: const BorderSide(color: AppColors.mainButtonBg, width: 1),
+                              side: const BorderSide(
+                                  color: AppColors.mainButtonBg, width: 1),
                               foregroundColor: Colors.white,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
@@ -602,17 +721,25 @@ class _InventoryListState extends State<InventoryList> {
                             onPressed: () {},
                             child: Text(
                               vehicleDetails.fuelType,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
                               Text("${vehicleDetails.passengerCapacity} Seats",
-                                  style: TextStyle(fontWeight: FontWeight.w400, fontSize: 10, color: Colors.grey[700])),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 10,
+                                      color: Colors.grey[700])),
                               const SizedBox(width: 8),
-                              Text("• ${vehicleDetails.checkInLuggageCapacity} bags",
-                                  style: TextStyle(fontWeight: FontWeight.w400, fontSize: 10, color: Colors.grey[700])),
+                              Text(
+                                  "• ${vehicleDetails.checkinLuggageCapacity.toString()} bags",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 10,
+                                      color: Colors.grey[700])),
                             ],
                           )
                         ],
@@ -623,32 +750,98 @@ class _InventoryListState extends State<InventoryList> {
                       children: [
                         const SizedBox(height: 2),
                         Row(
+                          children: [
+                            Text(
+                                "20%",
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 6),
+                            FutureBuilder<double>(
+                              future: currencyController.convertPrice(
+                                getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble(),
+                              ),
+                              builder: (context, snapshot) {
+                                final convertedValue = snapshot.data ??
+                                    getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble();
+
+                                return Text(
+                                  '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: Colors.grey, // lighter color for cut-off price
+                                    decoration: TextDecoration.lineThrough, // 👈 adds cutoff
+                                  ),
+                                );
+                              },
+                            )
+                          ],
+                        ),
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             FutureBuilder<double>(
-                              future: currencyController.convertPrice(tripDetails.totalFare?.toDouble() ?? 0),
+                              future: currencyController.convertPrice(
+                                  tripDetails.totalFare?.toDouble() ?? 0),
                               builder: (context, snapshot) {
-                                final convertedValue = snapshot.data ?? tripDetails.totalFare;
+                                final convertedValue =
+                                    snapshot.data ?? tripDetails.totalFare;
                                 return Text(
                                   '${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15),
                                 );
                               },
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        FutureBuilder<double>(
-                          future: currencyController.convertPrice(getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).toDouble()),
-                          builder: (context, snapshot) {
-                            final convertedTaxes = snapshot.data ?? getFivePercentOfBaseFare(fareDetails.baseFare ?? 0).toDouble();
-                            return Text(
-                              '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 10),
-                            );
-                          },
+                        // Text(
+                        //   'All Inclusions',
+                        //   style: const TextStyle(
+                        //     fontWeight: FontWeight.w600,
+                        //     fontSize: 10,
+                        //     color: Colors.grey, // lighter color for cut-off price
+                        //   ),
+                        // ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50, // light background
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.green, width: 1),
+                          ),
+                          child: const Text(
+                            "Free Cancellation",
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
+
+                        // const SizedBox(height: 4),
+                        // FutureBuilder<double>(
+                        //   future: currencyController.convertPrice(
+                        //       getFivePercentOfBaseFare(
+                        //               fareDetails.baseFare ?? 0)
+                        //           .toDouble()),
+                        //   builder: (context, snapshot) {
+                        //     final convertedTaxes = snapshot.data ??
+                        //         getFivePercentOfBaseFare(
+                        //                 fareDetails.baseFare ?? 0)
+                        //             .toDouble();
+                        //     return Text(
+                        //       '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
+                        //       style: TextStyle(
+                        //           color: Colors.grey[600], fontSize: 10),
+                        //     );
+                        //   },
+                        // ),
                       ],
                     )
                   ],
@@ -661,7 +854,8 @@ class _InventoryListState extends State<InventoryList> {
     );
   }
 
-  Widget buildConvertedPrice(double value, {TextStyle? style, bool strikeThrough = false, String prefix = "₹"}) {
+  Widget buildConvertedPrice(double value,
+      {TextStyle? style, bool strikeThrough = false, String prefix = "₹"}) {
     final CurrencyController currencyController = Get.put(CurrencyController());
     return FutureBuilder<double>(
       future: currencyController.convertPrice(value),
@@ -669,8 +863,14 @@ class _InventoryListState extends State<InventoryList> {
         final converted = snapshot.data ?? value;
         return Text(
           "$prefix${converted.toStringAsFixed(2)}",
-          style: style?.copyWith(decoration: strikeThrough ? TextDecoration.lineThrough : TextDecoration.none) ??
-              TextStyle(decoration: strikeThrough ? TextDecoration.lineThrough : TextDecoration.none),
+          style: style?.copyWith(
+                  decoration: strikeThrough
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none) ??
+              TextStyle(
+                  decoration: strikeThrough
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none),
         );
       },
     );
@@ -690,7 +890,21 @@ class _BookingTopBarState extends State<BookingTopBar> {
   }
 
   String _monthName(int month) {
-    const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const months = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
     return months[month];
   }
 
@@ -703,13 +917,15 @@ class _BookingTopBarState extends State<BookingTopBar> {
     return '$day $month, $year, $hour:$minute hrs';
   }
 
-  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final BookingRideController bookingRideController =
+      Get.put(BookingRideController());
   String? tripCode;
   String? previousCode;
 
   void getCurrentTripCode() async {
     tripCode = await StorageServices.instance.read('currentTripCode');
-    previousCode = await StorageServices.instance.read('previousTripCode') ?? '';
+    previousCode =
+        await StorageServices.instance.read('previousTripCode') ?? '';
     setState(() {});
   }
 
@@ -727,7 +943,10 @@ class _BookingTopBarState extends State<BookingTopBar> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
@@ -743,7 +962,8 @@ class _BookingTopBarState extends State<BookingTopBar> {
                 tripCode == '3'
                     ? '${bookingRideController.prefilled.value}'
                     : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 maxLines: 1,
                 overflow: TextOverflow.clip,
               ),
@@ -760,7 +980,8 @@ class _BookingTopBarState extends State<BookingTopBar> {
                         builder: (context) => TopBookingDialogWrapper(),
                       );
                     },
-                    child: Icon(Icons.edit, size: 16, color: AppColors.mainButtonBg)),
+                    child: Icon(Icons.edit,
+                        size: 16, color: AppColors.mainButtonBg)),
               ],
             ),
           ],
@@ -781,13 +1002,29 @@ class _BookingTopBarState extends State<BookingTopBar> {
                   ),
                   const SizedBox(width: 8),
                   if (tripCode == '0')
-                    Text('Outstation One Way Trip', style: TextStyle(fontSize: 11, color: AppColors.mainButtonBg, fontWeight: FontWeight.w500)),
+                    Text('Outstation One Way Trip',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.mainButtonBg,
+                            fontWeight: FontWeight.w500)),
                   if (tripCode == '1')
-                    Text('Outstation Round Way Trip', style: TextStyle(fontSize: 11, color: AppColors.mainButtonBg, fontWeight: FontWeight.w500)),
+                    Text('Outstation Round Way Trip',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.mainButtonBg,
+                            fontWeight: FontWeight.w500)),
                   if (tripCode == '2')
-                    Text('Airport Trip', style: TextStyle(fontSize: 11, color: AppColors.mainButtonBg, fontWeight: FontWeight.w500)),
+                    Text('Airport Trip',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.mainButtonBg,
+                            fontWeight: FontWeight.w500)),
                   if (tripCode == '3')
-                    Text('Rental Trip', style: TextStyle(fontSize: 11, color: AppColors.mainButtonBg, fontWeight: FontWeight.w500)),
+                    Text('Rental Trip',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.mainButtonBg,
+                            fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -802,7 +1039,8 @@ class TopBookingDialogWrapper extends StatefulWidget {
   const TopBookingDialogWrapper({super.key});
 
   @override
-  State<TopBookingDialogWrapper> createState() => _TopBookingDialogWrapperState();
+  State<TopBookingDialogWrapper> createState() =>
+      _TopBookingDialogWrapperState();
 }
 
 class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
@@ -828,7 +1066,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
             child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Obx(
-                      () => Column(
+                  () => Column(
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
@@ -837,27 +1075,40 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                             icon: const Icon(Icons.close),
                             onPressed: () => Navigator.of(context).pop(),
                           ),
-                          SizedBox(width: MediaQuery.of(context).size.width * 0.13),
+                          SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.13),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              if (searchCabInventoryController.tripCode.value == '0')
-                                Text('OutStation One Way', style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value == '1')
-                                Text('OutStation Round Way', style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value == '2')
-                                Text('Airport', style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value == '3')
-                                Text('Rental', style: CommonFonts.greyText3Bold),
+                              if (searchCabInventoryController.tripCode.value ==
+                                  '0')
+                                Text('OutStation One Way',
+                                    style: CommonFonts.greyText3Bold),
+                              if (searchCabInventoryController.tripCode.value ==
+                                  '1')
+                                Text('OutStation Round Way',
+                                    style: CommonFonts.greyText3Bold),
+                              if (searchCabInventoryController.tripCode.value ==
+                                  '2')
+                                Text('Airport',
+                                    style: CommonFonts.greyText3Bold),
+                              if (searchCabInventoryController.tripCode.value ==
+                                  '3')
+                                Text('Rental',
+                                    style: CommonFonts.greyText3Bold),
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      if (searchCabInventoryController.tripCode.value == '0') OutStation(),
-                      if (searchCabInventoryController.tripCode.value == '1') OutStation(),
-                      if (searchCabInventoryController.tripCode.value == '2') Rides(),
-                      if (searchCabInventoryController.tripCode.value == '3') Rental(),
+                      if (searchCabInventoryController.tripCode.value == '0')
+                        OutStation(),
+                      if (searchCabInventoryController.tripCode.value == '1')
+                        OutStation(),
+                      if (searchCabInventoryController.tripCode.value == '2')
+                        Rides(),
+                      if (searchCabInventoryController.tripCode.value == '3')
+                        Rental(),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -879,7 +1130,8 @@ class BookNowChipButton extends StatelessWidget {
     return ActionChip(
       label: const Text(
         'Book Now',
-        style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w500),
+        style: TextStyle(
+            fontSize: 8, color: Colors.white, fontWeight: FontWeight.w500),
       ),
       backgroundColor: AppColors.mainButtonBg,
       onPressed: onPressed,
@@ -904,7 +1156,8 @@ Widget _buildShimmer() {
           itemCount: 5,
           itemBuilder: (_, __) => Padding(
             padding: const EdgeInsets.all(8),
-            child: ShimmerWidget.rectangular(height: 50, width: double.infinity),
+            child:
+                ShimmerWidget.rectangular(height: 50, width: double.infinity),
           ),
         ),
       ),
@@ -916,18 +1169,20 @@ class ShimmerWidget extends StatelessWidget {
   final double height;
   final double width;
 
-  const ShimmerWidget.rectangular({super.key, required this.height, this.width = double.infinity});
+  const ShimmerWidget.rectangular(
+      {super.key, required this.height, this.width = double.infinity});
 
   @override
   Widget build(BuildContext context) => Shimmer.fromColors(
-    baseColor: Colors.grey[300]!,
-    highlightColor: Colors.grey[100]!,
-    child: Container(
-      height: height,
-      width: width,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-    ),
-  );
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          height: height,
+          width: width,
+          decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(8)),
+        ),
+      );
 }
 
 class StaticBookingTopBar extends StatelessWidget {
@@ -939,7 +1194,9 @@ class StaticBookingTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -948,29 +1205,51 @@ class StaticBookingTopBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Pickup", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                Text("Pickup",
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                const Text("Connaught Place, Delhi", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black), overflow: TextOverflow.ellipsis),
+                const Text("Connaught Place, Delhi",
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black),
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                const Text("Sat, 10 Aug · 09:00 AM", style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text("Sat, 10 Aug · 09:00 AM",
+                    style: TextStyle(fontSize: 12, color: Colors.black54)),
               ],
             ),
           ),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.swap_vert, size: 20, color: Colors.black54),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text("Drop", style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                Text("Drop",
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                const Text("Jaipur, Rajasthan", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black), overflow: TextOverflow.ellipsis),
+                const Text("Jaipur, Rajasthan",
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black),
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                const Text("Sat, 10 Aug · 02:00 PM", style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text("Sat, 10 Aug · 02:00 PM",
+                    style: TextStyle(fontSize: 12, color: Colors.black54)),
               ],
             ),
           ),
@@ -982,14 +1261,16 @@ class StaticBookingTopBar extends StatelessWidget {
 
 class SelectedPackageCard extends StatelessWidget {
   final FetchPackageController controller;
-  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  final SearchCabInventoryController searchCabInventoryController =
+      Get.put(SearchCabInventoryController());
 
   SelectedPackageCard({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (controller.selectedPackage.value.isEmpty || searchCabInventoryController.tripCode.value.toString() != '3') {
+      if (controller.selectedPackage.value.isEmpty ||
+          searchCabInventoryController.tripCode.value.toString() != '3') {
         return const SizedBox();
       }
       return Card(
@@ -1007,9 +1288,17 @@ class SelectedPackageCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Selected Package -", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade600)),
+                    Text("Selected Package -",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade600)),
                     const SizedBox(width: 8),
-                    Text(controller.selectedPackage.value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.mainButtonBg)),
+                    Text(controller.selectedPackage.value,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.mainButtonBg)),
                   ],
                 ),
               ),

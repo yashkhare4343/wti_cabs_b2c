@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:another_flushbar/flushbar.dart';
 import 'package:carousel_slider/carousel_options.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -39,6 +41,7 @@ import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
+import '../../firebase_options.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
@@ -353,30 +356,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     bool isButtonEnabled = false;
     bool showOtpField = false;
 
+
+
     Future<UserCredential?> signInWithGoogle() async {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          clientId:
-              '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
+        // Start the sign-in flow
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
           print("User cancelled the sign-in flow");
           return null;
         }
 
+        // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
+        await googleUser.authentication;
 
+        // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
+        // Sign in to Firebase
         final userCredential =
-            await FirebaseAuth.instance.signInWithCredential(credential);
+        await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -384,6 +392,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return null;
       }
     }
+
 
     void _handleGoogleLogin(StateSetter setModalState) async {
       setModalState(() => isGoogleLoading = true);
@@ -782,8 +791,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          clientId:
-              '350350132251-9s1qaevcbivf6oj2nmg1t1kk65hned1b.apps.googleusercontent.com', // Web Client ID
+          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -795,7 +803,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
+        await googleUser.authentication;
 
         // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
@@ -805,7 +813,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Sign in to Firebase
         final userCredential =
-            await FirebaseAuth.instance.signInWithCredential(credential);
+        await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -1812,12 +1820,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           InkWell(
                             splashColor: Colors.transparent,
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Self Service service is coming soon!"),
-                                  duration: Duration(seconds: 2),
+                              Flushbar(
+                                flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
+                                margin: const EdgeInsets.all(12),
+                                borderRadius: BorderRadius.circular(12),
+                                backgroundColor: AppColors.blueSecondary,
+                                duration: const Duration(seconds: 3),
+                                icon: const Icon(Icons.campaign, color: Colors.white),
+                                messageText: const Text(
+                                  "Self Service feature is coming soon!",
+                                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                                 ),
-                              );
+                              ).show(context);
+
+
                             },
                             child: Container(
                               decoration: BoxDecoration(

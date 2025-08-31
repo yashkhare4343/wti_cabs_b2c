@@ -12,7 +12,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.wti.user.booking"
+    namespace = "com.wti.cabbooking"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,7 +26,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.wti.user.booking"
+        applicationId = "com.wti.cabbooking"
         minSdk = 23
         targetSdk = 34
         versionCode = flutter.versionCode
