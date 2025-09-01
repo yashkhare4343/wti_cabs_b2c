@@ -11,11 +11,13 @@ class PdfDownloadController extends GetxController {
   var isDownloading = false.obs;
 
   Future<void> downloadReceiptPdf(String objectId, BuildContext context) async {
+    print('🔽 [PdfDownloadController] Starting downloadReceiptPdf for objectId: $objectId');
     isDownloading.value = true;
 
     try {
       final dir = await getApplicationDocumentsDirectory();
       final filePath = "${dir.path}/receipt_$objectId.pdf";
+      print('📂 Saving file to: $filePath');
 
       await ApiService().downloadPdfWithHttp(
         endpoint: 'chaufferReservation/pdfGeneratorGlobalNormalUser',
@@ -25,8 +27,9 @@ class PdfDownloadController extends GetxController {
           'Authorization': 'Basic aGFyc2g6MTIz',
         },
         filePath: filePath,
-
       );
+      print('✅ PDF downloaded successfully for objectId: $objectId');
+
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -34,15 +37,20 @@ class PdfDownloadController extends GetxController {
           backgroundColor: Colors.green,
         ),
       );
-      await OpenFile.open(filePath); // Optional: open file after download
+
+      final result = await OpenFile.open(filePath); // Optional: open file after download
+      print('📖 OpenFile result: ${result.message}');
     } catch (e) {
+      print('❌ Error in downloadReceiptPdf for objectId: $objectId | Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please wait for Booking Complete'),
           backgroundColor: Colors.redAccent,
         ),
-      );    } finally {
+      );
+    } finally {
       isDownloading.value = false;
+      print('ℹ️ downloadReceiptPdf completed for objectId: $objectId | isDownloading reset to false');
     }
   }
 
@@ -50,16 +58,22 @@ class PdfDownloadController extends GetxController {
     required BuildContext context,
     required String objectId,
   }) async {
-    final endpoint = "chaufferReservation/pdfGeneratorEInvoice/$objectId/CUs";
+    final endpoint = "chaufferReservation/pdfGeneratorEInvoice/$objectId/CUSTOMER";
+    print('🔽 [PdfDownloadController] Starting downloadChauffeurEInvoice for objectId: $objectId | Endpoint: $endpoint');
 
-    await ApiService().downloadPdfFromGetApi(
-      context: context,
-      endpoint: endpoint,
-      fileName: "receipt_$objectId.pdf",
-      headers: {
-        'Authorization': 'Basic aGFyc2g6MTIz',
-      },
-    );
-    print('yash download invoice id : $objectId');
+    try {
+      await ApiService().downloadPdfFromGetApi(
+        context: context,
+        endpoint: endpoint,
+        fileName: "receipt_$objectId.pdf",
+        headers: {
+          'Authorization': 'Basic aGFyc2g6MTIz',
+        },
+      );
+      print('✅ E-Invoice PDF downloaded successfully for objectId: $objectId');
+      print('✅ url eInvoice: $endpoint');
+    } catch (e) {
+      print('❌ Error in downloadChauffeurEInvoice for objectId: $objectId | Error: $e');
+    }
   }
 }

@@ -57,7 +57,7 @@ class OtpController extends GetxController {
       }
     } catch (e) {
       isAuth.value = false;
-      otpMessage.value = "OTP Failed! Please try again.";
+      otpMessage.value = "Invalid OTP! Please try again.";
       return false;
     } finally {
       isLoading.value = false;

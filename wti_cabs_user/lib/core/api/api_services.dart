@@ -30,8 +30,8 @@ class ApiService {
 
   // Base URLs
   // final String baseUrl = '${EnvironmentConfig.baseUrl}/global/app/v1';
-  // final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
-  final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
+  final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
+  // final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 

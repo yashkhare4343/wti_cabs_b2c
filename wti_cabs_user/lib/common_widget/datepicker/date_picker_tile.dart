@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -28,6 +29,7 @@ class DatePickerTile extends StatefulWidget {
 class _DatePickerTileState extends State<DatePickerTile> {
   late DateTime selectedDate;
   late dynamic controller;
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
 
   @override
   void initState() {
@@ -103,6 +105,9 @@ class _DatePickerTileState extends State<DatePickerTile> {
   Widget build(BuildContext context) {
     selectedDate = widget.initialDate;
     final formattedDate = DateFormat('dd MMM yyyy').format(selectedDate);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      bookingRideController.selectedLocalDate.value = formattedDate;
+    });
 
     return GestureDetector(
       onTap: () => _showCupertinoDatePicker(context),

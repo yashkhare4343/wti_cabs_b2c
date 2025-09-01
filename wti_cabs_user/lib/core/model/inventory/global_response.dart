@@ -291,75 +291,79 @@ class AirportWaitingCharge {
 }
 
 class GlobalVehicleDetails {
-  final String? checkInLuggageCapacity;
+  final int? checkInLuggageCapacity;
   final String? checkInTooltip;
-  final num ratings;
-  final String id;
-  final String carCategoryName;
-  final String countryName;
-  final String filterCategory;
-  final String fuelType;
-  final num cabinLuggageCapacity;
-  final String cabinTooltip;
-  final String createdAt;
-  final List<String> extraArray;
-  final List<String> extras;
-  final num passengerCapacity;
-  final String title;
-  final String updatedAt;
-  final String vehicleImageLink;
-  final num checkinLuggageCapacity;
-  final String checkinTooltip;
-  final num rating;
-  final num reviews;
+  final num? ratings;
+  final String? id;
+  final String? carCategoryName;
+  final String? countryName;
+  final String? filterCategory;
+  final String? fuelType;
+  final num? cabinLuggageCapacity;
+  final String? cabinTooltip;
+  final String? createdAt;
+  final List<String>? extraArray;
+  final List<String>? extras;
+  final num? passengerCapacity;
+  final String? title;
+  final String? updatedAt;
+  final String? vehicleImageLink;
+  final num? checkinLuggageCapacity;
+  final String? checkinTooltip;
+  final num? rating;
+  final num? reviews;
 
   GlobalVehicleDetails({
     this.checkInLuggageCapacity,
     this.checkInTooltip,
-    required this.ratings,
-    required this.id,
-    required this.carCategoryName,
-    required this.countryName,
-    required this.filterCategory,
-    required this.fuelType,
-    required this.cabinLuggageCapacity,
-    required this.cabinTooltip,
-    required this.createdAt,
-    required this.extraArray,
-    required this.extras,
-    required this.passengerCapacity,
-    required this.title,
-    required this.updatedAt,
-    required this.vehicleImageLink,
-    required this.checkinLuggageCapacity,
-    required this.checkinTooltip,
-    required this.rating,
-    required this.reviews,
+    this.ratings,
+    this.id,
+    this.carCategoryName,
+    this.countryName,
+    this.filterCategory,
+    this.fuelType,
+    this.cabinLuggageCapacity,
+    this.cabinTooltip,
+    this.createdAt,
+    this.extraArray,
+    this.extras,
+    this.passengerCapacity,
+    this.title,
+    this.updatedAt,
+    this.vehicleImageLink,
+    this.checkinLuggageCapacity,
+    this.checkinTooltip,
+    this.rating,
+    this.reviews,
   });
 
   factory GlobalVehicleDetails.fromJson(Map<String, dynamic> json) {
     return GlobalVehicleDetails(
-      checkInLuggageCapacity: json['checkInluggageCapacity'],
-      checkInTooltip: json['checkInTooltip'],
-      ratings: (json['ratings'] ?? 0).toDouble(),
-      id: json['_id'],
-      carCategoryName: json['carCategoryName'],
-      countryName: json['countryName'],
-      filterCategory: json['filterCategory'],
-      fuelType: json['fuelType'],
-      cabinLuggageCapacity: json['cabinLuggageCapacity'],
-      cabinTooltip: json['cabinTooltip'],
-      createdAt: json['createdAt'],
-      extraArray: List<String>.from(json['extraArray']),
-      extras: List<String>.from(json['extras']),
-      passengerCapacity: json['passengerCapacity'],
-      title: json['title'],
-      updatedAt: json['updatedAt'],
-      vehicleImageLink: json['vehicleImageLink'].trim(),
-      checkinLuggageCapacity: json['checkinLuggageCapacity'],
-      checkinTooltip: json['checkinTooltip'],
-      rating: (json['rating'] ?? 0).toDouble(),
-      reviews: json['reviews'],
+      checkInLuggageCapacity: json['checkInluggageCapacity'] as int?,
+      checkInTooltip: json['checkInTooltip'] as String?,
+      ratings: (json['ratings'] is num) ? json['ratings'] as num : null,
+      id: json['_id'] as String?,
+      carCategoryName: json['carCategoryName'] as String?,
+      countryName: json['countryName'] as String?,
+      filterCategory: json['filterCategory'] as String?,
+      fuelType: json['fuelType'] as String?,
+      cabinLuggageCapacity: json['cabinLuggageCapacity'] as num?,
+      cabinTooltip: json['cabinTooltip'] as String?,
+      createdAt: json['createdAt'] as String?,
+      extraArray: (json['extraArray'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      extras: (json['extras'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      passengerCapacity: json['passengerCapacity'] as num?,
+      title: json['title'] as String?,
+      updatedAt: json['updatedAt'] as String?,
+      vehicleImageLink: (json['vehicleImageLink'] as String?)?.trim(),
+      checkinLuggageCapacity: json['checkinLuggageCapacity'] as num?,
+      checkinTooltip: json['checkinTooltip'] as String?,
+      rating: (json['rating'] is num) ? json['rating'] as num : null,
+      reviews: (json['reviews'] is num) ? json['reviews'] as num : null,
     );
   }
 

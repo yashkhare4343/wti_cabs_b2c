@@ -11,8 +11,9 @@ class BookingRideController extends GetxController {
   var errorMessage = ''.obs;
   final RxBool isSwitching = false.obs;
   Rx<DateTime?> selectedDateTime = Rx<DateTime?>(null);
-  RxInt? offsetMinutes = RxInt(0);   // ✅ stores timezone offset
-
+  RxInt? offsetMinutes = RxInt(0);// ✅ stores timezone offset
+  RxString selectedLocalDate = ''.obs;
+  RxString selectedLocalTime = ''.obs;
 
 
   // Core datetime values

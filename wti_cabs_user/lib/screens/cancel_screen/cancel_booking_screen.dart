@@ -3,11 +3,15 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/country/country_controller.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/reservation_cancellation_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
 
 import '../../utility/constants/colors/app_colors.dart';
 
@@ -106,6 +110,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
   String? selectedReason;
   final CurrencyController currencyController = Get.put(CurrencyController());
 
+
   void _showReasonBottomSheet(BuildContext context) {
     final reasons = [
       "Change of plans",
@@ -128,6 +133,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // reduced from 12
                   const Text(
                     "Select Cancellation Reason",
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -149,7 +155,10 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 12), // spacing before Done button
+
+                  const SizedBox(height: 12),
+                  buildRefundPolicy(),
+                  const SizedBox(height: 8),// spacing before Done button
                   SizedBox(
                     width: double.infinity,
                     child: MainButton(
@@ -271,6 +280,22 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
   }
 
   Widget _buildBookingDetails(Map<String, dynamic> booking) {
+    String convertUtcToLocal(String utcTimeString, String timezoneString) {
+      // Parse UTC time
+      DateTime utcTime = DateTime.parse(utcTimeString);
+
+      // Get the location based on timezone string like "Asia/Kolkata"
+      final location = tz.getLocation(timezoneString);
+
+      // Convert UTC to local time in given timezone
+      final localTime = tz.TZDateTime.from(utcTime, location);
+
+      // Format the local time as "28 July, 2025"
+      final formatted = DateFormat("d MMMM, yyyy, hh:mm a").format(localTime);
+
+      return formatted;
+    }
+
     return Card(
       color: const Color(0xFFFFFFFF),
       elevation: 0.6,
@@ -327,13 +352,26 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                 final convertedValue =
                     snapshot.data ?? booking["amountPaid"].toDouble();
 
-                return _buildDetailRow("Trip Type",  "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(0)}");
+                return _buildDetailRow("Amount Paid",  "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}");
               },
             ),
 
-            _buildDetailRow("Amount Paid", booking["amountPaid"]),
-            _buildDetailRow("Start Time", booking["startTime"]),
-            _buildDetailRow("End Time", booking["endTime"]),
+            // _buildDetailRow("Amount Paid", booking["amountPaid"]),
+            _buildDetailRow(
+              "Start Time",
+              convertUtcToLocal(
+                booking["startTime"].toString(),
+                booking["timezone"].toString(),
+              ),
+            ),
+            _buildDetailRow(
+              "End Time",
+              convertUtcToLocal(
+                booking["endTime"].toString(),
+                booking["timezone"].toString(),
+              ),
+            ),
+
             _buildDetailRow("Timezone", booking["timezone"]),
           ],
         ),
@@ -417,4 +455,53 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
       ),
     );
   }
+}
+
+// refund info card
+Widget buildRefundPolicy() {
+  return Card(
+    color: Colors.white,
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.receipt_long, // You can also try Icons.policy or Icons.info
+            color: Colors.blueAccent,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Refund Policy",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "• Cancellations within 1 hour of the booking start time are not eligible for a refund.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

@@ -128,9 +128,11 @@ class _SelectPickupState extends State<SelectPickup> {
                 children: [
                   Icon(Icons.history_outlined, size: 18, color: Colors.black),
                   SizedBox(width: 6),
-                  Text(
-                    'Recent Searches',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
+                  Expanded(
+                    child: Text(
+                      'Pickup places Suggestions',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
+                    ),
                   ),
                 ],
               ),

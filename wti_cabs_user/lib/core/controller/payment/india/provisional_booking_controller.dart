@@ -19,6 +19,7 @@ class IndiaPaymentController extends GetxController {
   late BuildContext _currentContext;
   final currencyController = Get.find<CurrencyController>();
   Map<String, dynamic>? lastProvisionalRequest;
+  RxString ? orderId;
 
 
   Map<String, dynamic>? registeredUser;
@@ -137,10 +138,12 @@ class IndiaPaymentController extends GetxController {
     try {
       // 🔹 Convert amount to selected currency
       final rawAmount = (order['amount'] ?? 0).toDouble();
+      orderId?.value = order['id'];
       final options = {
         // test key
-        // 'key': 'rzp_test_Ymyq5LXpYAetuR',
-        'key': 'rzp_live_swV8qRrgmiVPpJ',
+        'key': 'rzp_test_Ymyq5LXpYAetuR',
+        //live key
+        // 'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
         'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.

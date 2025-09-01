@@ -720,7 +720,7 @@ class _InventoryListState extends State<InventoryList> {
                             ),
                             onPressed: () {},
                             child: Text(
-                              vehicleDetails.fuelType,
+                              vehicleDetails.fuelType??'',
                               style: const TextStyle(
                                   fontSize: 11, fontWeight: FontWeight.w600),
                             ),
@@ -1039,20 +1039,29 @@ class TopBookingDialogWrapper extends StatefulWidget {
   const TopBookingDialogWrapper({super.key});
 
   @override
-  State<TopBookingDialogWrapper> createState() =>
-      _TopBookingDialogWrapperState();
+  State<TopBookingDialogWrapper> createState() => _TopBookingDialogWrapperState();
 }
 
 class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
+
   @override
   void initState() {
     super.initState();
-    searchCabInventoryController.loadTripCode();
+    // Defer loadTripCode to ensure it runs after the build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('Calling loadTripCode at ${DateTime.now()}');
+      searchCabInventoryController.loadTripCode();
+    });
+    // Monitor tripCode changes for debugging
+    ever(searchCabInventoryController.tripCode, (value) {
+      print('tripCode changed to $value at ${DateTime.now()}');
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    print('Building TopBookingDialogWrapper at ${DateTime.now()}');
     return Column(
       children: [
         Dialog(
@@ -1064,62 +1073,56 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
           child: SizedBox(
             width: double.infinity,
             child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Obx(
-                  () => Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                          SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.13),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              if (searchCabInventoryController.tripCode.value ==
-                                  '0')
-                                Text('OutStation One Way',
-                                    style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value ==
-                                  '1')
-                                Text('OutStation Round Way',
-                                    style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value ==
-                                  '2')
-                                Text('Airport',
-                                    style: CommonFonts.greyText3Bold),
-                              if (searchCabInventoryController.tripCode.value ==
-                                  '3')
-                                Text('Rental',
-                                    style: CommonFonts.greyText3Bold),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (searchCabInventoryController.tripCode.value == '0')
-                        OutStation(),
-                      if (searchCabInventoryController.tripCode.value == '1')
-                        OutStation(),
-                      if (searchCabInventoryController.tripCode.value == '2')
-                        Rides(),
-                      if (searchCabInventoryController.tripCode.value == '3')
-                        Rental(),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                )),
+              padding: const EdgeInsets.all(16.0),
+              child: Obx(() {
+                print('Obx rebuild triggered at ${DateTime.now()}');
+                // Capture the current tripCode value to avoid direct reactive access
+                final tripCode = searchCabInventoryController.tripCode.value;
+                return Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        SizedBox(width: MediaQuery.of(context).size.width * 0.13),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            if (tripCode == '0')
+                              Text('OutStation One Way',
+                                  style: CommonFonts.greyText3Bold),
+                            if (tripCode == '1')
+                              Text('OutStation Round Way',
+                                  style: CommonFonts.greyText3Bold),
+                            if (tripCode == '2')
+                              Text('Airport',
+                                  style: CommonFonts.greyText3Bold),
+                            if (tripCode == '3')
+                              Text('Rental',
+                                  style: CommonFonts.greyText3Bold),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (tripCode == '0') OutStation(),
+                    if (tripCode == '1') OutStation(),
+                    if (tripCode == '2') Rides(),
+                    if (tripCode == '3') Rental(),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              }),
+            ),
           ),
         ),
       ],
     );
   }
 }
-
 class BookNowChipButton extends StatelessWidget {
   final VoidCallback onPressed;
 

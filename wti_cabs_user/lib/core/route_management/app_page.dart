@@ -20,6 +20,7 @@ import 'package:wti_cabs_user/screens/walkthrough/walkthrough.dart';
 import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
+import '../../screens/contact/contact.dart';
 
 class AppPages{
   static final GoRouter router = GoRouter(
@@ -115,6 +116,10 @@ class AppPages{
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.contact,
+        builder: (context, state) => Contact(),
       ),
 
     ],

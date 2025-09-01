@@ -129,7 +129,12 @@ class CurrencyController extends GetxController {
     required bool isIndiaInventory,
     required bool isInIndiaLocation,
   }) async {
-    if (isIndiaInventory && isInIndiaLocation) {
+    // Apply your mapping rules
+    if (isInIndiaLocation && isIndiaInventory) {
+      baseCurrency.value = Currency(code: "INR", symbol: "₹", name: "Indian Rupee");
+    } else if (isInIndiaLocation && !isIndiaInventory) {
+      baseCurrency.value = Currency(code: "USD", symbol: "\$", name: "US Dollar");
+    } else if (!isInIndiaLocation && isIndiaInventory) {
       baseCurrency.value = Currency(code: "INR", symbol: "₹", name: "Indian Rupee");
     } else {
       baseCurrency.value = Currency(code: "USD", symbol: "\$", name: "US Dollar");
@@ -147,8 +152,10 @@ class CurrencyController extends GetxController {
 
     fromCurrency.value = baseCurrency.value;
 
-    print("✅ Base currency set to ${baseCurrency.value.code} (${baseCurrency.value.symbol})");
+    print("✅ Base currency set to ${baseCurrency.value.code} (${baseCurrency.value.symbol}) "
+        "| isIndiaLocation=$isInIndiaLocation | isIndiaInventory=$isIndiaInventory");
   }
+
 
 
 
@@ -162,6 +169,7 @@ class CurrencyController extends GetxController {
     print("➡️ From: $from  ➡️ To: $to  | Amount: $amount");
 
     if (from == to) {
+      convertedRate.value = 1.0;          // ✅ reset to 1
       print("⚡ Same currency ($from), no conversion needed.");
       return amount; // no conversion needed
     }
@@ -177,17 +185,21 @@ class CurrencyController extends GetxController {
 
       if (response["currencyConverted"] == true) {
         double rate = (response["data"] as num).toDouble();
-        convertedRate.value = rate;
+        convertedRate.value = rate; // ✅ keep rate in observable
+
         print("💱 Conversion rate: $rate | Converted Amount: ${amount * rate}");
 
         return amount * rate; // multiply price by conversion rate
       }
 
       print("⚠️ Conversion not applied, returning original amount: $amount");
+      convertedRate.value = 1.0;
+
       return amount; // fallback
     } catch (e, s) {
       print("❌ Conversion API failed: $e");
       print("📌 Stacktrace: $s");
+
       return amount;
     } finally {
       isLoading.value = false; // ✅ stop loader

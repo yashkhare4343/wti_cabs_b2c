@@ -17,20 +17,21 @@ class _WalkthroughState extends State<Walkthrough> {
   final List<Map<String, String>> _pages = [
     {
       "image": "assets/images/wk1.png",
-      "title": "Seamless Airport Transfers, Anytime You Fly",
-      "subtitle": "Reliable, on-time airport cabs across India—arrive or depart with ease and comfort."
+      "title": "Hassle-Free Airport Transfers",
+      "subtitle": "On-time, reliable chauffeur cabs for arrivals and departures—travel stress-free every time."
     },
     {
       "image": "assets/images/wk2.png",
-      "title": "Ride with Comfort, Anytime, Anywhere",
-      "subtitle": "Experience reliable, safe, and convenient cab services across India – from airport pickups to daily office commutes.q"
+      "title": "Outstation Rides, One Way or Round Trip",
+      "subtitle": "Comfortable, affordable, and safe chauffeur-driven cabs for long-distance travel across cities."
     },
     {
       "image": "assets/images/wk3.png",
-      "title": "Travel Safely",
-      "subtitle": "Verified drivers and secure rides every time."
+      "title": "Local Rentals, Your Car on Demand",
+      "subtitle": "Book chauffeur-driven cabs by the hour or day—perfect for city rides, shopping, and meetings."
     },
   ];
+
 
   void _nextPage() {
     if (_currentPage < _pages.length - 1) {

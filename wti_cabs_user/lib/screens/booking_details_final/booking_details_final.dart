@@ -2750,8 +2750,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                 "receiptData": {
                                   "countryName":
                                       currencyController.country.value,
-                                  "baseCurrency": currencyController
-                                      .selectedCurrency.value.code,
+                                  "baseCurrency": currencyController.fromCurrency.value.code,
                                   "currency": {
                                     "currencyName": currencyController
                                         .selectedCurrency.value.code,
@@ -3056,15 +3055,15 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                 },
                                 "receiptData": {
                               "paymentType": "FULL",
-                                  "countryName": sourceCountry,
+                                  "countryName":
+                                  currencyController.country.value,
+                                  "baseCurrency": currencyController.fromCurrency.value.code,
                                   "currency": {
                                     "currencyName": currencyController
                                         .selectedCurrency.value.code,
                                     "currencyRate":
-                                        currencyController.convertedRate.value ?? 1
+                                    currencyController.convertedRate.value ?? 1
                                   },
-                                  "baseCurrency": currencyController
-                                      .selectedCurrency.value.code,
                                   "addon_charges":
                                       cabBookingController.extraFacilityCharges,
                                   "freeWaitingTime": cabBookingController
@@ -3132,13 +3131,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     .selectedCurrency.value.code,
                                 "carType": cabBookingController.globalData.value
                                     ?.fareBreakUpDetails?.vehicleCategory,
-                                "description": cabBookingController
-                                    .globalData
-                                    .value
-                                    ?.vehicleDetails
-                                    ?.extraArray
-                                    ?.first
-                                    .description,
+                                "description": 'WTI cabs booking for mobile chauffer app',
                                 "userType": "CUSTOMER",
                               };
 
@@ -3194,6 +3187,12 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 18,
+              color: isSelected ? Colors.blue.shade700 : Colors.grey,
+            ),
+            const SizedBox(width: 6),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,

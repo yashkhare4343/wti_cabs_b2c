@@ -6,11 +6,13 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
+import 'package:wti_cabs_user/core/controller/payment/india/provisional_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
 import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -26,6 +28,7 @@ import '../../core/controller/auth/register_controller.dart';
 import '../../core/controller/auth/resend_otp_controller.dart';
 import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/download_receipt/download_receipt_controller.dart';
+import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
@@ -1722,7 +1725,8 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
   Get.put(UpcomingBookingController());
   final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
   final CurrencyController currencyController = Get.put(CurrencyController());
-
+  final FetchReservationBookingData fetchReservationBookingData =
+  Get.put(FetchReservationBookingData());
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
 
@@ -1981,24 +1985,26 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                       SizedBox(
                                         width: 4,
                                       ),
-                                      Text(
-                                          convertUtcToLocal(
-                                              upcomingBookingController
-                                                  .completedBookings?[
-                                              index]
-                                                  .startTime
-                                                  .toString() ??
-                                                  '',
-                                              upcomingBookingController
-                                                  .completedBookings?[
-                                              index]
-                                                  .timezone ??
-                                                  '') ??
-                                              'No Pickup Date Found',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF808080),
-                                              fontWeight: FontWeight.w400)),
+                                      Expanded(
+                                        child: Text(
+                                            convertUtcToLocal(
+                                                upcomingBookingController
+                                                    .completedBookings?[
+                                                index]
+                                                    .startTime
+                                                    .toString() ??
+                                                    '',
+                                                upcomingBookingController
+                                                    .completedBookings?[
+                                                index]
+                                                    .timezone ??
+                                                    '') ??
+                                                'No Pickup Date Found',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF808080),
+                                                fontWeight: FontWeight.w400)),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -2053,24 +2059,30 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                         width: 4,
                                       ),
                                       (upcomingBookingController
-                                          .completedBookings[index].tripTypeDetails?.basicTripType == 'LOCAL') ? SizedBox() :   Text(
-                                          convertUtcToLocal(
-                                              upcomingBookingController
-                                                  .completedBookings[
-                                              index]
-                                                  .endTime
-                                                  .toString() ??
-                                                  '',
-                                              upcomingBookingController
-                                                  .completedBookings[
-                                              index]
-                                                  .timezone ??
-                                                  '') ??
-                                              'No Drop Date Found',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF808080),
-                                              fontWeight: FontWeight.w400)),
+                                          .completedBookings[index].tripTypeDetails?.basicTripType == 'LOCAL') ? SizedBox() :   Expanded(
+                                            child: Text(
+                                            '${
+                                                      convertUtcToLocal(
+                                                          upcomingBookingController
+                                                                  .completedBookings[
+                                                                      index]
+                                                                  .endTime
+                                                                  .toString() ??
+                                                              '',
+                                            
+                                                          upcomingBookingController
+                                                                  .completedBookings[
+                                                                      index]
+                                                                  .timezone ??
+                                                              '')
+                                                    }' ??
+                                                'No Drop Date Found',
+                                            maxLines: 2,
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF808080),
+                                                fontWeight: FontWeight.w400)),
+                                          ),
                                     ],
                                   ),
                                 ],
@@ -2082,7 +2094,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                         Row(
                           children: [
                             upcomingBookingController
-                                .confirmedBookings[index].countryName
+                                .completedBookings[index].countryName
                                 ?.toLowerCase() ==
                                 'india'
                                 ? CommonOutlineButton(
@@ -2103,11 +2115,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                     .downloadChauffeurEInvoice(
                                     context:
                                     context,
-                                    objectId: await StorageServices
-                                        .instance
-                                        .read(
-                                        'reservationId') ??
-                                        '')
+                                    objectId: fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.orderReferenceNumber??'')
                                     .then((value) {
                                   GoRouter.of(context)
                                       .pop();
@@ -2115,40 +2123,6 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                               },
                             )
                                 : SizedBox(),
-                            SizedBox(width: 16),
-                            ElevatedButton(
-                              onPressed: pdfCtrl.isDownloading.value
-                                  ? () {}
-                                  : () async {
-                                await pdfCtrl
-                                    .downloadReceiptPdf(
-                                    upcomingBookingController
-                                        .completedBookings[index].id ??
-                                        '',
-                                    context)
-                                    .then((value) {
-                                  GoRouter.of(context).pop();
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                AppColors.mainButtonBg, // Background color
-                                foregroundColor:
-                                Colors.white, // Text (and ripple) color
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                              ),
-                              child: Text(
-                                'Manage Booking',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white),
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -2581,30 +2555,6 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                   GoRouter.of(context).pop();
                                 });
                               },
-                            ),
-                            SizedBox(width: 16),
-                            ElevatedButton(
-                              onPressed: () {
-                                // Handle button press
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                AppColors.mainButtonBg, // Background color
-                                foregroundColor:
-                                Colors.white, // Text (and ripple) color
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                              ),
-                              child: Text(
-                                'Manage Booking',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white),
-                              ),
                             ),
                           ],
                         ),

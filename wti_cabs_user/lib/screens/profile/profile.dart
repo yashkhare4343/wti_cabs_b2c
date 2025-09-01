@@ -158,7 +158,7 @@ class _ProfileState extends State<Profile> {
               size: 20,
             ),
             onPressed: () {
-              GoRouter.of(context).pop();
+              GoRouter.of(context).go(AppRoutes.bottomNav);
               setState(() {
                 isEdit = false;
               });

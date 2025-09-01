@@ -1279,7 +1279,7 @@ class _OtpTextFieldState extends State<OtpTextField> {
           statusColor = Colors.green;
         } else {
           borderColor = Colors.red;
-          statusText = "OTP Failed! Please try again";
+          statusText = "Invalid OTP! Please try again";
           statusColor = Colors.red;
         }
       }

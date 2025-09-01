@@ -32,6 +32,7 @@ class _SelectDropState extends State<SelectDrop> {
   bool _isProcessingTap = false; // Prevent multiple onTap executions
 
   @override
+  @override
   void initState() {
     super.initState();
     // Initialize controllers with Get.find or Get.put
@@ -60,13 +61,18 @@ class _SelectDropState extends State<SelectDrop> {
     } catch (_) {
       destinationController = Get.put(DestinationLocationController());
     }
+
     // Set initial text for dropController
     dropController.text = bookingRideController.prefilledDrop.value;
-    bookingRideController.prefilledDrop.value = '';
+
+    // Defer the Rx value update until after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      bookingRideController.prefilledDrop.value = '';
+    });
+
     // Load recent searches
     _loadRecentSearches();
   }
-
   void _loadRecentSearches() {
     // Placeholder for preloading recent searches
     // Example: dropPlaceSearchController.loadRecentSearches();
@@ -113,12 +119,12 @@ class _SelectDropState extends State<SelectDrop> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: AppColors.bgGrey1,
               child: const Row(
-                mainAxisSize: MainAxisSize.min,
+                // mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.history_outlined, size: 18, color: Colors.black),
                   SizedBox(width: 6),
                   Text(
-                    'Recent Searches',
+                    'Drop Places Suggestions',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
                   ),
                 ],

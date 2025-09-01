@@ -1828,7 +1828,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 duration: const Duration(seconds: 3),
                                 icon: const Icon(Icons.campaign, color: Colors.white),
                                 messageText: const Text(
-                                  "Self Service feature is coming soon!",
+                                  "Coming soon!",
                                   style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                                 ),
                               ).show(context);

@@ -884,7 +884,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                   children: [
                     SvgPicture.asset(
                       'assets/images/wti_logo.svg',
-                      height: 17,
+                      height: 22,
                       width: 47,
                     ),
                     // InkWell(
@@ -912,7 +912,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                 ),
                 const Divider(),
                 SizedBox(
-                  height: 22,
+                  height: 8,
                 ),
 
                 /// Drawer Items
@@ -981,7 +981,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                 title: 'Contact Us',
                 subtitle: 'Get in Touch',
                 onTap: () {
-                  GoRouter.of(context).push(AppRoutes.selectCurrency);
+                  GoRouter.of(context).push(AppRoutes.contact);
                 },
               ),
                 // Obx((){
@@ -1042,7 +1042,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                     width: 20,
                   ),
                   title: 'Sign Out',
-                  subtitle: 'Driving Licence, Passport, ID etc.',
+                  subtitle: 'You will be signed out of your account.',
                   onTap: () {
                     showLogoutDialog(context);
                   },
