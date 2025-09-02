@@ -77,7 +77,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
-    await fetchCouponController.fetchCoupons(context);
+    // await fetchCouponController.fetchCoupons(context);
 
     print('📦 3rd page country: $_country');
     firstName =

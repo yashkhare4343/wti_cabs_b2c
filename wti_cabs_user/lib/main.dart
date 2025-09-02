@@ -125,9 +125,9 @@ void main() async {
 
     print('💳 Setting Stripe key');
     // test key stripe
-    Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
+    // Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
     // live key stripe
-    // Stripe.publishableKey = 'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
+    Stripe.publishableKey = 'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
     await Stripe.instance.applySettings();
 
     print('📥 Initializing FlutterDownloader');

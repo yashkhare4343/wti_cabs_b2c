@@ -217,12 +217,15 @@ class _TimePickerTileState extends State<TimePickerTile> {
   Widget build(BuildContext context) {
     return Obx(() {
       final formattedTime = DateFormat('hh:mm a').format(timeObservable.value);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        bookingRideController.selectedLocalTime.value = formattedTime;
+      });
       @override
       void initState() {
         super.initState();
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          bookingRideController.selectedLocalTime.value = formattedTime;
+
         });
       }
       return GestureDetector(

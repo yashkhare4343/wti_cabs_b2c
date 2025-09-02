@@ -141,9 +141,9 @@ class IndiaPaymentController extends GetxController {
       orderId?.value = order['id'];
       final options = {
         // test key
-        'key': 'rzp_test_Ymyq5LXpYAetuR',
+        // 'key': 'rzp_test_Ymyq5LXpYAetuR',
         //live key
-        // 'key': 'rzp_live_swV8qRrgmiVPpJ',
+        'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
         'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.

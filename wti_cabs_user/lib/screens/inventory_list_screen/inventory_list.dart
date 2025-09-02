@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -214,11 +215,11 @@ class _InventoryListState extends State<InventoryList> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 BookingTopBar(),
-                Column(
-                  children: [
-                    SelectedPackageCard(controller: fetchPackageController),
-                  ],
-                ),
+                // Column(
+                //   children: [
+                //     SelectedPackageCard(controller: fetchPackageController),
+                //   ],
+                // ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() {
@@ -883,6 +884,7 @@ class BookingTopBar extends StatefulWidget {
 }
 
 class _BookingTopBarState extends State<BookingTopBar> {
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
   @override
   void initState() {
     super.initState();
@@ -919,6 +921,9 @@ class _BookingTopBarState extends State<BookingTopBar> {
 
   final BookingRideController bookingRideController =
       Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController =
+      Get.put(PlaceSearchController());
+  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
   String? tripCode;
   String? previousCode;
 
@@ -939,6 +944,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
   Widget build(BuildContext context) {
     final pickupDateTime = bookingRideController.localStartTime.value;
     final formattedPickup = formatDateTime(pickupDateTime);
+    final formattedDrop = formatDateTime(searchCabInventoryController.indiaData.value?.result?.tripType?.endTime ?? bookingRideController.localEndTime.value);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -951,7 +957,9 @@ class _BookingTopBarState extends State<BookingTopBar> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         leading: GestureDetector(
-            onTap: () => GoRouter.of(context).pop(),
+            onTap: () {
+              GoRouter.of(context).pop();
+              GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');            },
             child: const Icon(Icons.arrow_back, size: 20)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -984,6 +992,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
                         size: 16, color: AppColors.mainButtonBg)),
               ],
             ),
+
           ],
         ),
         subtitle: Column(
@@ -994,40 +1003,65 @@ class _BookingTopBarState extends State<BookingTopBar> {
               padding: const EdgeInsets.only(top: 0),
               child: Row(
                 children: [
-                  Text(
-                    formattedPickup,
-                    style: TextStyle(fontSize: 11, color: AppColors.greyText5),
-                    maxLines: 1,
+
+                  RichText(
+                    maxLines: ((tripCode == '1') && placeSearchController.getPlacesLatLng.value?.country.toLowerCase() =='india') ? 2 : 1,
                     overflow: TextOverflow.clip,
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 12, color: AppColors.greyText5),
+                      children: [
+                        const TextSpan(
+                          text: 'Pickup Time: ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: formattedPickup,
+                        ),
+                        const TextSpan(text: '\n'),
+
+                        const TextSpan(
+                          text: 'Drop Time: ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: formattedDrop.toString(),
+                        ),
+                      ],
+                    ),
                   ),
+
                   const SizedBox(width: 8),
-                  if (tripCode == '0')
-                    Text('Outstation One Way Trip',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mainButtonBg,
-                            fontWeight: FontWeight.w500)),
-                  if (tripCode == '1')
-                    Text('Outstation Round Way Trip',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mainButtonBg,
-                            fontWeight: FontWeight.w500)),
-                  if (tripCode == '2')
-                    Text('Airport Trip',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mainButtonBg,
-                            fontWeight: FontWeight.w500)),
-                  if (tripCode == '3')
-                    Text('Rental Trip',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mainButtonBg,
-                            fontWeight: FontWeight.w500)),
+
                 ],
               ),
             ),
+            SelectedPackageCard(controller: fetchPackageController),
+
+            if (tripCode == '0')
+              Text('Outstation One Way Trip',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mainButtonBg,
+                      fontWeight: FontWeight.w500)),
+            if (tripCode == '1')
+              Text('Outstation Round Way Trip',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mainButtonBg,
+                      fontWeight: FontWeight.w500)),
+            if (tripCode == '2')
+              Text('Airport Trip',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mainButtonBg,
+                      fontWeight: FontWeight.w500)),
+            if (tripCode == '3')
+              Text('Rental Trip',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mainButtonBg,
+                      fontWeight: FontWeight.w500)),
+
           ],
         ),
       ),
@@ -1044,6 +1078,7 @@ class TopBookingDialogWrapper extends StatefulWidget {
 
 class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
+  final FetchPackageController fetchPackageController = Get.find();
 
   @override
   void initState() {
@@ -1108,8 +1143,8 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (tripCode == '0') OutStation(),
-                    if (tripCode == '1') OutStation(),
+                    if (tripCode == '0') OutStation(selectedTrip: 'oneWay',),
+                    if (tripCode == '1') OutStation(selectedTrip: 'roundTrip',),
                     if (tripCode == '2') Rides(),
                     if (tripCode == '3') Rental(),
                     const SizedBox(height: 8),
@@ -1276,38 +1311,28 @@ class SelectedPackageCard extends StatelessWidget {
           searchCabInventoryController.tripCode.value.toString() != '3') {
         return const SizedBox();
       }
-      return Card(
-        color: Colors.white,
-        elevation: 0.3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        borderOnForeground: false,
-        margin: const EdgeInsets.only(left: 0, right: 0, top: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Selected Package -",
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade600)),
-                    const SizedBox(width: 8),
-                    Text(controller.selectedPackage.value,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.mainButtonBg)),
-                  ],
-                ),
-              ),
-            ],
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Selected Package -",
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Text(controller.selectedPackage.value,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.mainButtonBg)),
+              ],
+            ),
           ),
-        ),
+        ],
       );
     });
   }

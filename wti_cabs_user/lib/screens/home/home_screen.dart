@@ -1832,8 +1832,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                                 ),
                               ).show(context);
-
-
                             },
                             child: Container(
                               decoration: BoxDecoration(
