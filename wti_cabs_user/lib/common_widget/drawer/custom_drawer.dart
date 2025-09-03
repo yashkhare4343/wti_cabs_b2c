@@ -12,7 +12,6 @@ import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_co
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/select_currency/select_currency.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
-
 import '../../core/controller/auth/mobile_controller.dart';
 import '../../core/controller/auth/otp_controller.dart';
 import '../../core/controller/auth/register_controller.dart';
@@ -602,22 +601,23 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                               "By logging in, I understand & agree to Wise Travel India Limited ",
                                               style:
                                               CommonFonts.bodyText3Medium,
-                                              children: [
-                                                TextSpan(
-                                                    text: "Terms & Conditions",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(text: ", "),
-                                                TextSpan(
-                                                    text: "Privacy Policy",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(
-                                                    text:
-                                                    ", and User agreement",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                              ],
+                                              // children: [
+                                              //   TextSpan(
+                                              //       text: "Terms & Conditions",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(text: ", "),
+                                              //   TextSpan(
+                                              //       text: "Privacy Policy",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(
+                                              //       text:
+                                              //       ", and User agreement",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              // ],
+                                              children: []
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -763,7 +763,10 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                 barrierDismissible: false,
                                 builder: (_) {
                                   // Start auto-close timer
-                                  Future.delayed(const Duration(seconds: 2),
+                                  final upcomingBookingController = Get.find<UpcomingBookingController>();
+                                  upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                                  upcomingBookingController.isLoggedIn.value = false;
+                                  Future.delayed(const Duration(seconds: 4),
                                       () {
                                     if (Navigator.of(
                                             navigatorKey.currentContext!)

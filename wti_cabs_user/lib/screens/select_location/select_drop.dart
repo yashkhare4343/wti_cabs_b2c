@@ -16,7 +16,8 @@ import '../../core/services/trip_history_services.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 
 class SelectDrop extends StatefulWidget {
-  const SelectDrop({super.key});
+  final bool? fromInventoryScreen;
+  const SelectDrop({super.key, this.fromInventoryScreen});
 
   @override
   State<SelectDrop> createState() => _SelectDropState();
@@ -31,7 +32,6 @@ class _SelectDropState extends State<SelectDrop> {
   final TextEditingController dropController = TextEditingController();
   bool _isProcessingTap = false; // Prevent multiple onTap executions
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -65,10 +65,6 @@ class _SelectDropState extends State<SelectDrop> {
     // Set initial text for dropController
     dropController.text = bookingRideController.prefilledDrop.value;
 
-    // Defer the Rx value update until after build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      bookingRideController.prefilledDrop.value = '';
-    });
 
     // Load recent searches
     _loadRecentSearches();
@@ -177,12 +173,18 @@ class _SelectDropState extends State<SelectDrop> {
     bookingRideController.prefilledDrop.value = place.primaryText;
     dropPlaceSearchController.dropPlaceId.value = place.placeId;
 
+    print('fromInventoryPage = ${widget.fromInventoryScreen}');
     // Navigation
-    final tabName = bookingRideController.currentTabName;
-    final route = tabName == 'rental'
-        ? '${AppRoutes.bookingRide}?tab=rental'
-        : '${AppRoutes.bookingRide}?tab=$tabName';
-    GoRouter.of(context).go(route);
+    if(widget.fromInventoryScreen == false) {
+      final tabName = bookingRideController.currentTabName;
+      final route = tabName == 'rental'
+          ? '${AppRoutes.bookingRide}?tab=rental'
+          : '${AppRoutes.bookingRide}?tab=$tabName';
+      GoRouter.of(context).go(route);
+    }
+    else{
+      GoRouter.of(context).pop();
+    }
     FocusScope.of(context).unfocus();
 
     // Background tasks

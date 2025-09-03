@@ -14,6 +14,10 @@ class BookingRideController extends GetxController {
   RxInt? offsetMinutes = RxInt(0);// ✅ stores timezone offset
   RxString selectedLocalDate = ''.obs;
   RxString selectedLocalTime = ''.obs;
+  RxBool isInventoryPage =  false.obs;
+
+  // inventory req data
+  final RxMap<String, dynamic> requestData = <String, dynamic>{}.obs;
 
 
   // Core datetime values

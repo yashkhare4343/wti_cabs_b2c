@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:intl/intl.dart';
-import '../../core/services/storage_services.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 
@@ -25,6 +28,9 @@ class DateTimePickerTile extends StatefulWidget {
 
 class _DateTimePickerTileState extends State<DateTimePickerTile> {
   late DateTime selectedDateTime;
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  DateTime? _lastBackendEndUtc; // Store last backend time for comparison
 
   String formatDateTimeWithOffset(DateTime dt) {
     final offset = dt.timeZoneOffset;
@@ -44,7 +50,6 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
     return formatted;
   }
 
-
   String formatUtcIso(DateTime dt) {
     return dt.toUtc().toIso8601String();
   }
@@ -52,38 +57,92 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
   @override
   void initState() {
     super.initState();
-    final min = widget.minimumDate;
-    if (min != null && widget.initialDateTime.isBefore(min)) {
-      selectedDateTime = min;
+    // Get local and backend end times
+    DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
+    DateTime? backendEndUtc = searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
+
+    debugPrint('[initState] InitialDateTime (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(widget.initialDateTime)}');
+    debugPrint('[initState] Local End Time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(bookingRideController.localEndTime.value)}');
+    debugPrint('[initState] Local End UTC: ${formatUtcIso(localEndUtc)}');
+    debugPrint('[initState] Backend End UTC: ${backendEndUtc?.toIso8601String() ?? 'null'}');
+
+    // Compare times: use local time if later or equal, otherwise use backend time
+    if (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc)) {
+      selectedDateTime = backendEndUtc.toLocal(); // Convert backend UTC to local for display
+      bookingRideController.localEndTime.value = selectedDateTime; // Sync controller
+      debugPrint('[initState] Selected backend time (UTC): ${formatUtcIso(backendEndUtc)}');
+      debugPrint('[initState] Selected backend time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
     } else {
-      selectedDateTime = widget.initialDateTime;
+      selectedDateTime = bookingRideController.localEndTime.value; // Use local time
+      debugPrint('[initState] Selected local time (UTC): ${formatUtcIso(localEndUtc)}');
+      debugPrint('[initState] Selected local time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
     }
 
-    debugPrint('[initState] Store ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
-     StorageServices.instance.save('drop_round_trip_iso', formatDateTimeWithOffset(selectedDateTime));
-     StorageServices.instance.save('drop_round_trip_utc', formatUtcIso(selectedDateTime));
-    debugPrint('[initState] Store Utc: ${formatUtcIso(selectedDateTime)}');
+    // Apply minimum date constraint
+    final min = widget.minimumDate;
+    if (min != null && selectedDateTime.isBefore(min)) {
+      selectedDateTime = min;
+      bookingRideController.localEndTime.value = min; // Update GetX variable
+      debugPrint('[initState] Adjusted to minimum date (UTC): ${formatUtcIso(min)}');
+      debugPrint('[initState] Adjusted to minimum date (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(min)}');
+    }
 
+    _lastBackendEndUtc = backendEndUtc; // Store for didUpdateWidget comparison
+
+    debugPrint('[initState] Final selected ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
+    debugPrint('[initState] Final selected UTC ISO: ${formatUtcIso(selectedDateTime)}');
+    debugPrint('[initState] Final selected Local: ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
   }
 
   @override
   void didUpdateWidget(covariant DateTimePickerTile oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final min = widget.minimumDate;
-    final newInitial = widget.initialDateTime;
+    // Get current backend time
+    DateTime? backendEndUtc = searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
 
-    if (newInitial != selectedDateTime) {
-      if (min != null && newInitial.isBefore(min)) {
-        selectedDateTime = min;
+    // Only update if initialDateTime or backendEndUtc has changed
+    if (oldWidget.initialDateTime != widget.initialDateTime || _lastBackendEndUtc != backendEndUtc) {
+      debugPrint('[didUpdateWidget] Triggered due to change');
+      debugPrint('[didUpdateWidget] Old initialDateTime: ${DateFormat('dd MMM yyyy hh:mm a').format(oldWidget.initialDateTime)}');
+      debugPrint('[didUpdateWidget] New initialDateTime: ${DateFormat('dd MMM yyyy hh:mm a').format(widget.initialDateTime)}');
+      debugPrint('[didUpdateWidget] Old Backend End UTC: ${_lastBackendEndUtc?.toIso8601String() ?? 'null'}');
+      debugPrint('[didUpdateWidget] New Backend End UTC: ${backendEndUtc?.toIso8601String() ?? 'null'}');
+      debugPrint('[didUpdateWidget] Local End Time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(bookingRideController.localEndTime.value)}');
+      debugPrint('[didUpdateWidget] Local End UTC: ${formatUtcIso(bookingRideController.localEndTime.value.toUtc())}');
+
+      // Compare times: use local time if later or equal, otherwise use backend time
+      DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
+      if (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc)) {
+        selectedDateTime = backendEndUtc.toLocal(); // Convert backend UTC to local for display
+        bookingRideController.localEndTime.value = selectedDateTime; // Sync controller
+        debugPrint('[didUpdateWidget] Selected backend time (UTC): ${formatUtcIso(backendEndUtc)}');
+        debugPrint('[didUpdateWidget] Selected backend time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
       } else {
-        selectedDateTime = newInitial;
+        selectedDateTime = bookingRideController.localEndTime.value; // Use local time
+        debugPrint('[didUpdateWidget] Selected local time (UTC): ${formatUtcIso(localEndUtc)}');
+        debugPrint('[didUpdateWidget] Selected local time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
       }
 
-      debugPrint('[initState] Store ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
-      StorageServices.instance.save('drop_round_trip_iso', formatDateTimeWithOffset(selectedDateTime));
-      StorageServices.instance.save('drop_round_trip_utc', formatUtcIso(selectedDateTime));
-      debugPrint('[initState] Store Utc: ${formatUtcIso(selectedDateTime)}');    }
+      // Apply minimum date constraint
+      final min = widget.minimumDate;
+      if (min != null && selectedDateTime.isBefore(min)) {
+        selectedDateTime = min;
+        bookingRideController.localEndTime.value = min; // Update GetX variable
+        debugPrint('[didUpdateWidget] Adjusted to minimum date (UTC): ${formatUtcIso(min)}');
+        debugPrint('[didUpdateWidget] Adjusted to minimum date (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(min)}');
+      }
+
+      _lastBackendEndUtc = backendEndUtc; // Update last backend time
+
+      debugPrint('[didUpdateWidget] Final selected ISO with offset: ${formatDateTimeWithOffset(selectedDateTime)}');
+      debugPrint('[didUpdateWidget] Final selected UTC ISO: ${formatUtcIso(selectedDateTime)}');
+      debugPrint('[didUpdateWidget] Final selected Local: ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
+    } else {
+      debugPrint('[didUpdateWidget] No significant change (initialDateTime and backendEndUtc unchanged), keeping current selectedDateTime');
+      debugPrint('[didUpdateWidget] Current selectedDateTime (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
+      debugPrint('[didUpdateWidget] Current selectedDateTime (UTC): ${formatUtcIso(selectedDateTime)}');
+    }
   }
 
   void _showCupertinoPicker(BuildContext context, CupertinoDatePickerMode mode) {
@@ -101,7 +160,7 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                 minimumDate: widget.minimumDate ?? DateTime.now(),
                 initialDateTime: selectedDateTime,
                 onDateTimeChanged: (DateTime newDateTime) {
-                  // ✅ Clamp minutes to nearest 00 or 30
+                  // Clamp minutes to nearest 00 or 30
                   int clampedMinute = newDateTime.minute < 15
                       ? 0
                       : newDateTime.minute < 45
@@ -120,19 +179,18 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
                     clampedMinute,
                   );
 
+                  debugPrint('[onDateTimeChanged] User selected time (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(clampedDateTime)}');
+                  debugPrint('[onDateTimeChanged] User selected time (UTC): ${formatUtcIso(clampedDateTime)}');
+
                   setState(() => selectedDateTime = clampedDateTime);
                   widget.onDateTimeSelected(clampedDateTime);
+                  bookingRideController.localEndTime.value = clampedDateTime; // Update GetX variable
 
-                  final isoWithOffset = formatDateTimeWithOffset(clampedDateTime);
-                  final utcIso = formatUtcIso(clampedDateTime);
-
-                  debugPrint('[onDateTimeChanged] ISO with offset: $isoWithOffset');
-                  debugPrint('[onDateTimeChanged] UTC ISO:          $utcIso');
-
-                  StorageServices.instance.save('drop_round_trip_iso', isoWithOffset);
-                  StorageServices.instance.save('drop_round_trip_utc', utcIso);
+                  debugPrint('[onDateTimeChanged] Updated localEndTime (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(bookingRideController.localEndTime.value)}');
+                  debugPrint('[onDateTimeChanged] Updated localEndTime (UTC): ${formatUtcIso(bookingRideController.localEndTime.value)}');
+                  debugPrint('[onDateTimeChanged] ISO with offset: ${formatDateTimeWithOffset(clampedDateTime)}');
+                  debugPrint('[onDateTimeChanged] UTC ISO: ${formatUtcIso(clampedDateTime)}');
                 },
-
               ),
             ),
             CupertinoButton(
@@ -147,10 +205,11 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate =
-    DateFormat('dd MMM yyyy').format(selectedDateTime);
-    final formattedTime =
-    DateFormat('hh:mm a').format(selectedDateTime);
+    final formattedDate = DateFormat('dd MMM yyyy').format(selectedDateTime);
+    final formattedTime = DateFormat('hh:mm a').format(selectedDateTime);
+
+    debugPrint('[build] Rendering with selectedDateTime (Local): ${DateFormat('dd MMM yyyy hh:mm a').format(selectedDateTime)}');
+    debugPrint('[build] Rendering with selectedDateTime (UTC): ${formatUtcIso(selectedDateTime)}');
 
     return Row(
       children: [
@@ -167,18 +226,20 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
               child: Row(
                 children: [
                   const Icon(Icons.calendar_month_outlined, color: AppColors.bgGrey3, size: 20),
-
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Drop Date', style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                        letterSpacing: 1.1,
-                      ),),
-                      Text(formattedDate, style: CommonFonts.bodyText1Black,),
+                      Text(
+                        'Drop Date',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      Text(formattedDate, style: CommonFonts.bodyText1Black),
                     ],
                   ),
                 ],
@@ -199,19 +260,21 @@ class _DateTimePickerTileState extends State<DateTimePickerTile> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.watch_later_outlined,
-                      color: AppColors.bgGrey3, size: 15),
+                  const Icon(Icons.watch_later_outlined, color: AppColors.bgGrey3, size: 15),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Drop Time', style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                        letterSpacing: 1.1,
-                      ),),
-                      Text(formattedTime, style: CommonFonts.bodyText1Black,),
+                      Text(
+                        'Drop Time',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      Text(formattedTime, style: CommonFonts.bodyText1Black),
                     ],
                   ),
                 ],

@@ -20,7 +20,7 @@ class PdfDownloadController extends GetxController {
       print('📂 Saving file to: $filePath');
 
       await ApiService().downloadPdfWithHttp(
-        endpoint: 'chaufferReservation/pdfGeneratorGlobalNormalUser',
+        endpoint: 'chaufferReservation/printConfirmationChauffeur',
         body: {"objectID": objectId},
         headers: {
           'Content-Type': 'application/json',

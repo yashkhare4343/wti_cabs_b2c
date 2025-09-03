@@ -52,12 +52,12 @@ class OtpController extends GetxController {
         }
       } else {
         isAuth.value = false;
-        otpMessage.value = "Invalid response from server";
+        otpMessage.value = "Incorrect response from server";
         return false;
       }
     } catch (e) {
       isAuth.value = false;
-      otpMessage.value = "Invalid OTP! Please try again.";
+      otpMessage.value = "Incorrect OTP! Please try again.";
       return false;
     } finally {
       isLoading.value = false;

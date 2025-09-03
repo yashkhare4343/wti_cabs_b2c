@@ -17,7 +17,9 @@ import '../../utility/constants/fonts/common_fonts.dart';
 import '../map_picker/map_picker.dart';
 
 class SelectPickup extends StatefulWidget {
-  const SelectPickup({super.key});
+  final bool? fromInventoryScreen;
+
+  const SelectPickup({super.key, this.fromInventoryScreen});
 
   @override
   State<SelectPickup> createState() => _SelectPickupState();
@@ -196,8 +198,17 @@ class _SelectPickupState extends State<SelectPickup> {
     placeSearchController.placeId.value = place.placeId;
 
     // Navigation
-    final tabName = bookingRideController.currentTabName;
-    GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=$tabName');
+
+    if(widget.fromInventoryScreen == false) {
+      final tabName = bookingRideController.currentTabName;
+      final route = tabName == 'rental'
+          ? '${AppRoutes.bookingRide}?tab=rental'
+          : '${AppRoutes.bookingRide}?tab=$tabName';
+      GoRouter.of(context).go(route);
+    }
+    else{
+      GoRouter.of(context).pop();
+    }
     FocusScope.of(context).unfocus();
 
     // Background tasks

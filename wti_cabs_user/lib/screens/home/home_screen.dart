@@ -45,6 +45,7 @@ import '../../firebase_options.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
+import '../select_location/select_drop.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
@@ -734,21 +735,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             text:
                                                 "By logging in, I understand & agree to Wise Travel India Limited ",
                                             style: CommonFonts.bodyText3Medium,
-                                            children: [
-                                              TextSpan(
-                                                  text: "Terms & Conditions",
-                                                  style: CommonFonts
-                                                      .bodyText3MediumBlue),
-                                              TextSpan(text: ", "),
-                                              TextSpan(
-                                                  text: "Privacy Policy",
-                                                  style: CommonFonts
-                                                      .bodyText3MediumBlue),
-                                              TextSpan(
-                                                  text: ", and User agreement",
-                                                  style: CommonFonts
-                                                      .bodyText3MediumBlue),
-                                            ],
+                                            children: []
+                                            // children: [
+                                            //   TextSpan(
+                                            //       text: "Terms & Conditions",
+                                            //       style: CommonFonts
+                                            //           .bodyText3MediumBlue),
+                                            //   TextSpan(text: ", "),
+                                            //   TextSpan(
+                                            //       text: "Privacy Policy",
+                                            //       style: CommonFonts
+                                            //           .bodyText3MediumBlue),
+                                            //   TextSpan(
+                                            //       text: ", and User agreement",
+                                            //       style: CommonFonts
+                                            //           .bodyText3MediumBlue),
+                                            // ],
                                           ),
                                           textAlign: TextAlign.center,
                                         ),
@@ -1309,22 +1311,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                   "By logging in, I understand & agree to Wise Travel India Limited ",
                                               style:
                                                   CommonFonts.bodyText3Medium,
-                                              children: [
-                                                TextSpan(
-                                                    text: "Terms & Conditions",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(text: ", "),
-                                                TextSpan(
-                                                    text: "Privacy Policy",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(
-                                                    text:
-                                                        ", and User agreement",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                              ],
+                                              // children: [
+                                              //   TextSpan(
+                                              //       text: "Terms & Conditions",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(text: ", "),
+                                              //   TextSpan(
+                                              //       text: "Privacy Policy",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(
+                                              //       text:
+                                              //           ", and User agreement",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              // ],
+                                              children: []
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -1566,8 +1569,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           const SizedBox(height: 16),
                           GestureDetector(
                             onTap: () {
-                              GoRouter.of(context).push(AppRoutes.bookingRide);
-                            },
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+                                ),
+                              );                             },
                             child: Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -1576,47 +1583,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     TextEditingController(text: 'Where to?'),
                                 icon: Icons.search,
                                 prefixText: '',
-                                onTap: () {
-                                  if (placeSearchController
-                                      .suggestions.isEmpty) {
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (_) => const PopupLoader(
-                                        message: "Go to Search Booking",
-                                      ),
-                                    );
-                                    fetchCurrentLocationAndAddress();
-                                    GoRouter.of(context)
-                                        .push(AppRoutes.choosePickup);
-                                    GoRouter.of(context).pop();
-                                  } else if (placeSearchController
-                                      .suggestions.isNotEmpty) {
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (_) => const PopupLoader(
-                                        message: "Go to Search Booking",
-                                      ),
-                                    );
-                                    fetchCurrentLocationAndAddress();
-                                    GoRouter.of(context)
-                                        .push(AppRoutes.chooseDrop);
-                                    GoRouter.of(context).pop();
-                                  } else {
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (_) => const PopupLoader(
-                                        message: "Go to Search Booking",
-                                      ),
-                                    );
-                                    fetchCurrentLocationAndAddress();
-                                    GoRouter.of(context)
-                                        .push(AppRoutes.bookingRide);
-                                    GoRouter.of(context).pop();
-                                  }
-                                },
+                                onTap: (){
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+                                    ),
+                                  );                                 },
+                                // onTap: () {
+                                //   if (placeSearchController
+                                //       .suggestions.isEmpty) {
+                                //     showDialog(
+                                //       context: context,
+                                //       barrierDismissible: false,
+                                //       builder: (_) => const PopupLoader(
+                                //         message: "Go to Search Booking",
+                                //       ),
+                                //     );
+                                //     fetchCurrentLocationAndAddress();
+                                //     GoRouter.of(context)
+                                //         .push(AppRoutes.choosePickup);
+                                //     GoRouter.of(context).pop();
+                                //   } else if (placeSearchController
+                                //       .suggestions.isNotEmpty) {
+                                //     showDialog(
+                                //       context: context,
+                                //       barrierDismissible: false,
+                                //       builder: (_) => const PopupLoader(
+                                //         message: "Go to Search Booking",
+                                //       ),
+                                //     );
+                                //     fetchCurrentLocationAndAddress();
+                                //     Navigator.push(
+                                //       context,
+                                //       MaterialPageRoute(
+                                //         builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                                //       ),
+                                //     );
+                                //     GoRouter.of(context).pop();
+                                //   } else {
+                                //     showDialog(
+                                //       context: context,
+                                //       barrierDismissible: false,
+                                //       builder: (_) => const PopupLoader(
+                                //         message: "Go to Search Booking",
+                                //       ),
+                                //     );
+                                //     fetchCurrentLocationAndAddress();
+                                //     GoRouter.of(context)
+                                //         .push(AppRoutes.bookingRide);
+                                //     GoRouter.of(context).pop();
+                                //   }
+                                // },
                               ),
                             ),
                           ),
@@ -1924,7 +1942,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             borderRadius: BorderRadius.circular(12.0),
                             child: Image.network(
                               "$baseUrl$imageUrl",
-                              fit: BoxFit.cover,
+                              fit: BoxFit.fill,
                               width: double.infinity,
                               height: 124,
                               loadingBuilder: (context, child, progress) {
@@ -2052,12 +2070,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         final imageUrl = images[index].url ?? '';
 
                         return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12.0),
                             child: Image.network(
                               "$baseUrl$imageUrl",
-                              fit: BoxFit.cover,
+                              fit: BoxFit.fill,
                               width: double.infinity,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
@@ -2235,7 +2253,7 @@ class _CustomCarouselState extends State<CustomCarousel> {
                     const BorderRadius.vertical(top: Radius.circular(8)),
                 child: Image.network(
                   item.imgUrl ?? '',
-                  fit: BoxFit.cover,
+                  fit: BoxFit.fill,
                   errorBuilder: (_, __, ___) =>
                       const Icon(Icons.image_not_supported),
                 ),
@@ -2760,8 +2778,12 @@ class _RecentTripListState extends State<RecentTripList> {
 
                       // 🚀 2. Navigate immediately
                       FocusScope.of(context).unfocus();
-                      GoRouter.of(context).push(AppRoutes.chooseDrop);
-
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                        ),
+                      );
                       // 🧠 3. Background work (fire-and-forget, non-blocking)
                       Future.microtask(() async {
                         // LatLng for drop (non-blocking)
@@ -2914,8 +2936,12 @@ class _RecentTripListState extends State<RecentTripList> {
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
-                    GoRouter.of(context).push(AppRoutes.chooseDrop);
-
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                      ),
+                    );
                     // 🧠 3. Background work (fire-and-forget, non-blocking)
                     Future.microtask(() async {
                       // LatLng for drop (non-blocking)

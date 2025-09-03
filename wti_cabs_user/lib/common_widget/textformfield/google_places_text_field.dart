@@ -23,6 +23,7 @@ class GooglePlacesTextField extends StatefulWidget {
 class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
   final PlaceSearchController searchController = Get.put(PlaceSearchController());
   final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
 
 
   @override
@@ -37,7 +38,7 @@ class _GooglePlacesTextFieldState extends State<GooglePlacesTextField> {
             suffixIcon: widget.controller.text.isNotEmpty
                 ? GestureDetector(
               onTap: () {
-                widget.controller.clear();
+                widget.controller.clear(); // Defer the Rx value update until after build
                 searchController.suggestions.value = [];
                 // bookingRideController.prefilled.value = '';
               },

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
@@ -23,6 +26,7 @@ import '../../core/controller/inventory_dialog_controller/inventory_dialog_contr
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/model/inventory/india_response.dart';
 import '../../core/services/storage_services.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
@@ -42,8 +46,8 @@ class _InventoryListState extends State<InventoryList> {
       Get.put(BookingRideController());
 
   static const Map<String, String> tripMessages = {
-    '0': 'Your selected trip type has changed to Outstation One Trip.',
-    '1': 'Your selected trip type has changed to Outstation Round Trip.',
+    '0': 'Your selected trip type has changed to Outstation One Way Trip.',
+    '1': 'Your selected trip type has changed to Outstation Round Way Trip.',
     '2': 'Your selected trip type has changed to Airport Trip.',
     '3': 'Your selected trip type has changed to Local.',
   };
@@ -57,6 +61,7 @@ class _InventoryListState extends State<InventoryList> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _fetchData();
       await loadInitialData();
+      bookingRideController.requestData.value = widget.requestData;
     });
   }
 
@@ -202,8 +207,9 @@ class _InventoryListState extends State<InventoryList> {
       canPop: false,
       onPopInvoked: (didPop) {
         bookingRideController.selectedIndex.value = 0;
-        GoRouter.of(context).pop();
         GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
+        GoRouter.of(context).pop();
+
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -411,177 +417,228 @@ class _InventoryListState extends State<InventoryList> {
           margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
           child: Padding(
             padding: const EdgeInsets.all(14.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Column(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Image.network(
-                      carType.carImageUrl ?? '',
-                      width: 60,
-                      height: 50,
-                    ),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE3F2FD),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        side: const BorderSide(
-                            color: Colors.transparent, width: 1),
-                        foregroundColor: const Color(0xFF1565C0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                    Column(
+                      children: [
+                        Image.network(
+                          carType.carImageUrl ?? '',
+                          width: 60,
+                          height: 50,
                         ),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE3F2FD),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            side: const BorderSide(
+                                color: Colors.transparent, width: 1),
+                            foregroundColor: const Color(0xFF1565C0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () {},
+                          child: Text(
+                            carType.type ?? '',
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w600),
+                          ),
+                        )
+                      ],
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      flex: 0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 55,
+                                child: Text(
+                                  carType.carTagLine ?? '',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600, fontSize: 16),
+                                  overflow: TextOverflow.clip,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: AppColors.mainButtonBg,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  side: const BorderSide(
+                                      color: AppColors.mainButtonBg, width: 1),
+                                  foregroundColor: Colors.white,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                onPressed: () {},
+                                child: Text(
+                                  carType.combustionType ?? '',
+                                  style: const TextStyle(
+                                      fontSize: 10, fontWeight: FontWeight.w600),
+                                ),
+                              )
+                            ],
+                          ),
+                          Text('or similar',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 13,
+                                  color: Colors.grey[600])),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Text("${carType.seats} Seater",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 10,
+                                      color: Colors.grey[700])),
+                              const SizedBox(width: 7),
+                              Text("• ${carType.luggageCapacity}",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 10,
+                                      color: Colors.grey[700])),
+                            ],
+                          ),
+
+
+                        ],
                       ),
-                      onPressed: () {},
-                      child: Text(
-                        carType.type ?? '',
-                        style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w600),
+                    ),
+                    Expanded(
+                      flex: 4,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                      "${carType.fakePercentageOff.toString() ?? ''}%",
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.green.shade700,
+                                          fontWeight: FontWeight.w600)),
+                                  const SizedBox(width: 6),
+                                  buildConvertedPrice(
+                                    originalPrice.toDouble(),
+                                    prefix: currencyController
+                                        .selectedCurrency.value.symbol,
+                                    style: const TextStyle(
+                                        decoration: TextDecoration.lineThrough,
+                                        color: Colors.grey,
+                                        fontSize: 12),
+                                  )
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  buildConvertedPrice(
+                                    carType.fareDetails?.baseFare?.toDouble() ??
+                                        0.0,
+                                    prefix: currencyController
+                                        .selectedCurrency.value.symbol,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600, fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                    getFivePercentOfBaseFare(
+                                            carType.fareDetails?.baseFare ?? 0)
+                                        .toDouble()),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Text("Error in conversion",
+                                        style: TextStyle(
+                                            color: Colors.red, fontSize: 11));
+                                  }
+                                  final convertedTaxes = snapshot.data ??
+                                      getFivePercentOfBaseFare(
+                                              carType.fareDetails?.baseFare ?? 0)
+                                          .toDouble();
+                                  return Text(
+                                    '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
+                                    style: TextStyle(
+                                        color: Colors.grey[600], fontSize: 11),
+                                  );
+                                },
+                              )
+                            ],
+                          ),
+                        ],
                       ),
                     )
                   ],
                 ),
-                const SizedBox(width: 5),
-                Expanded(
-                  flex: 0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 55,
-                            child: Text(
-                              carType.carTagLine ?? '',
+                SizedBox(height: 8,),
+                SizedBox(
+                  height: 20,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: carType.amenities?.features?.vehicle?.length ?? 0,
+                    itemBuilder: (context, index) {
+                      final iconUrl = carType.amenities?.features?.vehicleIcons?[index] ?? '';
+                      final label = carType.amenities?.features?.vehicle?[index] ?? '';
+                  
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey.shade400, width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // load icon from API (SVG or PNG)
+                            if (iconUrl.isNotEmpty)
+                              SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: SvgPicture.network(
+                                  'https://www.wticabs.com:3001$iconUrl',
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Text(
+                              label,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 16),
-                              overflow: TextOverflow.clip,
-                              maxLines: 1,
-                            ),
-                          ),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: AppColors.mainButtonBg,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              side: const BorderSide(
-                                  color: AppColors.mainButtonBg, width: 1),
-                              foregroundColor: Colors.white,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
                               ),
                             ),
-                            onPressed: () {},
-                            child: Text(
-                              carType.combustionType ?? '',
-                              style: const TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.w600),
-                            ),
-                          )
-                        ],
-                      ),
-                      Text('or similar',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w400,
-                              fontSize: 13,
-                              color: Colors.grey[600])),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Text("${carType.seats} Seats",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 10,
-                                  color: Colors.grey[700])),
-                          const SizedBox(width: 7),
-                          Text("• ${carType.luggageCapacity}",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 10,
-                                  color: Colors.grey[700])),
-                        ],
-                      )
-                    ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
-                Expanded(
-                  flex: 4,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                  "${carType.fakePercentageOff.toString() ?? ''}%",
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.green.shade700,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(width: 6),
-                              buildConvertedPrice(
-                                originalPrice.toDouble(),
-                                prefix: currencyController
-                                    .selectedCurrency.value.symbol,
-                                style: const TextStyle(
-                                    decoration: TextDecoration.lineThrough,
-                                    color: Colors.grey,
-                                    fontSize: 12),
-                              )
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              buildConvertedPrice(
-                                carType.fareDetails?.baseFare?.toDouble() ??
-                                    0.0,
-                                prefix: currencyController
-                                    .selectedCurrency.value.symbol,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600, fontSize: 16),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          FutureBuilder<double>(
-                            future: currencyController.convertPrice(
-                                getFivePercentOfBaseFare(
-                                        carType.fareDetails?.baseFare ?? 0)
-                                    .toDouble()),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasError) {
-                                return const Text("Error in conversion",
-                                    style: TextStyle(
-                                        color: Colors.red, fontSize: 11));
-                              }
-                              final convertedTaxes = snapshot.data ??
-                                  getFivePercentOfBaseFare(
-                                          carType.fareDetails?.baseFare ?? 0)
-                                      .toDouble();
-                              return Text(
-                                '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
-                                style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 11),
-                              );
-                            },
-                          )
-                        ],
-                      ),
-                    ],
-                  ),
-                )
               ],
             ),
           ),
@@ -593,6 +650,10 @@ class _InventoryListState extends State<InventoryList> {
   Widget _buildGlobalCard(GlobalTripDetails tripDetails,
       GlobalFareDetails fareDetails, GlobalVehicleDetails vehicleDetails) {
     final CurrencyController currencyController = Get.put(CurrencyController());
+    final List<IconData> amenityIcons = [
+      Icons.cleaning_services, // Tissue
+      Icons.sanitizer,         // Sanitizer
+    ];
     return InkWell(
       splashColor: Colors.transparent,
       onTap: () async {
@@ -649,202 +710,247 @@ class _InventoryListState extends State<InventoryList> {
               margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
               child: Padding(
                 padding: const EdgeInsets.all(14.0),
-                child: Row(
+                child: Column(
                   children: [
-                    Column(
+                    Row(
                       children: [
-                        Image.network(
-                          vehicleDetails.vehicleImageLink ?? '',
-                          width: 65,
-                          height: 50,
-                        ),
-                        const SizedBox(height: 4),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE3F2FD),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            minimumSize: Size.zero,
-                            side: const BorderSide(
-                                color: Colors.transparent, width: 1),
-                            foregroundColor: const Color(0xFF1565C0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                        Column(
+                          children: [
+                            Image.network(
+                              vehicleDetails.vehicleImageLink ?? '',
+                              width: 65,
+                              height: 50,
                             ),
-                          ),
-                          onPressed: () {},
-                          child: Text(
-                            vehicleDetails.filterCategory ?? '',
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        )
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  vehicleDetails.title ?? '',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16),
-                                  overflow: TextOverflow.clip,
-                                  maxLines: 1,
+                            const SizedBox(height: 4),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE3F2FD),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                side: const BorderSide(
+                                    color: Colors.transparent, width: 1),
+                                foregroundColor: const Color(0xFF1565C0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 4,),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: AppColors.mainButtonBg,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              side: const BorderSide(
-                                  color: AppColors.mainButtonBg, width: 1),
-                              foregroundColor: Colors.white,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                              onPressed: () {},
+                              child: Text(
+                                vehicleDetails.filterCategory ?? '',
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w600),
                               ),
-                            ),
-                            onPressed: () {},
-                            child: Text(
-                              vehicleDetails.fuelType??'',
-                              style: const TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Text("${vehicleDetails.passengerCapacity} Seats",
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 10,
-                                      color: Colors.grey[700])),
-                              const SizedBox(width: 8),
-                              Text(
-                                  "• ${vehicleDetails.checkinLuggageCapacity.toString()} bags",
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 10,
-                                      color: Colors.grey[700])),
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                                "20%",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(width: 6),
-                            FutureBuilder<double>(
-                              future: currencyController.convertPrice(
-                                getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble(),
-                              ),
-                              builder: (context, snapshot) {
-                                final convertedValue = snapshot.data ??
-                                    getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble();
-
-                                return Text(
-                                  '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                    color: Colors.grey, // lighter color for cut-off price
-                                    decoration: TextDecoration.lineThrough, // 👈 adds cutoff
-                                  ),
-                                );
-                              },
                             )
                           ],
                         ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            FutureBuilder<double>(
-                              future: currencyController.convertPrice(
-                                  tripDetails.totalFare?.toDouble() ?? 0),
-                              builder: (context, snapshot) {
-                                final convertedValue =
-                                    snapshot.data ?? tripDetails.totalFare;
-                                return Text(
-                                  '${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}',
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 100,
+                                    child: Text(
+                                      vehicleDetails.title ?? '',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16),
+                                      overflow: TextOverflow.clip,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 4,),
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: AppColors.mainButtonBg,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  side: const BorderSide(
+                                      color: AppColors.mainButtonBg, width: 1),
+                                  foregroundColor: Colors.white,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                onPressed: () {},
+                                child: Text(
+                                  vehicleDetails.fuelType??'',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        // Text(
-                        //   'All Inclusions',
-                        //   style: const TextStyle(
-                        //     fontWeight: FontWeight.w600,
-                        //     fontSize: 10,
-                        //     color: Colors.grey, // lighter color for cut-off price
-                        //   ),
-                        // ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50, // light background
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.green, width: 1),
-                          ),
-                          child: const Text(
-                            "Free Cancellation",
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                      fontSize: 11, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Text("${vehicleDetails.passengerCapacity} Seater",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 10,
+                                          color: Colors.grey[700])),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                      "• ${vehicleDetails.checkinLuggageCapacity.toString()} bags",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 10,
+                                          color: Colors.grey[700])),
+                                ],
+                              )
+                            ],
                           ),
                         ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Text(
+                                    "20%",
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 6),
+                                FutureBuilder<double>(
+                                  future: currencyController.convertPrice(
+                                    getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble(),
+                                  ),
+                                  builder: (context, snapshot) {
+                                    final convertedValue = snapshot.data ??
+                                        getFakePriceWithPercent(tripDetails.totalFare, 20).toDouble();
 
-                        // const SizedBox(height: 4),
-                        // FutureBuilder<double>(
-                        //   future: currencyController.convertPrice(
-                        //       getFivePercentOfBaseFare(
-                        //               fareDetails.baseFare ?? 0)
-                        //           .toDouble()),
-                        //   builder: (context, snapshot) {
-                        //     final convertedTaxes = snapshot.data ??
-                        //         getFivePercentOfBaseFare(
-                        //                 fareDetails.baseFare ?? 0)
-                        //             .toDouble();
-                        //     return Text(
-                        //       '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
-                        //       style: TextStyle(
-                        //           color: Colors.grey[600], fontSize: 10),
-                        //     );
-                        //   },
-                        // ),
+                                    return Text(
+                                      '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Colors.grey, // lighter color for cut-off price
+                                        decoration: TextDecoration.lineThrough, // 👈 adds cutoff
+                                      ),
+                                    );
+                                  },
+                                )
+                              ],
+                            ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                FutureBuilder<double>(
+                                  future: currencyController.convertPrice(
+                                      tripDetails.totalFare?.toDouble() ?? 0),
+                                  builder: (context, snapshot) {
+                                    final convertedValue =
+                                        snapshot.data ?? tripDetails.totalFare;
+                                    return Text(
+                                      '${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                            // Text(
+                            //   'All Inclusions',
+                            //   style: const TextStyle(
+                            //     fontWeight: FontWeight.w600,
+                            //     fontSize: 10,
+                            //     color: Colors.grey, // lighter color for cut-off price
+                            //   ),
+                            // ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50, // light background
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.green, width: 1),
+                              ),
+                              child: const Text(
+                                "Free Cancellation",
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+
+                            // const SizedBox(height: 4),
+                            // FutureBuilder<double>(
+                            //   future: currencyController.convertPrice(
+                            //       getFivePercentOfBaseFare(
+                            //               fareDetails.baseFare ?? 0)
+                            //           .toDouble()),
+                            //   builder: (context, snapshot) {
+                            //     final convertedTaxes = snapshot.data ??
+                            //         getFivePercentOfBaseFare(
+                            //                 fareDetails.baseFare ?? 0)
+                            //             .toDouble();
+                            //     return Text(
+                            //       '+ ${currencyController.selectedCurrency.value.symbol}${convertedTaxes.toStringAsFixed(2)} (taxes & charges)',
+                            //       style: TextStyle(
+                            //           color: Colors.grey[600], fontSize: 10),
+                            //     );
+                            //   },
+                            // ),
+                          ],
+                        )
                       ],
-                    )
+                    ),
+                    SizedBox(height: 8,),
+                    SizedBox(
+                      height: 20,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: vehicleDetails.extras?.length ?? 0,
+                        itemBuilder: (context, index) {
+                          final iconUrl = amenityIcons[index] ?? '';
+                          final label = vehicleDetails.extras?[index] ?? '';
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.grey.shade400, width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // load icon from API (SVG or PNG)
+                                  Icon(
+                                    amenityIcons[index],
+                                    size: 11,
+                                  ),
+                                const SizedBox(width: 4),
+                                Text(
+                                 label,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -885,6 +991,13 @@ class BookingTopBar extends StatefulWidget {
 
 class _BookingTopBarState extends State<BookingTopBar> {
   final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
+
+  String? tripCode;
+  String? previousCode;
+
   @override
   void initState() {
     super.initState();
@@ -892,21 +1005,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
   }
 
   String _monthName(int month) {
-    const months = [
-      '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month];
   }
 
@@ -914,23 +1013,20 @@ class _BookingTopBarState extends State<BookingTopBar> {
     final day = dateTime.day.toString().padLeft(2, '0');
     final month = _monthName(dateTime.month);
     final year = dateTime.year;
-    final hour = dateTime.hour.toString().padLeft(2, '0');
+
+    int hour = dateTime.hour % 12;
+    hour = hour == 0 ? 12 : hour; // handle midnight & noon
     final minute = dateTime.minute.toString().padLeft(2, '0');
-    return '$day $month, $year, $hour:$minute hrs';
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+
+    return '$day $month, $hour:$minute $period';
   }
 
-  final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
-  final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
-  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
-  String? tripCode;
-  String? previousCode;
 
   void getCurrentTripCode() async {
-    tripCode = await StorageServices.instance.read('currentTripCode');
-    previousCode =
-        await StorageServices.instance.read('previousTripCode') ?? '';
+    tripCode = await StorageServices.instance.read('currentTripCode') ??
+        await StorageServices.instance.read('previousTripCode');
+    previousCode = await StorageServices.instance.read('previousTripCode') ?? '';
     setState(() {});
   }
 
@@ -940,133 +1036,169 @@ class _BookingTopBarState extends State<BookingTopBar> {
     return parts.take(2).join(' ');
   }
 
+  Widget _buildTripTypeTag(String text) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.mainButtonBg.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.mainButtonBg),
+      ),
+    );
+  }
+
+  String convertUtcToLocal(String utcTimeString, String timezoneString) {
+    // Parse UTC time
+    DateTime utcTime = DateTime.parse(utcTimeString);
+
+    // Get the location based on timezone string like "Asia/Kolkata"
+    final location = tz.getLocation(timezoneString);
+
+    // Convert UTC to local time in given timezone
+    final localTime = tz.TZDateTime.from(utcTime, location);
+
+    // Format as "3 Sep, 07:30 AM"
+    final formatted = DateFormat("d MMM, hh:mm a").format(localTime);
+
+    return formatted;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final pickupDateTime = bookingRideController.localStartTime.value;
     final formattedPickup = formatDateTime(pickupDateTime);
-    final formattedDrop = formatDateTime(searchCabInventoryController.indiaData.value?.result?.tripType?.endTime ?? bookingRideController.localEndTime.value);
+    DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
+    DateTime? backendEndUtc = searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
+
+// Compare in UTC, pick the greater one
+    DateTime finalDropUtc = (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc))
+        ? backendEndUtc
+        : localEndUtc;
+
+// Convert chosen UTC time back to local with timezone handling
+    final formattedDrop = convertUtcToLocal(
+      finalDropUtc.toIso8601String(),
+      placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? '',
+    );
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 3))
-        ],
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 2))],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         leading: GestureDetector(
-            onTap: () {
-              GoRouter.of(context).pop();
-              GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');            },
-            child: const Icon(Icons.arrow_back, size: 20)),
+          onTap: () {
+            GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
+            GoRouter.of(context).pop();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back, size: 16, color: AppColors.mainButtonBg),
+          ),
+        ),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: MediaQuery.of(context).size.width * 0.7,
+            Expanded(
               child: Text(
                 tripCode == '3'
-                    ? '${bookingRideController.prefilled.value}'
-                    : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} To ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    ? bookingRideController.prefilled.value
+                    : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
                 maxLines: 1,
-                overflow: TextOverflow.clip,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: true,
-                        builder: (context) => TopBookingDialogWrapper(),
-                      );
-                    },
-                    child: Icon(Icons.edit,
-                        size: 16, color: AppColors.mainButtonBg)),
-              ],
-            ),
+            if (!(tripCode?.isEmpty ?? true))
+              GestureDetector(
+                onTap: () {
+                  bookingRideController.isInventoryPage.value = true;
+                  showDialog(
+                    context: context,
+                    barrierDismissible: true,
+                    builder: (context) => TopBookingDialogWrapper(),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                  decoration: BoxDecoration(
+                    color: AppColors.mainButtonBg.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.edit, size: 14, color: AppColors.mainButtonBg),
+                      SizedBox(width: 4),
+                      Text(
+                        "Edit",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.mainButtonBg,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
 
+              ),
           ],
         ),
         subtitle: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 0),
-              child: Row(
-                children: [
-
-                  RichText(
-                    maxLines: ((tripCode == '1') && placeSearchController.getPlacesLatLng.value?.country.toLowerCase() =='india') ? 2 : 1,
-                    overflow: TextOverflow.clip,
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 12, color: AppColors.greyText5),
-                      children: [
-                        const TextSpan(
-                          text: 'Pickup Time: ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: formattedPickup,
-                        ),
-                        const TextSpan(text: '\n'),
-
-                        const TextSpan(
-                          text: 'Drop Time: ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: formattedDrop.toString(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                ],
-              ),
+             Text(
+               (tripCode == '1') ? '$formattedPickup - $formattedDrop' : '$formattedPickup',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.greyText5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            SelectedPackageCard(controller: fetchPackageController),
 
-            if (tripCode == '0')
-              Text('Outstation One Way Trip',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mainButtonBg,
-                      fontWeight: FontWeight.w500)),
-            if (tripCode == '1')
-              Text('Outstation Round Way Trip',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mainButtonBg,
-                      fontWeight: FontWeight.w500)),
-            if (tripCode == '2')
-              Text('Airport Trip',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mainButtonBg,
-                      fontWeight: FontWeight.w500)),
             if (tripCode == '3')
-              Text('Rental Trip',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mainButtonBg,
-                      fontWeight: FontWeight.w500)),
-
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: SelectedPackageCard(controller: fetchPackageController),
+              ),
+            // if (tripCode == '0') _buildTripTypeTag('Outstation One Way Trip'),
+            // if (tripCode == '1') _buildTripTypeTag('Outstation Round Way Trip'),
+            // if (tripCode == '2') _buildTripTypeTag('Airport Trip'),
+            // if (tripCode == '3') _buildTripTypeTag('Rental Trip'),
           ],
         ),
       ),
     );
   }
+}
+
+Widget _buildTripTypeTag(String text) {
+  return Container(
+    margin: const EdgeInsets.only(top: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: AppColors.mainButtonBg.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.mainButtonBg,
+      ),
+    ),
+  );
 }
 
 class TopBookingDialogWrapper extends StatefulWidget {
@@ -1096,6 +1228,10 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.white, // Status bar color set to white
+      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+    ));
     print('Building TopBookingDialogWrapper at ${DateTime.now()}');
     return Column(
       children: [
@@ -1120,7 +1256,9 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () {
+                            GoRouter.of(context).refresh();
+                          },
                         ),
                         SizedBox(width: MediaQuery.of(context).size.width * 0.13),
                         Row(

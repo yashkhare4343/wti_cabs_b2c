@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/cab_booking/cab_booking_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/fetch_coupons_controller.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
@@ -16,6 +19,7 @@ import 'package:wti_cabs_user/core/controller/payment/global/global_provisional_
 import 'package:wti_cabs_user/core/controller/payment/india/provisional_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/profile_controller.dart';
 import 'package:wti_cabs_user/core/model/fetch_coupon/fetch_coupon_response.dart';
+import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import '../../core/api/api_services.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/country/country_controller.dart';
@@ -24,10 +28,13 @@ import '../../core/controller/inventory/search_cab_inventory_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/controller/source_controller/source_controller.dart';
 import '../../core/model/cab_booking/india_cab_booking.dart';
+import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../inventory_list_screen/inventory_list.dart';
+import 'package:timezone/timezone.dart' as tz;
+
 
 class BookingDetailsFinal extends StatefulWidget {
   final num? totalKms;
@@ -109,497 +116,502 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBgPrimary1,
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(
-          child: FullPageShimmer(), // fake loader
-        ) : Padding(
-            padding: const EdgeInsets.only(
-                top: 12.0, left: 12.0, right: 12.0, bottom: 70),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  BookingTopBar(),
-                  Column(
-                    children: [
-                      // ✅ Highlighted card
-                      SelectedPackageCard(controller: fetchPackageController),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  GetBuilder<CabBookingController>(
-                    builder: (cabBookingController) {
-                      if (_country == null) {
-                        return Center(child: buildShimmer());
-                      }
+    return PopScope(
+      canPop: false, // 🚀 Stops the default "pop and close app"
+      onPopInvoked: (didPop) {
+        // This will be called for hardware back and gesture
+        GoRouter.of(context).push(
+          AppRoutes.inventoryList,
+          extra: bookingRideController.requestData.value,
+        );        // GoRouter.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBgPrimary1,
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(
+            child: FullPageShimmer(), // fake loader
+          ) : Padding(
+              padding: const EdgeInsets.only(
+                  top: 12.0, left: 12.0, right: 12.0, bottom: 70),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    BookingTopBar(),
 
-                      if (_country!.toLowerCase() == 'india') {
-                        final indiaData = cabBookingController.indiaData.value;
-                        if (indiaData == null || indiaData.inventory == null) {
-                          return const Center(
-                              child: Text('No India booking data available.'));
+                    const SizedBox(height: 16),
+                    GetBuilder<CabBookingController>(
+                      builder: (cabBookingController) {
+                        if (_country == null) {
+                          return Center(child: buildShimmer());
                         }
-                        return _buildIndiaCard(indiaData);
-                      }
 
-                      final globalData = cabBookingController.globalData.value;
-                      if (globalData == null ||
-                          globalData.vehicleDetails == null) {
-                        return const Center(
-                            child: Text('No Global booking data available.'));
-                      }
-
-                      return _buildGlobalCard(widget.totalKms.toString());
-                    },
-                  ),
-                  //inclusion/exclusion (india)
-                  (_country?.toLowerCase() == 'india')
-                      ? GetBuilder<CabBookingController>(
-                          builder: (cabBookingController) {
-                            final currencyController =
-                                Get.find<CurrencyController>();
-                            final indiaData =
-                                cabBookingController.indiaData.value;
-                            if (indiaData == null) {
-                              return Center(child: buildShimmer());
-                            }
-
-                            final extraCharges = indiaData
-                                .inventory?.carTypes?.fareDetails?.extraCharges;
-
-                            // Dynamic charge checks
-                            final stateTax = extraCharges?.stateTax;
-                            final isStateChargeExcluded =
-                                stateTax?.isIncludedInBaseFare == false &&
-                                    stateTax?.isIncludedInGrandTotal == false;
-
-                            final tollTax = extraCharges?.tollCharges;
-                            final isTollExcluded =
-                                tollTax?.isIncludedInBaseFare == false &&
-                                    tollTax?.isIncludedInGrandTotal == false;
-
-                            final nightTax = extraCharges?.nightCharges;
-                            final isNightExcluded =
-                                nightTax?.isIncludedInBaseFare == false &&
-                                    nightTax?.isIncludedInGrandTotal == false;
-
-                            final waitingTax = extraCharges?.waitingCharges;
-                            final isWaitingExcluded =
-                                waitingTax?.isIncludedInBaseFare == false &&
-                                    waitingTax?.isIncludedInGrandTotal == false;
-
-                            final parkingTax = extraCharges?.parkingCharges;
-                            final isParkingExcluded =
-                                parkingTax?.isIncludedInBaseFare == false &&
-                                    parkingTax?.isIncludedInGrandTotal == false;
-
-                            // Build dynamic lists
-                            final inclusions = <Widget>[
-                              FutureBuilder<double>(
-                                future: currencyController.convertPrice(
-                                    indiaData.inventory?.carTypes?.fareDetails
-                                            ?.perKmExtraCharge
-                                            ?.toDouble() ??
-                                        0.0),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return SizedBox(
-                                      height: 12,
-                                      width: 20,
-                                      child: Center(
-                                        child: SizedBox(
-                                          height: 10,
-                                          width: 10,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 1.5,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-
-                                  if (snapshot.hasError) {
-                                    return const Text(
-                                      "--",
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                    );
-                                  }
-                                  final convertedValue = snapshot.data ??
-                                      indiaData.inventory?.carTypes?.fareDetails
-                                          ?.perKmExtraCharge
-                                          ?.toDouble();
-                                  return _buildInclusionItem(
-                                    icon: Icons.speed,
-                                    title:
-                                        "${indiaData.inventory?.distanceBooked} Km included ",
-                                    subtitle:
-                                        "${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}/km will apply beyond the included kms",
-                                  );
-                                },
-                              ),
-                              _buildInclusionItem(
-                                icon: Icons.person,
-                                title: "Driver allowance",
-                                subtitle:
-                                    "Driver food and accommodation(stay) charges are included",
-                              ),
-                            ];
-
-                            final exclusions = <Widget>[
-                              // _buildExclusionItem(
-                              //   icon: Icons.location_off,
-                              //   title: "Sightseeing not included",
-                              //   subtitle:
-                              //   "Visiting tourist places or stopping more than once for refreshments isn’t allowed",
-                              // ),
-                            ];
-
-                            // Handle dynamic inclusions/exclusions
-                            if (isStateChargeExcluded) {
-                              exclusions.add(_buildExclusionItem(
-                                icon: Icons.receipt_long,
-                                title: "State Tax excluded",
-                                subtitle:
-                                    "State tax is not covered in base fare",
-                              ));
-                            } else {
-                              inclusions.add(_buildInclusionItem(
-                                icon: Icons.receipt_long,
-                                title: "State Tax included",
-                                subtitle: "State tax is included",
-                              ));
-                            }
-
-                            if (isTollExcluded) {
-                              exclusions.add(_buildExclusionItem(
-                                icon: Icons.local_taxi,
-                                title: "Toll Charges excluded",
-                                subtitle:
-                                    "Toll charges need to be paid separately",
-                              ));
-                            } else {
-                              inclusions.add(_buildInclusionItem(
-                                icon: Icons.local_taxi,
-                                title: "Toll Charges included",
-                                subtitle: "Toll charges are included",
-                              ));
-                            }
-
-                            if (isParkingExcluded) {
-                              exclusions.add(_buildExclusionItem(
-                                icon: Icons.local_parking,
-                                title:
-                                    "Parking Charges excluded (Airport Parking)",
-                                subtitle:
-                                    "Parking charges need to be paid separately",
-                              ));
-                            } else {
-                              inclusions.add(_buildInclusionItem(
-                                icon: Icons.local_parking,
-                                title:
-                                    "Parking Charges included (Airport Parking)",
-                                subtitle: "Parking charges are included",
-                              ));
-                            }
-
-                            if (isNightExcluded) {
-                              exclusions.add(_buildExclusionItem(
-                                icon: Icons.nightlight_round,
-                                title: "Night Charges excluded",
-                                subtitle: "Night travel charges are extra",
-                              ));
-                            } else {
-                              inclusions.add(_buildInclusionItem(
-                                icon: Icons.nightlight_round,
-                                title: "Night Charges included",
-                                subtitle: "Night charges are covered",
-                              ));
-                            }
-
-                            if (isWaitingExcluded) {
-                              exclusions.add(
-                                FutureBuilder<double>(
-                                  future: currencyController.convertPrice(
-                                    extraCharges?.waitingCharges?.amount
-                                            ?.toDouble() ??
-                                        0.0,
-                                  ),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return SizedBox(
-                                        height: 12,
-                                        width: 20,
-                                        child: Center(
-                                          child: SizedBox(
-                                            height: 10,
-                                            width: 10,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }
-
-                                    if (snapshot.hasError) {
-                                      return const Text(
-                                        "--",
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                      );
-                                    }
-                                    final convertedValue = snapshot.data ??
-                                        extraCharges?.waitingCharges?.amount
-                                            ?.toDouble();
-
-                                    return _buildExclusionItem(
-                                      icon: Icons.access_time,
-                                      title: "Waiting Charges excluded",
-                                      subtitle:
-                                          "${currencyController.selectedCurrency.value.symbol} ${convertedValue?.toStringAsFixed(2)}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
-                                    );
-                                  },
-                                ),
-                              );
-                            } else {
-                              inclusions.add(
-                                FutureBuilder<double>(
-                                  future: currencyController.convertPrice(
-                                    extraCharges?.waitingCharges?.amount
-                                            ?.toDouble() ??
-                                        0.0,
-                                  ),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return SizedBox(
-                                        height: 12,
-                                        width: 20,
-                                        child: Center(
-                                          child: SizedBox(
-                                            height: 10,
-                                            width: 10,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }
-
-                                    if (snapshot.hasError) {
-                                      return const Text(
-                                        "--",
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                      );
-                                    }
-                                    final convertedValue = snapshot.data ??
-                                        extraCharges?.waitingCharges?.amount
-                                            ?.toDouble();
-
-                                    return _buildInclusionItem(
-                                      icon: Icons.access_time,
-                                      title:
-                                          "Waiting time upto 45 mins for pickup",
-                                      subtitle:
-                                          "${currencyController.selectedCurrency.value.symbol} ${convertedValue?.toStringAsFixed(2)}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
-                                    );
-                                  },
-                                ),
-                              );
-                            }
-
-                            return Card(
-                              color: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(
-                                    color: AppColors.greyBorder1, width: 1),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ✅ Inclusions Section
-                                    Text(
-                                      "INCLUSIONS",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ...inclusions,
-
-                                    // ✅ Exclusions Section
-                                    Text(
-                                      "EXCLUSIONS",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ...exclusions,
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        )
-                      : Obx(() {
-                          final globalBooking =
-                              cabBookingController.globalData.value;
-                          final results = globalBooking?.vehicleDetails;
-                          final fareDetails = globalBooking?.fareBreakUpDetails;
-                          final SearchCabInventoryController
-                              searchCabInventoryController =
-                              Get.put(SearchCabInventoryController());
-                          final CurrencyController
-                              currencyController =
-                              Get.put(CurrencyController());
-
-                          if (results == null) {
+                        if (_country!.toLowerCase() == 'india') {
+                          final indiaData = cabBookingController.indiaData.value;
+                          if (indiaData == null || indiaData.inventory == null) {
                             return const Center(
-                                child:
-                                    Text('No Global booking data available.'));
+                                child: Text('No India booking data available.'));
                           }
+                          return _buildIndiaCard(indiaData);
+                        }
 
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                                bottom: 12.0), // ⬅️ less spacing
-                            child: Card(
-                              color: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    10), // ⬅️ slightly smaller radius
-                                side: BorderSide(
-                                    color: AppColors.greyBorder1,
-                                    width: 0.8), // ⬅️ thinner border
-                              ),
-                              child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12.0,
-                                      vertical: 10.0), // ⬅️ reduced padding
+                        final globalData = cabBookingController.globalData.value;
+                        if (globalData == null ||
+                            globalData.vehicleDetails == null) {
+                          return const Center(
+                              child: Text('No Global booking data available.'));
+                        }
+
+                        return _buildGlobalCard(widget.totalKms.toString());
+                      },
+                    ),
+                    //inclusion/exclusion (india)
+                    (_country?.toLowerCase() == 'india')
+                        ? GetBuilder<CabBookingController>(
+                            builder: (cabBookingController) {
+                              final currencyController =
+                                  Get.find<CurrencyController>();
+                              final indiaData =
+                                  cabBookingController.indiaData.value;
+                              if (indiaData == null) {
+                                return Center(child: buildShimmer());
+                              }
+
+                              final extraCharges = indiaData
+                                  .inventory?.carTypes?.fareDetails?.extraCharges;
+
+                              // Dynamic charge checks
+                              final stateTax = extraCharges?.stateTax;
+                              final isStateChargeExcluded =
+                                  stateTax?.isIncludedInBaseFare == false &&
+                                      stateTax?.isIncludedInGrandTotal == false;
+
+                              final tollTax = extraCharges?.tollCharges;
+                              final isTollExcluded =
+                                  tollTax?.isIncludedInBaseFare == false &&
+                                      tollTax?.isIncludedInGrandTotal == false;
+
+                              final nightTax = extraCharges?.nightCharges;
+                              final isNightExcluded =
+                                  nightTax?.isIncludedInBaseFare == false &&
+                                      nightTax?.isIncludedInGrandTotal == false;
+
+                              final waitingTax = extraCharges?.waitingCharges;
+                              final isWaitingExcluded =
+                                  waitingTax?.isIncludedInBaseFare == false &&
+                                      waitingTax?.isIncludedInGrandTotal == false;
+
+                              final parkingTax = extraCharges?.parkingCharges;
+                              final isParkingExcluded =
+                                  parkingTax?.isIncludedInBaseFare == false &&
+                                      parkingTax?.isIncludedInGrandTotal == false;
+
+                              // Build dynamic lists
+                              final inclusions = <Widget>[
+                                FutureBuilder<double>(
+                                  future: currencyController.convertPrice(
+                                      indiaData.inventory?.carTypes?.fareDetails
+                                              ?.perKmExtraCharge
+                                              ?.toDouble() ??
+                                          0.0),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return SizedBox(
+                                        height: 12,
+                                        width: 20,
+                                        child: Center(
+                                          child: SizedBox(
+                                            height: 10,
+                                            width: 10,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    if (snapshot.hasError) {
+                                      return const Text(
+                                        "--",
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      );
+                                    }
+                                    final convertedValue = snapshot.data ??
+                                        indiaData.inventory?.carTypes?.fareDetails
+                                            ?.perKmExtraCharge
+                                            ?.toDouble();
+                                    return _buildInclusionItem(
+                                      icon: Icons.speed,
+                                      title:
+                                          "${indiaData.inventory?.distanceBooked} Km included ",
+                                      subtitle:
+                                          "${currencyController.selectedCurrency.value.symbol}${convertedValue?.toDouble().toStringAsFixed(2)}/km will apply beyond the included kms",
+                                    );
+                                  },
+                                ),
+                                _buildInclusionItem(
+                                  icon: Icons.person,
+                                  title: "Driver allowance",
+                                  subtitle:
+                                      "Driver food and accommodation(stay) charges are included",
+                                ),
+                              ];
+
+                              final exclusions = <Widget>[
+                                // _buildExclusionItem(
+                                //   icon: Icons.location_off,
+                                //   title: "Sightseeing not included",
+                                //   subtitle:
+                                //   "Visiting tourist places or stopping more than once for refreshments isn’t allowed",
+                                // ),
+                              ];
+
+                              // Handle dynamic inclusions/exclusions
+                              if (isStateChargeExcluded) {
+                                exclusions.add(_buildExclusionItem(
+                                  icon: Icons.receipt_long,
+                                  title: "State Tax excluded",
+                                  subtitle:
+                                      "State tax is not covered in base fare",
+                                ));
+                              } else {
+                                inclusions.add(_buildInclusionItem(
+                                  icon: Icons.receipt_long,
+                                  title: "State Tax included",
+                                  subtitle: "State tax is included",
+                                ));
+                              }
+
+                              if (isTollExcluded) {
+                                exclusions.add(_buildExclusionItem(
+                                  icon: Icons.local_taxi,
+                                  title: "Toll Charges excluded",
+                                  subtitle:
+                                      "Toll charges need to be paid separately",
+                                ));
+                              } else {
+                                inclusions.add(_buildInclusionItem(
+                                  icon: Icons.local_taxi,
+                                  title: "Toll Charges included",
+                                  subtitle: "Toll charges are included",
+                                ));
+                              }
+
+                              if (isParkingExcluded) {
+                                exclusions.add(_buildExclusionItem(
+                                  icon: Icons.local_parking,
+                                  title:
+                                      "Parking Charges excluded (Airport Parking)",
+                                  subtitle:
+                                      "Parking charges need to be paid separately",
+                                ));
+                              } else {
+                                inclusions.add(_buildInclusionItem(
+                                  icon: Icons.local_parking,
+                                  title:
+                                      "Parking Charges included (Airport Parking)",
+                                  subtitle: "Parking charges are included",
+                                ));
+                              }
+
+                              if (isNightExcluded) {
+                                exclusions.add(_buildExclusionItem(
+                                  icon: Icons.nightlight_round,
+                                  title: "Night Charges excluded",
+                                  subtitle: "Night travel charges are extra",
+                                ));
+                              } else {
+                                inclusions.add(_buildInclusionItem(
+                                  icon: Icons.nightlight_round,
+                                  title: "Night Charges included",
+                                  subtitle: "Night charges are covered",
+                                ));
+                              }
+
+                              if (isWaitingExcluded) {
+                                exclusions.add(
+                                  FutureBuilder<double>(
+                                    future: currencyController.convertPrice(
+                                      extraCharges?.waitingCharges?.amount
+                                              ?.toDouble() ??
+                                          0.0,
+                                    ),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return SizedBox(
+                                          height: 12,
+                                          width: 20,
+                                          child: Center(
+                                            child: SizedBox(
+                                              height: 10,
+                                              width: 10,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+
+                                      if (snapshot.hasError) {
+                                        return const Text(
+                                          "--",
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                        );
+                                      }
+                                      final convertedValue = snapshot.data ??
+                                          extraCharges?.waitingCharges?.amount
+                                              ?.toDouble();
+
+                                      return _buildExclusionItem(
+                                        icon: Icons.access_time,
+                                        title: "Waiting Charges excluded",
+                                        subtitle:
+                                            "${currencyController.selectedCurrency.value.symbol} ${convertedValue?.toStringAsFixed(2)}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
+                                      );
+                                    },
+                                  ),
+                                );
+                              } else {
+                                inclusions.add(
+                                  FutureBuilder<double>(
+                                    future: currencyController.convertPrice(
+                                      extraCharges?.waitingCharges?.amount
+                                              ?.toDouble() ??
+                                          0.0,
+                                    ),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return SizedBox(
+                                          height: 12,
+                                          width: 20,
+                                          child: Center(
+                                            child: SizedBox(
+                                              height: 10,
+                                              width: 10,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+
+                                      if (snapshot.hasError) {
+                                        return const Text(
+                                          "--",
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                        );
+                                      }
+                                      final convertedValue = snapshot.data ??
+                                          extraCharges?.waitingCharges?.amount
+                                              ?.toDouble();
+
+                                      return _buildInclusionItem(
+                                        icon: Icons.access_time,
+                                        title:
+                                            "Waiting time upto 45 mins for pickup",
+                                        subtitle:
+                                            "${currencyController.selectedCurrency.value.symbol} ${convertedValue?.toStringAsFixed(2)}/${extraCharges?.waitingCharges?.applicableTime} mins post ${extraCharges?.waitingCharges?.freeWaitingTime} mins",
+                                      );
+                                    },
+                                  ),
+                                );
+                              }
+
+                              return Card(
+                                color: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                      color: AppColors.greyBorder1, width: 1),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.start,
-                                        children: [
-                                          Text('Inclusions',
-                                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      _buildGlobalInclusionItem(
-                                          icon: Icons.speed,
-                                          title:
-                                              "Km included ",
-                                          subtitle: "${widget.totalKms} Km included "),
-                                      searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.currentTripCode.toInt() == 2 ? _buildGlobalInclusionItem(
-                                          icon: Icons.money,
-                                          title:
-                                          "Airport Pickup Charge included upto ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.first.minTime} minutes)",
-                                          subtitle: "Airport Pickup Charge( upto ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.first.minTime} minutes",
-                                      ) : SizedBox(),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.start,
-                                        children: [
-                                          Text('Exclusions',
-                                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.currentTripCode.toInt() == 2 ? 
-                                      SizedBox(
-                                        height: 126,
-                                        child: ListView.builder(
-                                          itemCount: cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.length,          // total items
-                                          itemBuilder: (context, index) {   // build each item
-                                            return _buildGlobalExclusionItem(
-                                              icon: Icons.label,
-                                              title: 'Airport Charges Slab (in mins)',
-                                              subtitle: '"${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].minTime}" - "${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].maxTime}" : ${currencyController.selectedCurrency.value.symbol} ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].charge}',
-                                            );
-                                          },
+                                      // ✅ Inclusions Section
+                                      Text(
+                                        "INCLUSIONS",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
                                         ),
-                                      ) : SizedBox(),
-                                      FutureBuilder<double>(
-                                        future: currencyController.convertPrice(
-                                          cabBookingController.globalData.value?.fareBreakUpDetails?.waitingCharge?.toDouble() ?? 0.0,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...inclusions,
+
+                                      // ✅ Exclusions Section
+                                      Text(
+                                        "EXCLUSIONS",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
                                         ),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.waiting) {
-                                            return SizedBox(
-                                              height: 12,
-                                              width: 20,
-                                              child: Center(
-                                                child: SizedBox(
-                                                  height: 10,
-                                                  width: 10,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 1.5,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...exclusions,
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Obx(() {
+                            final globalBooking =
+                                cabBookingController.globalData.value;
+                            final results = globalBooking?.vehicleDetails;
+                            final fareDetails = globalBooking?.fareBreakUpDetails;
+                            final SearchCabInventoryController
+                                searchCabInventoryController =
+                                Get.put(SearchCabInventoryController());
+                            final CurrencyController
+                                currencyController =
+                                Get.put(CurrencyController());
+
+                            if (results == null) {
+                              return const Center(
+                                  child:
+                                      Text('No Global booking data available.'));
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 12.0), // ⬅️ less spacing
+                              child: Card(
+                                color: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      10), // ⬅️ slightly smaller radius
+                                  side: BorderSide(
+                                      color: AppColors.greyBorder1,
+                                      width: 0.8), // ⬅️ thinner border
+                                ),
+                                child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12.0,
+                                        vertical: 10.0), // ⬅️ reduced padding
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children: [
+                                            Text('Inclusions',
+                                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        _buildGlobalInclusionItem(
+                                            icon: Icons.speed,
+                                            title:
+                                                "Km included ",
+                                            subtitle: "${widget.totalKms} Km included "),
+                                        searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.currentTripCode.toInt() == 2 ? _buildGlobalInclusionItem(
+                                            icon: Icons.money,
+                                            title:
+                                            "Airport Pickup Charge included upto ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.first.minTime} minutes)",
+                                            subtitle: "Airport Pickup Charge( upto ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.first.minTime} minutes",
+                                        ) : SizedBox(),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children: [
+                                            Text('Exclusions',
+                                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.currentTripCode.toInt() == 2 ?
+                                        SizedBox(
+                                          height: 126,
+                                          child: ListView.builder(
+                                            itemCount: cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?.length,          // total items
+                                            itemBuilder: (context, index) {   // build each item
+                                              return _buildGlobalExclusionItem(
+                                                icon: Icons.label,
+                                                title: 'Airport Charges Slab (in mins)',
+                                                subtitle: '"${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].minTime}" - "${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].maxTime}" : ${currencyController.selectedCurrency.value.symbol} ${cabBookingController.globalData.value?.fareBreakUpDetails?.airportWaitingCharges?[index].charge}',
+                                              );
+                                            },
+                                          ),
+                                        ) : SizedBox(),
+                                        FutureBuilder<double>(
+                                          future: currencyController.convertPrice(
+                                            cabBookingController.globalData.value?.fareBreakUpDetails?.waitingCharge?.toDouble() ?? 0.0,
+                                          ),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.connectionState == ConnectionState.waiting) {
+                                              return SizedBox(
+                                                height: 12,
+                                                width: 20,
+                                                child: Center(
+                                                  child: SizedBox(
+                                                    height: 10,
+                                                    width: 10,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 1.5,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
+                                              );
+                                            }
+
+                                            if (snapshot.hasError) {
+                                              return const Text(
+                                                "--",
+                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                              );
+                                            }
+                                            final convertedValue = snapshot.data ??
+                                                cabBookingController.globalData.value?.fareBreakUpDetails?.waitingCharge?.toDouble() ??
+                                                0.0;
+
+                                            return _buildGlobalExclusionItem(
+                                              icon: Icons.person,
+                                              title:
+                                              'Driver Waiting Charge (After ${cabBookingController.globalData.value?.fareBreakUpDetails?.freeWaitingTime} mins)',
+                                              subtitle:
+                                              "${currencyController.selectedCurrency.value.symbol} ${convertedValue.toStringAsFixed(2)} per ${cabBookingController.globalData.value?.fareBreakUpDetails?.waitingInterval} mins",
                                             );
-                                          }
+                                          },
+                                        )
+                                      ],
+                                    )),
+                              ),
+                            );
+                          }),
 
-                                          if (snapshot.hasError) {
-                                            return const Text(
-                                              "--",
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                            );
-                                          }
-                                          final convertedValue = snapshot.data ??
-                                              cabBookingController.globalData.value?.fareBreakUpDetails?.waitingCharge?.toDouble() ??
-                                              0.0;
+                    SizedBox(
+                      height: 12,
+                    ),
+                    ExtrasSelectionCard(),
+                    SizedBox(
+                      height: 8,
+                    ),
 
-                                          return _buildGlobalExclusionItem(
-                                            icon: Icons.person,
-                                            title:
-                                            'Driver Waiting Charge (After ${cabBookingController.globalData.value?.fareBreakUpDetails?.freeWaitingTime} mins)',
-                                            subtitle:
-                                            "${currencyController.selectedCurrency.value.symbol} ${convertedValue.toStringAsFixed(2)} per ${cabBookingController.globalData.value?.fareBreakUpDetails?.waitingInterval} mins",
-                                          );
-                                        },
-                                      )
-                                    ],
-                                  )),
-                            ),
-                          );
-                        }),
-
-                  SizedBox(
-                    height: 12,
-                  ),
-                  ExtrasSelectionCard(),
-                  SizedBox(
-                    height: 8,
-                  ),
-
-                  // CouponScreen(),
-                  // SizedBox(
-                  //   height: 16,
-                  // ),
-                  TravelerDetailsForm(
-                    formKey: cabBookingController.formKey,
-                  ),
-                  // DiscountCouponsCard(),
-                ],
-              ),
-            )),
+                    // CouponScreen(),
+                    // SizedBox(
+                    //   height: 16,
+                    // ),
+                    TravelerDetailsForm(
+                      formKey: cabBookingController.formKey,
+                    ),
+                    // DiscountCouponsCard(),
+                  ],
+                ),
+              )),
+        ),
+        bottomSheet: BottomPaymentBar(endtime: widget.endTime,),
       ),
-      bottomSheet: BottomPaymentBar(endtime: widget.endTime,),
     );
   }
 
@@ -670,6 +682,7 @@ Widget _buildIndiaCard(IndiaCabBooking data) {
   final carInventory = data.inventory;
   final carTripType = data.tripType;
   final carOffer = data.offerObject;
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
 
   num calculateOriginalPrice(num baseFare, num discountPercent) {
     return baseFare + (baseFare * discountPercent / 100);
@@ -848,6 +861,52 @@ Widget _buildIndiaCard(IndiaCabBooking data) {
                 // Price & Book Button will go here
               ],
             ),
+            SizedBox(height: 8,),
+            SizedBox(
+              height: 20,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: carInventory?.carTypes?.amenities?.features?.vehicle?.length ?? 0,
+                itemBuilder: (context, index) {
+                  final iconUrl = carInventory?.carTypes?.amenities?.features?.vehicleIcons?[index] ?? '';
+                  final label = carInventory?.carTypes?.amenities?.features?.vehicle?[index] ?? '';
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.shade400, width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // load icon from API (SVG or PNG)
+                        if (iconUrl.isNotEmpty)
+                          SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: SvgPicture.network(
+                              'https://www.wticabs.com:3001$iconUrl',
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
           ],
         ),
       ),
@@ -858,7 +917,10 @@ Widget _buildIndiaCard(IndiaCabBooking data) {
 Widget _buildGlobalCard(String totalDistance) {
   final CabBookingController cabBookingController =
       Get.find<CabBookingController>();
-
+  final List<IconData> amenityIcons = [
+    Icons.cleaning_services, // Tissue
+    Icons.sanitizer,         // Sanitizer
+  ];
   return Obx(() {
     final globalBooking = cabBookingController.globalData.value;
     final results = globalBooking?.vehicleDetails;
@@ -881,127 +943,172 @@ Widget _buildGlobalCard(String totalDistance) {
         child: Padding(
           padding: const EdgeInsets.symmetric(
               horizontal: 12.0, vertical: 10.0), // ⬅️ reduced padding
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
             children: [
-              Column(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.network(
-                    results.vehicleImageLink ?? '',
-                    width: 70, // ⬅️ smaller image
-                    height: 45,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/inventory_car.png',
-                        width: 70,
+                  Column(
+                    children: [
+                      Image.network(
+                        results.vehicleImageLink ?? '',
+                        width: 70, // ⬅️ smaller image
                         height: 45,
                         fit: BoxFit.contain,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 4),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE3F2FD),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2), // ⬅️ smaller padding
-                      minimumSize: Size.zero,
-                      side: BorderSide.none,
-                      foregroundColor: const Color(0xFF1565C0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/inventory_car.png',
+                            width: 70,
+                            height: 45,
+                            fit: BoxFit.contain,
+                          );
+                        },
                       ),
-                    ),
-                    onPressed: () {},
-                    child: Text(
-                      fareDetails?.vehicleCategory ?? '',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500), // ⬅️ smaller font
+                      const SizedBox(height: 4),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE3F2FD),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2), // ⬅️ smaller padding
+                          minimumSize: Size.zero,
+                          side: BorderSide.none,
+                          foregroundColor: const Color(0xFF1565C0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        onPressed: () {},
+                        child: Text(
+                          fareDetails?.vehicleCategory ?? '',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500), // ⬅️ smaller font
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          results.title ?? '',
+                          style: TextStyle(
+                            fontSize: 16, // ⬅️ slightly smaller
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.mainButtonBg,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              'or similar',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 11,
+                                  color: Colors.grey[600]),
+                            ),
+                            const SizedBox(width: 6),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: AppColors.mainButtonBg,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2), // ⬅️ smaller padding
+                                minimumSize: Size.zero,
+                                side: const BorderSide(
+                                    color: AppColors.mainButtonBg, width: 1),
+                                foregroundColor: Colors.white,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              onPressed: () {},
+                              child: Text(
+                                fareDetails?.fuelType ?? '',
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Text(results.rating?.toString() ?? '',
+                                style: CommonFonts.bodyTextXS),
+                            const SizedBox(width: 3),
+                            const Icon(Icons.star,
+                                color: AppColors.yellow1, size: 11), // ⬅️ smaller
+                            const SizedBox(width: 3),
+                            const Icon(Icons.airline_seat_recline_extra, size: 12),
+                            const SizedBox(width: 3),
+                            Text('${results.passengerCapacity ?? '-'} Seat',
+                                style: CommonFonts.bodyTextXS),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.luggage_outlined, size: 12),
+                            const SizedBox(width: 3),
+                            Text('${results.cabinLuggageCapacity ?? '-'} cabin luggage',
+                                style: CommonFonts.bodyTextXS),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.speed_outlined, size: 12),
+                            const SizedBox(width: 3),
+                            Text('${totalDistance ?? '-'} km',
+                                style: CommonFonts.bodyTextXS),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      results.title ?? '',
-                      style: TextStyle(
-                        fontSize: 16, // ⬅️ slightly smaller
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.mainButtonBg,
+              SizedBox(height: 8,),
+              SizedBox(
+                height: 20,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: results.extras?.length ?? 0,
+                  itemBuilder: (context, index) {
+                    final iconUrl = amenityIcons[index] ?? '';
+                    final label = results.extras?[index] ?? '';
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey.shade400, width: 0.8),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          'or similar',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w400,
-                              fontSize: 11,
-                              color: Colors.grey[600]),
-                        ),
-                        const SizedBox(width: 6),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: AppColors.mainButtonBg,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2), // ⬅️ smaller padding
-                            minimumSize: Size.zero,
-                            side: const BorderSide(
-                                color: AppColors.mainButtonBg, width: 1),
-                            foregroundColor: Colors.white,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // load icon from API (SVG or PNG)
+                          Icon(
+                            amenityIcons[index],
+                            size: 11,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
                             ),
                           ),
-                          onPressed: () {},
-                          child: Text(
-                            fareDetails?.fuelType ?? '',
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(results.rating?.toString() ?? '',
-                            style: CommonFonts.bodyTextXS),
-                        const SizedBox(width: 3),
-                        const Icon(Icons.star,
-                            color: AppColors.yellow1, size: 11), // ⬅️ smaller
-                        const SizedBox(width: 3),
-                        const Icon(Icons.airline_seat_recline_extra, size: 12),
-                        const SizedBox(width: 3),
-                        Text('${results.passengerCapacity ?? '-'} Seat',
-                            style: CommonFonts.bodyTextXS),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.luggage_outlined, size: 12),
-                        const SizedBox(width: 3),
-                        Text('${results.cabinLuggageCapacity ?? '-'} cabin luggage',
-                            style: CommonFonts.bodyTextXS),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.speed_outlined, size: 12),
-                        const SizedBox(width: 3),
-                        Text('${totalDistance ?? '-'} km',
-                            style: CommonFonts.bodyTextXS),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ),
+              )
             ],
           ),
         ),
@@ -1016,19 +1123,22 @@ class BookingTopBar extends StatefulWidget {
 }
 
 class _BookingTopBarState extends State<BookingTopBar> {
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+  final BookingRideController bookingRideController = Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final FetchPackageController fetchPackageController = Get.put(FetchPackageController());
+
+  String? tripCode;
+  String? previousCode;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     getCurrentTripCode();
   }
 
   String _monthName(int month) {
-    const months = [
-      '', // 0th index unused
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month];
   }
 
@@ -1036,149 +1146,140 @@ class _BookingTopBarState extends State<BookingTopBar> {
     final day = dateTime.day.toString().padLeft(2, '0');
     final month = _monthName(dateTime.month);
     final year = dateTime.year;
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
 
-    return '$day $month, $year, $hour:$minute hrs';
+    int hour = dateTime.hour % 12;
+    hour = hour == 0 ? 12 : hour; // handle midnight & noon
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+
+    return '$day $month, $hour:$minute $period';
   }
 
-  final BookingRideController bookingRideController =
-      Get.put(BookingRideController());
-  String? tripCode;
 
   void getCurrentTripCode() async {
-    tripCode = await StorageServices.instance.read('currentTripCode');
+    tripCode = await StorageServices.instance.read('currentTripCode') ??
+        await StorageServices.instance.read('previousTripCode');
+    previousCode = await StorageServices.instance.read('previousTripCode') ?? '';
     setState(() {});
-    print('yash trip code : $tripCode');
   }
 
   String trimAfterTwoSpaces(String input) {
     final parts = input.split(' ');
-    if (parts.length <= 2)
-      return input; // less than or equal to two spaces, keep as is
-    return parts.take(3).join(' '); // first 3 words (2 spaces)
+    if (parts.length <= 2) return input;
+    return parts.take(3).join(' ');
   }
+
+  Widget _buildTripTypeTag(String text) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.mainButtonBg.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.mainButtonBg),
+      ),
+    );
+  }
+
+  String convertUtcToLocal(String utcTimeString, String timezoneString) {
+    // Parse UTC time
+    DateTime utcTime = DateTime.parse(utcTimeString);
+
+    // Get the location based on timezone string like "Asia/Kolkata"
+    final location = tz.getLocation(timezoneString);
+
+    // Convert UTC to local time in given timezone
+    final localTime = tz.TZDateTime.from(utcTime, location);
+
+    // Format as "3 Sep, 07:30 AM"
+    final formatted = DateFormat("d MMM, hh:mm a").format(localTime);
+
+    return formatted;
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    String? _country;
     final pickupDateTime = bookingRideController.localStartTime.value;
     final formattedPickup = formatDateTime(pickupDateTime);
-    final isIndia = _country?.toLowerCase() == 'india';
+    DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
+    DateTime? backendEndUtc = searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
 
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8), // 8px radius
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0x0A000000), // #0000000A with 4% opacity
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-            leading: GestureDetector(
-                onTap: () {
-                  GoRouter.of(context).pop();
-                },
-                child: const Icon(Icons.arrow_back, size: 20)),
-            title: Row(
-              children: [
-                tripCode == '3'
-                    ? Obx(() {
-                        return Expanded(
-                          child: Text(
-                            '${trimAfterTwoSpaces(bookingRideController.prefilled.value)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      })
-                    : Obx(() {
-                        return Expanded(
-                          child: Text(
-                            '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }),
-                // GestureDetector(
-                //     onTap: () {},
-                //     child: Icon(Icons.edit,
-                //         size: 16, color: AppColors.mainButtonBg)),
-              ],
+// Compare in UTC, pick the greater one
+    DateTime finalDropUtc = (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc))
+        ? backendEndUtc
+        : localEndUtc;
+
+// Convert chosen UTC time back to local with timezone handling
+    final formattedDrop = convertUtcToLocal(
+      finalDropUtc.toIso8601String(),
+      placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? '',
+    );
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 2))],
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+        leading: GestureDetector(
+          onTap: () {
+            GoRouter.of(context).push(
+              AppRoutes.inventoryList,
+              extra: bookingRideController.requestData.value,
+            );              // GoRouter.of(context).push(AppRoutes.inventoryList);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              // color: AppColors.mainButtonBg.withOpacity(0.08),
+              shape: BoxShape.circle,
             ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 0),
-              child: Row(
-                children: [
-                  Text(
-                    formattedPickup,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.greyText5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(width: 8),
-                  if (tripCode == '0')
-                    Text(
-                      'Outstation One Way Trip',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.mainButtonBg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  if (tripCode == '1')
-                    Text(
-                      'Outstation Round Trip',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.mainButtonBg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  if (tripCode == '2')
-                    Text(
-                      'Airport Trip',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.mainButtonBg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  if (tripCode == '3')
-                    Text(
-                      'Rental Trip',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.mainButtonBg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            child: const Icon(Icons.arrow_back, size: 16, color: AppColors.mainButtonBg),
           ),
         ),
-      ],
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                tripCode == '3'
+                    ? bookingRideController.prefilled.value
+                    : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              (tripCode == '1') ? '$formattedPickup - $formattedDrop' : '$formattedPickup',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.greyText5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            if (tripCode == '3')
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: SelectedPackageCard(controller: fetchPackageController),
+              ),
+            // if (tripCode == '0') _buildTripTypeTag('Outstation One Way Trip'),
+            // if (tripCode == '1') _buildTripTypeTag('Outstation Round Way Trip'),
+            // if (tripCode == '2') _buildTripTypeTag('Airport Trip'),
+            // if (tripCode == '3') _buildTripTypeTag('Rental Trip'),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1256,152 +1357,155 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
     required List<SelectableExtra> extras,
   }) {
     final currencyController = Get.find<CurrencyController>();
-    return Card(
-      color: Colors.white,
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12), // smaller margin
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8), // smaller radius
-        side: BorderSide(color: Colors.grey.shade300, width: 0.8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 10, vertical: 10), // tighter padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title.toUpperCase(), // keep consistent with forms
-              style: const TextStyle(
-                fontSize: 12, // smaller title
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        color: Colors.white,
+        elevation: 0,
+        margin: const EdgeInsets.only(bottom: 12), // smaller margin
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8), // smaller radius
+          side: BorderSide(color: Colors.grey.shade300, width: 0.8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 10), // tighter padding
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title.toUpperCase(), // keep consistent with forms
+                style: const TextStyle(
+                  fontSize: 12, // smaller title
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (extras.isEmpty)
-              const Text(
-                "No extras available",
-                style: TextStyle(color: Colors.grey, fontSize: 10),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: extras.length,
-                itemBuilder: (context, index) {
-                  final item = extras[index];
+              const SizedBox(height: 12),
+              if (extras.isEmpty)
+                const Text(
+                  "No extras available",
+                  style: TextStyle(color: Colors.grey, fontSize: 10),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: extras.length,
+                  itemBuilder: (context, index) {
+                    final item = extras[index];
 
-                  return InkWell(
-                    splashColor: Colors.transparent,
-                    onTap: () {
-                      setState(() {
-                        final newVal = !item.isSelected;
-                        extras[index].isSelected = newVal;
+                    return InkWell(
+                      splashColor: Colors.transparent,
+                      onTap: () {
+                        setState(() {
+                          final newVal = !item.isSelected;
+                          extras[index].isSelected = newVal;
 
-                        cabBookingController.toggleExtraId(item.id, newVal);
-                        cabBookingController.toggleExtraFacility(
-                          item.label,
-                          item.price.toDouble(),
-                          newVal,
-                        );
-                      });
-                    },
-                    child: Padding(
-                        padding:
-                            const EdgeInsets.only(bottom: 10.0), // less spacing
-                        child: Row(
-                          children: [
-                            CustomCheckbox(
-                              value: item.isSelected,
-                              onChanged: (val) {
-                                setState(() {
-                                  extras[index].isSelected = val;
-                                  cabBookingController.toggleExtraId(
-                                      item.id, val);
-                                  cabBookingController.toggleExtraFacility(
-                                    item.label,
-                                    item.price.toDouble(),
-                                    val,
-                                  );
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                item.label,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black87,
-                                ),
+                          cabBookingController.toggleExtraId(item.id, newVal);
+                          cabBookingController.toggleExtraFacility(
+                            item.label,
+                            item.price.toDouble(),
+                            newVal,
+                          );
+                        });
+                      },
+                      child: Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: 10.0), // less spacing
+                          child: Row(
+                            children: [
+                              CustomCheckbox(
+                                value: item.isSelected,
+                                onChanged: (val) {
+                                  setState(() {
+                                    extras[index].isSelected = val;
+                                    cabBookingController.toggleExtraId(
+                                        item.id, val);
+                                    cabBookingController.toggleExtraFacility(
+                                      item.label,
+                                      item.price.toDouble(),
+                                      val,
+                                    );
+                                  });
+                                },
                               ),
-                            ),
-
-                            // 🔹 Wrap price in FutureBuilder
-// 🔹 Wrap price in FutureBuilder
-                            FutureBuilder<double>(
-                              future: Future.delayed(
-                                const Duration(milliseconds: 500), // 0.5s fake loader
-                                    () => currencyController.convertPrice(item.price.toDouble()),
-                              ),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return SizedBox(
-                                    height: 12,
-                                    width: 20,
-                                    child: Center(
-                                      child: SizedBox(
-                                        height: 10,
-                                        width: 10,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 1.5,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                if (snapshot.hasError) {
-                                  return const Text(
-                                    "--",
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  );
-                                }
-
-                                final convertedValue =
-                                    snapshot.data ?? item.price.toDouble();
-
-                                return Text(
-                                  "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(0)}",
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  item.label,
                                   style: const TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                     color: Colors.black87,
                                   ),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 4),
-                            const Padding(
-                              padding: EdgeInsets.only(right: 4.0),
-                              child: Text(
-                                'per day',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.black54,
                                 ),
                               ),
-                            ),
-                          ],
-                        )),
-                  );
-                },
-              ),
-          ],
+
+                              // 🔹 Wrap price in FutureBuilder
+      // 🔹 Wrap price in FutureBuilder
+                              FutureBuilder<double>(
+                                future: Future.delayed(
+                                  const Duration(milliseconds: 500), // 0.5s fake loader
+                                      () => currencyController.convertPrice(item.price.toDouble()),
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return SizedBox(
+                                      height: 12,
+                                      width: 20,
+                                      child: Center(
+                                        child: SizedBox(
+                                          height: 10,
+                                          width: 10,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      "--",
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                    );
+                                  }
+
+                                  final convertedValue =
+                                      snapshot.data ?? item.price.toDouble();
+
+                                  return Text(
+                                    "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              const SizedBox(width: 4),
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4.0),
+                                child: Text(
+                                  'per day',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )),
+                    );
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1778,16 +1882,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                   label: 'GST Number',
                   hint: "Enter GST Number",
                   controller: gstController,
-                  validator: (v) {
-                    if (isGstSelected && v!.isEmpty)
-                      return "GST number is required";
-                    if (isGstSelected &&
-                        !RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')
-                            .hasMatch(v!)) {
-                      return "Enter valid GST number";
-                    }
-                    return null;
-                  },
+                  validator: null,
                 ),
 
               SizedBox(height: 6)

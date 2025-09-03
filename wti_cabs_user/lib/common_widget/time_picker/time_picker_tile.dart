@@ -217,8 +217,10 @@ class _TimePickerTileState extends State<TimePickerTile> {
   Widget build(BuildContext context) {
     return Obx(() {
       final formattedTime = DateFormat('hh:mm a').format(timeObservable.value);
+      final actualTime = _getActualLocalDateTime();
+      final formattedValidTime = DateFormat('hh:mm a').format(actualTime??timeObservable.value);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        bookingRideController.selectedLocalTime.value = formattedTime;
+        bookingRideController.selectedLocalTime.value = formattedValidTime;
       });
       @override
       void initState() {
@@ -234,18 +236,18 @@ class _TimePickerTileState extends State<TimePickerTile> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color:(isInvalidTime == true)? Colors.redAccent : AppColors.lightBlueBorder, width: 1),
+            border: Border.all(color:(bookingRideController.isInvalidTime.value == true)? Colors.redAccent : AppColors.lightBlueBorder, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              Icon(Icons.access_time, color: (isInvalidTime == true) ? Colors.redAccent : AppColors.bgGrey3, size: 15),
+              Icon(Icons.access_time, color: (bookingRideController.isInvalidTime.value == true) ? Colors.redAccent : AppColors.bgGrey3, size: 15),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  (isInvalidTime == true) ? Text(widget.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.redAccent)) :  Text(widget.label, style: CommonFonts.bodyText5Black),
-                  (isInvalidTime == true) ? Text(formattedTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.redAccent)) : Text(formattedTime, style: CommonFonts.bodyText1Black),
+                  (bookingRideController.isInvalidTime.value == true) ? Text(widget.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.redAccent)) :  Text(widget.label, style: CommonFonts.bodyText5Black),
+                  (bookingRideController.isInvalidTime.value == true) ? Text(formattedTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.redAccent)) : Text(formattedTime, style: CommonFonts.bodyText1Black),
                 ],
               ),
             ],

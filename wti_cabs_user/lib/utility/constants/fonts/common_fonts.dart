@@ -54,7 +54,7 @@ class CommonFonts {
   static final TextStyle inputTextAuthLarge = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.inputTextPrimary);
 
   static final TextStyle whiteButtonText = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.buttonTextPrimary1);
-  static final TextStyle blueText1 = base(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.bluePrimary);
+  static final TextStyle blueText1 = base(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.bluePrimary);
   static final TextStyle greyText1 = base(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.greyText1);
   static final TextStyle greyText2 = base(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.greyText2);
   static final TextStyle greyTextSecondary = base(fontSize: 10, fontWeight: FontWeight.w400, color: AppColors.greyText1);

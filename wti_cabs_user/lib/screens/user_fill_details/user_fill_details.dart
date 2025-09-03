@@ -469,22 +469,23 @@ class _UserFillDetailsState extends State<UserFillDetails> {
                                               "By logging in, I understand & agree to Wise Travel India Limited ",
                                               style:
                                               CommonFonts.bodyText3Medium,
-                                              children: [
-                                                TextSpan(
-                                                    text: "Terms & Conditions",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(text: ", "),
-                                                TextSpan(
-                                                    text: "Privacy Policy",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                                TextSpan(
-                                                    text:
-                                                    ", and User agreement",
-                                                    style: CommonFonts
-                                                        .bodyText3MediumBlue),
-                                              ],
+                                              // children: [
+                                              //   TextSpan(
+                                              //       text: "Terms & Conditions",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(text: ", "),
+                                              //   TextSpan(
+                                              //       text: "Privacy Policy",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(
+                                              //       text:
+                                              //       ", and User agreement",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              // ],
+                                              children: []
                                             ),
                                             textAlign: TextAlign.center,
                                           ),

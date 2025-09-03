@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -13,38 +13,80 @@ class Walkthrough extends StatefulWidget {
 class _WalkthroughState extends State<Walkthrough> {
   final PageController _controller = PageController();
   int _currentPage = 0;
+  Timer? _autoScrollTimer;
+  double _progress = 0.0; // Tracks progress for the active page's progress bar
 
-  final List<Map<String, String>> _pages = [
-    {
-      "image": "assets/images/wk1.png",
-      "title": "Hassle-Free Airport Transfers",
-      "subtitle": "On-time, reliable chauffeur cabs for arrivals and departures—travel stress-free every time."
-    },
-    {
-      "image": "assets/images/wk2.png",
-      "title": "Outstation Rides, One Way or Round Trip",
-      "subtitle": "Comfortable, affordable, and safe chauffeur-driven cabs for long-distance travel across cities."
-    },
-    {
-      "image": "assets/images/wk3.png",
-      "title": "Local Rentals, Your Car on Demand",
-      "subtitle": "Book chauffeur-driven cabs by the hour or day—perfect for city rides, shopping, and meetings."
-    },
+  final List<String> _imageAssets = [
+    "assets/images/wk5.png",
+    "assets/images/wk1.png",
+    "assets/images/wk2.png",
+    "assets/images/wk3.png",
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _startAutoScroll();
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _progress = 0.0; // Reset progress
+    _autoScrollTimer?.cancel(); // Cancel any existing timer
+    if (_currentPage < _imageAssets.length - 1) {
+      _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+        setState(() {
+          _progress += 0.0167; // 3s = 3000ms, 50ms ticks, 1/60 ≈ 0.0167
+          if (_progress >= 1.0) {
+            _controller.nextPage(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+            );
+            _progress = 0.0; // Reset progress for the next page
+          }
+        });
+      });
+    }
+  }
+
+  void _stopAutoScroll() {
+    _autoScrollTimer?.cancel();
+  }
 
   void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
+    _stopAutoScroll();
+    if (_currentPage < _imageAssets.length - 1) {
       _controller.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
+      _progress = 0.0; // Reset progress for manual navigation
+      _startAutoScroll();
     } else {
       _finishOnboarding();
     }
   }
 
+  void _previousPage() {
+    _stopAutoScroll();
+    if (_currentPage > 0) {
+      _controller.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+      _progress = 0.0; // Reset progress for manual navigation
+      _startAutoScroll();
+    }
+  }
+
   void _skip() {
+    _stopAutoScroll();
     _finishOnboarding();
   }
 
@@ -55,115 +97,181 @@ class _WalkthroughState extends State<Walkthrough> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView.builder(
-        controller: _controller,
-        onPageChanged: (index) => setState(() => _currentPage = index),
-        itemCount: _pages.length,
-        itemBuilder: (context, index) {
-          final page = _pages[index];
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // Background image
-              Image.asset(
-                page["image"]!,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _controller,
+            physics: const NeverScrollableScrollPhysics(), // Disable manual sliding
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+                _progress = 0.0; // Reset progress when page changes
+              });
+              _stopAutoScroll();
+              _startAutoScroll();
+            },
+            itemCount: _imageAssets.length,
+            itemBuilder: (context, index) {
+              return Image.asset(
+                _imageAssets[index],
                 fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              );
+            },
+          ),
+          // Side edge navigation
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 80, // Width of the left tap area
+            child: GestureDetector(
+              onTap: _previousPage,
+              child: Container(
+                color: Colors.transparent,
               ),
-              // Blurred bottom overlay
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      color: Colors.black.withOpacity(0.3),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            page["title"]!,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            page["subtitle"]!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white70,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          // Page indicator
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              _pages.length,
-                                  (dotIndex) => Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                width: _currentPage == dotIndex ? 12 : 8,
-                                height: _currentPage == dotIndex ? 12 : 8,
+            ),
+          ),
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: 80, // Width of the right tap area
+            child: GestureDetector(
+              onTap: _nextPage,
+              child: Container(
+                color: Colors.transparent,
+              ),
+            ),
+          ), // Bottom overlay for progress bar and buttons
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.transparent, // Adjust for your theme if needed
+              padding: const EdgeInsets.only(left: 0, right: 0, bottom: 32, top: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_imageAssets.length, (index) {
+                            final isActive = _currentPage == index;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: isActive
+                                  ? Stack(
+                                children: [
+                                  // Background for active tab (progress bar track)
+                                  Container(
+                                    width: 32, // Fixed width for progress bar
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white38,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  // Foreground for active tab (progress bar)
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 50),
+                                    height: 8,
+                                    width: 32 * _progress, // Animate width based on progress
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ],
+                              )
+                                  : Container(
+                                width: 8, // Dot for inactive tabs
+                                height: 8,
                                 decoration: BoxDecoration(
-                                  color: _currentPage == dotIndex
-                                      ? Colors.white
-                                      : Colors.white54,
-                                  shape: BoxShape.circle,
+                                  color: Colors.white38,
+                                  shape: BoxShape.circle, // Circular dot for inactive tabs
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              if (_currentPage != _pages.length - 1)
-                                TextButton(
-                                  onPressed: _skip,
-                                  child: const Text(
-                                    "Skip",
-                                    style: TextStyle(color: Colors.white),
+                            );
+                          }),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 16,
+                      ),
+                      // Buttons Row
+                      Container(
+                        margin: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width*0.037),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            if (_currentPage != _imageAssets.length - 1)
+                              SizedBox(
+                                width: 104,
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white, width: 2),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    textStyle: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    shadowColor: Colors.black.withOpacity(0.3),
+                                    elevation: 4,
                                   ),
-                                )
-                              else
-                                const SizedBox(width: 64), // Placeholder
-
-                              ElevatedButton(
+                                  onPressed: _skip,
+                                  child: const Text("Skip"),
+                                ),
+                              )
+                            else
+                              const SizedBox(width: 104),
+                            SizedBox(width: 16,),
+// Placeholder for alignment
+                            SizedBox(
+                              width: 104,
+                              child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
+                                  foregroundColor: Colors.blue[900],
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(24),
                                   ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  shadowColor: Colors.black.withOpacity(0.3),
+                                  elevation: 4,
                                 ),
                                 onPressed: _nextPage,
                                 child: Text(
-                                  _currentPage == _pages.length - 1
+                                  _currentPage == _imageAssets.length - 1
                                       ? "Get Started"
                                       : "Next",
                                 ),
                               ),
-                            ],
-                          )
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                ),
+                    ],
+                  )
+                  // Indicator Row with Progress Bar for Active Tab and Dots for Others
+
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }

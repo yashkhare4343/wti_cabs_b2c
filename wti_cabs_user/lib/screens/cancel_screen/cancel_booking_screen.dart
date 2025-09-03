@@ -65,7 +65,11 @@ void _showLoader(String message, BuildContext context) {
 }
 
 
-void _successLoader(String message, BuildContext outerContext, VoidCallback onComplete) {
+void _successLoader(
+    String message,
+    BuildContext outerContext,
+    VoidCallback onComplete,
+    ) {
   showDialog(
     context: outerContext,
     barrierDismissible: false,
@@ -74,7 +78,7 @@ void _successLoader(String message, BuildContext outerContext, VoidCallback onCo
         if (Navigator.of(dialogContext).canPop()) {
           Navigator.of(dialogContext).pop(); // Close dialog
         }
-        onComplete(); // 🚀 Call back to navigate
+        onComplete(); // 🚀 Call back
       });
 
       return Dialog(
@@ -82,18 +86,45 @@ void _successLoader(String message, BuildContext outerContext, VoidCallback onCo
         elevation: 0,
         child: Center(
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.check_circle, color: Colors.green, size: 48),
-                SizedBox(height: 16),
-                Text("Booking Canceled Successfully",
-                    style: TextStyle(fontSize: 16)),
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 56,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message, // ✅ Use dynamic message
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "This action was completed successfully.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
+                ),
               ],
             ),
           ),

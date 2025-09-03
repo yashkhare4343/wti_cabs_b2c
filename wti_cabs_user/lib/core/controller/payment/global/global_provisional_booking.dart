@@ -137,6 +137,7 @@ class GlobalPaymentController extends GetxController {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
+          'X-Platform': 'APP'
         },
         body: jsonEncode(requestData),
       );
