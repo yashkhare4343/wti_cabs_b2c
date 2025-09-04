@@ -39,7 +39,8 @@ import 'package:timezone/timezone.dart' as tz;
 class BookingDetailsFinal extends StatefulWidget {
   final num? totalKms;
   final String? endTime;
-  const BookingDetailsFinal({super.key, this.totalKms, this.endTime});
+  final bool ? fromPaymentFailure;
+  const BookingDetailsFinal({super.key, this.totalKms, this.endTime, this.fromPaymentFailure});
 
   @override
   State<BookingDetailsFinal> createState() => _BookingDetailsFinalState();
@@ -604,6 +605,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                     // ),
                     TravelerDetailsForm(
                       formKey: cabBookingController.formKey,
+                      fromPaymentFailurePage: widget.fromPaymentFailure,
                     ),
                     // DiscountCouponsCard(),
                   ],
@@ -1526,9 +1528,10 @@ class ExtraItem {
 
 class TravelerDetailsForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
+  final bool ? fromPaymentFailurePage;
 
   const TravelerDetailsForm(
-      {super.key, required this.formKey}); // ✅ Accept form key from parent
+      {super.key, required this.formKey, this.fromPaymentFailurePage}); // ✅ Accept form key from parent
   @override
   _TravelerDetailsFormState createState() => _TravelerDetailsFormState();
 }
@@ -1582,14 +1585,34 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
 
     await profileController.fetchData();
     print('📦 3rd page country: $_country');
-    firstName =
-        profileController.profileResponse.value?.result?.firstName ?? '';
-    contact =
-        profileController.profileResponse.value?.result?.contact.toString() ??
-            '';
-    contactCode =
-        profileController.profileResponse.value?.result?.contactCode ?? '';
-    email = profileController.profileResponse.value?.result?.emailID ?? '';
+
+
+    if(widget.fromPaymentFailurePage==true){
+      firstName = await StorageServices.instance.read('firstName') ?? '';
+      contact = await StorageServices.instance.read('contact') ?? '';
+      email = await StorageServices.instance.read('emailId') ?? '';
+    }
+    else if(widget.fromPaymentFailurePage == null && await StorageServices.instance.read('token')==null){
+      firstName = await StorageServices.instance.read('firstName') ?? '';
+      contact = await StorageServices.instance.read('contact') ?? '';
+      email = await StorageServices.instance.read('emailId') ?? '';
+    }
+    else{
+      firstName =
+          profileController.profileResponse.value?.result?.firstName ?? '';
+      contact =
+          profileController.profileResponse.value?.result?.contact.toString() ??
+              '';
+      contactCode =
+          profileController.profileResponse.value?.result?.contactCode ?? '';
+      email = profileController.profileResponse.value?.result?.emailID ?? '';
+
+    }
+
+
+
+
+    //fromPaymentFailurePagefromPaymentFailurePage logic yahi se karna hai.
 
     firstNameController.text = firstName ?? '';
     emailController.text = email ?? '';

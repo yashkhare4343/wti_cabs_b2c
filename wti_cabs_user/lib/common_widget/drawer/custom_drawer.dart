@@ -757,7 +757,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
 
                             // Show success popup/snackbar
                             Future.delayed(const Duration(milliseconds: 200),
-                                () {
+                                () async{
                               showDialog(
                                 context: navigatorKey.currentContext!,
                                 barrierDismissible: false,
@@ -766,6 +766,9 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                   final upcomingBookingController = Get.find<UpcomingBookingController>();
                                   upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
                                   upcomingBookingController.isLoggedIn.value = false;
+                                  StorageServices.instance.read('firstName');
+                                  StorageServices.instance.read('contact');
+                                   StorageServices.instance.read('emailId');
                                   Future.delayed(const Duration(seconds: 4),
                                       () {
                                     if (Navigator.of(

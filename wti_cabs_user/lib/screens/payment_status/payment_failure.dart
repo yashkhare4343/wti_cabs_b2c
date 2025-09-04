@@ -102,8 +102,12 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                       child: MainButton(
                         text: 'Retry Payment',
                         onPressed: () {
-                          GoRouter.of(context).push(AppRoutes.bookingDetailsFinal);
-                        },
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BookingDetailsFinal(fromPaymentFailure: true,), // replace with your screen
+                            ),
+                          );                        },
                       ),
                     )
                   ],

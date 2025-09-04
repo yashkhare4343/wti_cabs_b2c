@@ -1257,7 +1257,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                         IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () {
-                            GoRouter.of(context).refresh();
+                            GoRouter.of(context).pop();
                           },
                         ),
                         SizedBox(width: MediaQuery.of(context).size.width * 0.13),

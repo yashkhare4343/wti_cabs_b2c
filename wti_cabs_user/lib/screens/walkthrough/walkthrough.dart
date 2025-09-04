@@ -39,7 +39,6 @@ class _WalkthroughState extends State<Walkthrough> {
   void _startAutoScroll() {
     _progress = 0.0; // Reset progress
     _autoScrollTimer?.cancel(); // Cancel any existing timer
-    if (_currentPage < _imageAssets.length - 1) {
       _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
         setState(() {
           _progress += 0.0167; // 3s = 3000ms, 50ms ticks, 1/60 ≈ 0.0167
@@ -52,7 +51,7 @@ class _WalkthroughState extends State<Walkthrough> {
           }
         });
       });
-    }
+
   }
 
   void _stopAutoScroll() {
