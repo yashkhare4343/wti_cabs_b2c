@@ -27,6 +27,7 @@ import 'core/controller/popular_destination/popular_destination.dart';
 import 'core/controller/usp_controller/usp_controller.dart';
 import 'core/route_management/app_page.dart';
 import 'core/services/cache_services.dart';
+import 'core/services/notification_service.dart';
 import 'core/services/storage_services.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -141,6 +142,7 @@ void main() async {
       print("⚠️ Location permission not granted. You may need to request it later.");
     }
     print('🏁 Running App');
+    await NotificationService().initialize();
     runApp(const MyApp());
   } catch (e, stack) {
     print('❌ Caught exception in main: $e');

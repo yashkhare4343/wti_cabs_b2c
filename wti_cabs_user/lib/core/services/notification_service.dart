@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:wti_vendor_dashboard/core/route_management/app_page.dart';
-import 'package:wti_vendor_dashboard/core/route_management/app_routes.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -59,7 +57,7 @@ class NotificationService {
     RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       pendingNavigationPayload = initialMessage.data['ordered_data'];
-      _navigateToBooking(pendingNavigationPayload ?? '');
+      // _navigateToBooking(pendingNavigationPayload ?? '');
     }
   }
 
@@ -77,13 +75,13 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
-          sound: RawResourceAndroidNotificationSound('notification'),
+          // sound: RawResourceAndroidNotificationSound('notification'),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
-          sound: 'notification.caf', // uncomment if you add custom iOS sound
+          // sound: 'notification.caf', // uncomment if you add custom iOS sound
         ),
       ),
       payload: payload,
@@ -99,15 +97,15 @@ class NotificationService {
 
   void checkPendingNavigation() {
     if (pendingNavigationPayload != null) {
-      _navigateToBooking(pendingNavigationPayload!);
+      // _navigateToBooking(pendingNavigationPayload!);
       pendingNavigationPayload = null;
     }
   }
 
-  void _navigateToBooking(String payload) {
-    final data = _parsePayload(payload);
-    AppPages.router.push(AppRoutes.confirmBooking, extra: data);
-  }
+  // void _navigateToBooking(String payload) {
+  //   final data = _parsePayload(payload);
+  //   AppPages.router.push(AppRoutes.confirmBooking, extra: data);
+  // }
 
   Map<String, String> _parsePayload(String payload) {
     final map = <String, String>{};

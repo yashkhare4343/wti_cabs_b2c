@@ -975,7 +975,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                       height: 20,
                       width: 20,
                     ),
-                    title: 'Currency',
+                    title: 'Currency (${currencyController.selectedCurrency.value.code})',
                     subtitle: currencyController.selectedCurrency.value.code,
                     onTap: () {
                       GoRouter.of(context).push(AppRoutes.selectCurrency);
@@ -1097,17 +1097,17 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                         fontSize: 12,
                         color: Color(0xFF3F3F3F)),
                   ),
-                  SizedBox(
-                    height: 4,
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF929292),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 10,
-                    ),
-                  ),
+                  // SizedBox(
+                  //   height: 4,
+                  // ),
+                  // Text(
+                  //   subtitle,
+                  //   style: const TextStyle(
+                  //     color: Color(0xFF929292),
+                  //     fontWeight: FontWeight.w500,
+                  //     fontSize: 10,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
