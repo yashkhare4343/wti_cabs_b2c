@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -18,11 +19,13 @@ import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
+import 'common_widget/network_banner/network_banner.dart';
 import 'config/enviornment_config.dart';
 import 'core/controller/banner/banner_controller.dart';
 import 'core/controller/choose_drop/choose_drop_controller.dart';
 import 'core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'core/controller/drop_location_controller/drop_location_controller.dart';
+import 'core/controller/network_controller/network_controller.dart';
 import 'core/controller/popular_destination/popular_destination.dart';
 import 'core/controller/usp_controller/usp_controller.dart';
 import 'core/route_management/app_page.dart';
@@ -179,6 +182,8 @@ class _MyAppState extends State<MyApp> {
   Get.put(PopularDestinationController());
   final UspController uspController = Get.put(UspController());
   final BannerController bannerController = Get.put(BannerController());
+  final ConnectivityController connectivityController = Get.put(ConnectivityController());
+
 
 
   @override
@@ -384,12 +389,22 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      routerDelegate: AppPages.router.routerDelegate,
-      routeInformationParser: AppPages.router.routeInformationParser,
-      routeInformationProvider: AppPages.router.routeInformationProvider,
-      title: StringConstants.title,
-    );
-  }
-}
+    return Obx(() {
+      return connectivityController.isOnline.value
+          ? GetMaterialApp.router(
+        routerDelegate: AppPages.router.routerDelegate,
+        routeInformationParser: AppPages.router.routeInformationParser,
+        routeInformationProvider: AppPages.router.routeInformationProvider,
+        title: StringConstants.title,
+        debugShowCheckedModeBanner: false, // ✅ removes debug banner
+      )
+          : MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home:  NoInternetScreen(
+          onRetry: () => connectivityController.checkInitialConnection(),
+        ),
+      );
+
+    });
+  }}
+
