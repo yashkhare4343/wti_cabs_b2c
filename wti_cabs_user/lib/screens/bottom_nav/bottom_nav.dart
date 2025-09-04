@@ -82,8 +82,8 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
   void homeApiLoading() async {
     await popularDestinationController.fetchPopularDestinations();
-    await uspController.fetchUsps();
-    await bannerController.fetchImages();
+    // await uspController.fetchUsps();
+    // await bannerController.fetchImages();
   }
 
   @override

@@ -10,6 +10,12 @@ class BannerController extends GetxController {
   RxBool isLoading = false.obs;
 
   Future<void> fetchImages() async {
+    // 👇 Guard: only fetch if we don’t already have data
+    if (homepageImageResponse.value?.result?.bottomBanner?.images != null &&
+        homepageImageResponse.value!.result!.bottomBanner!.images!.isNotEmpty) {
+      return;
+    }
+
     isLoading.value = true;
     try {
       final result = await ApiService().getRequestNew<HomePageImageResponse>(
@@ -17,10 +23,10 @@ class BannerController extends GetxController {
         HomePageImageResponse.fromJson,
       );
       homepageImageResponse.value = result;
-      print('yash usp response body : ${homepageImageResponse.value}');
 
+      print('✅ Banner images fetched (${homepageImageResponse.value?.result?.bottomBanner?.images?.length ?? 0})');
     } catch (e) {
-      print("Failed to fetch packages: $e");
+      print("❌ Failed to fetch banners: $e");
     } finally {
       isLoading.value = false;
     }

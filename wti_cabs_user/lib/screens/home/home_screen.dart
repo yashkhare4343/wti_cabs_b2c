@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:carousel_slider/carousel_options.dart';
@@ -50,7 +51,8 @@ import '../trip_history_controller/trip_history_controller.dart';
 import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'dart:convert'; // for jsonEncode
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // For LatLng
+import 'package:google_maps_flutter/google_maps_flutter.dart';// For LatLng
+
 // keep this as is
 
 class HomeScreen extends StatefulWidget {
@@ -139,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     profileController.checkLoginStatus();
 
     popularDestinationController.fetchPopularDestinations();
-    uspController.fetchUsps();
+    // uspController.fetchUsps();
     bannerController.fetchImages();
 
     fetchCurrentLocationAndAddress();
@@ -1996,30 +1998,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Padding(
                     padding: EdgeInsets.only(left: 12),
                     child: CustomCarousel()),
-                SizedBox(height: 20,),
+                SizedBox(height: 12,),
                 // special offers
                 // SizedBox(
                 //   height: 20,
                 // ),
-                // Padding(
-                //   padding: const EdgeInsets.only(left: 16.0),
-                //   child: Row(
-                //     mainAxisAlignment: MainAxisAlignment.start,
-                //     children: [
-                //       Text(
-                //         'Special Offers',
-                //         style: TextStyle(
-                //             fontSize: 16,
-                //             fontWeight: FontWeight.w600,
-                //             color: Colors.black),
-                //       ),
-                //     ],
-                //   ),
-                // ),
-                // SizedBox(
-                //   height: 12,
-                // ),
-                // CustomTabBar()
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Special Offers',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 12,
+                ),
+                // CustomTabBar(),
 
                 // Carbon emission, women safety
                 SizedBox(
@@ -2027,17 +2029,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   height: 174,
                   child: Obx(() {
                     if (bannerController.isLoading.value) {
-                      // 🔥 Shimmer placeholders while bottom banners load
+                      // 🔥 Shimmer placeholders
                       return Shimmer.fromColors(
                         baseColor: Colors.grey.shade300,
                         highlightColor: Colors.grey.shade100,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          itemCount: 3, // dummy shimmer cards
+                          itemCount: 3,
                           itemBuilder: (context, index) {
                             return Container(
                               margin: const EdgeInsets.symmetric(horizontal: 8),
-                              width: MediaQuery.of(context).size.width * 0.75, // mimic viewportFraction
+                              width: MediaQuery.of(context).size.width * 0.75,
                               height: 174,
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -2049,8 +2051,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       );
                     }
 
-                    final images = bannerController
-                        .homepageImageResponse.value?.result?.bottomBanner?.images;
+                    final images = bannerController.homepageImageResponse.value?.result?.bottomBanner?.images;
+                    final baseUrl = bannerController.homepageImageResponse.value?.result?.baseUrl ?? '';
 
                     if (images == null || images.isEmpty) {
                       return const Center(child: Text("No banners available"));
@@ -2060,41 +2062,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       itemCount: images.length,
                       options: CarouselOptions(
                         height: 174,
-                        viewportFraction: 0.75, // Show 1 full + part of the next
+                        viewportFraction: 0.75,
                         enlargeCenterPage: false,
                         autoPlay: true,
                       ),
                       itemBuilder: (context, index, realIdx) {
-                        final baseUrl =
-                            bannerController.homepageImageResponse.value?.result?.baseUrl ?? '';
-                        final imageUrl = images[index].url ?? '';
+                        final imageUrl = "$baseUrl${images[index].url ?? ''}";
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12.0),
-                            child: Image.network(
-                              "$baseUrl$imageUrl",
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
                               fit: BoxFit.fill,
-                              width: double.infinity,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return Shimmer.fromColors(
-                                  baseColor: Colors.grey.shade300,
-                                  highlightColor: Colors.grey.shade100,
-                                  child: Container(
-                                    width: double.infinity,
-                                    height: 174,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                              useOldImageOnUrlChange: true,
+                              fadeInDuration: const Duration(milliseconds: 300),
+                              fadeOutDuration: const Duration(milliseconds: 200),
+                              memCacheWidth: 1500, // ✅ sharp banners
+                              placeholder: (context, url) => Shimmer.fromColors(
+                                baseColor: Colors.grey.shade300,
+                                highlightColor: Colors.grey.shade100,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 174,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(child: Icon(Icons.broken_image));
-                              },
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, color: Colors.grey),
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -2115,6 +2118,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
+
+
 class CustomCarousel extends StatefulWidget {
   const CustomCarousel({super.key});
 
@@ -2122,20 +2127,161 @@ class CustomCarousel extends StatefulWidget {
   State<CustomCarousel> createState() => _CustomCarouselState();
 }
 
-class _CustomCarouselState extends State<CustomCarousel> {
-  final UspController uspController = Get.put(UspController());
+class _CustomCarouselState extends State<CustomCarousel>
+    with AutomaticKeepAliveClientMixin {
+  final UspController uspController = Get.put(UspController(), permanent: true);
 
   @override
   void initState() {
     super.initState();
-    uspController.fetchUsps(); // fetch USP data
+    if (uspController.uspResponse.value == null) {
+      uspController.fetchUsps(); // fetch only once
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // required for keep-alive
+
+    return Obx(() {
+      if (uspController.isLoading.value) {
+        return _buildShimmerCarousel(context);
+      }
+
+      final uspData = uspController.uspResponse.value?.data ?? [];
+      if (uspData.isEmpty) {
+        return const Center(child: Text("No USP found"));
+      }
+
+      return CarouselSlider(
+        options: CarouselOptions(
+          height: 190,
+          viewportFraction: 0.47,
+          enableInfiniteScroll: false,
+          padEnds: false,
+          enlargeCenterPage: false,
+        ),
+        items: uspData.map((item) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // image
+              Container(
+                height: 106,
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
+                  child: CachedNetworkImage(
+                    imageUrl: item.imgUrl ?? '',
+                    fit: BoxFit.fill,
+                    useOldImageOnUrlChange: true,
+                    memCacheHeight: 300,
+                    memCacheWidth: 550,
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey.shade300,
+                      highlightColor: Colors.grey.shade100,
+                      child: Container(
+                        color: Colors.grey,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // title
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                color: Colors.white,
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  item.title ?? '',
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+
+              // description
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                color: Colors.white,
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  item.desc ?? '',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF4F4F4F)),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ),
+
+              // bottom filler
+              Container(
+                width: MediaQuery.of(context).size.width * 0.56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                  BorderRadius.vertical(bottom: Radius.circular(8)),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    });
+  }
+
+  Widget _buildShimmerCarousel(BuildContext context) {
+    return CarouselSlider(
+      options: CarouselOptions(
+        height: 190,
+        viewportFraction: 0.47,
+        enableInfiniteScroll: false,
+        padEnds: false,
+      ),
+      items: List.generate(
+        4,
+            (_) => _buildShimmerItem(context),
+      ),
+    );
   }
 
   Widget _buildShimmerItem(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // shimmer image
         Container(
           height: 106,
           width: MediaQuery.of(context).size.width * 0.56,
@@ -2150,8 +2296,6 @@ class _CustomCarouselState extends State<CustomCarousel> {
             child: Container(color: Colors.grey, width: double.infinity),
           ),
         ),
-
-        // shimmer title
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           color: Colors.white,
@@ -2167,8 +2311,6 @@ class _CustomCarouselState extends State<CustomCarousel> {
             ),
           ),
         ),
-
-        // shimmer description
         Container(
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -2180,13 +2322,124 @@ class _CustomCarouselState extends State<CustomCarousel> {
             highlightColor: Colors.grey.shade100,
             child: Column(
               children: [
-                Container(
-                    height: 10, color: Colors.grey, width: double.infinity),
+                Container(height: 10, color: Colors.grey, width: double.infinity),
                 const SizedBox(height: 6),
-                Container(
-                    height: 10, color: Colors.grey, width: double.infinity),
+                Container(height: 10, color: Colors.grey, width: double.infinity),
               ],
             ),
+          ),
+        ),
+        Container(
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          height: 10,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+}
+
+
+class UspCard extends StatefulWidget {
+  final dynamic item; // replace with your USP model
+  const UspCard({super.key, required this.item});
+
+  @override
+  State<UspCard> createState() => _UspCardState();
+}
+
+class _UspCardState extends State<UspCard>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // required for keep-alive
+
+    final item = widget.item;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // image
+        Container(
+          height: 106,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            child: CachedNetworkImage(
+              imageUrl: item.imgUrl ?? '',
+              fit: BoxFit.cover,
+              useOldImageOnUrlChange: true,
+              placeholder: (context, url) => Shimmer.fromColors(
+                baseColor: Colors.grey.shade300,
+                highlightColor: Colors.grey.shade100,
+                child: Container(
+                  color: Colors.grey,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // title
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            item.title ?? '',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+
+        // description
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width * 0.56,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            item.desc ?? '',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF4F4F4F),
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
           ),
         ),
 
@@ -2205,124 +2458,8 @@ class _CustomCarouselState extends State<CustomCarousel> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      if (uspController.isLoading.value) {
-        // show shimmer carousel
-        return CarouselSlider(
-          options: CarouselOptions(
-            height: 190,
-            viewportFraction: 0.47,
-            enableInfiniteScroll: false,
-            padEnds: false,
-          ),
-          items: List.generate(
-            4, // show 4 shimmer items
-            (_) => _buildShimmerItem(context),
-          ),
-        );
-      }
-
-      final uspData = uspController.uspResponse.value?.data ?? [];
-      if (uspData.isEmpty) {
-        return const Center(child: Text("No USP found"));
-      }
-
-      final items = uspData.map((item) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // image
-            Container(
-              height: 106,
-              width: MediaQuery.of(context).size.width * 0.56,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(8)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(8)),
-                child: Image.network(
-                  item.imgUrl ?? '',
-                  fit: BoxFit.fill,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-              ),
-            ),
-
-            // title
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              color: Colors.white,
-              width: MediaQuery.of(context).size.width * 0.56,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                item.title ?? '',
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-
-            // description
-            Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              color: Colors.white,
-              width: MediaQuery.of(context).size.width * 0.56,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                item.desc ?? '',
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF4F4F4F)),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ),
-
-            // bottom filler
-            Container(
-              width: MediaQuery.of(context).size.width * 0.56,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 10,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
-              ),
-            ),
-          ],
-        );
-      }).toList();
-
-      return CarouselSlider(
-        options: CarouselOptions(
-          height: 190,
-          viewportFraction: 0.47,
-          enableInfiniteScroll: false,
-          padEnds: false,
-          enlargeCenterPage: false,
-        ),
-        items: items,
-      );
-    });
-  }
+  bool get wantKeepAlive => true;
 }
-
 class CustomTabBar extends StatefulWidget {
   const CustomTabBar({super.key});
 
