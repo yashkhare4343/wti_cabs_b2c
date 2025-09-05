@@ -685,7 +685,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
             }
 
             return DraggableScrollableSheet(
-              initialChildSize: 0.75,
+              initialChildSize: 0.58,
               minChildSize: 0.5,
               maxChildSize: 0.95,
               expand: false,
@@ -701,42 +701,42 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           // Header banner
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFF6DD),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Invite & Earn!",
-                                        style: CommonFonts.heading1Bold,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        "Invite your Friends & Get Up to",
-                                        style: CommonFonts.bodyText6,
-                                      ),
-                                      Text("INR 2000*",
-                                          style: CommonFonts.bodyText6Bold),
-                                    ],
-                                  ),
-                                ),
-                                Image.asset('assets/images/offer.png',
-                                    width: 85, height: 85),
-                              ],
-                            ),
-                          ),
+                          // Container(
+                          //   width: double.infinity,
+                          //   padding: const EdgeInsets.all(16),
+                          //   decoration: const BoxDecoration(
+                          //     color: Color(0xFFFFF6DD),
+                          //     borderRadius: BorderRadius.only(
+                          //       topLeft: Radius.circular(12),
+                          //       topRight: Radius.circular(12),
+                          //     ),
+                          //   ),
+                          //   child: Row(
+                          //     children: [
+                          //       Expanded(
+                          //         child: Column(
+                          //           crossAxisAlignment:
+                          //               CrossAxisAlignment.start,
+                          //           children: [
+                          //             Text(
+                          //               "Invite & Earn!",
+                          //               style: CommonFonts.heading1Bold,
+                          //             ),
+                          //             const SizedBox(height: 8),
+                          //             Text(
+                          //               "Invite your Friends & Get Up to",
+                          //               style: CommonFonts.bodyText6,
+                          //             ),
+                          //             Text("INR 2000*",
+                          //                 style: CommonFonts.bodyText6Bold),
+                          //           ],
+                          //         ),
+                          //       ),
+                          //       Image.asset('assets/images/offer.png',
+                          //           width: 85, height: 85),
+                          //     ],
+                          //   ),
+                          // ),
 
                           // Form section
                           Padding(
