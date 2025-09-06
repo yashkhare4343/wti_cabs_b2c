@@ -60,13 +60,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDeB-dvxw6ZEfHAf1RaGLHsXqNc5LTPRGo',
-    appId: '1:880138699529:ios:d15afed9cc97e6dfacc9d8',
+    appId: '1:880138699529:ios:0fa48ed597aef650acc9d8',
     messagingSenderId: '880138699529',
     projectId: 'wticabs-a98bb',
     storageBucket: 'wticabs-a98bb.firebasestorage.app',
     androidClientId: '880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com',
-    iosClientId: '880138699529-sk8hpragkimnim2g1s9ma48b6je2ov97.apps.googleusercontent.com',
-    iosBundleId: 'com.wti.user.wtiCabsUser',
+    iosClientId: '880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh.apps.googleusercontent.com',
+    iosBundleId: 'com.aaveg.wticabs',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

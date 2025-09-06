@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>880138699529-sk8hpragkimnim2g1s9ma48b6je2ov97.apps.googleusercontent.com</string>
+	<string>880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.880138699529-sk8hpragkimnim2g1s9ma48b6je2ov97</string>
+	<string>com.googleusercontent.apps.880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.wti.user.wtiCabsUser</string>
+	<string>com.aaveg.wticabs</string>
 	<key>PROJECT_ID</key>
 	<string>wticabs-a98bb</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:880138699529:ios:d15afed9cc97e6dfacc9d8</string>
+	<string>1:880138699529:ios:0fa48ed597aef650acc9d8</string>
 </dict>
 </plist>

@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "880138699529-let5c55aavfhkch0nlgddoe8115o1juc.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.wti.cabbooking",
-            "certificate_hash": "26b80713ce5dc2a726921dfa7b1788cc1496c61d"
-          }
-        },
-        {
           "client_id": "880138699529-r4ajjnfdamjhjrmjisbanlsb38ckulvc.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

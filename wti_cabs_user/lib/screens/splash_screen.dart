@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:wti_cabs_user/core/model/version_check/version_check_response.dart';
 
+import '../core/controller/version_check/version_check_controller.dart';
 import '../core/route_management/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -29,6 +34,7 @@ class VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  final VersionCheckController versionCheckController = Get.put(VersionCheckController());
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   DateTime? _startTime;
@@ -50,12 +56,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller.setLooping(false);
     // Add listener to detect video completion
     _controller.addListener(_videoListener);
+    versionCheckController.verifyAppCompatibity(context: context);
+  }
+
+  Future<void> redirectToWeb(String url) async {
+    final Uri uri = Uri.parse(url);
+
+    if (!await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication, // 🔥 opens in browser, not in-app
+    )) {
+      throw Exception("Could not launch $url");
+    }
   }
 
   void _videoListener() async {
     if (_controller.value.position >= _controller.value.duration) {
       // Video has completed, ensure minimum 2-second delay
-      final elapsed = DateTime.now().difference(_startTime!).inSeconds;
+      final elapsed = DateTime
+          .now()
+          .difference(_startTime!)
+          .inSeconds;
       if (elapsed < 2) {
         await Future.delayed(Duration(seconds: 2 - elapsed));
       }
@@ -66,11 +87,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final prefs = await SharedPreferences.getInstance();
       final isFirstTime = prefs.getBool("isFirstTime") ?? true;
 
-      if (isFirstTime) {
-        await prefs.setBool("isFirstTime", false);
-        GoRouter.of(context).go(AppRoutes.walkthrough);
+      if (versionCheckController.versionCheckResponse.value?.isCompatible == true) {
+        if (isFirstTime) {
+          await prefs.setBool("isFirstTime", false);
+          GoRouter.of(context).go(AppRoutes.walkthrough);
+        } else {
+          GoRouter.of(context).go(AppRoutes.bottomNav);
+        }
       } else {
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        final Uri uri = Uri.parse('https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       }
     }
   }

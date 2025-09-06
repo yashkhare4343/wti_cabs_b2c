@@ -16,6 +16,7 @@ import 'package:get_it/get_it.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/version_check/version_check_controller.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
@@ -183,6 +184,7 @@ class _MyAppState extends State<MyApp> {
   final UspController uspController = Get.put(UspController());
   final BannerController bannerController = Get.put(BannerController());
   final ConnectivityController connectivityController = Get.put(ConnectivityController());
+  final VersionCheckController versionCheckController = Get.put(VersionCheckController());
 
 
 
@@ -341,6 +343,8 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _fcmToken = token;
     });
+
+    versionCheckController.fcmToken.value = token??'';
 
     // Local notifications
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
