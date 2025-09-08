@@ -30,8 +30,9 @@ import 'package:timezone/timezone.dart' as tz;
 
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
+  final bool? fromFinalBookingPage;
 
-  const InventoryList({super.key, required this.requestData});
+  const InventoryList({super.key, required this.requestData, this.fromFinalBookingPage});
 
   @override
   State<InventoryList> createState() => _InventoryListState();
@@ -73,7 +74,7 @@ class _InventoryListState extends State<InventoryList> {
     });
     // Show dialog after data is loaded and UI is rendered
     if (mounted) {
-      await loadTripCode(context);
+     widget.fromFinalBookingPage == true ? null : await loadTripCode(context);
     }
   }
 

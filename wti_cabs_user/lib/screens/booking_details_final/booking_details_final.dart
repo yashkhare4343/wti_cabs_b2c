@@ -121,10 +121,15 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).push(
-          AppRoutes.inventoryList,
-          extra: bookingRideController.requestData.value,
-        );        // GoRouter.of(context).pop();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InventoryList(
+              requestData: bookingRideController.requestData.value,
+              fromFinalBookingPage: true,
+            ),
+          ),
+        );   // GoRouter.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -1231,10 +1236,15 @@ class _BookingTopBarState extends State<BookingTopBar> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         leading: GestureDetector(
           onTap: () {
-            GoRouter.of(context).push(
-              AppRoutes.inventoryList,
-              extra: bookingRideController.requestData.value,
-            );              // GoRouter.of(context).push(AppRoutes.inventoryList);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => InventoryList(
+                  requestData: bookingRideController.requestData.value,
+                  fromFinalBookingPage: true,
+                ),
+              ),
+            );
           },
           child: Container(
             padding: const EdgeInsets.all(5),
