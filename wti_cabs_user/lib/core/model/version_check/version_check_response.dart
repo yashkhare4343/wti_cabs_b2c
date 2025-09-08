@@ -23,25 +23,25 @@ class VersionCheckResponse {
 }
 
 // fcm response
-class UpdateFcmToken {
-  final bool? isCompatible;
+class UpdateFcmTokenResponse {
+  final bool? success;
   final String? message;
 
-  UpdateFcmToken({
-    this.isCompatible,
+  UpdateFcmTokenResponse({
+    this.success,
     this.message,
   });
 
-  factory UpdateFcmToken.fromJson(Map<String, dynamic> json) {
-    return UpdateFcmToken(
-      isCompatible: json['isCompatible'] as bool?,
+  factory UpdateFcmTokenResponse.fromJson(Map<String, dynamic> json) {
+    return UpdateFcmTokenResponse(
+      success: json['success'] as bool?,
       message: json['message'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'isCompatible': isCompatible,
+      'success': success,
       'message': message,
     };
   }

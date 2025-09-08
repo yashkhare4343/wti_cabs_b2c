@@ -73,15 +73,17 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     WidgetsBinding.instance.addObserver(this);
     // Fetch location and show bottom sheet
     _setStatusBarColor();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      upcomingBookingController.isLoggedIn.value == true
-          ? null
-          : _showAuthBottomSheet();
-    });
+
   }
 
   void homeApiLoading() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
+
     await popularDestinationController.fetchPopularDestinations();
+    await StorageServices.instance.read('token') != null
+        ? null
+        : _showAuthBottomSheet();
+    });
     // await uspController.fetchUsps();
     // await bannerController.fetchImages();
   }
@@ -91,6 +93,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     super.didChangeDependencies();
     // Reapply status bar color when dependencies change (e.g., navigation)
     _setStatusBarColor();
+
   }
 
   @override

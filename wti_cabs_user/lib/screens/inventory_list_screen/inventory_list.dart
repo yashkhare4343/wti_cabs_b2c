@@ -278,7 +278,7 @@ class _InventoryListState extends State<InventoryList> {
                               _country?.toLowerCase() == 'india'
                                   ? TextSpan(
                                       text:
-                                          '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?.first.baseKm ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0')} Kms',
+                                          '${searchCabInventoryController.indiaData.value?.result?.tripType?.distanceBooked ?? int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.packageId?.split("_")[1] ?? '0')} Kms',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold),
                                     )

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
 import 'package:wti_cabs_user/core/model/auth/register/register_response.dart';
 import 'package:wti_cabs_user/core/model/version_check/version_check_response.dart';
@@ -11,6 +12,7 @@ import '../../services/storage_services.dart';
 
 class VersionCheckController extends GetxController {
   Rx<VersionCheckResponse?> versionCheckResponse = Rx<VersionCheckResponse?>(null);
+  Rx<UpdateFcmTokenResponse?> updateFcmTokenResponse = Rx<UpdateFcmTokenResponse?>(null);
   RxBool isLoading = false.obs;
   RxBool isAppCompatible = true.obs;
   RxString fcmToken = ''.obs;
@@ -23,6 +25,7 @@ class VersionCheckController extends GetxController {
     isLoading.value = true;
     Future<Map<String, dynamic>> buildRequestData() async {
       final packageInfo = await PackageInfo.fromPlatform();
+      print('current app version: ${packageInfo.version}');
 
       return {
         "platform": Platform.isAndroid ? "android" : "ios",
@@ -38,10 +41,36 @@ class VersionCheckController extends GetxController {
       );
       versionCheckResponse.value = response;
       isAppCompatible.value = versionCheckResponse.value?.isCompatible??true;
+     await updateFcm(context: context);
       print('app compitable : ${isAppCompatible.value}');
     } finally {
       isLoading.value = false;
     }
   }
 
+  Future<void> updateFcm({
+    required BuildContext context,
+  }) async {
+
+    isLoading.value = true;
+    Future<Map<String, dynamic>> buildRequestData() async {
+
+      return {
+        "userId": null,
+        "fcmToken": fcmToken.value
+      };
+    }
+    try {
+      final response = await ApiService().postRequestNew<UpdateFcmTokenResponse>(
+        'notification/updateFcmToken',
+        await buildRequestData(),
+        UpdateFcmTokenResponse.fromJson,
+        context,
+      );
+      updateFcmTokenResponse.value = response;
+      print('fcm token successs : ${updateFcmTokenResponse.value?.message}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 }

@@ -1867,7 +1867,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                       .indiaData.value?.result?.tripType?.currentTripCode ==
                   '2')
                 _buildTextField(
-                  label: 'Enter Flight Nu,ber',
+                  label: 'Enter Flight Number',
                   hint: "Enter Flight Number",
                   controller: flightNoController,
                   validator: (v) => null,

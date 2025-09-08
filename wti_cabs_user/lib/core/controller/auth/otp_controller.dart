@@ -64,11 +64,7 @@ class OtpController extends GetxController {
     }
   }
 
-
-
-// ... rest of your code ...
-
-
+  // ... rest of your code ...
 
   void decodeRefreshToken(String refreshToken) async{
     // 1. Get all decoded details as Map
