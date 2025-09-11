@@ -41,7 +41,9 @@ class VersionCheckController extends GetxController {
       );
       versionCheckResponse.value = response;
       isAppCompatible.value = versionCheckResponse.value?.isCompatible??true;
-     await updateFcm(context: context);
+      if(Platform.isAndroid) {
+        await updateFcm(context: context);
+      }
       print('app compitable : ${isAppCompatible.value}');
     } finally {
       isLoading.value = false;

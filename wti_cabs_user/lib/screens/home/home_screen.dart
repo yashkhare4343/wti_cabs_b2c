@@ -6,6 +6,7 @@ import 'package:another_flushbar/flushbar.dart';
 import 'package:carousel_slider/carousel_options.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
@@ -43,6 +44,7 @@ import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../../firebase_options.dart';
+import '../../main.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
@@ -406,11 +408,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (result != null) {
         Navigator.of(context).push(
-          MaterialPageRoute(
+          Platform.isIOS
+              ? CupertinoPageRoute(
             builder: (_) => UserFillDetails(
-                name: result?.user?.displayName ?? '',
-                email: result?.user?.email ?? '',
-                phone: result?.user?.phoneNumber ?? ''), // your login widget
+              name: result?.user?.displayName ?? '',
+              email: result?.user?.email ?? '',
+              phone: result?.user?.phoneNumber ?? '',
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+              name: result?.user?.displayName ?? '',
+              email: result?.user?.email ?? '',
+              phone: result?.user?.phoneNumber ?? '',
+            ),
           ),
         );
         // // ✅ Prefill controllers
@@ -834,11 +845,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setModalState(() => isGoogleLoading = false);
 
       Navigator.of(context).push(
-        MaterialPageRoute(
+        Platform.isIOS
+            ? CupertinoPageRoute(
           builder: (_) => UserFillDetails(
-              name: result?.user?.displayName ?? '',
-              email: result?.user?.email ?? '',
-              phone: result?.user?.phoneNumber ?? ''), // your login widget
+            name: result?.user?.displayName ?? '',
+            email: result?.user?.email ?? '',
+            phone: result?.user?.phoneNumber ?? '',
+          ),
+        )
+            : MaterialPageRoute(
+          builder: (_) => UserFillDetails(
+            name: result?.user?.displayName ?? '',
+            email: result?.user?.email ?? '',
+            phone: result?.user?.phoneNumber ?? '',
+          ),
         ),
       );
 
@@ -1215,13 +1235,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                 Navigator.of(context)
                                                     .pop(); // close current sheet
                                                 Navigator.of(context).push(
-                                                  MaterialPageRoute(
-                                                    builder: (_) => UserFillDetails(
-                                                        name: '',
-                                                        email: '',
-                                                        phone: ''), // your login widget
+                                                  Platform.isIOS
+                                                      ? CupertinoPageRoute(
+                                                    builder: (_) => const UserFillDetails(
+                                                      name: '',
+                                                      email: '',
+                                                      phone: '',
+                                                    ),
+                                                  )
+                                                      : MaterialPageRoute(
+                                                    builder: (_) => const UserFillDetails(
+                                                      name: '',
+                                                      email: '',
+                                                      phone: '',
+                                                    ),
                                                   ),
-                                                );   // open register sheet
+                                                );  // open register sheet
                                               },
                                               child: Text(
                                                   "Don't have an account? Register"),
@@ -1573,10 +1602,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+                                Platform.isIOS
+                                    ? CupertinoPageRoute(
+                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                                )
+                                    : MaterialPageRoute(
+                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
                                 ),
-                              );                             },
+                              );                            },
                             child: Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -1588,10 +1621,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 onTap: (){
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+                                    Platform.isIOS
+                                        ? CupertinoPageRoute(
+                                      builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                                    )
+                                        : MaterialPageRoute(
+                                      builder: (context) => const SelectDrop(fromInventoryScreen: false),
                                     ),
-                                  );                                 },
+                                  );                                },
                                 // onTap: () {
                                 //   if (placeSearchController
                                 //       .suggestions.isEmpty) {
@@ -1702,7 +1739,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 0;
-                              GoRouter.of(context).push(AppRoutes.bookingRide);
+                              if(Platform.isAndroid) {
+                                GoRouter.of(context).push(
+                                    AppRoutes.bookingRide);
+                              }
+                              else {
+                                navigatorKey.currentContext?.push(
+                                    AppRoutes.bookingRide);
+                              }
                             },
                             child: Container(
                               decoration: BoxDecoration(
@@ -1744,8 +1788,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 splashColor: Colors.transparent,
                                 onTap: () {
                                   bookingRideController.selectedIndex.value = 1;
-                                  GoRouter.of(context).push(AppRoutes.bookingRide);
-                                },
+                                  if(Platform.isAndroid) {
+                                    GoRouter.of(context).push(
+                                        AppRoutes.bookingRide);
+                                  }
+                                  else {
+                                    navigatorKey.currentContext?.push(
+                                        AppRoutes.bookingRide);
+                                  }                                },
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -1806,8 +1856,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 2;
-                              GoRouter.of(context).push(AppRoutes.bookingRide);
-                            },
+                              if(Platform.isAndroid) {
+                                GoRouter.of(context).push(
+                                    AppRoutes.bookingRide);
+                              }
+                              else {
+                                navigatorKey.currentContext?.push(
+                                    AppRoutes.bookingRide);
+                              }                            },
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -2915,10 +2971,20 @@ class _RecentTripListState extends State<RecentTripList> {
 
                       // 🚀 2. Navigate immediately
                       FocusScope.of(context).unfocus();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                      PageRoute platformPageRoute(Widget child) {
+                        if (Platform.isIOS) {
+                          return CupertinoPageRoute(builder: (_) => const SelectDrop(fromInventoryScreen: false));
+                        } else {
+                          return MaterialPageRoute(builder: (_) => const SelectDrop(fromInventoryScreen: false));
+                        }
+                      }
+                      Navigator.of(context).push(
+                        Platform.isIOS
+                            ? CupertinoPageRoute(
+                          builder: (_) => const SelectDrop(fromInventoryScreen: false),
+                        )
+                            : MaterialPageRoute(
+                          builder: (_) => const SelectDrop(fromInventoryScreen: false),
                         ),
                       );
                       // 🧠 3. Background work (fire-and-forget, non-blocking)
@@ -3071,10 +3137,13 @@ class _RecentTripListState extends State<RecentTripList> {
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                    Navigator.of(context).push(
+                      Platform.isIOS
+                          ? CupertinoPageRoute(
+                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
+                      )
+                          : MaterialPageRoute(
+                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
                       ),
                     );
                     // 🧠 3. Background work (fire-and-forget, non-blocking)
@@ -3189,10 +3258,13 @@ class _RecentTripListState extends State<RecentTripList> {
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                    Navigator.of(context).push(
+                      Platform.isIOS
+                          ? CupertinoPageRoute(
+                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
+                      )
+                          : MaterialPageRoute(
+                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
                       ),
                     );
                     // 🧠 3. Background work (fire-and-forget, non-blocking)

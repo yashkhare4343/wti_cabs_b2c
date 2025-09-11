@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
@@ -27,6 +30,8 @@ import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/model/inventory/india_response.dart';
 import '../../core/services/storage_services.dart';
 import 'package:timezone/timezone.dart' as tz;
+
+import '../bottom_nav/bottom_nav.dart';
 
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
@@ -168,11 +173,18 @@ class _InventoryListState extends State<InventoryList> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return PopScope(
-        canPop: false,
+        canPop: true,
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value = 0;
-          GoRouter.of(context).pop();
-          GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
+          final tabName = bookingRideController.currentTabName;
+          final route = tabName == 'rental'
+              ? '${AppRoutes.bookingRide}?tab=airport'
+              : '${AppRoutes.bookingRide}?tab=airport';
+          GoRouter.of(context).push(
+              route,
+              extra: (context) => Platform.isIOS
+              ? CupertinoPage(child: const BottomNavScreen())
+              : MaterialPage(child: const BottomNavScreen()));
         },
         child: Scaffold(
           backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -189,11 +201,18 @@ class _InventoryListState extends State<InventoryList> {
         (isIndia && indiaData == null) ||
         (!isIndia && globalData == null)) {
       return PopScope(
-        canPop: false,
+        canPop: true,
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value = 0;
-          GoRouter.of(context).pop();
-          GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
+          final tabName = bookingRideController.currentTabName;
+          final route = tabName == 'rental'
+              ? '${AppRoutes.bookingRide}?tab=airport'
+              : '${AppRoutes.bookingRide}?tab=airport';
+          GoRouter.of(context).push(
+              route,
+              extra: (context) => Platform.isIOS
+                  ? CupertinoPage(child: const BottomNavScreen())
+                  : MaterialPage(child: const BottomNavScreen()));
         },
         child: Scaffold(
           body: Center(child: FullPageShimmer()),
@@ -205,11 +224,18 @@ class _InventoryListState extends State<InventoryList> {
     final globalList = globalData?.result ?? [];
 
     return PopScope(
-      canPop: false,
+      canPop: true,
       onPopInvoked: (didPop) {
         bookingRideController.selectedIndex.value = 0;
-        GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
-        GoRouter.of(context).pop();
+        final tabName = bookingRideController.currentTabName;
+        final route = tabName == 'rental'
+            ? '${AppRoutes.bookingRide}?tab=airport'
+            : '${AppRoutes.bookingRide}?tab=airport';
+        GoRouter.of(context).push(
+            route,
+            extra: (context) => Platform.isIOS
+                ? CupertinoPage(child: const BottomNavScreen())
+                : MaterialPage(child: const BottomNavScreen()));
 
       },
       child: Scaffold(
@@ -227,7 +253,6 @@ class _InventoryListState extends State<InventoryList> {
                 //     SelectedPackageCard(controller: fetchPackageController),
                 //   ],
                 // ),
-                const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() {
                     final isIndia =
@@ -691,10 +716,18 @@ class _InventoryListState extends State<InventoryList> {
             .then((value) {
           Navigator.push(
             context,
-            MaterialPageRoute(
+            Platform.isIOS
+                ? CupertinoPageRoute(
               builder: (context) => BookingDetailsFinal(
-                  totalKms: tripDetails.totalDistance ?? 0.0,
-                  endTime: tripDetails.dropDateTime),
+                totalKms: tripDetails.totalDistance ?? 0.0,
+                endTime: tripDetails.dropDateTime,
+              ),
+            )
+                : MaterialPageRoute(
+              builder: (context) => BookingDetailsFinal(
+                totalKms: tripDetails.totalDistance ?? 0.0,
+                endTime: tripDetails.dropDateTime,
+              ),
             ),
           );
         });
@@ -1097,7 +1130,15 @@ class _BookingTopBarState extends State<BookingTopBar> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         leading: GestureDetector(
           onTap: () {
-            GoRouter.of(context).go('${AppRoutes.bookingRide}?tab=airport');
+            final tabName = bookingRideController.currentTabName;
+            final route = tabName == 'rental'
+                ? '${AppRoutes.bookingRide}?tab=airport'
+                : '${AppRoutes.bookingRide}?tab=airport';
+            GoRouter.of(context).push(
+                route,
+                extra: (context) => Platform.isIOS
+                    ? CupertinoPage(child: const BottomNavScreen())
+                    : MaterialPage(child: const BottomNavScreen()));
             GoRouter.of(context).pop();
           },
           child: Container(

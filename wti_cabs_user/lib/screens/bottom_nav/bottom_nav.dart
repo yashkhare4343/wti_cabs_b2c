@@ -80,9 +80,9 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async{
 
     await popularDestinationController.fetchPopularDestinations();
-    await StorageServices.instance.read('token') != null
-        ? null
-        : _showAuthBottomSheet();
+    // await StorageServices.instance.read('token') != null
+    //     ? null
+    //     : _showAuthBottomSheet();
     });
     // await uspController.fetchUsps();
     // await bannerController.fetchImages();

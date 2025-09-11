@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
@@ -22,106 +25,114 @@ import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
 
-class AppPages{
+class AppPages {
+  static Page _platformPage(Widget child) {
+    if (Platform.isIOS) {
+      return CupertinoPage(child: child);
+    }
+    return MaterialPage(child: child);
+  }
+
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     routes: [
       GoRoute(
         path: AppRoutes.initialPage,
-        builder: (context, state) => SplashScreen(),
+        pageBuilder: (context, state) => _platformPage(SplashScreen()),
       ),
       GoRoute(
         path: AppRoutes.walkthrough,
-        builder: (context, state) => Walkthrough(),
+        pageBuilder: (context, state) => _platformPage(Walkthrough()),
       ),
       GoRoute(
         path: AppRoutes.bottomNav,
-        builder: (context, state) => BottomNavScreen(),
+        pageBuilder: (context, state) => _platformPage(BottomNavScreen()),
       ),
 
       GoRoute(
         path: AppRoutes.bookingRide,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final tab = state.uri.queryParameters['tab'];
-          return BookingRide(initialTab: tab);
+          return _platformPage(BookingRide(initialTab: tab));
         },
       ),
       GoRoute(
         path: AppRoutes.choosePickup,
-        builder: (context, state) => SelectPickup(),
+        pageBuilder: (context, state) => _platformPage(SelectPickup()),
       ),
       GoRoute(
         path: AppRoutes.chooseDrop,
-        builder: (context, state) => SelectDrop(),
+        pageBuilder: (context, state) => _platformPage(SelectDrop()),
       ),
       GoRoute(
         path: AppRoutes.airportChoosePick,
-        builder: (context, state) => AirportSelectPickup(),
+        pageBuilder: (context, state) => _platformPage(AirportSelectPickup()),
       ),
       GoRoute(
         path: AppRoutes.airportChooseDrop,
-        builder: (context, state) => AirportSelectPickup(),
+        pageBuilder: (context, state) => _platformPage(AirportSelectPickup()),
       ),
       GoRoute(
         path: AppRoutes.inventoryList,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final requestData = state.extra as Map<String, dynamic>;
-          return InventoryList(requestData: requestData);
+          return _platformPage(InventoryList(requestData: requestData));
         },
       ),
       GoRoute(
         path: AppRoutes.bookingDetailsFinal,
-        builder: (context, state) => BookingDetailsFinal(),
+        pageBuilder: (context, state) => _platformPage(BookingDetailsFinal()),
       ),
       GoRoute(
         path: AppRoutes.paymentSuccess,
-        builder: (context, state) => PaymentSuccessPage(),
+        pageBuilder: (context, state) => _platformPage(PaymentSuccessPage()),
       ),
       GoRoute(
         path: AppRoutes.paymentFailure,
-        builder: (context, state) {
-          final Map<String, dynamic>? provisionalData = state.extra as Map<String, dynamic>?;
-          return PaymentFailurePage(provisionalData: provisionalData);
-        },      ),
+        pageBuilder: (context, state) {
+          final Map<String, dynamic>? provisionalData =
+          state.extra as Map<String, dynamic>?;
+          return _platformPage(PaymentFailurePage(provisionalData: provisionalData));
+        },
+      ),
       GoRoute(
         path: AppRoutes.offers,
-        builder: (context, state) => Offers(),
+        pageBuilder: (context, state) => _platformPage(Offers()),
       ),
       GoRoute(
         path: AppRoutes.profile,
-        builder: (context, state) => Profile(),
+        pageBuilder: (context, state) => _platformPage(Profile()),
       ),
       GoRoute(
         path: AppRoutes.manageBookings,
-        builder: (context, state) => ManageBookings(),
+        pageBuilder: (context, state) => _platformPage(ManageBookings()),
       ),
       GoRoute(
         path: AppRoutes.cancelBooking,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final bookingMap = state.extra as Map<String, dynamic>;
-          return CancelBookingScreen(booking: bookingMap);
+          return _platformPage(CancelBookingScreen(booking: bookingMap));
         },
       ),
       GoRoute(
         path: AppRoutes.cancelledBooking,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final bookingMap = state.extra as Map<String, dynamic>;
-          return CancelledBookingScreen(booking: bookingMap);
+          return _platformPage(CancelledBookingScreen(booking: bookingMap));
         },
       ),
       GoRoute(
         path: AppRoutes.selectCurrency,
-        builder: (context, state) => SelectCurrencyScreen(),
+        pageBuilder: (context, state) => _platformPage(SelectCurrencyScreen()),
       ),
       GoRoute(
         path: AppRoutes.splash,
-        builder: (context, state) => SplashScreen(),
+        pageBuilder: (context, state) => _platformPage(SplashScreen()),
       ),
       GoRoute(
         path: AppRoutes.contact,
-        builder: (context, state) => Contact(),
+        pageBuilder: (context, state) => _platformPage(Contact()),
       ),
-
     ],
   );
 }

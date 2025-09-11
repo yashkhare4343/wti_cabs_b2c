@@ -43,6 +43,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     super.initState();
     // Record start time for minimum delay
+    fetchVersion();
     _startTime = DateTime.now();
     // Initialize the video player with a network video URL
     _controller = VideoPlayerController.asset(
@@ -56,7 +57,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller.setLooping(false);
     // Add listener to detect video completion
     _controller.addListener(_videoListener);
-    versionCheckController.verifyAppCompatibity(context: context);
+  }
+
+  void fetchVersion() async{
+    await versionCheckController.verifyAppCompatibity(context: context);
   }
 
   Future<void> redirectToWeb(String url) async {

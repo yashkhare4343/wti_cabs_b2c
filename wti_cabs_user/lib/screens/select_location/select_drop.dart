@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
+import '../bottom_nav/bottom_nav.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 
 class SelectDrop extends StatefulWidget {
@@ -106,7 +109,7 @@ class _SelectDropState extends State<SelectDrop> {
                   dropController.text = newSuggestion.primaryText;
                   bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
                   FocusScope.of(context).unfocus();
-                  GoRouter.of(context).pop();
+                  Navigator.of(context).pop();
                 },
               ),
             ),
@@ -180,10 +183,14 @@ class _SelectDropState extends State<SelectDrop> {
       final route = tabName == 'rental'
           ? '${AppRoutes.bookingRide}?tab=rental'
           : '${AppRoutes.bookingRide}?tab=$tabName';
-      GoRouter.of(context).go(route);
-    }
+      GoRouter.of(context).push(
+        route,
+        extra: (context) => Platform.isIOS
+            ? CupertinoPage(child: const BottomNavScreen())
+            : MaterialPage(child: const BottomNavScreen()),
+      );    }
     else{
-      GoRouter.of(context).pop();
+      Navigator.of(context).pop();
     }
     FocusScope.of(context).unfocus();
 

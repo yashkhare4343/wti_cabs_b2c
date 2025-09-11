@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -118,18 +120,25 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // 🚀 Stops the default "pop and close app"
+      canPop: true, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
         Navigator.push(
           context,
-          MaterialPageRoute(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (context) => InventoryList(
+              requestData: bookingRideController.requestData.value,
+              fromFinalBookingPage: true,
+            ),
+          )
+              : MaterialPageRoute(
             builder: (context) => InventoryList(
               requestData: bookingRideController.requestData.value,
               fromFinalBookingPage: true,
             ),
           ),
-        );   // GoRouter.of(context).pop();
+        );  // GoRouter.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,

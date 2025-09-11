@@ -393,22 +393,38 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      return connectivityController.isOnline.value
-          ? GetMaterialApp.router(
-        routerDelegate: AppPages.router.routerDelegate,
-        routeInformationParser: AppPages.router.routeInformationParser,
-        routeInformationProvider: AppPages.router.routeInformationProvider,
-        title: StringConstants.title,
-        debugShowCheckedModeBanner: false, // ✅ removes debug banner
-      )
-          : MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home:  NoInternetScreen(
-          onRetry: () => connectivityController.checkInitialConnection(),
-        ),
-      );
+    // return Obx(() {
+      return GetMaterialApp.router(
+      routerDelegate: AppPages.router.routerDelegate,
+      routeInformationParser: AppPages.router.routeInformationParser,
+      routeInformationProvider: AppPages.router.routeInformationProvider,
+      title: StringConstants.title,
+      debugShowCheckedModeBanner: false, // ✅ removes debug banner
+    );
+      //   connectivityController.isOnline.value
+      //     ? GetMaterialApp.router(
+      //   routerDelegate: AppPages.router.routerDelegate,
+      //   routeInformationParser: AppPages.router.routeInformationParser,
+      //   routeInformationProvider: AppPages.router.routeInformationProvider,
+      //   title: StringConstants.title,
+      //   debugShowCheckedModeBanner: false, // ✅ removes debug banner
+      // ) :
+      //   GetMaterialApp.router(
+      //   routerDelegate: AppPages.router.routerDelegate,
+      //   routeInformationParser: AppPages.router.routeInformationParser,
+      //   routeInformationProvider: AppPages.router.routeInformationProvider,
+      //   title: StringConstants.title,
+      //   debugShowCheckedModeBanner: false, // ✅ removes debug banner
+      // );
 
-    });
+      // ===== ye internet error page hai ======
+      //     : MaterialApp(
+      //   debugShowCheckedModeBanner: false,
+      //   home:  NoInternetScreen(
+      //     onRetry: () => connectivityController.checkInitialConnection(),
+      //   ),
+      // );
+
+    // });
   }}
 

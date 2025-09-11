@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -20,6 +22,8 @@ import 'package:wti_cabs_user/core/controller/button_state_controller/button_sta
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
 import '../../common_widget/datepicker/drop_date_picker.dart';
 import '../../common_widget/time_picker/drop_time_picker.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
@@ -27,6 +31,7 @@ import '../../core/controller/rental_controller/fetch_package_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
+import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
 
 class BookingRide extends StatefulWidget {
@@ -72,10 +77,10 @@ class _BookingRideState extends State<BookingRide> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // 🚀 Stops the default "pop and close app"
+      canPop: true, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        GoRouter.of(context).push(AppRoutes.bottomNav);
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
@@ -93,7 +98,7 @@ class _BookingRideState extends State<BookingRide> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        GoRouter.of(context).go(AppRoutes.bottomNav);
+                        GoRouter.of(context).push(AppRoutes.bottomNav);
                       },
                       child:
                       const Icon(Icons.arrow_back, color: AppColors.blue4),
@@ -671,8 +676,17 @@ class _OutStationState extends State<OutStation> {
                         }
 
                         bookingRideController.localEndTime.refresh();
-                        GoRouter.of(context).push(AppRoutes.inventoryList, extra: requestData);
-                        GoRouter.of(context).pop();
+                        Navigator.push(
+                          context,
+                          Platform.isIOS
+                              ? CupertinoPageRoute(
+                            builder: (context) => InventoryList(requestData: requestData),
+                          )
+                              : MaterialPageRoute(
+                            builder: (context) => InventoryList(requestData: requestData),
+                          ),
+                        );
+                        Navigator.of(context).pop();
                       } catch (e) {
                         debugPrint('[SearchNow] Error: $e');
                       }
@@ -725,10 +739,26 @@ class _OutStationState extends State<OutStation> {
     }
 
     if (isPickup) {
-      GoRouter.of(context).push(AppRoutes.choosePickup);
-    } else {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const SelectDrop()));
-    }
+      Navigator.push(
+        context,
+        Platform.isIOS
+            ? CupertinoPageRoute(
+          builder: (context) => const SelectPickup(),
+        )
+            : MaterialPageRoute(
+          builder: (context) => const SelectPickup(),
+        ),
+      );    } else {
+      Navigator.push(
+        context,
+        Platform.isIOS
+            ? CupertinoPageRoute(
+          builder: (context) => const SelectDrop(),
+        )
+            : MaterialPageRoute(
+          builder: (context) => const SelectDrop(),
+        ),
+      );    }
   }
 
   String getDurationInHours(DateTime start, DateTime end) {
@@ -1140,8 +1170,16 @@ class _RidesState extends State<Rides> {
                                 bookingRideController.prefilledDrop.value;
                           });
                           bookingRideController.isInvalidTime.value = false;
-                          await GoRouter.of(context)
-                              .push(AppRoutes.choosePickup);
+                            Navigator.push(
+                              context,
+                              Platform.isIOS
+                                  ? CupertinoPageRoute(
+                                builder: (context) => const SelectPickup(),
+                              )
+                                  : MaterialPageRoute(
+                                builder: (context) => const SelectPickup(),
+                              ),
+                            );
                         },
                       ),
                       const SizedBox(height: 12),
@@ -1171,9 +1209,13 @@ class _RidesState extends State<Rides> {
                           })(),
                         onTap: () {
                           bookingRideController.isInvalidTime.value = false;
-                          Navigator.push(
+                            Navigator.push(
                               context,
-                              MaterialPageRoute(
+                              Platform.isIOS
+                                  ? CupertinoPageRoute(
+                                builder: (context) => const SelectDrop(),
+                              )
+                                  : MaterialPageRoute(
                                 builder: (context) => const SelectDrop(),
                               ),
                             );

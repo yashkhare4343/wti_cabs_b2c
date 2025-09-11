@@ -362,6 +362,7 @@ class ApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Authorization': 'Basic ${base64Encode(utf8.encode('harsh:123'))}',
+      'x-platform':'APP'
     };
 
     final mergedHeaders = {
