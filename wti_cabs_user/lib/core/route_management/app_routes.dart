@@ -19,4 +19,7 @@ class AppRoutes{
   static const String selectCurrency = '/selectCurrency';
   static const String splash = '/splash';
   static const String contact = '/contact';
+  static const String selfDriveHome = '/selfDriveHome';
+  static const String selfDriveAllInventory = '/selfDriveAllInventory';
+  static const String selfDriveFinalPageS1 = '/selfDriveFinalPageS1';
 }

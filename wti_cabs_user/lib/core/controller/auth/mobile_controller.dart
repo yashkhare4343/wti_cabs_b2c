@@ -1,6 +1,8 @@
+import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/model/auth/mobile/mobile_response.dart';
+import '../../../utility/constants/colors/app_colors.dart';
 import '../../api/api_services.dart';
 import '../../services/storage_services.dart';
 
@@ -27,7 +29,22 @@ class MobileController extends GetxController {
         print('print mobile data : ${mobileData.value}');
         await StorageServices.instance.save('mobileNo', mobile);
 
-    } finally {
+    }
+    catch(e){
+      Flushbar(
+        flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
+        margin: const EdgeInsets.all(12),
+        borderRadius: BorderRadius.circular(12),
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.error, color: Colors.white),
+        messageText: const Text(
+          "User does not exist, Please register first.",
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+      ).show(context);
+    }
+    finally {
       isLoading.value = false;
     }
   }

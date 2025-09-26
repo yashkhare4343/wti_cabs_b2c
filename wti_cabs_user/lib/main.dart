@@ -64,32 +64,6 @@ void serviceLocator() {
   getIt.registerSingleton<ApiService>(ApiService());
 }
 
-Future<bool> requestLocationPermission() async {
-  LocationPermission permission;
-
-  // Check current permission status
-  permission = await Geolocator.checkPermission();
-
-  if (permission == LocationPermission.denied) {
-    // Request permission
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      // Permission denied
-      print("Location permission denied");
-      return false;
-    }
-  }
-
-  if (permission == LocationPermission.deniedForever) {
-    // Permissions are denied forever
-    print("Location permission denied forever. Open settings.");
-    return false;
-  }
-
-  // Permission granted
-  print("Location permission granted");
-  return true;
-}
 
 
 void main() async {
@@ -137,15 +111,6 @@ void main() async {
 
     print('📥 Initializing FlutterDownloader');
     await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
-    bool locationGranted = await requestLocationPermission();
-    if (locationGranted) {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      print("🌍 Current location: ${position.latitude}, ${position.longitude}");
-    } else {
-      print("⚠️ Location permission not granted. You may need to request it later.");
-    }
-    print('🏁 Running App');
     await NotificationService().initialize();
     runApp(const MyApp());
   } catch (e, stack) {
@@ -155,18 +120,6 @@ void main() async {
 }
 
 
-
-// Example usage
-void checkAndGetLocation() async {
-  bool granted = await requestLocationPermission();
-  if (granted) {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    print("Current location: ${position.latitude}, ${position.longitude}");
-  } else {
-    // Show a dialog to open app settings if needed
-  }
-}
 
 
 class MyApp extends StatefulWidget {
@@ -196,34 +149,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   void homeApiLoading() async{
-  await popularDestinationController.fetchPopularDestinations();
-   await uspController.fetchUsps();
-   await bannerController.fetchImages();
-
-    fetchCurrentLocationAndAddress();
+    await popularDestinationController.fetchPopularDestinations();
+    await uspController.fetchUsps();
+    await bannerController.fetchImages();
   }
 
-  Future<void> fetchCurrentLocationAndAddress() async {
-    location.Location loc = location.Location();
-
-    bool serviceEnabled = await loc.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await loc.requestService();
-      if (!serviceEnabled) return;
-    }
-
-    location.PermissionStatus permissionGranted = await loc.hasPermission();
-    if (permissionGranted == location.PermissionStatus.denied) {
-      permissionGranted = await loc.requestPermission();
-      if (permissionGranted != location.PermissionStatus.granted) return;
-    }
-
-    final locData = await loc.getLocation();
-    if (locData.latitude != null && locData.longitude != null) {
-      final LatLng latLng = LatLng(locData.latitude!, locData.longitude!);
-      await _getAddressAndPrefillFromLatLng(latLng);
-    }
-  }
 
   Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
     try {
@@ -393,38 +323,21 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    // return Obx(() {
-      return GetMaterialApp.router(
-      routerDelegate: AppPages.router.routerDelegate,
-      routeInformationParser: AppPages.router.routeInformationParser,
-      routeInformationProvider: AppPages.router.routeInformationProvider,
-      title: StringConstants.title,
-      debugShowCheckedModeBanner: false, // ✅ removes debug banner
-    );
-      //   connectivityController.isOnline.value
-      //     ? GetMaterialApp.router(
-      //   routerDelegate: AppPages.router.routerDelegate,
-      //   routeInformationParser: AppPages.router.routeInformationParser,
-      //   routeInformationProvider: AppPages.router.routeInformationProvider,
-      //   title: StringConstants.title,
-      //   debugShowCheckedModeBanner: false, // ✅ removes debug banner
-      // ) :
-      //   GetMaterialApp.router(
-      //   routerDelegate: AppPages.router.routerDelegate,
-      //   routeInformationParser: AppPages.router.routeInformationParser,
-      //   routeInformationProvider: AppPages.router.routeInformationProvider,
-      //   title: StringConstants.title,
-      //   debugShowCheckedModeBanner: false, // ✅ removes debug banner
-      // );
+    return Obx(() {
+      return connectivityController.isOnline.value
+          ? GetMaterialApp.router(
+        routerDelegate: AppPages.router.routerDelegate,
+        routeInformationParser: AppPages.router.routeInformationParser,
+        routeInformationProvider: AppPages.router.routeInformationProvider,
+        title: StringConstants.title,
+        debugShowCheckedModeBanner: false, // ✅ removes debug banner
+      )
+          : MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home:  NoInternetScreen(
+          onRetry: () => connectivityController.checkInitialConnection(),
+        ),
+      );
 
-      // ===== ye internet error page hai ======
-      //     : MaterialApp(
-      //   debugShowCheckedModeBanner: false,
-      //   home:  NoInternetScreen(
-      //     onRetry: () => connectivityController.checkInitialConnection(),
-      //   ),
-      // );
-
-    // });
+    });
   }}
-

@@ -18,6 +18,9 @@ import 'package:wti_cabs_user/screens/select_currency/select_currency.dart';
 import 'package:wti_cabs_user/screens/select_location/airport/airport_select_pickup.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_all_inventory/self_drive_all_inventory.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_final_page_st1/self_drive_final_page_s1.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
 import 'package:wti_cabs_user/screens/splash_screen.dart';
 import 'package:wti_cabs_user/screens/walkthrough/walkthrough.dart';
 import '../../main.dart';
@@ -132,6 +135,18 @@ class AppPages {
       GoRoute(
         path: AppRoutes.contact,
         pageBuilder: (context, state) => _platformPage(Contact()),
+      ),
+      GoRoute(
+        path: AppRoutes.selfDriveHome,
+        pageBuilder: (context, state) => _platformPage(SelfDriveHomeScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.selfDriveAllInventory,
+        pageBuilder: (context, state) => _platformPage(SelfDriveAllInventory()),
+      ),
+      GoRoute(
+        path: AppRoutes.selfDriveFinalPageS1,
+        pageBuilder: (context, state) => _platformPage(SelfDriveFinalPageS1()),
       ),
     ],
   );

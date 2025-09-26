@@ -1,101 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>WTI CABS</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>wti_cabs_user</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<!-- 🔔 Push notifications & background fetch (Firebase Messaging, Local Notifications) -->
-		<string>fetch</string>
-		<string>remote-notification</string>
-		<!-- 📍 Background location updates (Geolocator / Location plugin) -->
-		<string>location</string>
-	</array>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-
-	<!-- 🚖 Foreground location permission (Geolocator / Location) -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app uses your location to find nearby cabs and show accurate pickup points while using the app.</string>
-
-	<!-- 🖼️ Camera & Photo Library (Image Picker) -->
-	<key>NSCameraUsageDescription</key>
-	<string>This app requires camera access to let you upload profile photos and documents.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app requires access to your photo library to let you select images.</string>
-
-	<!-- 📂 File Manager (Path Provider, File Picker, Open File, Downloader) -->
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This app needs access to save images or documents to your library.</string>
-
-	<!-- 📍 Bluetooth (optional for some devices, Stripe / Google Sign-In may need it) -->
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>This app may use Bluetooth for secure communication with payment and location devices.</string>
-
-	<!-- 🌐 URL Launcher, Webview, Maps -->
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>https</string>
-		<string>http</string>
-		<string>tel</string>
-		<string>mailto</string>
-		<string>sms</string>
-		<string>comgooglemaps</string>
-		<string>googlechromes</string>
-		<string>googlechrome</string>
-	</array>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>com.googleusercontent.apps.880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh</string>
-            </array>
-        </dict>
-    </array>
-
-
-</dict>
+	<dict>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>WTI CABS</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>wti_cabs_user</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<key>UIBackgroundModes</key>
+		<array>
+			<!-- 🔔 Push notifications & background fetch (Firebase Messaging, Local Notifications) -->
+			<string>fetch</string>
+			<string>remote-notification</string>
+			<!-- 📍 Background location updates (Geolocator / Location plugin) -->
+			<string>location</string>
+		</array>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIMainStoryboardFile</key>
+		<string>Main</string>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<!-- 🚖 Foreground location permission (Geolocator / Location) -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>This app uses your location to find nearby cabs and show accurate pickup points while using the app.</string>
+		<!-- 🖼️ Camera & Photo Library (Image Picker) -->
+		<key>NSCameraUsageDescription</key>
+		<string>This app requires camera access to let you upload profile photos and documents.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app requires access to your photo library to let you select images.</string>
+		<!-- 📂 File Manager (Path Provider, File Picker, Open File, Downloader) -->
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>This app needs access to save images or documents to your library.</string>
+		<!-- 📍 Bluetooth (optional for some devices, Stripe / Google Sign-In may need it) -->
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>This app may use Bluetooth for secure communication with payment and location devices.</string>
+		<!-- 🌐 URL Launcher, Webview, Maps -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>https</string>
+			<string>http</string>
+			<string>tel</string>
+			<string>mailto</string>
+			<string>sms</string>
+			<string>comgooglemaps</string>
+			<string>googlechromes</string>
+			<string>googlechrome</string>
+		</array>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh</string>
+				</array>
+			</dict>
+		</array>
+		<key>UIStatusBarHidden</key>
+		<false/>
+	</dict>
 </plist>

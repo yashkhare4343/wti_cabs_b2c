@@ -1393,7 +1393,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return true;
       },
       child: Scaffold(
-        backgroundColor: Color(0xFF0F8F9FA),
+        backgroundColor: Color(0xFFE9E9ED),
         // backgroundColor: AppColors.homebg,
         body: SafeArea(
           child: SingleChildScrollView(
@@ -1896,18 +1896,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           InkWell(
                             splashColor: Colors.transparent,
                             onTap: () {
-                              Flushbar(
-                                flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
-                                margin: const EdgeInsets.all(12),
-                                borderRadius: BorderRadius.circular(12),
-                                backgroundColor: AppColors.blueSecondary,
-                                duration: const Duration(seconds: 3),
-                                icon: const Icon(Icons.campaign, color: Colors.white),
-                                messageText: const Text(
-                                  "Coming soon!",
-                                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-                                ),
-                              ).show(context);
+                              GoRouter.of(context).push(AppRoutes.selfDriveHome);
+                              // Flushbar(
+                              //   flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
+                              //   margin: const EdgeInsets.all(12),
+                              //   borderRadius: BorderRadius.circular(12),
+                              //   backgroundColor: AppColors.blueSecondary,
+                              //   duration: const Duration(seconds: 3),
+                              //   icon: const Icon(Icons.campaign, color: Colors.white),
+                              //   messageText: const Text(
+                              //     "Coming soon!",
+                              //     style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                              //   ),
+                              // ).show(context);
                             },
                             child: Container(
                               decoration: BoxDecoration(
