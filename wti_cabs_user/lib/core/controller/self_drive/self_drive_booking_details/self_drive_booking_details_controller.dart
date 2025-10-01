@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_rx/src/rx_types/rx_types.dart';
@@ -19,7 +20,23 @@ class FetchSdBookingDetailsController extends GetxController {
   RxDouble collection_charges = 0.0.obs;
   RxBool isFreePickup = false.obs;
   RxBool isFreeDrop = false.obs;
-  RxBool isSameLocation = true.obs;
+  RxBool isSameLocation = false.obs;
+  // Remember last selected radio buttons
+  RxString selectedPickupOption = ''.obs;
+  RxString selectedDropoffOption = ''.obs;
+
+  final RxBool showPickupError = false.obs;
+  final RxBool showDropoffError = false.obs;
+
+  // form key
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  var isFormValid = false.obs;
+
+  void validateForm() {
+    final isValid = formKey.currentState?.validate() ?? false;
+    isFormValid.value = isValid;
+  }
+
 
   Future<void> fetchBookingDetails(String vehicleId, bool isHomePage) async {
     final SearchInventorySdController searchInventorySdController =
@@ -62,7 +79,7 @@ class FetchSdBookingDetailsController extends GetxController {
       if (isFreeDrop.value) {
         query += '&collection_charges=0';
       }
-      else if (isSameLocation.value) {
+      else if (isSameLocation.value == true) {
         // If drop = pickup, treat collection as delivery
         query += '&collection_charges=${delivery_charge.value}';
       }

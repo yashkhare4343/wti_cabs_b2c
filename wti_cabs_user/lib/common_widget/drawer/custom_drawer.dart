@@ -651,6 +651,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
     ));
     final double width = MediaQuery.of(context).size.width * 0.8;
 
+    // Log Out
     void showLogoutDialog(BuildContext context) {
       showDialog(
         context: context,
@@ -864,6 +865,222 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       );
     }
 
+    // Delete Account
+    void showDeleteDialog(BuildContext context) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Title
+                  Text(
+                    'Delete Account',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Message
+                  Text(
+                    'Are you sure you want to delete account?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+
+                  // Buttons Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: BorderSide(color: Colors.grey.shade400),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                          },
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: AppColors.mainButtonBg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () async{
+                            Navigator.of(dialogContext).pop();
+                            // 🚀 Sign out from Google if logged in
+                            try {
+                              final googleSignIn = GoogleSignIn();
+                              if (await googleSignIn.isSignedIn()) {
+                                await googleSignIn.signOut();
+                                await googleSignIn.disconnect(); // optional but cleans up completely
+                              }
+                              StorageServices.instance.clear();
+                              await CacheHelper.clearAllCache();
+
+                              // 🚀 Also clear in-memory observables
+                              final upcomingBookingController = Get.find<UpcomingBookingController>();
+                              upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                              upcomingBookingController.isLoggedIn.value = false;
+                              // Get.delete<BookingController>(force: true);
+// Remove controller from memory
+                              upcomingBookingController.reset();
+
+                              // or completely reset the controller
+                              // Get.delete<BookingController>(force: true);
+                            } catch (e) {
+                              debugPrint("Google sign-out failed: $e");
+                            }// close popup
+                            // Get.deleteAll(force: true);
+                            Navigator.of(dialogContext)
+                                .pop(); // close popup first
+
+                            // Clear data
+                            StorageServices.instance.clear();
+
+                            // Show success popup/snackbar
+                            Future.delayed(const Duration(milliseconds: 200),
+                                    () async{
+                                  showDialog(
+                                    context: navigatorKey.currentContext!,
+                                    barrierDismissible: false,
+                                    builder: (_) {
+                                      // Start auto-close timer
+                                      final upcomingBookingController = Get.find<UpcomingBookingController>();
+                                      upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                                      upcomingBookingController.isLoggedIn.value = false;
+                                      StorageServices.instance.read('firstName');
+                                      StorageServices.instance.read('contact');
+                                      StorageServices.instance.read('emailId');
+                                      Future.delayed(const Duration(seconds: 4),
+                                              () {
+                                            if (Navigator.of(
+                                                navigatorKey.currentContext!)
+                                                .canPop()) {
+                                              Navigator.of(navigatorKey.currentContext!).pushReplacement(
+                                                MaterialPageRoute(builder: (_) => BottomNavScreen()),
+                                              );
+
+                                              // 🚀 Optional: Navigate to login after close
+                                              // context.go("/login");
+                                            }
+                                          });
+
+                                      return AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(16)),
+                                        backgroundColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 24),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.check_circle,
+                                                color: Colors.green, size: 60),
+                                            const SizedBox(height: 16),
+                                            const Text(
+                                              "Delete Account Successful",
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            const Text(
+                                              "Account has been deleted successfully.",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        actionsAlignment: MainAxisAlignment.center,
+                                        actions: [
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.of(
+                                                navigatorKey.currentContext!)
+                                                .pop(),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                              AppColors.mainButtonBg,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                BorderRadius.circular(8),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 24, vertical: 12),
+                                            ),
+                                            child: const Text(
+                                              "Okay",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                });
+                            GoRouter.of(context).go(AppRoutes.bottomNav);
+                          },
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Material(
@@ -1051,6 +1268,14 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                   subtitle: 'You will be signed out of your account.',
                   onTap: () {
                     showLogoutDialog(context);
+                  },
+                ) : SizedBox(),
+                isLogin == true ? _buildDrawerItem(
+                  icon: Icon(Icons.delete_forever_outlined, color: Colors.redAccent,),
+                  title: 'Delete',
+                  subtitle: 'You will be signed out of your account.',
+                  onTap: () {
+                    showDeleteDialog(context);
                   },
                 ) : SizedBox(),
               ],

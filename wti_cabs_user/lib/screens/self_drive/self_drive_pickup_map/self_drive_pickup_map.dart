@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/google_lat_lng_controller/google_lat_lng_controller.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
+import 'package:wti_cabs_user/core/controller/self_drive/self_drive_stripe_payment/sd_create_stripe_payment.dart';
 import '../../../core/controller/self_drive/fetch_most_popular_location/fetch_most_popular_location_controller.dart';
 import '../self_drive_final_page_st1/self_drive_final_page_s1.dart';
 
@@ -17,7 +18,9 @@ class SelfDrivePlaceMap extends StatefulWidget {
   final double? lng; // <-- fixed type to double for consistency
   final double? rate;
   final String vehicleId;
-  final bool isHomePage; // <-- fixed type to double for consistency
+  final bool isHomePage;
+
+  // <-- fixed type to double for consistency
 
   const SelfDrivePlaceMap({
     super.key,
@@ -41,6 +44,8 @@ class _SelfDrivePlaceMapState extends State<SelfDrivePlaceMap> {
       Get.put(FetchMostPopularLocationController());
   final FetchSdBookingDetailsController fetchSdBookingDetailsController =
       Get.put(FetchSdBookingDetailsController());
+  final SdCreateStripePaymentController sdCreateStripePaymentController =
+      Get.put(SdCreateStripePaymentController());
   GoogleMapController? mapController;
   final Set<Marker> markers = {};
 
@@ -234,6 +239,16 @@ class _SelfDrivePlaceMapState extends State<SelfDrivePlaceMap> {
                                     .isFreePickup.value = false;
                                 fetchSdBookingDetailsController
                                     .delivery_charge.value = double.parse(rate);
+                                sdCreateStripePaymentController.sourceCity.value = widget.fromMostPopularPlace == true
+                                    ? widget.placeName ?? "Selected Location"
+                                    : result?.city ?? "Selected Location";
+                                sdCreateStripePaymentController.sourceLat.value = widget.fromMostPopularPlace == true
+                                    ? widget.lat ?? 0.0
+                                    : result?.latlng?.lat??0.0;
+                                sdCreateStripePaymentController.sourceLng.value = widget.fromMostPopularPlace == true
+                                    ? widget.lng ?? 0.0
+                                    : result?.latlng?.lng??0.0;
+
                                 fetchSdBookingDetailsController
                                     .fetchBookingDetails(
                                         widget.vehicleId, false)

@@ -242,6 +242,9 @@ class FareDetails {
   final num? baseFare;
   final num? refundableDeposit;
   final num? total;
+  final num? collection_charges;
+  final num? delivery_charges;
+  final num? deposit_free_ride;
   final num? tax;
   final num? grandTotal;
 
@@ -249,6 +252,9 @@ class FareDetails {
     this.baseFare,
     this.refundableDeposit,
     this.total,
+    this.collection_charges,
+    this.delivery_charges,
+    this.deposit_free_ride,
     this.tax,
     this.grandTotal,
   });
@@ -258,6 +264,9 @@ class FareDetails {
       baseFare: json['base_fare'],
       refundableDeposit: json['Refundable_Deposit'],
       total: json['total'],
+      collection_charges: json['collection_charges'],
+      delivery_charges: json['delivery_charges'],
+      deposit_free_ride: json['Deposit_free_ride'],
       tax: json['tax'],
       grandTotal: json['grand_total'],
     );
@@ -267,6 +276,9 @@ class FareDetails {
     "base_fare": baseFare,
     "Refundable_Deposit": refundableDeposit,
     "total": total,
+    "collection_charges": collection_charges,
+    "delivery_charges": delivery_charges,
+    "Deposit_free_ride": deposit_free_ride,
     "tax": tax,
     "grand_total": grandTotal,
   };

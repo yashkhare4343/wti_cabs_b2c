@@ -22,4 +22,6 @@ class AppRoutes{
   static const String selfDriveHome = '/selfDriveHome';
   static const String selfDriveAllInventory = '/selfDriveAllInventory';
   static const String selfDriveFinalPageS1 = '/selfDriveFinalPageS1';
+  static const String selfDrivePaymentSuccess = '/selfDrivePaymentSuccess';
+  static const String selfDrivePaymentFailure = '/selfDrivePaymentFailure';
 }

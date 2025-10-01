@@ -21,12 +21,14 @@ import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_all_inventory/self_drive_all_inventory.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_final_page_st1/self_drive_final_page_s1.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_payment_status/self_drive_payment_success.dart';
 import 'package:wti_cabs_user/screens/splash_screen.dart';
 import 'package:wti_cabs_user/screens/walkthrough/walkthrough.dart';
 import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
+import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -147,6 +149,18 @@ class AppPages {
       GoRoute(
         path: AppRoutes.selfDriveFinalPageS1,
         pageBuilder: (context, state) => _platformPage(SelfDriveFinalPageS1()),
+      ),
+      GoRoute(
+        path: AppRoutes.selfDrivePaymentSuccess,
+        builder: (context, state) {
+          return SelfDrivePaymentSuccessPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.selfDrivePaymentFailure,
+        builder: (context, state) {
+          return PaymentReservationFailure();
+        },
       ),
     ],
   );

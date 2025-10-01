@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/google_lat_lng_controller/google_lat_lng_controller.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
 import '../../../core/controller/self_drive/fetch_most_popular_location/fetch_most_popular_location_controller.dart';
+import '../../../core/controller/self_drive/self_drive_stripe_payment/sd_create_stripe_payment.dart';
 import '../self_drive_final_page_st1/self_drive_final_page_s1.dart';
 
 class SelfDriveReturnPlaceMap extends StatefulWidget {
@@ -41,6 +42,8 @@ class _SelfDriveReturnPlaceMapState extends State<SelfDriveReturnPlaceMap> {
       Get.put(FetchMostPopularLocationController());
   final FetchSdBookingDetailsController fetchSdBookingDetailsController =
       Get.put(FetchSdBookingDetailsController());
+  final SdCreateStripePaymentController sdCreateStripePaymentController =
+  Get.put(SdCreateStripePaymentController());
   GoogleMapController? mapController;
   final Set<Marker> markers = {};
 
@@ -235,6 +238,15 @@ class _SelfDriveReturnPlaceMapState extends State<SelfDriveReturnPlaceMap> {
                                 fetchSdBookingDetailsController.isSameLocation.value = false; // important
                                 fetchSdBookingDetailsController
                                     .collection_charges.value = double.parse(rate);
+                                sdCreateStripePaymentController.destinationCity.value = widget.fromMostPopularPlace == true
+                                    ? widget.placeName ?? "Selected Location"
+                                    : result?.city ?? "Selected Location";
+                                sdCreateStripePaymentController.destinationLat.value = widget.fromMostPopularPlace == true
+                                    ? widget.lat ?? 0.0
+                                    : result?.latlng?.lat??0.0;
+                                sdCreateStripePaymentController.destinationLng.value = widget.fromMostPopularPlace == true
+                                    ? widget.lng ?? 0.0
+                                    : result?.latlng?.lng??0.0;
                                 fetchSdBookingDetailsController
                                     .fetchBookingDetails(
                                         widget.vehicleId, false)
@@ -245,13 +257,16 @@ class _SelfDriveReturnPlaceMapState extends State<SelfDriveReturnPlaceMap> {
                                             builder: (_) =>
                                                 SelfDriveFinalPageS1(
                                                     vehicleId: widget.vehicleId,
-                                                    isHomePage: false),
+                                                    isHomePage: false,
+                                                  fromReturnMapPage: true,
+                                                ),
                                           )
                                         : MaterialPageRoute(
                                             builder: (_) =>
                                                 SelfDriveFinalPageS1(
                                                     vehicleId: widget.vehicleId,
-                                                    isHomePage: false),
+                                                    isHomePage: false,
+                                                  fromReturnMapPage: true,),
                                           ),
                                   );
                                 });
