@@ -3,6 +3,7 @@ import Flutter
 import FirebaseCore
 import FirebaseMessaging
 import flutter_downloader
+import GoogleMaps
 import UserNotifications
 
 @main
@@ -11,6 +12,8 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    GMSServices.provideAPIKey("AIzaSyCWbmCiquOta1iF6um7_5_NFh6YM5wPL30")
+
     // ✅ Firebase setup
     FirebaseApp.configure()
     GeneratedPluginRegistrant.register(with: self)

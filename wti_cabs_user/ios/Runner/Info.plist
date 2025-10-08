@@ -30,8 +30,8 @@
 		<true/>
         <key>UIBackgroundModes</key>
         <array>
-        <string>fetch</string>
-        <string>remote-notification</string>
+          <string>fetch</string>
+          <string>remote-notification</string>
         </array>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
@@ -50,9 +50,11 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+
 		<!-- 🚖 Foreground location permission (Geolocator / Location) -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>This app uses your location to find nearby cabs and show accurate pickup points while using the app.</string>
+
 		<!-- 🖼️ Camera & Photo Library (Image Picker) -->
 		<key>NSCameraUsageDescription</key>
 		<string>This app requires camera access to let you upload profile photos and documents.</string>
@@ -61,9 +63,11 @@
 		<!-- 📂 File Manager (Path Provider, File Picker, Open File, Downloader) -->
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>This app needs access to save images or documents to your library.</string>
+
 		<!-- 📍 Bluetooth (optional for some devices, Stripe / Google Sign-In may need it) -->
 		<key>NSBluetoothAlwaysUsageDescription</key>
 		<string>This app may use Bluetooth for secure communication with payment and location devices.</string>
+
 		<!-- 🌐 URL Launcher, Webview, Maps -->
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
@@ -76,6 +80,8 @@
 			<string>googlechromes</string>
 			<string>googlechrome</string>
 		</array>
+
+		<!-- 🔑 Google & Apple Sign-In URL Schemes -->
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -83,10 +89,19 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
+					<!-- 👇 Keep Google sign-in scheme -->
 					<string>com.googleusercontent.apps.880138699529-qgm0ii7lpk06tl3hq40lpljkrtq619vh</string>
+
+					<!-- 👇 Add Apple sign-in scheme -->
+					<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 				</array>
 			</dict>
 		</array>
+
+		<!-- 🧠 Required for Face ID / Apple Sign-In -->
+		<key>NSFaceIDUsageDescription</key>
+		<string>We use Face ID to help you sign in securely with Apple.</string>
+
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>
