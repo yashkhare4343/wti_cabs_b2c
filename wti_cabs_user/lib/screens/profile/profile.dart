@@ -1,24 +1,32 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/custom_loader.dart';
 import 'package:wti_cabs_user/common_widget/name_initials/name_initial.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/profile_controller/update_profile_controller.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
-
 import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
 import '../../core/route_management/app_routes.dart';
+import '../../core/services/cache_services.dart';
 import '../../core/services/storage_services.dart';
+import '../../main.dart';
+import '../../utility/constants/fonts/common_fonts.dart';
+import '../bottom_nav/bottom_nav.dart';
 
 class Profile extends StatefulWidget {
-  Profile({super.key});
+  final bool? fromSelfDrive;
+  Profile({super.key, this.fromSelfDrive});
 
   @override
   State<Profile> createState() => _ProfileState();
@@ -111,14 +119,380 @@ String? selectedGender;
 class _ProfileState extends State<Profile> {
   final ProfileController profileController = Get.put(ProfileController());
   final UpdateProfileController updateProfileController =
-      Get.put(UpdateProfileController());
+  Get.put(UpdateProfileController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneNoController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
+  final TextEditingController stateController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
   final UpcomingBookingController upcomingBookingController =
-      Get.put(UpcomingBookingController());
+  Get.put(UpcomingBookingController());
+  String contact = '';
+  String contactCode = '';
+  PhoneNumber number = PhoneNumber(isoCode: 'IN');
+
+
+  void showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Logout',
+                  style: CommonFonts.heading1Bold.copyWith(
+                      fontSize: 18, color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to Sign out?',
+                  textAlign: TextAlign.center,
+                  style: CommonFonts.bodyText6.copyWith(
+                      fontSize: 15, color: Colors.black54),
+                ),
+                const SizedBox(height: 25),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        child: Text(
+                          'Cancel',
+                          style: CommonFonts.bodyText6.copyWith(
+                              fontSize: 14, color: Colors.black87),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: AppColors.mainButtonBg,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.of(dialogContext).pop();
+                          try {
+                            final googleSignIn = GoogleSignIn();
+                            if (await googleSignIn.isSignedIn()) {
+                              await googleSignIn.signOut();
+                              await googleSignIn.disconnect();
+                            }
+                            StorageServices.instance.clear();
+                            await CacheHelper.clearAllCache();
+
+                            final upcomingBookingController =
+                            Get.find<UpcomingBookingController>();
+                            upcomingBookingController
+                                .upcomingBookingResponse.value?.result
+                                ?.clear();
+                            upcomingBookingController.isLoggedIn.value = false;
+                            await FirebaseAuth.instance.signOut();
+                            upcomingBookingController.reset();
+                          } catch (e) {
+                            debugPrint("Google sign-out failed: $e");
+                          }
+
+                          Future.delayed(const Duration(milliseconds: 200),
+                                  () async {
+                                showDialog(
+                                  context: navigatorKey.currentContext!,
+                                  barrierDismissible: false,
+                                  builder: (_) {
+                                    final upcomingBookingController =
+                                    Get.find<UpcomingBookingController>();
+                                    upcomingBookingController
+                                        .upcomingBookingResponse.value?.result
+                                        ?.clear();
+                                    upcomingBookingController.isLoggedIn.value =
+                                    false;
+                                    StorageServices.instance.read('firstName');
+                                    StorageServices.instance.read('contact');
+                                    StorageServices.instance.read('emailId');
+                                    Future.delayed(const Duration(seconds: 4), () {
+                                      if (Navigator.of(navigatorKey.currentContext!)
+                                          .canPop()) {
+                                        Navigator.of(navigatorKey.currentContext!)
+                                            .pushReplacement(
+                                          MaterialPageRoute(
+                                              builder: (_) => BottomNavScreen()),
+                                        );
+                                      }
+                                    });
+
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16)),
+                                      backgroundColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 24),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 60),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "Logout Successful",
+                                            style: CommonFonts.heading1Bold.copyWith(
+                                                fontSize: 20, color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "You have been logged out successfully.",
+                                            textAlign: TextAlign.center,
+                                            style: CommonFonts.bodyText6.copyWith(
+                                                fontSize: 14, color: Colors.black54),
+                                          ),
+                                        ],
+                                      ),
+                                      actionsAlignment: MainAxisAlignment.center,
+                                      actions: [
+                                        ElevatedButton(
+                                          onPressed: () => Navigator.of(
+                                              navigatorKey.currentContext!).pop(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.mainButtonBg,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 24, vertical: 12),
+                                          ),
+                                          child: Text(
+                                            "Okay",
+                                            style: CommonFonts.bodyText6.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              });
+                          GoRouter.of(context).go(AppRoutes.bottomNav);
+                        },
+                        child: Text(
+                          'Sign Out',
+                          style: CommonFonts.bodyText6.copyWith(
+                              fontSize: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Delete Account',
+                  style: CommonFonts.heading1Bold.copyWith(
+                      fontSize: 18, color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to delete account?',
+                  textAlign: TextAlign.center,
+                  style: CommonFonts.bodyText6.copyWith(
+                      fontSize: 15, color: Colors.black54),
+                ),
+                const SizedBox(height: 25),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        child: Text(
+                          'Cancel',
+                          style: CommonFonts.bodyText6.copyWith(
+                              fontSize: 14, color: Colors.black87),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.of(dialogContext).pop();
+                          try {
+                            final googleSignIn = GoogleSignIn();
+                            if (await googleSignIn.isSignedIn()) {
+                              await googleSignIn.signOut();
+                              await googleSignIn.disconnect();
+                            }
+                            StorageServices.instance.clear();
+                            await CacheHelper.clearAllCache();
+
+                            final upcomingBookingController =
+                            Get.find<UpcomingBookingController>();
+                            upcomingBookingController
+                                .upcomingBookingResponse.value?.result
+                                ?.clear();
+                            upcomingBookingController.isLoggedIn.value = false;
+                            upcomingBookingController.reset();
+                          } catch (e) {
+                            debugPrint("Google sign-out failed: $e");
+                          }
+
+                          Future.delayed(const Duration(milliseconds: 200),
+                                  () async {
+                                showDialog(
+                                  context: navigatorKey.currentContext!,
+                                  barrierDismissible: false,
+                                  builder: (_) {
+                                    final upcomingBookingController =
+                                    Get.find<UpcomingBookingController>();
+                                    upcomingBookingController
+                                        .upcomingBookingResponse.value?.result
+                                        ?.clear();
+                                    upcomingBookingController.isLoggedIn.value =
+                                    false;
+                                    StorageServices.instance.read('firstName');
+                                    StorageServices.instance.read('contact');
+                                    StorageServices.instance.read('emailId');
+                                    Future.delayed(const Duration(seconds: 4), () {
+                                      if (Navigator.of(navigatorKey.currentContext!)
+                                          .canPop()) {
+                                        Navigator.of(navigatorKey.currentContext!)
+                                            .pushReplacement(
+                                          MaterialPageRoute(
+                                              builder: (_) => BottomNavScreen()),
+                                        );
+                                      }
+                                    });
+
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16)),
+                                      backgroundColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 24),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 60),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "Delete Account Successful",
+                                            style: CommonFonts.heading1Bold.copyWith(
+                                                fontSize: 20, color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "Account has been deleted successfully.",
+                                            textAlign: TextAlign.center,
+                                            style: CommonFonts.bodyText6.copyWith(
+                                                fontSize: 14, color: Colors.black54),
+                                          ),
+                                        ],
+                                      ),
+                                      actionsAlignment: MainAxisAlignment.center,
+                                      actions: [
+                                        ElevatedButton(
+                                          onPressed: () => Navigator.of(
+                                              navigatorKey.currentContext!).pop(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.mainButtonBg,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 24, vertical: 12),
+                                          ),
+                                          child: Text(
+                                            "Okay",
+                                            style: CommonFonts.bodyText6.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              });
+                          GoRouter.of(context).go(AppRoutes.bottomNav);
+                        },
+                        child: Text(
+                          'Delete',
+                          style: CommonFonts.bodyText6.copyWith(
+                              fontSize: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   @override
   void initState() {
@@ -133,6 +507,10 @@ class _ProfileState extends State<Profile> {
           emailController.text = result.emailID ?? '';
           countryController.text = result.countryName ?? '';
           phoneNoController.text = result.contact?.toString() ?? '';
+          contactCode = result.contactCode??'';
+          cityController.text = result.city??'';
+          stateController.text = result.stateName??'';
+
         });
       }
     });
@@ -144,7 +522,12 @@ class _ProfileState extends State<Profile> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        if(widget.fromSelfDrive == true){
+          GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
+        }
+        else{
+          GoRouter.of(context).go(AppRoutes.bottomNav);
+        }
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary2,
@@ -173,6 +556,65 @@ class _ProfileState extends State<Profile> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_vert,
+                color: Color(0xFF192653),
+              ),
+              elevation: 8,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              offset: const Offset(0, 45),
+              splashRadius: 20,
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'signout',
+                  child: Row(
+                    children: const [
+                      Icon(Icons.logout, size: 18, color: Colors.black54),
+                      SizedBox(width: 8),
+                      Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: const [
+                      Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                      SizedBox(width: 8),
+                      Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              onSelected: (value) {
+                if (value == 'signout') {
+                  // Handle sign-out logic
+                  showLogoutDialog(context);
+                } else if (value == 'delete') {
+                  // Handle delete account logic
+                  showDeleteDialog(context);
+                }
+              },
+            ),
+          ],
         ),
         body: SingleChildScrollView(
           child: Obx(() {
@@ -238,7 +680,7 @@ class _ProfileState extends State<Profile> {
                               EditableTextField(
                                 label: "Full name *",
                                 value: profileController.profileResponse.value
-                                        ?.result?.firstName ??
+                                    ?.result?.firstName ??
                                     '',
                                 controller: firstNameController,
                               ),
@@ -246,24 +688,107 @@ class _ProfileState extends State<Profile> {
                               EditableTextField(
                                 label: "Email ID *",
                                 value: profileController.profileResponse.value
-                                        ?.result?.emailID ??
+                                    ?.result?.emailID ??
                                     '',
                                 controller: emailController,
                               ),
                               const SizedBox(height: 12),
-                              EditableTextField(
-                                label: "Mobile No *",
-                                value:
-                                    "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}",
-                                controller: phoneNoController,
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color:  const Color(0xFFE2E2E2),
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: const Color(0xFFF7F7F7),
+                                ),
+                                child: SizedBox(
+                                  height: 48,
+                                  child: InternationalPhoneNumberInput(
+                                    selectorConfig: const SelectorConfig(
+                                      selectorType:
+                                      PhoneInputSelectorType.BOTTOM_SHEET,
+                                      useBottomSheetSafeArea: true,
+                                      showFlags: true,
+                                    ),
+                                    selectorTextStyle: const TextStyle(
+                                      // ✅ smaller selector text
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                    initialValue: number,
+                                    textFieldController: phoneNoController,
+                                    textStyle: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                    onFieldSubmitted: (value) {
+
+                                    },
+                                    keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        signed: true),
+                                    maxLength: 10,
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return "Mobile number is required";
+                                      }
+                                      if (value.length != 10 ||
+                                          !RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                        return "Enter valid 10-digit mobile number";
+                                      }
+                                      // trigger validation manually
+
+                                      return null;
+                                    },
+                                    inputDecoration: const InputDecoration(
+                                      hintText: "ENTER MOBILE NUMBER",
+                                      hintStyle: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black54,
+                                      ),
+                                      counterText: "",
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding:
+                                      EdgeInsets.symmetric(vertical: 10),
+                                    ),
+                                    formatInput: false,
+                                    onInputChanged: (PhoneNumber value) async {
+                                      contact = (value.phoneNumber
+                                          ?.replaceAll(' ', '')
+                                          .replaceFirst(
+                                          value.dialCode ?? '', '')) ??
+                                          '';
+                                      contactCode =
+                                          value.dialCode!.replaceAll('+', '');
+                                      await StorageServices.instance
+                                          .save('contactCode', contactCode ?? '');
+                                      await StorageServices.instance
+                                          .save('contact', contact ?? '');
+                                    },
+                                  ),
+                                ),
                               ),
+                              // EditableTextField(
+                              //   label: "Mobile No *",
+                              //   value:
+                              //   "${profileController.profileResponse.value?.result?.contactCode} ${profileController.profileResponse.value?.result?.contact}",
+                              //   controller: phoneNoController,
+                              // ),
                               const SizedBox(height: 12),
                               Row(
                                 children: [
                                   Expanded(
                                     child: EditableTextField(
                                       label: "City",
-                                      value: "",
+                                      value: profileController.profileResponse.value
+                                          ?.result?.city??"",
                                       controller: cityController,
                                     ),
                                   ),
@@ -271,7 +796,9 @@ class _ProfileState extends State<Profile> {
                                   Expanded(
                                     child: EditableTextField(
                                       label: "State",
-                                      value: "",
+                                      value: profileController.profileResponse.value
+                                          ?.result?.stateName??"",
+                                      controller: stateController,
                                     ),
                                   ),
                                 ],
@@ -280,7 +807,7 @@ class _ProfileState extends State<Profile> {
                               EditableTextField(
                                 label: "Nationality",
                                 value: profileController.profileResponse.value
-                                        ?.result?.countryName ??
+                                    ?.result?.countryName ??
                                     '',
                                 controller: countryController,
                                 readOnly: isEdit == false ? true : false,
@@ -305,19 +832,21 @@ class _ProfileState extends State<Profile> {
                                     _showLoader('Loading..', context);
                                     final Map<String, dynamic> requestData = {
                                       "firstName":
-                                          firstNameController.text.trim(),
+                                      firstNameController.text.trim(),
                                       "contact":
-                                          phoneNoController.text.trim() ??
-                                              '0000000000',
-                                      "contactCode": "91",
-                                      "countryName": "India",
+                                      phoneNoController.text.trim() ??
+                                          '0000000000',
+                                      "contactCode": contactCode,
+                                      "countryName": currencyController.country.value,
                                       "gender": selectedGender,
+                                      "city" : cityController.text.trim(),
+                                      "stateName" : stateController.text.trim(),
                                       "emailID": emailController.text.trim()
                                     };
                                     await updateProfileController
                                         .updateProfile(
-                                            requestData: requestData,
-                                            context: context)
+                                        requestData: requestData,
+                                        context: context)
                                         .then((value) {
                                       _successLoader(
                                           'Profile Updated Successfully',
@@ -348,7 +877,7 @@ class _ProfileState extends State<Profile> {
                     children: [
                       Obx(() {
                         if(upcomingBookingController.isLoggedIn.value == true){
-                         return NameInitialCircle(
+                          return NameInitialCircle(
                               name: profileController.profileResponse
                                   .value?.result?.firstName ??
                                   '');
@@ -356,39 +885,39 @@ class _ProfileState extends State<Profile> {
                         return Stack(
                           children: [
                             Container(
-                                    padding: EdgeInsets.only(bottom: 16),
-                                    child: CircleAvatar(
-                                        backgroundColor: Colors.transparent,
-                                        radius: 40,
-                                        child: Image.asset(
-                                          'assets/images/user.png',
-                                          width: 80,
-                                          height: 80,
-                                        )),
-                                  ),
+                              padding: EdgeInsets.only(bottom: 16),
+                              child: CircleAvatar(
+                                  backgroundColor: Colors.transparent,
+                                  radius: 40,
+                                  child: Image.asset(
+                                    'assets/images/user.png',
+                                    width: 80,
+                                    height: 80,
+                                  )),
+                            ),
                             isEdit == true
                                 ? Positioned(
-                                    bottom: 5,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      height: 28,
-                                      width: 28,
-                                      padding: EdgeInsets.all(4.0),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFF002CC0),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Colors.grey.shade300,
-                                            width: 2),
-                                      ),
-                                      child: Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  )
+                              bottom: 5,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                height: 28,
+                                width: 28,
+                                padding: EdgeInsets.all(4.0),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF002CC0),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 2),
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            )
                                 : SizedBox(),
                           ],
                         );
@@ -541,13 +1070,13 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             ),
             label: ((isFocused))
                 ? Transform.translate(
-                    offset: Offset(0, 4.0), child: Text(widget.label))
+                offset: Offset(0, 4.0), child: Text(widget.label))
                 : Container(
-                    padding: EdgeInsets.symmetric(
-                        vertical: (_controller.text.isNotEmpty) ? 8 : 0),
-                    margin: EdgeInsets.only(
-                        bottom: (_controller.text.isNotEmpty) ? 8 : 0),
-                    child: Text(widget.label)),
+                padding: EdgeInsets.symmetric(
+                    vertical: (_controller.text.isNotEmpty) ? 8 : 0),
+                margin: EdgeInsets.only(
+                    bottom: (_controller.text.isNotEmpty) ? 8 : 0),
+                child: Text(widget.label)),
             labelStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -556,7 +1085,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             floatingLabelBehavior: FloatingLabelBehavior.auto,
             border: InputBorder.none,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           ),
         ),
       ),
@@ -636,14 +1165,14 @@ class _EditableTextFieldState extends State<EditableTextField> {
         decoration: InputDecoration(
           label: isFocused
               ? Transform.translate(
-                  offset: const Offset(0, 8.0),
-                  child: Text(widget.label),
-                )
+            offset: const Offset(0, 8.0),
+            child: Text(widget.label),
+          )
               : Padding(
-                  padding:
-                      EdgeInsets.only(top: _controller.text.isNotEmpty ? 8 : 0),
-                  child: Text(widget.label),
-                ),
+            padding:
+            EdgeInsets.only(top: _controller.text.isNotEmpty ? 8 : 0),
+            child: Text(widget.label),
+          ),
           labelStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -652,7 +1181,7 @@ class _EditableTextFieldState extends State<EditableTextField> {
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           border: InputBorder.none,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+          const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         ),
       ),
     );

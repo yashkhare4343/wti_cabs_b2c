@@ -1,7 +1,12 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_bottom_nav/bottom_nav.dart';
 
 import '../../core/controller/currency_controller/currency_controller.dart';
 
@@ -117,7 +122,31 @@ class SelectCurrencyScreen extends StatelessWidget {
                   return GestureDetector(
                     onTap: () async {
                       await controller.changeCurrency(currency);
-                      GoRouter.of(context).go(AppRoutes.bottomNav);
+                     controller.isSelfDriveActive == true ? Navigator.of(context).push(
+                       Platform.isIOS
+                           ? CupertinoPageRoute(
+                         builder: (_) => SelfDriveBottomNavScreen(
+                           initialIndex: 0,
+                         ),
+                       )
+                           : MaterialPageRoute(
+                         builder: (_) => SelfDriveBottomNavScreen(
+                           initialIndex: 0,
+                         ),
+                       ),
+                     ) : Navigator.of(context).push(
+                       Platform.isIOS
+                           ? CupertinoPageRoute(
+                         builder: (_) => BottomNavScreen(
+                           initialIndex: 0,
+                         ),
+                       )
+                           : MaterialPageRoute(
+                         builder: (_) => BottomNavScreen(
+                           initialIndex: 0,
+                         ),
+                       ),
+                     );
                     },
                     child: Container(
                       margin:

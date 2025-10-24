@@ -35,6 +35,8 @@ class CurrencyController extends GetxController {
   RxBool isInIndiaLocation = false.obs; // ✅ cache location result
   Rx<Currency> baseCurrency = Currency(code: "INR", symbol: "₹", name: "Indian Rupee").obs;
   RxDouble convertedRate = 1.0.obs;
+  RxBool isSelfDriveActive = false.obs;
+
 
   late final List<Currency> availableCurrencies =
   CurrencyUtils.currencies.map((e) => Currency.fromMap(e)).toList();
@@ -156,8 +158,34 @@ class CurrencyController extends GetxController {
         "| isIndiaLocation=$isInIndiaLocation | isIndiaInventory=$isIndiaInventory");
   }
 
+  // set base currency for self drive
+  Future<void> setSelfDriveCurrency() async {
+    isSelfDriveActive.value = true; // ✅ mark self drive mode
 
+    baseCurrency.value = Currency(code: "AED", symbol: "AED", name: "Dirham");
+    selectedCurrency.value = baseCurrency.value;
+    fromCurrency.value = baseCurrency.value;
 
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyKey, baseCurrency.value.code);
+
+    print("✅ Self Drive clicked → Base & Selected currency set to AED");
+  }
+
+  Future<void> resetCurrencyAfterSelfDrive() async {
+    isSelfDriveActive.value = false;
+    // Directly set to INR instead of calling setBaseCurrency
+    baseCurrency.value = Currency(code: "INR", symbol: "₹", name: "Indian Rupee");
+    selectedCurrency.value = baseCurrency.value;
+    fromCurrency.value = baseCurrency.value;
+
+    // Save in SharedPreferences asynchronously, don’t block UI
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString(_currencyKey, baseCurrency.value.code);
+    });
+
+    print("✅ Exited Self Drive → Base & Selected currency reset to INR");
+  }
 
   /// ---------------- Conversion ----------------
   /// Converts any amount by multiplying it with API conversion rate.

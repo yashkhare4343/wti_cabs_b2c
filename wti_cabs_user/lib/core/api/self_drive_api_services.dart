@@ -31,8 +31,8 @@ class SelfDriveApiService {
   // Base URLs
   // final String baseUrl = '${EnvironmentConfig.baseUrl}/global/app/v1';
   // final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
-  final String baseUrl = 'http://13.200.168.251:3005/selfdrive/v1';
-  // final String baseUrl = 'https://selfdrive.wticabs.com:3005/selfdrive/v1';
+  // final String baseUrl = 'http://13.200.168.251:3005/selfdrive/v1';
+  final String baseUrl = 'https://selfdrive.wticabs.com:3005/selfdrive/v1';
   // final String baseUrl = 'https://sw316g81-3001.inc1.devtunnels.ms/selfdrive/v1';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
@@ -113,6 +113,48 @@ class SelfDriveApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Basic aGFyc2g6MTIz',
+    };
+
+    if (kDebugMode) {
+      debugPrint('🌐 GET Request: $url');
+      debugPrint('🧾 Headers: $headers');
+    }
+
+    try {
+      final response = await http.get(url, headers: headers);
+
+      if (kDebugMode) {
+        debugPrint("✅ Response Status: ${response.statusCode}");
+        debugPrint("📥 Response Body:\n${response.body}");
+      }
+
+      final Map<String, dynamic> jsonData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return fromJson(jsonData); // ✅ deserialize with parser
+      } else {
+        final errorMessage = jsonData['message'] ?? 'Unknown error occurred';
+        throw Exception("❌ Failed: $errorMessage");
+      }
+    } catch (e) {
+      debugPrint("❌ Network error: $e");
+      throw Exception("❌ Exception: $e");
+    }
+  }
+
+  // get manageBooking
+  // new get request
+  Future<T> getRequestNewToken<T>(
+      String endpoint,
+      T Function(Map<String, dynamic>) fromJson,
+      ) async {
+    final url = Uri.parse('$baseUrl/$endpoint');
+    final token = await _getToken();
+    // final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic $token',
     };
 
     if (kDebugMode) {
@@ -393,17 +435,10 @@ class SelfDriveApiService {
     required String filePath,
   }) async {
     final url = Uri.parse("$baseUrl/$endpoint");
-
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
-    );
-    print('yash download reciept body : ${jsonEncode(body)}');
+    final response = await http.post(url, headers: headers, body: jsonEncode(body));
 
     if (response.statusCode == 200) {
-      final file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
+      await savePdfFile(response.bodyBytes, filePath);
     } else {
       throw Exception("Failed to download PDF. Status: ${response.statusCode}");
     }
@@ -412,58 +447,58 @@ class SelfDriveApiService {
   Future<void> downloadPdfFromGetApi({
     required BuildContext context,
     required String endpoint,
-    required String fileName,
+    required String filePath, // ✅ renamed from fileName to filePath
     required Map<String, String> headers,
   }) async {
     try {
-      // ✅ Permission check for Android
-      // if (Platform.isAndroid) {
-      //   final androidInfo = await DeviceInfoPlugin().androidInfo;
-      //   final sdkInt = androidInfo.version.sdkInt;
-      //
-      //   PermissionStatus permissionStatus;
-      //
-      //   if (sdkInt >= 30) {
-      //     permissionStatus = await Permission.manageExternalStorage.request();
-      //   } else {
-      //     permissionStatus = await Permission.storage.request();
-      //   }
-      //
-      //   if (!permissionStatus.isGranted) {
-      //     ScaffoldMessenger.of(context).showSnackBar(
-      //       const SnackBar(
-      //         content: Text("❌ Storage permission denied."),
-      //         backgroundColor: Colors.red,
-      //       ),
-      //     );
-      //     return;
-      //   }
-      // }
-
       final url = Uri.parse('$baseUrl/$endpoint');
+      print("📡 Downloading PDF from: $url");
 
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final dir = await getApplicationDocumentsDirectory();
-        final filePath = "${dir.path}/$fileName";
+        // ✅ Save the PDF directly to the provided full path
+        await savePdfFile(response.bodyBytes, filePath);
 
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
+        print("✅ PDF successfully saved at: $filePath");
+
+        // ✅ Close loader dialog (PopupLoader)
         GoRouter.of(context).pop();
 
-        await OpenFile.open(filePath);
+        // ✅ Try to open the saved file
+        final result = await OpenFile.open(filePath);
+        print("📖 OpenFile result: ${result.message}");
       } else {
         throw Exception("Failed to download PDF. Status: ${response.statusCode}");
       }
     } catch (e) {
+      print("❌ Error downloading PDF: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please wait to complete bookings'),
+        const SnackBar(
+          content: Text('Failed to download PDF. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
+
+  Future<void> savePdfFile(Uint8List bytes, String filePath) async {
+    try {
+      final file = File(filePath);
+
+      // ✅ Ensure directory exists
+      if (!await file.parent.exists()) {
+        await file.parent.create(recursive: true);
+      }
+
+      // ✅ Write PDF bytes to the file
+      await file.writeAsBytes(bytes, flush: true);
+      print("📄 PDF saved at: $filePath");
+    } catch (e) {
+      print("❌ Error saving PDF: $e");
+      throw Exception("Failed to save PDF file");
+    }
+  }
+
 
 }

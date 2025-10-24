@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -8,12 +11,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/buttons/outline_button.dart';
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/payment/india/provisional_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
+import 'package:wti_cabs_user/core/controller/self_drive/self_drive_manage_booking/self_drive_manage_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -30,6 +35,7 @@ import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/download_receipt/download_receipt_controller.dart';
 import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
+import '../../core/controller/self_drive/self_drive_download_receipt/download_receipt_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
@@ -405,40 +411,83 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: isGoogleLoading ? null : () => _handleGoogleLogin(setModelState),
-                                    child: Center(
-                                      child: Column(
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: isGoogleLoading
+                                            ? null
+                                            : () =>
+                                            _handleGoogleLogin(setModelState),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 48,
+                                                height: 48,
+                                                padding: const EdgeInsets.all(1),
+                                                decoration: const BoxDecoration(
+                                                    color: Colors.grey,
+                                                    shape: BoxShape.circle),
+                                                child: CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor: Colors.white,
+                                                  child: isGoogleLoading
+                                                      ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                                  )
+                                                      : Image.asset(
+                                                    'assets/images/google_icon.png',
+                                                    fit: BoxFit.contain,
+                                                    width: 29,
+                                                    height: 29,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text("Google",
+                                                  style: TextStyle(fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 24,
+                                      ),
+                                      Platform.isIOS ?  Column(
                                         children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            padding: const EdgeInsets.all(1),
-                                            decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
-                                            child: CircleAvatar(
-                                              radius: 20,
-                                              backgroundColor: Colors.white,
-                                              child: isGoogleLoading
-                                                  ? const SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child: CircularProgressIndicator(strokeWidth: 2),
-                                              )
-                                                  : Image.asset(
-                                                'assets/images/google_icon.png',
-                                                fit: BoxFit.contain,
-                                                width: 29,
-                                                height: 29,
+                                          GestureDetector(
+                                            onTap: signInWithApple,
+                                            child: Container(
+                                              height: 45,
+                                              width: 45,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Image.asset(
+                                                  'assets/images/apple.png',
+                                                  height: 48,
+                                                  color: Colors.white,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
-                                          const Text("Google", style: TextStyle(fontSize: 13)),
+                                          Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
+                                          Platform.isIOS ?
+                                          const Text("Apple",
+                                              style: TextStyle(
+                                                  fontSize: 13)) : SizedBox()
                                         ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                      ) : SizedBox.shrink()
+
+                                    ],
+                                  ),                                  const SizedBox(height: 20),
                                   GestureDetector(
                                     onTap: () {
                                       signOutFromGoogle();
@@ -485,6 +534,80 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
     final ProfileController profileController = Get.put(ProfileController());
 
     bool isGoogleLoading = false;
+
+    Future<void> signInWithApple() async {
+      try {
+        final credential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+        );
+
+        final userId = credential.userIdentifier;
+        final email = credential.email;
+        final fullName =
+        '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+
+        // Always returned
+        print('User ID: $userId');
+
+        if (email != null) {
+          // First-time login — store data
+          await StorageServices.instance.save('appleUserId', userId??'');
+          await StorageServices.instance.save('appleEmail', email??'');
+          await StorageServices.instance.save('appleName', fullName??'');
+          Navigator.of(context).push(
+            Platform.isIOS
+                ? CupertinoPageRoute(
+              builder: (_) => UserFillDetails(
+                name: fullName??'',
+                email: email ?? '',
+                phone: '',
+              ),
+            )
+                : MaterialPageRoute(
+              builder: (_) => UserFillDetails(
+                name: fullName??'',
+                email: email ?? '',
+                phone: '',
+              ),
+            ),
+          );
+
+
+        } else {
+          // Returning user — load data from local storage
+          String userId = await StorageServices.instance.read('appleUserId')??'';
+          String userEmail = await StorageServices.instance.read('appleEmail')??'';
+          String userName =  await StorageServices.instance.read('appleName') ?? '';
+
+          Navigator.of(context).push(
+            Platform.isIOS
+                ? CupertinoPageRoute(
+              builder: (_) => UserFillDetails(
+                name: userName,
+                email: userEmail,
+                phone: '',
+              ),
+            )
+                : MaterialPageRoute(
+              builder: (_) => UserFillDetails(
+                name: userName,
+                email: userEmail,
+                phone: '',
+              ),
+            ),
+          );
+        }
+
+        // (Optional) Use userId + email for backend auth here
+
+      } catch (e) {
+        print('❌ Apple Sign-In Error: $e');
+      }
+    }
+
 
     Future<UserCredential?> signInWithGoogle() async {
       try {
@@ -782,38 +905,90 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                                       ),
                                     const SizedBox(height: 16),
                                     if (!showOtpField)
-                                      GestureDetector(
-                                        onTap: isGoogleLoading ? null : () => _handleGoogleLogin(setModalState),
-                                        child: Center(
-                                          child: Column(
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: isGoogleLoading
+                                                ? null
+                                                : () => _handleGoogleLogin(
+                                                setModalState),
+                                            child: Center(
+                                              child: Column(
+                                                children: [
+                                                  Container(
+                                                    width: 48,
+                                                    height: 48,
+                                                    padding:
+                                                    const EdgeInsets.all(
+                                                        1),
+                                                    decoration:
+                                                    const BoxDecoration(
+                                                        color:
+                                                        Colors.grey,
+                                                        shape: BoxShape
+                                                            .circle),
+                                                    child: CircleAvatar(
+                                                      radius: 20,
+                                                      backgroundColor:
+                                                      Colors.white,
+                                                      child: isGoogleLoading
+                                                          ? const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child: CircularProgressIndicator(
+                                                            strokeWidth:
+                                                            2),
+                                                      )
+                                                          : Image.asset(
+                                                        'assets/images/google_icon.png',
+                                                        fit: BoxFit
+                                                            .contain,
+                                                        width: 29,
+                                                        height: 29,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  const Text("Google",
+                                                      style: TextStyle(
+                                                          fontSize: 13)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 24,
+                                          ),
+                                          Platform.isIOS ? Column(
                                             children: [
-                                              Container(
-                                                width: 48,
-                                                height: 48,
-                                                padding: const EdgeInsets.all(1),
-                                                decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
-                                                child: CircleAvatar(
-                                                  radius: 20,
-                                                  backgroundColor: Colors.white,
-                                                  child: isGoogleLoading
-                                                      ? const SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                                  )
-                                                      : Image.asset(
-                                                    'assets/images/google_icon.png',
-                                                    fit: BoxFit.contain,
-                                                    width: 29,
-                                                    height: 29,
+                                              GestureDetector(
+                                                onTap: signInWithApple,
+                                                child: Container(
+                                                  height: 45,
+                                                  width: 45,
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.black,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Center(
+                                                    child: Image.asset(
+                                                      'assets/images/apple.png',
+                                                      height: 48,
+                                                      color: Colors.white,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-                                              const Text("Google", style: TextStyle(fontSize: 13)),
+                                              Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
+                                              Platform.isIOS ?
+                                              const Text("Apple",
+                                                  style: TextStyle(
+                                                      fontSize: 13)) : SizedBox()
                                             ],
-                                          ),
-                                        ),
+                                          ) : SizedBox()
+
+                                        ],
                                       ),
                                     const SizedBox(height: 20),
                                     Column(
@@ -845,9 +1020,30 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
     );
   }
 
+  Future<void> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      // Example: print user data
+      print('User ID: ${credential.userIdentifier}');
+      print('Email: ${credential.email}');
+      print('Name: ${credential.givenName} ${credential.familyName}');
+
+      // TODO: Send credential.identityToken to backend for verification or save locally
+    } catch (e) {
+      print('Apple Sign-In Error: $e');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    final driveTypes = ["Chauffeur's Drive"];
+    final driveTypes = ["Cab", "Self Drive"];
 
     return PopScope(
       canPop: false,
@@ -858,7 +1054,11 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
         appBar: AppBar(
           title: Text(
             "Manage Bookings",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.black),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: Colors.black,
+            ),
           ),
           centerTitle: true,
           elevation: 0,
@@ -879,12 +1079,18 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
               },
             );
           }
+
           if (upcomingBookingController.isLoggedIn.value == false) {
             return _buildLoginPrompt(context);
           }
+
           return Column(
             children: [
-              StorageServices.instance.read('token') == null ? SizedBox(height: 12) : SizedBox(),
+              StorageServices.instance.read('token') == null
+                  ? SizedBox(height: 12)
+                  : SizedBox(),
+
+              /// 🚀 Drive Type Toggle
               StorageServices.instance.read('token') == null
                   ? Container(
                 width: MediaQuery.of(context).size.width * 0.8,
@@ -895,42 +1101,58 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: StorageServices.instance.read('token') == null
-                      ? Center(
+                  child: Center(
                     child: MainButton(
                       text: 'Login/Register',
                       onPressed: () {},
                     ),
-                  )
-                      : Row(
-                    children: List.generate(1, (index) {
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedDriveType = index),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selectedDriveType == index ? Color(0xFF002CC0) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              driveTypes[index],
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: selectedDriveType == index ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
                   ),
                 ),
               )
-                  : SizedBox(),
+                  : Container(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: List.generate(driveTypes.length, (index) {
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => selectedDriveType = index),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selectedDriveType == index
+                                ? Color(0xFF002CC0)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            driveTypes[index],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: selectedDriveType == index
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+
               SizedBox(height: 20),
+
+              /// 🚀 Bookings TabBar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: TabBar(
@@ -938,21 +1160,38 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                   labelColor: Color(0xFF002CC0),
                   unselectedLabelColor: Color(0xFF494949),
                   indicatorColor: Color(0xFF002CC0),
-                  labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF002CC0)),
-                  tabs: [
+                  labelStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF002CC0),
+                  ),
+                  tabs: const [
                     Tab(text: "Upcoming"),
                     Tab(text: "Completed"),
                     Tab(text: "Cancelled"),
                   ],
                 ),
               ),
+
+              /// 🚀 Bookings List Based on Tab + Drive Type
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    BookingList(),
-                    CompletedBookingList(),
-                    CanceledBookingList(),
+                    // Upcoming Tab
+                    selectedDriveType == 0
+                        ? BookingList() // Chauffeur’s
+                        : SelfDriveBookingList(),
+
+                    // Completed Tab
+                    selectedDriveType == 0
+                        ? CompletedBookingList()
+                        : CompletedSelfDriveBookingList(),
+
+                    // Cancelled Tab
+                    selectedDriveType == 0
+                        ? CanceledBookingList()
+                        : CanceledSelfDriveBookingList(),
                   ],
                 ),
               ),
@@ -961,8 +1200,7 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
         }),
       ),
     );
-  }
-}
+  }}
 
 class BookingList extends StatefulWidget {
 
@@ -995,6 +1233,7 @@ class _BookingCardState extends State<BookingCard> {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
   final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfCtrl = Get.put(SdPdfDownloadController());
   final CurrencyController currencyController = Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
@@ -1173,7 +1412,7 @@ class _BookingCardState extends State<BookingCard> {
                                         ),
                                         TextSpan(
                                           text:
-                                          "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                          "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: Color(0xFF2B2B2B),
@@ -1612,7 +1851,7 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                             ),
                                             TextSpan(
                                               text:
-                                              "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                              "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Color(0xFF2B2B2B),
@@ -2062,7 +2301,7 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                             ),
                                             TextSpan(
                                               text:
-                                              "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}",
+                                              "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Color(0xFF2B2B2B),
@@ -2447,3 +2686,1092 @@ class BookingCardShimmer extends StatelessWidget {
     );
   }
 }
+
+
+class SelfDriveBookingList extends StatefulWidget {
+  const SelfDriveBookingList({super.key});
+
+  @override
+  State<SelfDriveBookingList> createState() => _SelfDriveBookingListState();
+}
+
+class _SelfDriveBookingListState extends State<SelfDriveBookingList> {
+  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch data only if not already fetched
+    selfDriveManageBookingController.fetchMangeBooking('CONFIRMED');
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // Show shimmer while loading
+      if (selfDriveManageBookingController.isLoading.value) {
+        return const BookingCardShimmer();
+      }
+
+      // Show empty state if no bookings
+      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
+      if (results == null || results.isEmpty) {
+        return const Center(child: Text('No Upcoming Bookings Found'));
+      }
+
+      // Show booking list
+      return ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: results.length,
+        itemBuilder: (BuildContext context, int index) {
+          var result = results[index];
+          return Card(
+            elevation: 0,
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(width: 1, color: Color(0xFFCECECE)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Car Row
+                  Row(
+                    children: [
+                      // Image
+                      Image.network(
+                        result.selectedCar?.img ?? '',
+                        width: 84,
+                        height: 64,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/inventory_car.png',
+                            width: 84,
+                            height: 64,
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      // Car Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              result.selectedCar?.model ?? '',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF373737),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking ID: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?.first.value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF222222),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking Type: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?[1].value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF002CC0),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FutureBuilder<double>(
+                              future: Future.value(result.price?.amount?.toDouble() ?? 0.0),
+                              builder: (context, snapshot) {
+                                final convertedValue = snapshot.data ?? result.price?.amount?.toDouble() ?? 0.0;
+                                return Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Paid Amount: ',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF929292),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF2B2B2B),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(
+                    thickness: 1,
+                    color: Color(0xFFF2F2F2),
+                  ),
+                  const SizedBox(height: 12),
+                  // Pickup and Drop
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const RotationTransition(
+                                  turns: AlwaysStoppedAnimation(40 / 360),
+                                  child: Icon(Icons.navigation_outlined, size: 16, color: Color(0xFF002CC0)),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Pickup",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.pickup?.address ?? 'Source not found',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.pickup?.date} ${result.pickup?.time}' ?? 'No Pickup Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 75,
+                        color: const Color(0xFFF2F2F2),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.pin_drop_outlined, size: 16, color: Color(0xFF002CC0)),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Drop",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.drop?.address ?? "Destination not found",
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.drop?.date} ${result.drop?.time}' ?? 'No Drop Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      CommonOutlineButton(
+                          text: 'Download Receipt',
+                          onPressed:
+                          // pdfCtrl.isDownloading.value ?
+                              () async{
+                            showDialog(
+                              context: context,
+                              barrierDismissible:
+                              false,
+                              builder: (_) =>
+                              const PopupLoader(
+                                message:
+                                'Downloading Receipt...',
+                              ),
+                            );
+                            await sdPdfDownloadController.downloadReceiptPdf(
+                                context:
+                                context,
+                                orderRefId: result?.orderReferenceNumber??'')
+                                .then((value) {
+                              GoRouter.of(context)
+                                  .pop();
+                            });
+                          }
+                        //     : () async {
+                        //   showDialog(
+                        //     context: context,
+                        //     barrierDismissible: false,
+                        //     builder: (_) => const PopupLoader(
+                        //       message: 'Downloading Receipt....',
+                        //     ),
+                        //   );
+                        //   await pdfCtrl
+                        //       .downloadReceiptPdf(
+                        //       upcomingBookingController.confirmedBookings
+                        //       [index].id ??
+                        //           '',
+                        //       context)
+                        //       .then((value) {
+                        //     GoRouter.of(context).pop();
+                        //   });
+                        // },
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (result.orderReferenceNumber != null) {
+                            final bookingMap = {
+                              "orderRefNo": result.orderReferenceNumber,
+                              "vehicle": result.selectedCar?.model,
+                              "pickup": result.pickup,
+                              "drop": result.drop,
+                              "startTime": '${result.pickup?.date}, ${result.pickup?.time}',
+                              "endTime": '${result.drop?.date}, ${result.drop?.time}',
+                            };
+                            context.push('/selfDriveCancelBooking', extra: bookingMap);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mainButtonBg,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                        child: const Text(
+                          'Manage Booking',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+}
+
+// self drive completed booking
+class CompletedSelfDriveBookingList extends StatefulWidget {
+  const CompletedSelfDriveBookingList({super.key});
+
+  @override
+  State<CompletedSelfDriveBookingList> createState() => _CompletedSelfDriveBookingListState();
+}
+
+class _CompletedSelfDriveBookingListState extends State<CompletedSelfDriveBookingList> {
+  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch data only if not already fetched
+    selfDriveManageBookingController.fetchMangeBooking('COMPLETED');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // Show shimmer while loading
+      if (selfDriveManageBookingController.isLoading.value) {
+        return const BookingCardShimmer();
+      }
+
+      // Show empty state if no bookings
+      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
+      if (results == null || results.isEmpty) {
+        return const Center(child: Text('No Completed Bookings Found'));
+      }
+
+      // Show booking list
+      return ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: results.length,
+        itemBuilder: (BuildContext context, int index) {
+          var result = results[index];
+          return Card(
+            elevation: 0,
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(width: 1, color: Color(0xFFCECECE)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Car Row
+                  Row(
+                    children: [
+                      // Image
+                      Image.network(
+                        result.selectedCar?.img ?? '',
+                        width: 84,
+                        height: 64,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/inventory_car.png',
+                            width: 84,
+                            height: 64,
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      // Car Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              result.selectedCar?.model ?? '',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF373737),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking ID: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?.first.value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF222222),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking Type: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?[1].value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF002CC0),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FutureBuilder<double>(
+                              future: Future.value(result.price?.amount?.toDouble() ?? 0.0),
+                              builder: (context, snapshot) {
+                                final convertedValue = snapshot.data ?? result.price?.amount?.toDouble() ?? 0.0;
+                                return Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Paid Amount: ',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF929292),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF2B2B2B),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(
+                    thickness: 1,
+                    color: Color(0xFFF2F2F2),
+                  ),
+                  const SizedBox(height: 12),
+                  // Pickup and Drop
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const RotationTransition(
+                                  turns: AlwaysStoppedAnimation(40 / 360),
+                                  child: Icon(Icons.navigation_outlined, size: 16, color: Color(0xFF002CC0)),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Pickup",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.pickup?.address ?? 'Source not found',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.pickup?.date} ${result.pickup?.time}' ?? 'No Pickup Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 75,
+                        color: const Color(0xFFF2F2F2),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.pin_drop_outlined, size: 16, color: Color(0xFF002CC0)),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Drop",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.drop?.address ?? "Destination not found",
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.drop?.date} ${result.drop?.time}' ?? 'No Drop Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      CommonOutlineButton(
+                          text: 'Download Receipt',
+                          onPressed:
+                          // pdfCtrl.isDownloading.value ?
+                              () async{
+                            showDialog(
+                              context: context,
+                              barrierDismissible:
+                              false,
+                              builder: (_) =>
+                              const PopupLoader(
+                                message:
+                                'Downloading Receipt...',
+                              ),
+                            );
+                            await sdPdfDownloadController.downloadReceiptPdf(
+                                context:
+                                context,
+                                orderRefId: result?.orderReferenceNumber??'')
+                                .then((value) {
+                              GoRouter.of(context)
+                                  .pop();
+                            });
+                          }
+                        //     : () async {
+                        //   showDialog(
+                        //     context: context,
+                        //     barrierDismissible: false,
+                        //     builder: (_) => const PopupLoader(
+                        //       message: 'Downloading Receipt....',
+                        //     ),
+                        //   );
+                        //   await pdfCtrl
+                        //       .downloadReceiptPdf(
+                        //       upcomingBookingController.confirmedBookings
+                        //       [index].id ??
+                        //           '',
+                        //       context)
+                        //       .then((value) {
+                        //     GoRouter.of(context).pop();
+                        //   });
+                        // },
+                      ),                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+}
+
+// self drive cancelled booking
+class CanceledSelfDriveBookingList extends StatefulWidget {
+  const CanceledSelfDriveBookingList({super.key});
+
+  @override
+  State<CanceledSelfDriveBookingList> createState() => _CanceledSelfDriveBookingListState();
+}
+
+class _CanceledSelfDriveBookingListState extends State<CanceledSelfDriveBookingList> {
+  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch data only if not already fetched
+    selfDriveManageBookingController.fetchMangeBooking('CANCELLED');
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // Show shimmer while loading
+      if (selfDriveManageBookingController.isLoading.value) {
+        return const BookingCardShimmer();
+      }
+
+      // Show empty state if no bookings
+      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
+      if (results == null || results.isEmpty) {
+        return const Center(child: Text('No Cancelled Bookings Found'));
+      }
+
+      // Show booking list
+      return ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: results.length,
+        itemBuilder: (BuildContext context, int index) {
+          var result = results[index];
+          return Card(
+            elevation: 0,
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(width: 1, color: Color(0xFFCECECE)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Car Row
+                  Row(
+                    children: [
+                      // Image
+                      Image.network(
+                        result.selectedCar?.img ?? '',
+                        width: 84,
+                        height: 64,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/inventory_car.png',
+                            width: 84,
+                            height: 64,
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      // Car Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              result.selectedCar?.model ?? '',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF373737),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking ID: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?.first.value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF222222),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Booking Type: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF929292),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: result.bookingSummary?[1].value ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF002CC0),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FutureBuilder<double>(
+                              future: Future.value(result.price?.amount?.toDouble() ?? 0.0),
+                              builder: (context, snapshot) {
+                                final convertedValue = snapshot.data ?? result.price?.amount?.toDouble() ?? 0.0;
+                                return Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Paid Amount: ',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF929292),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: "${currencyController.selectedCurrency.value.code} ${convertedValue.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF2B2B2B),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(
+                    thickness: 1,
+                    color: Color(0xFFF2F2F2),
+                  ),
+                  const SizedBox(height: 12),
+                  // Pickup and Drop
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const RotationTransition(
+                                  turns: AlwaysStoppedAnimation(40 / 360),
+                                  child: Icon(Icons.navigation_outlined, size: 16, color: Color(0xFF002CC0)),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Pickup",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.pickup?.address ?? 'Source not found',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.pickup?.date} ${result.pickup?.time}' ?? 'No Pickup Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 75,
+                        color: const Color(0xFFF2F2F2),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.pin_drop_outlined, size: 16, color: Color(0xFF002CC0)),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Drop",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF002CC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              result.drop?.address ?? "Destination not found",
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF333333),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/calendar_clock.svg',
+                                  height: 12,
+                                  width: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${result.drop?.date} ${result.drop?.time}' ?? 'No Drop Date Found',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF808080),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      CommonOutlineButton(
+                          text: 'Download Receipt',
+                          onPressed:
+                          // pdfCtrl.isDownloading.value ?
+                              () async{
+                            showDialog(
+                              context: context,
+                              barrierDismissible:
+                              false,
+                              builder: (_) =>
+                              const PopupLoader(
+                                message:
+                                'Downloading Receipt...',
+                              ),
+                            );
+                            await sdPdfDownloadController.downloadReceiptPdf(
+                                context:
+                                context,
+                                orderRefId: result?.orderReferenceNumber??'')
+                                .then((value) {
+                              GoRouter.of(context)
+                                  .pop();
+                            });
+                          }
+                        //     : () async {
+                        //   showDialog(
+                        //     context: context,
+                        //     barrierDismissible: false,
+                        //     builder: (_) => const PopupLoader(
+                        //       message: 'Downloading Receipt....',
+                        //     ),
+                        //   );
+                        //   await pdfCtrl
+                        //       .downloadReceiptPdf(
+                        //       upcomingBookingController.confirmedBookings
+                        //       [index].id ??
+                        //           '',
+                        //       context)
+                        //       .then((value) {
+                        //     GoRouter.of(context).pop();
+                        //   });
+                        // },
+                      ),                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+}
+

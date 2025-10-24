@@ -259,6 +259,7 @@ class _SelfDriveReturnPlaceMapState extends State<SelfDriveReturnPlaceMap> {
                                                     vehicleId: widget.vehicleId,
                                                     isHomePage: false,
                                                   fromReturnMapPage: true,
+                                                    shouldScrollToBottom: true
                                                 ),
                                           )
                                         : MaterialPageRoute(
@@ -266,7 +267,9 @@ class _SelfDriveReturnPlaceMapState extends State<SelfDriveReturnPlaceMap> {
                                                 SelfDriveFinalPageS1(
                                                     vehicleId: widget.vehicleId,
                                                     isHomePage: false,
-                                                  fromReturnMapPage: true,),
+                                                  fromReturnMapPage: true,
+                                                    shouldScrollToBottom: true
+                                                ),
                                           ),
                                   );
                                 });

@@ -34,6 +34,7 @@ class AuthResult {
   final String? countryName;
   final String? address;
   final String? city;
+  final String? stateName;
   final String? postalCode;
   final String? emailID;
   final String? password;
@@ -57,6 +58,7 @@ class AuthResult {
     this.countryName,
     this.address,
     this.city,
+    this.stateName,
     this.postalCode,
     this.emailID,
     this.password,
@@ -82,6 +84,7 @@ class AuthResult {
       countryName: json['countryName'] as String?,
       address: json['address'] as String?,
       city: json['city'] as String?,
+      stateName: json['stateName'] as String?,
       postalCode: json['postalCode'] as String?,
       emailID: json['emailID'] as String?,
       password: json['password'] as String?,
@@ -108,6 +111,7 @@ class AuthResult {
       'countryName': countryName,
       'address': address,
       'city': city,
+      'stateName':stateName,
       'postalCode': postalCode,
       'emailID': emailID,
       'password': password,

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 // import '../bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/self_drive_payment_status/self_drive_payment_booking_controller.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
@@ -34,7 +35,7 @@ class _PaymentReservationFailureState extends State<PaymentReservationFailure> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
         return false;
       },
       child: Scaffold(
@@ -153,7 +154,7 @@ class _PaymentReservationFailureState extends State<PaymentReservationFailure> {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
                                           builder: (context) =>
-                                              SelfDriveHomeScreen()),
+                                              SelfDriveBottomNavScreen(initialIndex: 1,)),
                                     );
                                   },
                                 ),

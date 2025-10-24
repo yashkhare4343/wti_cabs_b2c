@@ -42,7 +42,7 @@ class _FromDateTimePickerState extends State<FromDateTimePicker> {
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.dateAndTime,
                   initialDateTime: searchInventorySdController.fromDate.value,
-                  minimumDate: DateTime.now().add(const Duration(days: 1))
+                  minimumDate: DateTime.now().add(const Duration(days: 2))
                       .copyWith(hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0),
                   onDateTimeChanged: (DateTime newDateTime) {
                     tempDateTime = newDateTime;
@@ -90,7 +90,7 @@ class _FromDateTimePickerState extends State<FromDateTimePicker> {
     // Initialize only once if not already set
     if (searchInventorySdController.fromDate.value == DateTime(0)) {
       searchInventorySdController.fromDate.value =
-          DateTime.now().add(const Duration(days: 1))
+          DateTime.now().add(const Duration(days: 2))
               .copyWith(hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0);
       searchInventorySdController.fromTime.value =
       const TimeOfDay(hour: 0, minute: 0);
@@ -179,6 +179,8 @@ class _FromDateTimePickerState extends State<FromDateTimePicker> {
   }
 }
 
+
+
 class ToDateTimePicker extends StatefulWidget {
   final DateTime fromDate;
   final Function(DateTime) onDateChanged;
@@ -200,6 +202,7 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
   }
 
   void _initializeToDate() {
+    // Minimum toDate = fromDate + 1 day
     final minimumToDate = widget.fromDate.add(const Duration(days: 1)).copyWith(
       hour: 0,
       minute: 0,
@@ -207,7 +210,9 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
       millisecond: 0,
       microsecond: 0,
     );
-    if (searchInventorySdController.toDate.value == DateTime(0)) {
+
+    if (searchInventorySdController.toDate.value == DateTime(0) ||
+        searchInventorySdController.toDate.value.isBefore(minimumToDate)) {
       searchInventorySdController.toDate.value = minimumToDate;
       searchInventorySdController.toTime.value = const TimeOfDay(hour: 0, minute: 0);
     }
@@ -223,6 +228,7 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
       millisecond: 0,
       microsecond: 0,
     );
+
     if (searchInventorySdController.toDate.value.isBefore(minimumToDate)) {
       searchInventorySdController.toDate.value = minimumToDate;
       searchInventorySdController.toTime.value = TimeOfDay.fromDateTime(minimumToDate);
@@ -239,9 +245,23 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
 
   void _showDateTimePicker(BuildContext context) {
     tempDateTime = searchInventorySdController.toDate.value;
+
     showCupertinoModalPopup(
       context: context,
       builder: (BuildContext context) {
+        final minimumDate = widget.fromDate.add(const Duration(days: 1)).copyWith(
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+          microsecond: 0,
+        );
+
+        // Ensure initialDateTime >= minimumDate
+        final initialDate = tempDateTime!.isBefore(minimumDate)
+            ? minimumDate
+            : tempDateTime!;
+
         return Container(
           height: 300,
           color: Colors.white,
@@ -250,14 +270,8 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
               Expanded(
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.dateAndTime,
-                  initialDateTime: searchInventorySdController.toDate.value,
-                  minimumDate: widget.fromDate.add(const Duration(days: 1)).copyWith(
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
-                    millisecond: 0,
-                    microsecond: 0,
-                  ),
+                  initialDateTime: initialDate,
+                  minimumDate: minimumDate,
                   onDateTimeChanged: (DateTime newDateTime) {
                     tempDateTime = newDateTime;
                   },
@@ -269,7 +283,8 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
                   onPressed: () {
                     if (tempDateTime != null) {
                       searchInventorySdController.toDate.value = tempDateTime!;
-                      searchInventorySdController.toTime.value = TimeOfDay.fromDateTime(tempDateTime!);
+                      searchInventorySdController.toTime.value =
+                          TimeOfDay.fromDateTime(tempDateTime!);
                       widget.onDateChanged(searchInventorySdController.toDate.value);
                     }
                     Navigator.pop(context);
@@ -373,6 +388,7 @@ class _ToDateTimePickerState extends State<ToDateTimePicker> {
 }
 
 
+
 class DateTimeRangePicker extends StatefulWidget {
   final bool isMonthlyRental;
   const DateTimeRangePicker({Key? key, required this.isMonthlyRental}) : super(key: key);
@@ -389,7 +405,7 @@ class _DateTimeRangePickerState extends State<DateTimeRangePicker> {
     super.initState();
     // Initialize fromDate if not set
     if (searchInventorySdController.fromDate.value == DateTime(0)) {
-      final defaultFromDate = DateTime.now().add(const Duration(days: 1))
+      final defaultFromDate = DateTime.now().add(const Duration(days: 2))
           .copyWith(hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0);
       searchInventorySdController.fromDate.value = defaultFromDate;
       searchInventorySdController.fromTime.value = const TimeOfDay(hour: 0, minute: 0);
@@ -401,8 +417,8 @@ class _DateTimeRangePickerState extends State<DateTimeRangePicker> {
     searchInventorySdController.fromTime.value = TimeOfDay.fromDateTime(newFromDate);
 
     // Ensure toDate respects minimum of fromDate + 1 day
-    if (searchInventorySdController.toDate.value.isBefore(newFromDate.add(const Duration(days: 1)))) {
-      searchInventorySdController.toDate.value = newFromDate.add(const Duration(days: 1));
+    if (searchInventorySdController.toDate.value.isBefore(newFromDate.add(const Duration(days: 2)))) {
+      searchInventorySdController.toDate.value = newFromDate.add(const Duration(days: 2));
       searchInventorySdController.toTime.value = TimeOfDay(hour: 0, minute: 0);
     }
   }
@@ -466,7 +482,7 @@ class _MonthSelectorState extends State<MonthSelector> {
                   Expanded(
                     child: ListView.builder(
                       shrinkWrap: true,
-                      itemCount: 12,
+                      itemCount: 2,
                       itemBuilder: (context, index) {
                         int month = index + 1;
                         return Obx(() {
@@ -475,12 +491,12 @@ class _MonthSelectorState extends State<MonthSelector> {
                             groupValue: searchInventorySdController.selectedMonth.value,
                             onChanged: (val) {
                               if (val != null) {
-                                searchInventorySdController.selectedMonth.value = val;
+                                searchInventorySdController.selectedMonth.value = month%2!=0 ? val : val+index;
                                 setSheetState(() {}); // update sheet UI
                                 Navigator.pop(context);
                               }
                             },
-                            title: Text("$month Month${month > 1 ? 's' : ''}"),
+                            title: Text( month%2!=0 ? "$month Month${month > 1 ? 's' : ''}": "${month + index} Month${month > 1 ? 's' : ''}"),
                           );
                         });
                       },

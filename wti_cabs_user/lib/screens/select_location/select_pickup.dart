@@ -84,7 +84,8 @@ class _SelectPickupState extends State<SelectPickup> {
                   pickupController.text = newSuggestion.primaryText;
                   bookingRideController.prefilled.value = newSuggestion.primaryText;
                   FocusScope.of(context).unfocus();
-                  GoRouter.of(context).pop();
+                  // GoRouter.of(context).pop();
+                  GoRouter.of(context).push(AppRoutes.bottomNav);
                 },
               ),
             ),
@@ -208,6 +209,7 @@ class _SelectPickupState extends State<SelectPickup> {
     }
     else{
       GoRouter.of(context).pop();
+      // GoRouter.of(context).push(AppRoutes.bookingRide);
     }
     FocusScope.of(context).unfocus();
 

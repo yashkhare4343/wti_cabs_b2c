@@ -1,0 +1,515 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
+import 'package:wti_cabs_user/core/controller/country/country_controller.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
+import 'package:wti_cabs_user/core/controller/reservation_cancellation_controller.dart';
+import 'package:wti_cabs_user/core/controller/self_drive/self_drive_cancel_booking/self_drive_cancel_booking_controller.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_bottom_nav/bottom_nav.dart';
+
+import '../../../core/controller/self_drive/self_drive_payment_status/self_drive_payment_booking_controller.dart';
+import '../../../core/controller/self_drive/self_drive_reservation_details/self_drive_reservation_details.dart';
+
+class SelfDriveCancelBookingScreen extends StatefulWidget {
+  final Map<String, dynamic> orderRefNo;
+
+  const SelfDriveCancelBookingScreen({super.key, required this.orderRefNo});
+
+  @override
+  State<SelfDriveCancelBookingScreen> createState() => _SelfDriveCancelBookingScreenState();
+}
+
+void _showLoader(String message, BuildContext context) {
+  showDialog(
+    context: context,
+    barrierDismissible: false, // Prevent closing by tapping outside
+    builder: (_) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SpinKitFadingCircle(
+                  color: Colors.deepPurple,
+                  size: 48.0,
+                ),
+                SizedBox(height: 16),
+                Text(message,
+                    style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  // Fake delay to simulate loading
+  Future.delayed(const Duration(seconds: 3), () {
+    Navigator.pop(context); // Close loader
+  });
+
+}
+
+
+void _successLoader(
+    String message,
+    BuildContext outerContext,
+    VoidCallback onComplete,
+    ) {
+  showDialog(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (Navigator.of(dialogContext).canPop()) {
+          Navigator.of(dialogContext).pop(); // Close dialog
+        }
+        onComplete(); // 🚀 Call back
+      });
+
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 56,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message, // ✅ Use dynamic message
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "This action was completed successfully.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _SelfDriveCancelBookingScreenState extends State<SelfDriveCancelBookingScreen> {
+  final ReservationCancellationController reservationCancellationController =
+  Get.put(ReservationCancellationController());
+  final CountryController countryController = Get.put(CountryController());
+  String? selectedReason;
+  final CurrencyController currencyController = Get.put(CurrencyController());
+
+  final SelfDriveCancelReservationController selfDriveCancelReservationController = Get.put(SelfDriveCancelReservationController());
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Pass orderReferenceNumber
+  }
+
+  void _showReasonBottomSheet(BuildContext context) {
+    final reasons = [
+      "Change of plans",
+      "Driver issue",
+      "Booked by mistake",
+      "Other",
+    ];
+
+    showModalBottomSheet(
+      backgroundColor: Colors.white,
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // reduced from 12
+                  const Text(
+                    "Select Cancellation Reason",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8), // reduced from 12
+                  ...reasons.map(
+                        (reason) => RadioListTile<String>(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 0, vertical: 0), // less space
+                      dense: true, // makes tile more compact
+                      title: Text(reason, style: const TextStyle(fontSize: 14)),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) {
+                        setModalState(() {
+                          selectedReason = value;
+                        });
+                        setState(() {}); // update main UI
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  buildRefundPolicy(),
+                  const SizedBox(height: 8),// spacing before Done button
+                  SizedBox(
+                    width: double.infinity,
+                    child: MainButton(
+                        text: 'Done',
+                        onPressed: () {
+                          Navigator.pop(context);
+                        }),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orderRefNo = widget.orderRefNo;
+
+    return PopScope(
+      canPop: true, // 🚀 Stops the default "pop and close app"
+      onPopInvoked: (didPop) {
+        // This will be called for hardware back and gesture
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) => SelfDriveBottomNavScreen(
+              initialIndex: 1,
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => SelfDriveBottomNavScreen(
+              initialIndex: 1,
+            ),
+          ),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text("Cancel Bookings",
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black)),
+          centerTitle: true,
+          elevation: 0.6,
+          backgroundColor: Colors.white,
+          leading: Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+            size: 20,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBookingDetails(widget.orderRefNo),
+              const SizedBox(height: 24),
+              const Text(
+                "Why are you cancelling?",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+
+              // Button to open bottom sheet
+              OutlinedButton(
+                onPressed: () => _showReasonBottomSheet(context),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor:
+                  Colors.grey.shade100, // optional light background
+                  foregroundColor: Colors.black87,
+                  minimumSize: const Size.fromHeight(48),
+                  side: const BorderSide(color: Colors.grey), // border color
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(selectedReason ?? "Select a reason"),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 220,
+                    height: 46,
+                    child: Opacity(
+                        opacity: selectedReason == null ? 0.4 : 1,
+                        child: MainButton(
+                            text: 'Cancel Booking',
+                            onPressed: () async {
+                              _showLoader('Please wait', context);
+                              final Map<String, dynamic> requestData = {
+                                "order_reference_number": widget.orderRefNo["orderRefNo"],
+                                "cancellation_reason": selectedReason,
+                                "cancelled_by": "CUSTOMER"
+                              };
+                              debugPrint(
+                                  'cancellation reservation request data : $requestData');
+                              await selfDriveCancelReservationController
+                                  .verifyCancelReservation(requestData: requestData, context: context)
+                                  .then((value) {
+                                _successLoader(
+                                  'Booking Canceled Successfully',
+                                  context,
+                                      () {
+                                    // ✅ Navigate only after loader closes
+                                        Navigator.of(context).push(
+                                          Platform.isIOS
+                                              ? CupertinoPageRoute(
+                                            builder: (_) => SelfDriveBottomNavScreen(
+                                              initialIndex: 0,
+                                            ),
+                                          )
+                                              : MaterialPageRoute(
+                                            builder: (_) => SelfDriveBottomNavScreen(
+                                              initialIndex: 0,
+                                            ),
+                                          ),
+                                        );                                  },
+                                );
+                              });
+
+                            })),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookingDetails(Map<String, dynamic> orderRefNo) {
+
+    return Card(
+      color: const Color(0xFFFFFFFF),
+      elevation: 0.6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Booking Details",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
+            const SizedBox(height: 12), // spacing between heading and details
+            _buildDetailRow("Booking ID", orderRefNo["orderRefNo"]),
+            _buildDetailRow("Vehicle", orderRefNo["vehicle"]),
+            _buildDetailRow("Pickup", orderRefNo["pickup"]),
+            _buildDetailRow("Drop", orderRefNo["drop"]),
+            // FutureBuilder<double>(
+            //   future: Future.delayed(
+            //     const Duration(milliseconds: 500), // 0.5s fake loader
+            //         () => currencyController.convertPrice(booking["amountPaid"].toDouble()),
+            //   ),
+            //   builder: (context, snapshot) {
+            //     if (snapshot.connectionState == ConnectionState.waiting) {
+            //       return SizedBox(
+            //         height: 12,
+            //         width: 20,
+            //         child: Center(
+            //           child: SizedBox(
+            //             height: 10,
+            //             width: 10,
+            //             child: CircularProgressIndicator(
+            //               strokeWidth: 1.5,
+            //               valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
+            //             ),
+            //           ),
+            //         ),
+            //       );
+            //     }
+            //
+            //     if (snapshot.hasError) {
+            //       return const Text(
+            //         "--",
+            //         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            //       );
+            //     }
+            //
+            //     final convertedValue =
+            //         snapshot.data ?? booking["amountPaid"].toDouble();
+            //
+            //     return _buildDetailRow("Amount Paid",  "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}");
+            //   },
+            // ),
+
+            // _buildDetailRow("Amount Paid", booking["amountPaid"]),
+            _buildDetailRow(
+              "Start Time",
+              orderRefNo["startTime"],
+            ),
+            _buildDetailRow(
+              "End Time",
+              orderRefNo["endTime"],
+            ),
+
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String title, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              "$title:",
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Text(value?.toString() ?? "-"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reasonChip(String label) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selectedReason == label,
+      onSelected: (val) {
+        setState(() => selectedReason = val ? label : null);
+      },
+      selectedColor: Colors.red.shade100,
+      backgroundColor: Colors.grey.shade200,
+      labelStyle: TextStyle(
+        color: selectedReason == label ? Colors.red : Colors.black87,
+      ),
+    );
+  }
+
+}
+
+// refund info card
+Widget buildRefundPolicy() {
+  return Card(
+    color: Colors.white,
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.receipt_long, // You can also try Icons.policy or Icons.info
+            color: Colors.blueAccent,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Refund Policy",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "• Cancellations within 1 hour of the booking start time are not eligible for a refund.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}

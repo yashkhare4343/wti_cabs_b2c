@@ -148,7 +148,7 @@ class IndiaPaymentController extends GetxController {
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
         'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.
-        'name': 'WTI Cabs',
+        'name': 'WTI',
         'description': 'Cab Booking Payment',
         'order_id': order['id'],
         'prefill': {

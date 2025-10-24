@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/route_management/app_routes.dart';
 import '../../utility/constants/colors/app_colors.dart';
 
 class Contact extends StatelessWidget {
@@ -29,106 +31,112 @@ class Contact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBgPrimary1,
-      appBar: AppBar(
-        title: const Text(
-          "Contact Us",
-          style: TextStyle(
-            fontSize: 16, // ⬅️ reduced
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        GoRouter.of(context).go(AppRoutes.bottomNav);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBgPrimary1,
+        appBar: AppBar(
+          title: const Text(
+            "Contact Us",
+            style: TextStyle(
+              fontSize: 16, // ⬅️ reduced
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
+          centerTitle: true,
+          elevation: 0.5,
+          backgroundColor: Colors.white,
+          automaticallyImplyLeading: false,
         ),
-        centerTitle: true,
-        elevation: 0.5,
-        backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16), // ⬅️ slightly less
-        children: [
-          const Text(
-            "Get in Touch",
-            style: TextStyle(
-              fontSize: 18, // ⬅️ reduced
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-              letterSpacing: 0.2,
+        body: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16), // ⬅️ slightly less
+          children: [
+            const Text(
+              "Get in Touch",
+              style: TextStyle(
+                fontSize: 18, // ⬅️ reduced
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+                letterSpacing: 0.2,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Our team is here to assist you with any queries related to reservations and services.",
-            style: TextStyle(
-              fontSize: 13, // ⬅️ reduced
-              color: Colors.black54,
-              height: 1.3,
+            const SizedBox(height: 4),
+            const Text(
+              "Our team is here to assist you with any queries related to reservations and services.",
+              style: TextStyle(
+                fontSize: 13, // ⬅️ reduced
+                color: Colors.black54,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20), // ⬅️ less spacing
+            const SizedBox(height: 20), // ⬅️ less spacing
 
-          // Contact Options
-          _buildContactCard(
-            context,
-            icon: Icons.phone,
-            title: "Call Us (Landline)",
-            subtitle: "011-45434500",
-            color: Colors.blue,
-            onTap: () => _launchPhone("01145434500"),
-          ),
-          _buildContactCard(
-            context,
-            icon: Icons.phone_android,
-            title: "Call Us (Mobile)",
-            subtitle: "9250057902",
-            color: Colors.teal,
-            onTap: () => _launchPhone("9250057902"),
-          ),
-          _buildContactCard(
-            context,
-            icon: Icons.email_outlined,
-            title: "Email Us",
-            subtitle: "info@wti.co.in",
-            color: Colors.redAccent,
-            onTap: () => _launchEmail("info@wti.co.in"),
-          ),
-          _buildContactCard(
-            context,
-            icon: Icons.language_outlined,
-            title: "Visit Our Website",
-            subtitle: "www.wticabs.com",
-            color: Colors.deepPurple,
-            onTap: () => _launchWebsite("https://www.wticabs.com"),
-          ),
-
-          const SizedBox(height: 24), // ⬅️ reduced
-          const Divider(thickness: 1, color: Colors.black12),
-
-          const SizedBox(height: 16),
-          const Text(
-            "Company Information",
-            style: TextStyle(
-              fontSize: 14.5, // ⬅️ reduced
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+            // Contact Options
+            _buildContactCard(
+              context,
+              icon: Icons.phone,
+              title: "Call Us (Landline)",
+              subtitle: "011-45434500",
+              color: Colors.blue,
+              onTap: () => _launchPhone("01145434500"),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Wise Travel India Ltd.",
-            style: TextStyle(
-              fontSize: 14, // ⬅️ reduced
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
+            _buildContactCard(
+              context,
+              icon: Icons.phone_android,
+              title: "Call Us (Mobile)",
+              subtitle: "9250057902",
+              color: Colors.teal,
+              onTap: () => _launchPhone("9250057902"),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20), // ⬅️ tighter bottom
-        ],
+            _buildContactCard(
+              context,
+              icon: Icons.email_outlined,
+              title: "Email Us",
+              subtitle: "info@wti.co.in",
+              color: Colors.redAccent,
+              onTap: () => _launchEmail("info@wti.co.in"),
+            ),
+            _buildContactCard(
+              context,
+              icon: Icons.language_outlined,
+              title: "Visit Our Website",
+              subtitle: "www.wticabs.com",
+              color: Colors.deepPurple,
+              onTap: () => _launchWebsite("https://www.wticabs.com"),
+            ),
+
+            const SizedBox(height: 24), // ⬅️ reduced
+            const Divider(thickness: 1, color: Colors.black12),
+
+            const SizedBox(height: 16),
+            const Text(
+              "Company Information",
+              style: TextStyle(
+                fontSize: 14.5, // ⬅️ reduced
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Wise Travel India Ltd.",
+              style: TextStyle(
+                fontSize: 14, // ⬅️ reduced
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20), // ⬅️ tighter bottom
+          ],
+        ),
       ),
     );
   }

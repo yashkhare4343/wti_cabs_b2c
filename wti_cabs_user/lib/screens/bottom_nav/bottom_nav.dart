@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -7,6 +9,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/auth/mobile_controller.dart';
 import 'package:wti_cabs_user/core/controller/auth/otp_controller.dart';
@@ -24,6 +27,7 @@ import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/banner/banner_controller.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/choose_pickup/choose_pickup_controller.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/controller/manage_booking/upcoming_booking_controller.dart';
 import '../../core/controller/popular_destination/popular_destination.dart';
@@ -73,16 +77,14 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     WidgetsBinding.instance.addObserver(this);
     // Fetch location and show bottom sheet
     _setStatusBarColor();
-
   }
 
   void homeApiLoading() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) async{
-
-    await popularDestinationController.fetchPopularDestinations();
-    // await StorageServices.instance.read('token') != null
-    //     ? null
-    //     : _showAuthBottomSheet();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await popularDestinationController.fetchPopularDestinations();
+      // await StorageServices.instance.read('token') != null
+      //     ? null
+      //     : _showAuthBottomSheet();
     });
     // await uspController.fetchUsps();
     // await bannerController.fetchImages();
@@ -93,7 +95,6 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     super.didChangeDependencies();
     // Reapply status bar color when dependencies change (e.g., navigation)
     _setStatusBarColor();
-
   }
 
   @override
@@ -449,47 +450,84 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: isGoogleLoading
-                                        ? null
-                                        : () =>
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: isGoogleLoading
+                                            ? null
+                                            : () =>
                                             _handleGoogleLogin(setModelState),
-                                    child: Center(
-                                      child: Column(
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 48,
+                                                height: 48,
+                                                padding: const EdgeInsets.all(1),
+                                                decoration: const BoxDecoration(
+                                                    color: Colors.grey,
+                                                    shape: BoxShape.circle),
+                                                child: CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor: Colors.white,
+                                                  child: isGoogleLoading
+                                                      ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                                  )
+                                                      : Image.asset(
+                                                    'assets/images/google_icon.png',
+                                                    fit: BoxFit.contain,
+                                                    width: 29,
+                                                    height: 29,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text("Google",
+                                                  style: TextStyle(fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 24,
+                                      ),
+                                      Column(
                                         children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            padding: const EdgeInsets.all(1),
-                                            decoration: const BoxDecoration(
-                                                color: Colors.grey,
-                                                shape: BoxShape.circle),
-                                            child: CircleAvatar(
-                                              radius: 20,
-                                              backgroundColor: Colors.white,
-                                              child: isGoogleLoading
-                                                  ? const SizedBox(
-                                                      width: 20,
-                                                      height: 20,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                              strokeWidth: 2),
-                                                    )
-                                                  : Image.asset(
-                                                      'assets/images/google_icon.png',
-                                                      fit: BoxFit.contain,
-                                                      width: 29,
-                                                      height: 29,
-                                                    ),
+                                          GestureDetector(
+                                            onTap: signInWithApple,
+                                            child: Container(
+                                              height: 45,
+                                              width: 45,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Image.asset(
+                                                  'assets/images/apple.png',
+                                                  height: 48,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
-                                          const Text("Google",
-                                              style: TextStyle(fontSize: 13)),
+                                          Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
+                                          Platform.isIOS ?
+                                          const Text("Apple",
+                                              style: TextStyle(
+                                                  fontSize: 13)) : SizedBox()
                                         ],
-                                      ),
-                                    ),
+                                      )
+
+                                    ],
                                   ),
+
                                   const SizedBox(height: 20),
                                   GestureDetector(
                                     onTap: () {
@@ -545,24 +583,98 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController otpTextEditingController =
-        TextEditingController();
+    TextEditingController();
     final MobileController mobileController = Get.put(MobileController());
     final OtpController otpController = Get.put(OtpController());
     final ResendOtpController resendOtpController =
-        Get.put(ResendOtpController());
+    Get.put(ResendOtpController());
     final RegisterController registerController = Get.put(RegisterController());
     final UpcomingBookingController upcomingBookingController =
-        Get.put(UpcomingBookingController());
-    final ProfileController profileController = Get.put(ProfileController());
+    Get.put(UpcomingBookingController());
+    final CurrencyController currencyController = Get.put(CurrencyController());
 
     bool isGoogleLoading = false;
+
+    Future<void> signInWithApple() async {
+      try {
+        final credential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+        );
+
+        final userId = credential.userIdentifier;
+        final email = credential.email;
+        final fullName =
+        '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+
+        // Always returned
+        print('User ID: $userId');
+
+        if (email != null) {
+          // First-time login — store data
+          await StorageServices.instance.save('appleUserId', userId??'');
+          await StorageServices.instance.save('appleEmail', email??'');
+          await StorageServices.instance.save('appleName', fullName??'');
+          Navigator.of(context).push(
+            Platform.isIOS
+                ? CupertinoPageRoute(
+              builder: (_) => UserFillDetails(
+                name: fullName??'',
+                email: email ?? '',
+                phone: '',
+              ),
+            )
+                : MaterialPageRoute(
+              builder: (_) => UserFillDetails(
+                name: fullName??'',
+                email: email ?? '',
+                phone: '',
+              ),
+            ),
+          );
+
+
+        } else {
+          // Returning user — load data from local storage
+          String userId = await StorageServices.instance.read('appleUserId')??'';
+          String userEmail = await StorageServices.instance.read('appleEmail')??'';
+          String userName =  await StorageServices.instance.read('appleName') ?? '';
+
+          Navigator.of(context).push(
+            Platform.isIOS
+                ? CupertinoPageRoute(
+              builder: (_) => UserFillDetails(
+                name: userName,
+                email: userEmail,
+                phone: '',
+              ),
+            )
+                : MaterialPageRoute(
+              builder: (_) => UserFillDetails(
+                name: userName,
+                email: userEmail,
+                phone: '',
+              ),
+            ),
+          );
+        }
+
+        // (Optional) Use userId + email for backend auth here
+
+      } catch (e) {
+        print('❌ Apple Sign-In Error: $e');
+      }
+    }
+
 
     Future<UserCredential?> signInWithGoogle() async {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
           serverClientId:
-              '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
+          '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -574,7 +686,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
         // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
+        await googleUser.authentication;
 
         // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
@@ -584,7 +696,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
 
         // Sign in to Firebase
         final userCredential =
-            await FirebaseAuth.instance.signInWithCredential(credential);
+        await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -601,11 +713,20 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       setModalState(() => isGoogleLoading = false);
 
       Navigator.of(context).push(
-        MaterialPageRoute(
+        Platform.isIOS
+            ? CupertinoPageRoute(
           builder: (_) => UserFillDetails(
-              name: result?.user?.displayName ?? '',
-              email: result?.user?.email ?? '',
-              phone: result?.user?.phoneNumber ?? ''), // your login widget
+            name: result?.user?.displayName ?? '',
+            email: result?.user?.email ?? '',
+            phone: result?.user?.phoneNumber ?? '',
+          ),
+        )
+            : MaterialPageRoute(
+          builder: (_) => UserFillDetails(
+            name: result?.user?.displayName ?? '',
+            email: result?.user?.email ?? '',
+            phone: result?.user?.phoneNumber ?? '',
+          ),
         ),
       );
 
@@ -693,403 +814,471 @@ class _BottomNavScreenState extends State<BottomNavScreen>
               maxChildSize: 0.95,
               expand: false,
               builder: (context, scrollController) {
-                return ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(10)),
-                  child: Material(
-                    color: Colors.white,
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header banner
-                          // Container(
-                          //   width: double.infinity,
-                          //   padding: const EdgeInsets.all(16),
-                          //   decoration: const BoxDecoration(
-                          //     color: Color(0xFFFFF6DD),
-                          //     borderRadius: BorderRadius.only(
-                          //       topLeft: Radius.circular(12),
-                          //       topRight: Radius.circular(12),
-                          //     ),
-                          //   ),
-                          //   child: Row(
-                          //     children: [
-                          //       Expanded(
-                          //         child: Column(
-                          //           crossAxisAlignment:
-                          //               CrossAxisAlignment.start,
-                          //           children: [
-                          //             Text(
-                          //               "Invite & Earn!",
-                          //               style: CommonFonts.heading1Bold,
-                          //             ),
-                          //             const SizedBox(height: 8),
-                          //             Text(
-                          //               "Invite your Friends & Get Up to",
-                          //               style: CommonFonts.bodyText6,
-                          //             ),
-                          //             Text("INR 2000*",
-                          //                 style: CommonFonts.bodyText6Bold),
-                          //           ],
-                          //         ),
-                          //       ),
-                          //       Image.asset('assets/images/offer.png',
-                          //           width: 85, height: 85),
-                          //     ],
-                          //   ),
-                          // ),
+              final ProfileController  profileController = ProfileController();
+                return Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: ClipRRect(
+                    borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(10)),
+                    child: Material(
+                      color: Colors.white,
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Header banner
+                            // Container(
+                            //   width: double.infinity,
+                            //   padding: const EdgeInsets.all(16),
+                            //   decoration: const BoxDecoration(
+                            //     color: Color(0xFFFFF6DD),
+                            //     borderRadius: BorderRadius.only(
+                            //       topLeft: Radius.circular(12),
+                            //       topRight: Radius.circular(12),
+                            //     ),
+                            //   ),
+                            //   child: Row(
+                            //     children: [
+                            //       Expanded(
+                            //         child: Column(
+                            //           crossAxisAlignment:
+                            //               CrossAxisAlignment.start,
+                            //           children: [
+                            //             Text(
+                            //               "Invite & Earn!",
+                            //               style: CommonFonts.heading1Bold,
+                            //             ),
+                            //             const SizedBox(height: 8),
+                            //             Text(
+                            //               "Invite your Friends & Get Up to",
+                            //               style: CommonFonts.bodyText6,
+                            //             ),
+                            //             Text("INR 2000*",
+                            //                 style: CommonFonts.bodyText6Bold),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //       Image.asset('assets/images/offer.png',
+                            //           width: 85, height: 85),
+                            //     ],
+                            //   ),
+                            // ),
 
-                          // Form section
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Dynamic heading
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      showOtpField
-                                          ? "OTP Authentication"
-                                          : "Login or Create an Account",
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const SizedBox(
-                                      width: 40,
-                                      height: 4,
-                                      child: DecoratedBox(
-                                          decoration: BoxDecoration(
-                                              color: Color(0xFF3563FF))),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-
-                                // Form body
-                                Form(
-                                  key: _formKey,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                            // Form section
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Dynamic heading
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      if (!showOtpField)
-                                        Container(
-                                          padding:
-                                              const EdgeInsets.only(left: 16.0),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border.all(
-                                                color: hasError
-                                                    ? Colors.red
-                                                    : Colors.grey),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                            child:
-                                                InternationalPhoneNumberInput(
-                                              onInputChanged: (_) =>
-                                                  _validatePhone(phoneController
-                                                      .text
-                                                      .trim()),
-                                              selectorConfig:
-                                                  const SelectorConfig(
-                                                selectorType:
-                                                    PhoneInputSelectorType
-                                                        .BOTTOM_SHEET,
-                                                useBottomSheetSafeArea: true,
-                                                showFlags: true,
-                                              ),
-                                              ignoreBlank: false,
-                                              autoValidateMode:
-                                                  AutovalidateMode.disabled,
-                                              selectorTextStyle:
-                                                  const TextStyle(
-                                                      color: Colors.black),
-                                              initialValue: number,
-                                              textFieldController:
-                                                  phoneController,
-                                              formatInput: false,
-                                              keyboardType: const TextInputType
-                                                  .numberWithOptions(
-                                                  signed: true),
-                                              validator: (_) => null,
-                                              maxLength: 10,
-                                              inputDecoration: InputDecoration(
-                                                hintText: "Enter Mobile Number",
-                                                counterText: "",
-                                                filled: true,
-                                                fillColor: Colors.white,
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 16,
-                                                        vertical: 14),
-                                                border: InputBorder.none,
+                                      Text(
+                                        showOtpField
+                                            ? "OTP Authentication"
+                                            : "Login or Create an Account",
+                                        style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const SizedBox(
+                                        width: 40,
+                                        height: 4,
+                                        child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                                color: Color(0xFF3563FF))),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // Form body
+                                  Form(
+                                    key: _formKey,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        if (!showOtpField)
+                                          Container(
+                                            padding: const EdgeInsets.only(
+                                                left: 16.0),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              border: Border.all(
+                                                  color: hasError
+                                                      ? Colors.red
+                                                      : Colors.grey),
+                                              borderRadius:
+                                              BorderRadius.circular(12),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                              BorderRadius.circular(12.0),
+                                              child:
+                                              InternationalPhoneNumberInput(
+                                                onInputChanged: (_) =>
+                                                    _validatePhone(
+                                                        phoneController.text
+                                                            .trim()),
+                                                selectorConfig:
+                                                const SelectorConfig(
+                                                  selectorType:
+                                                  PhoneInputSelectorType
+                                                      .BOTTOM_SHEET,
+                                                  useBottomSheetSafeArea: true,
+                                                  showFlags: true,
+                                                ),
+                                                ignoreBlank: false,
+                                                autoValidateMode:
+                                                AutovalidateMode.disabled,
+                                                selectorTextStyle:
+                                                const TextStyle(
+                                                    color: Colors.black),
+                                                initialValue: number,
+                                                textFieldController:
+                                                phoneController,
+                                                formatInput: false,
+                                                keyboardType:
+                                                const TextInputType
+                                                    .numberWithOptions(
+                                                    signed: true),
+                                                validator: (_) => null,
+                                                maxLength: 10,
+                                                inputDecoration:
+                                                InputDecoration(
+                                                  hintText:
+                                                  "Enter Mobile Number",
+                                                  counterText: "",
+                                                  filled: true,
+                                                  fillColor: Colors.white,
+                                                  contentPadding:
+                                                  const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 14),
+                                                  border: InputBorder.none,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      if (showOtpField)
-                                        OtpTextField(
-                                          otpController:
-                                              otpTextEditingController,
-                                          mobileNo: phoneController.text.trim(),
-                                        ),
-                                      if (errorMessage != null) ...[
-                                        const SizedBox(height: 8),
-                                        Text(errorMessage!,
-                                            style: const TextStyle(
-                                                color: Colors.red,
-                                                fontSize: 12)),
+                                        if (showOtpField)
+                                          OtpTextField(
+                                            otpController:
+                                            otpTextEditingController,
+                                            mobileNo:
+                                            phoneController.text.trim(),
+                                          ),
+                                        if (errorMessage != null) ...[
+                                          const SizedBox(height: 8),
+                                          Text(errorMessage!,
+                                              style: const TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 12)),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ),
 
-                                const SizedBox(height: 28),
+                                  const SizedBox(height: 28),
 
-                                // Button
-                                Obx(() => SizedBox(
-                                      width: double.infinity,
-                                      height: 48,
-                                      child: Opacity(
-                                        opacity: !showOtpField
-                                            ? isButtonEnabled
-                                                ? 1.0
-                                                : 0.4
-                                            : 1.0,
-                                        child: MainButton(
-                                          text: showOtpField
-                                              ? 'Verify OTP'
-                                              : 'Continue',
-                                          isLoading:
-                                              mobileController.isLoading.value,
-                                          onPressed: isButtonEnabled
-                                              ? () async {
-                                                  mobileController
-                                                      .isLoading.value = true;
-                                                  await Future.delayed(
-                                                      const Duration(
-                                                          seconds: 2));
+                                  // Button
+                                  Obx(() => SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: Opacity(
+                                      opacity: !showOtpField
+                                          ? isButtonEnabled
+                                          ? 1.0
+                                          : 0.4
+                                          : 1.0,
+                                      child: MainButton(
+                                        text: showOtpField
+                                            ? 'Verify OTP'
+                                            : 'Continue',
+                                        isLoading: mobileController
+                                            .isLoading.value,
+                                        onPressed: isButtonEnabled
+                                            ? () async {
+                                          mobileController
+                                              .isLoading.value = true;
+                                          await Future.delayed(
+                                              const Duration(
+                                                  seconds: 2));
 
-                                                  if (showOtpField) {
-                                                    final isVerified =
-                                                        await otpController
-                                                            .verifyOtp(
-                                                      mobile: phoneController
-                                                          .text
-                                                          .trim(),
-                                                      otp:
-                                                          otpTextEditingController
-                                                              .text
-                                                              .trim(),
-                                                      context: context,
-                                                    );
+                                          if (showOtpField) {
+                                            try {
+                                              final isVerified =
+                                              await otpController
+                                                  .verifyOtp(
+                                                mobile:
+                                                phoneController
+                                                    .text
+                                                    .trim(),
+                                                otp:
+                                                otpTextEditingController
+                                                    .text
+                                                    .trim(),
+                                                context: context,
+                                              );
 
-                                                    if (isVerified) {
-                                                      // ✅ Run all fetches in parallel
-                                                      await Future.wait([
-                                                        profileController
-                                                            .fetchData(),
-                                                      ]);
+                                              otpController.hasError
+                                                  .value =
+                                              !isVerified;
 
-                                                      // ✅ Mark logged in (triggers Obx immediately if used in UI)
-                                                      upcomingBookingController
-                                                          .isLoggedIn
-                                                          .value = true;
+                                              if (isVerified) {
+                                                // Show popup loader
 
-                                                      // ✅ Fetch bookings but don’t block navigation
-                                                      upcomingBookingController
-                                                          .fetchUpcomingBookingsData();
+                                                // Simulate 1-second wait
+                                                await Future.delayed(
+                                                    const Duration(
+                                                        seconds: 3));
+                                                upcomingBookingController
+                                                    .isLoggedIn
+                                                    .value = true;
+                                                await upcomingBookingController
+                                                    .fetchUpcomingBookingsData();
+                                                // Mark logged in
+                                                await profileController
+                                                    .fetchData();
 
-                                                      // ✅ Navigate immediately without extra delay
-                                                      Navigator.of(context)
-                                                          .pushReplacement(
-                                                        MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                BottomNavScreen()),
-                                                      );
-                                                    }
-                                                  } else {
-                                                    await mobileController
-                                                        .verifyMobile(
-                                                      mobile: phoneController
-                                                          .text
-                                                          .trim(),
-                                                      context: context,
-                                                    );
-                                                    if ((mobileController
-                                                                .mobileData
-                                                                .value !=
-                                                            null) &&
-                                                        (mobileController
-                                                                .mobileData
-                                                                .value
-                                                                ?.userAssociated ==
-                                                            true)) {
-                                                      showOtpField = true;
-                                                      errorMessage = null;
-                                                      isButtonEnabled = true;
-                                                      otpTextEditingController
-                                                          .clear();
-                                                      setModalState(() {});
-                                                    }
-                                                  }
+                                                GoRouter.of(context)
+                                                    .go(AppRoutes
+                                                    .profile);
 
-                                                  mobileController
-                                                      .isLoading.value = false;
-                                                }
-                                              : () {},
-                                        ),
+                                                // Navigate
+                                              }
+                                            } catch (e) {
+                                              otpController.hasError
+                                                  .value = true;
+                                            }
+                                          } else {
+                                            await mobileController
+                                                .verifyMobile(
+                                              mobile: phoneController
+                                                  .text
+                                                  .trim(),
+                                              context: context,
+                                            );
+                                            if ((mobileController
+                                                .mobileData
+                                                .value !=
+                                                null) &&
+                                                (mobileController
+                                                    .mobileData
+                                                    .value
+                                                    ?.userAssociated ==
+                                                    true)) {
+                                              showOtpField = true;
+                                              errorMessage = null;
+                                              isButtonEnabled = true;
+                                              otpTextEditingController
+                                                  .clear();
+                                              setModalState(() {});
+                                            }
+                                          }
+
+                                          mobileController.isLoading
+                                              .value = false;
+                                        }
+                                            : () {},
                                       ),
-                                    )),
+                                    ),
+                                  )),
 
-                                if (!showOtpField) const SizedBox(height: 8),
+                                  if (!showOtpField) const SizedBox(height: 8),
 
-                                Column(
-                                  children: [
-                                    if (!showOtpField)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 0.0),
-                                        child: Center(
-                                          child: TextButton(
-                                            onPressed: () {
-                                              Navigator.of(context)
-                                                  .pop(); // close current sheet
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) => UserFillDetails(
+                                  Column(
+                                    children: [
+                                      if (!showOtpField)
+                                        Padding(
+                                          padding:
+                                          const EdgeInsets.only(top: 0.0),
+                                          child: Center(
+                                            child: TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context)
+                                                    .pop(); // close current sheet
+                                                Navigator.of(context).push(
+                                                  Platform.isIOS
+                                                      ? CupertinoPageRoute(
+                                                    builder: (_) =>
+                                                    const UserFillDetails(
                                                       name: '',
                                                       email: '',
-                                                      phone:
-                                                          ''), // your login widget
-                                                ),
-                                              );
-                                            },
-                                            child: Text(
-                                                "Don't have an account? Register"),
+                                                      phone: '',
+                                                    ),
+                                                  )
+                                                      : MaterialPageRoute(
+                                                    builder: (_) =>
+                                                    const UserFillDetails(
+                                                      name: '',
+                                                      email: '',
+                                                      phone: '',
+                                                    ),
+                                                  ),
+                                                ); // open register sheet
+                                              },
+                                              child: Text(
+                                                  "Don't have an account? Register"),
+                                            ),
                                           ),
                                         ),
-                                      ),
 
-                                    const SizedBox(height: 16),
+                                      const SizedBox(height: 16),
 
-                                    // Divider with Text
-                                    if (!showOtpField)
-                                      Row(
-                                        children: [
-                                          const Expanded(
-                                              child: Divider(thickness: 1)),
-                                          Padding(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8.0),
-                                            child: Text("Or Login Via",
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.black54)),
-                                          ),
-                                          const Expanded(
-                                              child: Divider(thickness: 1)),
-                                        ],
-                                      ),
+                                      // Divider with Text
+                                      if (!showOtpField)
+                                        Row(
+                                          children: [
+                                            const Expanded(
+                                                child: Divider(thickness: 1)),
+                                            Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 8.0),
+                                              child: Text("Or Login Via",
+                                                  style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.black54)),
+                                            ),
+                                            const Expanded(
+                                                child: Divider(thickness: 1)),
+                                          ],
+                                        ),
 
-                                    const SizedBox(height: 16),
+                                      const SizedBox(height: 16),
 
-                                    // Google Login
-                                    if (!showOtpField)
-                                      GestureDetector(
-                                        onTap: isGoogleLoading
-                                            ? null
-                                            : () => _handleGoogleLogin(
-                                                setModalState),
-                                        child: Center(
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                width: 48,
-                                                height: 48,
-                                                padding:
-                                                    const EdgeInsets.all(1),
-                                                decoration: const BoxDecoration(
-                                                    color: Colors.grey,
-                                                    shape: BoxShape.circle),
-                                                child: CircleAvatar(
-                                                  radius: 20,
-                                                  backgroundColor: Colors.white,
-                                                  child: isGoogleLoading
-                                                      ? const SizedBox(
+                                      // Google Login
+                                      if (!showOtpField)
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: isGoogleLoading
+                                                  ? null
+                                                  : () => _handleGoogleLogin(
+                                                  setModalState),
+                                              child: Center(
+                                                child: Column(
+                                                  children: [
+                                                    Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      padding:
+                                                      const EdgeInsets.all(
+                                                          1),
+                                                      decoration:
+                                                      const BoxDecoration(
+                                                          color:
+                                                          Colors.grey,
+                                                          shape: BoxShape
+                                                              .circle),
+                                                      child: CircleAvatar(
+                                                        radius: 20,
+                                                        backgroundColor:
+                                                        Colors.white,
+                                                        child: isGoogleLoading
+                                                            ? const SizedBox(
                                                           width: 20,
                                                           height: 20,
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                                  strokeWidth:
-                                                                      2),
+                                                          child: CircularProgressIndicator(
+                                                              strokeWidth:
+                                                              2),
                                                         )
-                                                      : Image.asset(
+                                                            : Image.asset(
                                                           'assets/images/google_icon.png',
-                                                          fit: BoxFit.contain,
+                                                          fit: BoxFit
+                                                              .contain,
                                                           width: 29,
                                                           height: 29,
                                                         ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    const Text("Google",
+                                                        style: TextStyle(
+                                                            fontSize: 13)),
+                                                  ],
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-                                              const Text("Google",
-                                                  style:
-                                                      TextStyle(fontSize: 13)),
-                                            ],
+                                            ),
+                                            SizedBox(
+                                              width: 24,
+                                            ),
+                                            Platform.isIOS ? Column(
+                                              children: [
+                                                GestureDetector(
+                                                  onTap: signInWithApple,
+                                                  child: Container(
+                                                    height: 45,
+                                                    width: 45,
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.black,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Center(
+                                                      child: Image.asset(
+                                                        'assets/images/apple.png',
+                                                        height: 48,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
+                                                Platform.isIOS ?
+                                                const Text("Apple",
+                                                    style: TextStyle(
+                                                        fontSize: 13)) : SizedBox()
+                                              ],
+                                            ) : SizedBox()
+
+                                          ],
+                                        ),
+
+                                      const SizedBox(height: 20),
+
+                                      // Terms & Conditions
+                                      Column(
+                                        children: [
+                                          Text.rich(
+                                            TextSpan(
+                                                text:
+                                                "By logging in, I understand & agree to Wise Travel India Limited ",
+                                                style:
+                                                CommonFonts.bodyText3Medium,
+                                                // children: [
+                                                //   TextSpan(
+                                                //       text: "Terms & Conditions",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                //   TextSpan(text: ", "),
+                                                //   TextSpan(
+                                                //       text: "Privacy Policy",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                //   TextSpan(
+                                                //       text:
+                                                //           ", and User agreement",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                // ],
+                                                children: []),
+                                            textAlign: TextAlign.center,
                                           ),
-                                        ),
+                                        ],
                                       ),
-
-                                    const SizedBox(height: 20),
-
-                                    // Terms & Conditions
-                                    Column(
-                                      children: [
-                                        Text.rich(
-                                          TextSpan(
-                                              text:
-                                                  "By logging in, I understand & agree to Wise Travel India Limited ",
-                                              style:
-                                                  CommonFonts.bodyText3Medium,
-                                              // children: [
-                                              //   TextSpan(
-                                              //       text: "Terms & Conditions",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(text: ", "),
-                                              //   TextSpan(
-                                              //       text: "Privacy Policy",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(
-                                              //       text:
-                                              //       ", and User agreement",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              // ],
-                                              children: []),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                )
-                              ],
+                                    ],
+                                  )
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1118,30 +1307,66 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       IconData icon, String label, int index) {
     final bool isSelected = _selectedIndex == index;
 
+    // Define colors
+    const Color selectedIconColor = Colors.white;
+    const Color unselectedIconColor = AppColors.grey4;
+    const Color selectedBackgroundColor = AppColors.blue2;
+
     return BottomNavigationBarItem(
       label: label,
       icon: Padding(
-        padding: const EdgeInsets.all(0.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 3,
-              width: 24,
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.black : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Icon(
-              icon,
-              color: isSelected ? Colors.black : AppColors.grey4,
-            ),
-          ],
+        // Reduced vertical padding here
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Container(
+          // Reduced vertical padding inside the pill
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? selectedBackgroundColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? selectedIconColor : unselectedIconColor,
+            size: 22, // Slightly smaller icon
+          ),
+        ),
+      ),
+      // Active icon is necessary for BottomNavigationBar to function correctly
+      activeIcon: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: selectedBackgroundColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(
+            icon,
+            color: selectedIconColor,
+            size: 22, // Slightly smaller icon
+          ),
         ),
       ),
     );
+  }
+  Future<void> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      // Example: print user data
+      print('User ID: ${credential.userIdentifier}');
+      print('Email: ${credential.email}');
+      print('Name: ${credential.givenName} ${credential.familyName}');
+
+      // TODO: Send credential.identityToken to backend for verification or save locally
+    } catch (e) {
+      print('Apple Sign-In Error: $e');
+    }
   }
 
   @override
@@ -1155,34 +1380,31 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       },
       child: Scaffold(
         body: _screens[_selectedIndex],
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            // color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                offset: Offset(0, -4),
-                blurRadius: 20,
-                spreadRadius: 0,
-                color: Color(0x66BCBCBC), // #BCBCBC40
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(0.0),
+        bottomNavigationBar: Material(
+          elevation: 10.0,
+          shadowColor: Color(0x33BCBCBC),
+          child: Container(
+            color: Colors.white,
+            // Removed overall padding on the container for minimum height
             child: BottomNavigationBar(
-              backgroundColor: Colors.white,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
               currentIndex: _selectedIndex,
               onTap: _onItemTapped,
               selectedItemColor: Colors.black,
               unselectedItemColor: AppColors.grey4,
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              // Reduced font size for a compact look
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
               unselectedLabelStyle:
-                  const TextStyle(fontWeight: FontWeight.w400),
+              const TextStyle(fontWeight: FontWeight.w500, fontSize: 10),
               type: BottomNavigationBarType.fixed,
               items: [
-                _buildBarItem(Icons.house, 'Home', 0),
+                _buildBarItem(Icons.home_filled, 'Home', 0),
                 _buildBarItem(Icons.work_outline, 'Bookings', 1),
-                _buildBarItem(Icons.phone, 'Contact', 2),
+                _buildBarItem(Icons.phone_in_talk_outlined, 'Contact', 2),
               ],
             ),
           ),
@@ -1210,7 +1432,7 @@ class _OtpTextFieldState extends State<OtpTextField> {
   bool isLengthOkay = false;
   Timer? _timer;
   final ResendOtpController resendOtpController =
-  Get.put(ResendOtpController());
+      Get.put(ResendOtpController());
   final OtpController otpController = Get.put(OtpController());
 
   @override
@@ -1222,7 +1444,8 @@ class _OtpTextFieldState extends State<OtpTextField> {
   void _startCountdown({bool isResend = false}) {
     setState(() {
       enableResend = false;
-      secondsRemaining = isResend ? 60 : 60; // 1 minute for resend, 5 minutes for initial
+      secondsRemaining =
+          isResend ? 60 : 60; // 1 minute for resend, 5 minutes for initial
     });
 
     _timer?.cancel();
@@ -1321,25 +1544,25 @@ class _OtpTextFieldState extends State<OtpTextField> {
                   width: 100,
                   child: enableResend
                       ? TextButton(
-                    onPressed: _resendOtp,
-                    child: const Text(
-                      "Resend OTP",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.blue2,
-                      ),
-                    ),
-                  )
+                          onPressed: _resendOtp,
+                          child: const Text(
+                            "Resend OTP",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.blue2,
+                            ),
+                          ),
+                        )
                       : Center(
-                    child: Text(
-                      "${(secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(secondsRemaining % 60).toString().padLeft(2, '0')}",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
+                          child: Text(
+                            "${(secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(secondsRemaining % 60).toString().padLeft(2, '0')}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                 ),
               ),
               contentPadding: const EdgeInsets.symmetric(

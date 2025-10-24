@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:carousel_slider/carousel_options.dart';
@@ -10,16 +11,23 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/self_drive/from_date_time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/fetch_all_cities_controller/fetch_all_cities_controller.dart';
+import 'package:wti_cabs_user/core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
+import 'package:wti_cabs_user/screens/profile/profile.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_final_page_st1/self_drive_final_page_s1.dart';
 
 import '../../../common_widget/buttons/main_button.dart';
 import '../../../common_widget/drawer/custom_drawer.dart';
+import '../../../common_widget/loader/module_transition/module_transition_loader.dart';
+import '../../../common_widget/loader/shimmer/inventory_shimmer.dart';
 import '../../../common_widget/name_initials/name_initial.dart';
 import '../../../core/controller/auth/mobile_controller.dart';
 import '../../../core/controller/auth/otp_controller.dart';
@@ -38,7 +46,10 @@ import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../bottom_nav/bottom_nav.dart';
+import '../../map_picker/map_picker.dart';
 import '../../user_fill_details/user_fill_details.dart';
+import 'package:location/location.dart' as location;
+import 'package:geocoding/geocoding.dart' as geocoding;
 
 class SelfDriveHomeScreen extends StatefulWidget {
   const SelfDriveHomeScreen({super.key});
@@ -52,7 +63,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   late final BookingRideController bookingRideController;
   late final BannerController bannerController;
   late final FetchAllCitiesController fetchAllCitiesController;
-
+  final CurrencyController currencyController = Get.put(CurrencyController());
   String? city = "Dubai"; // default selected
 
   @override
@@ -70,6 +81,200 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   void fetchSelfDriveHomeApi() {
     fetchAllCitiesController.fetchAllCities();
   }
+  String address = '';
+
+
+  Future<void> fetchCurrentLocationAndAddress() async {
+    final loc = location.Location();
+
+    // ✅ Ensure service is enabled
+    if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
+
+    // ✅ Ensure permission
+    var permission = await loc.hasPermission();
+    if (permission == location.PermissionStatus.denied) {
+      permission = await loc.requestPermission();
+      if (permission != location.PermissionStatus.granted) return;
+    }
+
+    // ✅ Fetch current location
+    final locData = await loc.getLocation();
+    if (locData.latitude == null || locData.longitude == null) return;
+
+    await _getAddressAndPrefillFromLatLng(
+      LatLng(locData.latitude!, locData.longitude!),
+    );
+  }
+
+  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
+    try {
+      // 1. Reverse geocode to get human-readable address
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
+      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
+
+      if (placemarks.isEmpty) {
+        setState(() => address = 'Address not found');
+        return;
+      }
+
+      final place = placemarks.first;
+      final components = <String>[
+        place.name ?? '',
+        place.street ?? '',
+        place.subLocality ?? '',
+        place.locality ?? '',
+        place.administrativeArea ?? '',
+        place.postalCode ?? '',
+        place.country ?? '',
+      ];
+      final fullAddress =
+      components.where((s) => s.trim().isNotEmpty).join(', ');
+
+      // 2. Show address on UI immediately
+      setState(() => address = fullAddress);
+
+      // 3. Try searching the place (may fail or return empty)
+      await placeSearchController.searchPlaces(fullAddress, context);
+
+      if (placeSearchController.suggestions.isEmpty) {
+        print("No search suggestions found for $fullAddress");
+        return; // stop here – do not prefill controllers/storage
+      }
+
+      final suggestion = placeSearchController.suggestions.first;
+
+      // 4. Update booking controller ONLY if valid suggestion exists
+      bookingRideController.prefilled.value = fullAddress;
+      placeSearchController.placeId.value = suggestion.placeId;
+
+      // 5. Fire-and-forget details/storage update
+      Future.microtask(() async {
+        try {
+          await placeSearchController.getLatLngDetails(
+              suggestion.placeId, context);
+
+          StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+          StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+          StorageServices.instance.save('sourceCity', suggestion.city);
+          StorageServices.instance.save('sourceState', suggestion.state);
+          StorageServices.instance.save('sourceCountry', suggestion.country);
+
+          if (suggestion.types.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTypes',
+              jsonEncode(suggestion.types),
+            );
+          }
+
+          if (suggestion.terms.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTerms',
+              jsonEncode(suggestion.terms),
+            );
+          }
+
+          sourceController.setPlace(
+            placeId: suggestion.placeId,
+            title: suggestion.primaryText,
+            city: suggestion.city,
+            state: suggestion.state,
+            country: suggestion.country,
+            types: suggestion.types,
+            terms: suggestion.terms,
+          );
+
+          print('akash country: ${suggestion.country}');
+          print('Current location address saved: $fullAddress');
+        } catch (err) {
+          print('Background save failed: $err');
+        }
+      });
+    } catch (e) {
+      print('Error fetching location/address: $e');
+      setState(() => address = 'Error fetching address');
+    }
+  }
+
+  //fake price
+  num getFakePriceWithPercent(num baseFare, num percent) =>
+      (baseFare * 100) / (100 - percent);
+
+  Future<void> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final userId = credential.userIdentifier;
+      final email = credential.email;
+      final fullName =
+      '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+
+      // Always returned
+      print('User ID: $userId');
+
+      if (email != null) {
+        // First-time login — store data
+        await StorageServices.instance.save('appleUserId', userId??'');
+        await StorageServices.instance.save('appleEmail', email??'');
+        await StorageServices.instance.save('appleName', fullName??'');
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) => UserFillDetails(
+              name: fullName??'',
+              email: email ?? '',
+              phone: '',
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+              name: fullName??'',
+              email: email ?? '',
+              phone: '',
+            ),
+          ),
+        );
+
+
+      } else {
+        // Returning user — load data from local storage
+        String userId = await StorageServices.instance.read('appleUserId')??'';
+        String userEmail = await StorageServices.instance.read('appleEmail')??'';
+        String userName =  await StorageServices.instance.read('appleName') ?? '';
+
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) => UserFillDetails(
+              name: userName,
+              email: userEmail,
+              phone: '',
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+              name: userName,
+              email: userEmail,
+              phone: '',
+            ),
+          ),
+        );
+      }
+
+      // (Optional) Use userId + email for backend auth here
+
+    } catch (e) {
+      print('❌ Apple Sign-In Error: $e');
+    }
+  }
+
 
   void _showAuthBottomSheet() {
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -462,9 +667,15 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                                           await profileController
                                                               .fetchData();
 
-                                                          GoRouter.of(context)
-                                                              .go(AppRoutes
-                                                                  .profile);
+                                                          Navigator.of(context).push(
+                                                            Platform.isIOS
+                                                                ? CupertinoPageRoute(
+                                                              builder: (_) =>  Profile(fromSelfDrive: true,),
+                                                            )
+                                                                : MaterialPageRoute(
+                                                              builder: (_) =>  Profile(fromSelfDrive: true,),
+                                                            ),
+                                                          );
 
                                                           // Navigate
                                                         }
@@ -570,54 +781,92 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
 
                                       // Google Login
                                       if (!showOtpField)
-                                        GestureDetector(
-                                          onTap: isGoogleLoading
-                                              ? null
-                                              : () => _handleGoogleLogin(
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: isGoogleLoading
+                                                  ? null
+                                                  : () => _handleGoogleLogin(
                                                   setModalState),
-                                          child: Center(
-                                            child: Column(
-                                              children: [
-                                                Container(
-                                                  width: 48,
-                                                  height: 48,
-                                                  padding:
-                                                      const EdgeInsets.all(1),
-                                                  decoration:
+                                              child: Center(
+                                                child: Column(
+                                                  children: [
+                                                    Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      padding:
+                                                      const EdgeInsets.all(
+                                                          1),
+                                                      decoration:
                                                       const BoxDecoration(
-                                                          color: Colors.grey,
-                                                          shape:
-                                                              BoxShape.circle),
-                                                  child: CircleAvatar(
-                                                    radius: 20,
-                                                    backgroundColor:
+                                                          color:
+                                                          Colors.grey,
+                                                          shape: BoxShape
+                                                              .circle),
+                                                      child: CircleAvatar(
+                                                        radius: 20,
+                                                        backgroundColor:
                                                         Colors.white,
-                                                    child: isGoogleLoading
-                                                        ? const SizedBox(
-                                                            width: 20,
-                                                            height: 20,
-                                                            child:
-                                                                CircularProgressIndicator(
-                                                                    strokeWidth:
-                                                                        2),
-                                                          )
-                                                        : Image.asset(
-                                                            'assets/images/google_icon.png',
-                                                            fit: BoxFit.contain,
-                                                            width: 29,
-                                                            height: 29,
-                                                          ),
+                                                        child: isGoogleLoading
+                                                            ? const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child: CircularProgressIndicator(
+                                                              strokeWidth:
+                                                              2),
+                                                        )
+                                                            : Image.asset(
+                                                          'assets/images/google_icon.png',
+                                                          fit: BoxFit
+                                                              .contain,
+                                                          width: 29,
+                                                          height: 29,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    const Text("Google",
+                                                        style: TextStyle(
+                                                            fontSize: 13)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 24,
+                                            ),
+                                            Platform.isIOS ? Column(
+                                              children: [
+                                                GestureDetector(
+                                                  onTap: signInWithApple,
+                                                  child: Container(
+                                                    height: 45,
+                                                    width: 45,
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.black,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Center(
+                                                      child: Image.asset(
+                                                        'assets/images/apple.png',
+                                                        height: 48,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),
-                                                const Text("Google",
+                                                Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
+                                                Platform.isIOS ?
+                                                const Text("Apple",
                                                     style: TextStyle(
-                                                        fontSize: 13)),
+                                                        fontSize: 13)) : SizedBox()
                                               ],
-                                            ),
-                                          ),
-                                        ),
+                                            ) : SizedBox()
 
+                                          ],
+                                        ),
                                       const SizedBox(height: 20),
 
                                       // Terms & Conditions
@@ -671,573 +920,593 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE9E9ED),
-      body: SafeArea(
-        child: SingleChildScrollView( // 🔑 makes whole page scrollable
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // const SizedBox(height: 20),
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) async{
+        // This will be called for hardware back and gesture
+        await currencyController.resetCurrencyAfterSelfDrive();
 
-              /// 🔹Top HEADER
-              Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.only(top: 20),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    // const CircleAvatar(
-                                    //   radius: 24,
-                                    //   backgroundImage: AssetImage('assets/images/user.png'),
-                                    // ),
-                                    InkWell(
-                                      splashColor: Colors.transparent,
-                                      onTap: () {
-                                        showGeneralDialog(
-                                          context: context,
-                                          barrierDismissible: true,
-                                          barrierLabel: "Drawer",
-                                          barrierColor:
-                                          Colors.black54, // transparent black background
-                                          transitionDuration:
-                                          const Duration(milliseconds: 300),
-                                          pageBuilder: (_, __, ___) =>
-                                          const CustomDrawerSheet(),
-                                          transitionBuilder: (_, anim, __, child) {
-                                            return SlideTransition(
-                                              position: Tween<Offset>(
-                                                begin:
-                                                const Offset(-1, 0), // slide in from left
-                                                end: Offset.zero,
-                                              ).animate(CurvedAnimation(
-                                                parent: anim,
-                                                curve: Curves.easeOutCubic,
-                                              )),
-                                              child: child,
-                                            );
-                                          },
-                                        );
-                                      },
-                                      child: Transform.translate(
-                                        offset: Offset(0.0, -4.0),
-                                        child: Container(
-                                          width: 28, // same as 24dp with padding
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                            color:
-                                            Color.fromRGBO(0, 44, 192, 0.1), // deep blue
-                                            borderRadius:
-                                            BorderRadius.circular(4), // rounded square
-                                          ),
-                                          child: const Icon(
-                                            Icons.density_medium_outlined,
-                                            color: Color.fromRGBO(0, 17, 73, 1),
-                                            size: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Transform.translate(
-                                      offset: Offset(0.0, -4.0),
-                                      child: SizedBox(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            SizedBox(
-                                              height: 4,
-                                            ),
-                                            SvgPicture.asset(
-                                              'assets/images/wti_logo.svg',
-                                              height: 17,
-                                              width: 15,
-                                            )
-                                            // Text(
-                                            //   "Good Morning! Yash",
-                                            //   style: CommonFonts.HomeTextBold,
-                                            // ),
-                                            // Row(
-                                            //   children: [
-                                            //     Container(
-                                            //       width: MediaQuery.of(context)
-                                            //               .size
-                                            //               .width *
-                                            //           0.45,
-                                            //       child: Text(
-                                            //         address,
-                                            //         overflow:
-                                            //             TextOverflow.ellipsis,
-                                            //         maxLines: 1,
-                                            //         style: CommonFonts
-                                            //             .greyTextMedium,
-                                            //       ),
-                                            //     ),
-                                            //     // const SizedBox(width:),
-                                            //     const Icon(
-                                            //       Icons.keyboard_arrow_down,
-                                            //       color: AppColors.greyText6,
-                                            //       size: 18,
-                                            //     ),
-                                            //   ],
-                                            // ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Obx(() {
-                                return Row(
-                                  children: [
-                                    // Transform.translate(
-                                    //     offset: Offset(0.0, -4.0),
-                                    //     child: Image.asset(
-                                    //       'assets/images/wallet.png',
-                                    //       height: 31,
-                                    //       width: 28,
-                                    //     )),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    upcomingBookingController.isLoggedIn.value == true
-                                        ? InkWell(
-                                      splashColor: Colors.transparent,
-                                      onTap: () async {
-                                        print(
-                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                        if (await StorageServices.instance
-                                            .read('token') ==
-                                            null) {
-                                          _showAuthBottomSheet();
-                                        }
-                                        if (await StorageServices.instance
-                                            .read('token') !=
-                                            null) {
-                                          GoRouter.of(context).push(AppRoutes.profile);
-                                        }
-                                      },
-                                      child: SizedBox(
-                                        width: 30,
-                                        height: 30,
-                                        child: NameInitialHomeCircle(
-                                            name: profileController.profileResponse
-                                                .value?.result?.firstName ??
-                                                ''),
-                                      ),
-                                    )
-                                        : InkWell(
-                                      splashColor: Colors.transparent,
-                                      onTap: () async {
-                                        print(
-                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                        if (await StorageServices.instance
-                                            .read('token') ==
-                                            null) {
-                                          _showAuthBottomSheet();
-                                        }
-                                        if (await StorageServices.instance
-                                            .read('token') !=
-                                            null) {
-                                          GoRouter.of(context).push(AppRoutes.profile);
-                                        }
-                                      },
-                                      child: Transform.translate(
-                                        offset: Offset(0.0, -4.0),
-                                        child: const CircleAvatar(
-                                          foregroundColor: Colors.transparent,
-                                          backgroundColor: Colors.transparent,
-                                          radius: 14,
-                                          backgroundImage: AssetImage(
-                                            'assets/images/user.png',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              })
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          height: 28,
-                        ),                      ],
-                    ),
-                  ),
-                  // Container(
-                  //     padding: EdgeInsets.symmetric(horizontal: 8),
-                  //     height: 170,
-                  //     child: BorderedListView()),
+        GoRouter.of(context).push(AppRoutes.bottomNav);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE9E9ED),
+        body: SafeArea(
+          child: SingleChildScrollView( // 🔑 makes whole page scrollable
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // const SizedBox(height: 20),
 
-                ],
-              ),
-
-              /// 🔹 TABBAR
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: PillTabBarWithChild(),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// 🔹 SERVICES GRID
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+                /// 🔹Top HEADER
+                Column(
                   children: [
-                    Text('Services',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black)),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 16,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: GridView.count(
-                  crossAxisCount: 4, // 🔑 exactly 4 items in a row
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  children: [
-                    InkWell(
-                      splashColor: Colors.transparent,
-                      onTap: () {
-                        GoRouter.of(context).push(AppRoutes.selfDriveHome);
-                        // Flushbar(
-                        //   flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
-                        //   margin: const EdgeInsets.all(12),
-                        //   borderRadius: BorderRadius.circular(12),
-                        //   backgroundColor: AppColors.blueSecondary,
-                        //   duration: const Duration(seconds: 3),
-                        //   icon: const Icon(Icons.campaign, color: Colors.white),
-                        //   messageText: const Text(
-                        //     "Coming soon!",
-                        //     style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-                        //   ),
-                        // ).show(context);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1F192653),
-                              offset: Offset(0, 3),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Image.asset(
-                                  'assets/images/self_drive.png',
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              Text('Self Drive', style: CommonFonts.blueText1),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      splashColor: Colors.transparent,
-                      onTap: () {
-                        bookingRideController.selectedIndex.value = 0;
-                        if(Platform.isAndroid) {
-                          GoRouter.of(context).push(
-                              AppRoutes.bookingRide);
-                        }
-                        else {
-                          navigatorKey.currentContext?.push(
-                              AppRoutes.bookingRide);
-                        }
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1F192653),
-                              offset: Offset(0, 3),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Image.asset(
-                                  'assets/images/airport.png',
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              Text('Airport', style: CommonFonts.blueText1),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                     Container(
-                      color: Colors.transparent,
-                      child: SizedBox.expand(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.topCenter, // 👈 ensures "Popular" centers horizontally
-                          children: [
-                            InkWell(
-                              splashColor: Colors.transparent,
-                              onTap: () {
-                                bookingRideController.selectedIndex.value = 1;
-                                if(Platform.isAndroid) {
-                                  GoRouter.of(context).push(
-                                      AppRoutes.bookingRide);
-                                }
-                                else {
-                                  navigatorKey.currentContext?.push(
-                                      AppRoutes.bookingRide);
-                                }                                },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1F192653),
-                                      offset: Offset(0, 3),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Image.asset(
-                                          'assets/images/outstation.png',
-                                          fit: BoxFit.contain,
+                                      // const CircleAvatar(
+                                      //   radius: 24,
+                                      //   backgroundImage: AssetImage('assets/images/user.png'),
+                                      // ),
+                                      InkWell(
+                                        splashColor: Colors.transparent,
+                                        onTap: () {
+                                          showGeneralDialog(
+                                            context: context,
+                                            barrierDismissible: true,
+                                            barrierLabel: "Drawer",
+                                            barrierColor:
+                                            Colors.black54, // transparent black background
+                                            transitionDuration:
+                                            const Duration(milliseconds: 300),
+                                            pageBuilder: (_, __, ___) =>
+                                            const CustomDrawerSheet(),
+                                            transitionBuilder: (_, anim, __, child) {
+                                              return SlideTransition(
+                                                position: Tween<Offset>(
+                                                  begin:
+                                                  const Offset(-1, 0), // slide in from left
+                                                  end: Offset.zero,
+                                                ).animate(CurvedAnimation(
+                                                  parent: anim,
+                                                  curve: Curves.easeOutCubic,
+                                                )),
+                                                child: child,
+                                              );
+                                            },
+                                          );
+                                        },
+                                        child: Transform.translate(
+                                          offset: Offset(0.0, -4.0),
+                                          child: Container(
+                                            width: 28, // same as 24dp with padding
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color:
+                                              Color.fromRGBO(0, 44, 192, 0.1), // deep blue
+                                              borderRadius:
+                                              BorderRadius.circular(4), // rounded square
+                                            ),
+                                            child: const Icon(
+                                              Icons.density_medium_outlined,
+                                              color: Color.fromRGBO(0, 17, 73, 1),
+                                              size: 16,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      Text('Outstation', style: CommonFonts.blueText1),
+                                      const SizedBox(width: 12),
+                                      Transform.translate(
+                                        offset: Offset(0.0, -4.0),
+                                        child: SizedBox(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              SizedBox(
+                                                height: 4,
+                                              ),
+                                              SvgPicture.asset(
+                                                'assets/images/wti_logo.svg',
+                                                height: 17,
+                                                width: 15,
+                                              )
+                                              // Text(
+                                              //   "Good Morning! Yash",
+                                              //   style: CommonFonts.HomeTextBold,
+                                              // ),
+                                              // Row(
+                                              //   children: [
+                                              //     Container(
+                                              //       width: MediaQuery.of(context)
+                                              //               .size
+                                              //               .width *
+                                              //           0.45,
+                                              //       child: Text(
+                                              //         address,
+                                              //         overflow:
+                                              //             TextOverflow.ellipsis,
+                                              //         maxLines: 1,
+                                              //         style: CommonFonts
+                                              //             .greyTextMedium,
+                                              //       ),
+                                              //     ),
+                                              //     // const SizedBox(width:),
+                                              //     const Icon(
+                                              //       Icons.keyboard_arrow_down,
+                                              //       color: AppColors.greyText6,
+                                              //       size: 18,
+                                              //     ),
+                                              //   ],
+                                              // ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ),
+                                Obx(() {
+                                  return Row(
+                                    children: [
+                                      // Transform.translate(
+                                      //     offset: Offset(0.0, -4.0),
+                                      //     child: Image.asset(
+                                      //       'assets/images/wallet.png',
+                                      //       height: 31,
+                                      //       width: 28,
+                                      //     )),
+                                      SizedBox(
+                                        width: 12,
+                                      ),
+                                      upcomingBookingController.isLoggedIn.value == true
+                                          ? InkWell(
+                                        splashColor: Colors.transparent,
+                                        onTap: () async {
+                                          print(
+                                              'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                          if (await StorageServices.instance
+                                              .read('token') ==
+                                              null) {
+                                            _showAuthBottomSheet();
+                                          }
+                                          if (await StorageServices.instance
+                                              .read('token') !=
+                                              null) {
+                                            GoRouter.of(context).push(AppRoutes.profile);
+                                          }
+                                        },
+                                        child: SizedBox(
+                                          width: 30,
+                                          height: 30,
+                                          child: NameInitialHomeCircle(
+                                              name: profileController.profileResponse
+                                                  .value?.result?.firstName ??
+                                                  ''),
+                                        ),
+                                      )
+                                          : InkWell(
+                                        splashColor: Colors.transparent,
+                                        onTap: () async {
+                                          print(
+                                              'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                          if (await StorageServices.instance
+                                              .read('token') ==
+                                              null) {
+                                            _showAuthBottomSheet();
+                                          }
+                                          if (await StorageServices.instance
+                                              .read('token') !=
+                                              null) {
+                                            GoRouter.of(context).push(AppRoutes.profile);
+                                          }
+                                        },
+                                        child: Transform.translate(
+                                          offset: Offset(0.0, -4.0),
+                                          child: const CircleAvatar(
+                                            foregroundColor: Colors.transparent,
+                                            backgroundColor: Colors.transparent,
+                                            radius: 14,
+                                            backgroundImage: AssetImage(
+                                              'assets/images/user.png',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                })
+                              ],
                             ),
-                            Positioned(
-                              top: -8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                  horizontal: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Text(
-                                  'Popular',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          SizedBox(
+                            height: 28,
+                          ),                      ],
                       ),
                     ),
-                    InkWell(
-                      splashColor: Colors.transparent,
-                      onTap: () {
-                        bookingRideController.selectedIndex.value = 2;
-                        if(Platform.isAndroid) {
-                          GoRouter.of(context).push(
-                              AppRoutes.bookingRide);
-                        }
-                        else {
-                          navigatorKey.currentContext?.push(
-                              AppRoutes.bookingRide);
-                        }                            },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1F192653),
-                              offset: Offset(0, 3),
-                              blurRadius: 12,
+                    // Container(
+                    //     padding: EdgeInsets.symmetric(horizontal: 8),
+                    //     height: 170,
+                    //     child: BorderedListView()),
+
+                  ],
+                ),
+
+                /// 🔹 TABBAR
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: PillTabBarWithChild(),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// 🔹 SERVICES GRID
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Text('Services',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black)),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 16,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: GridView.count(
+                    crossAxisCount: 4, // 🔑 exactly 4 items in a row
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    children: [
+                      InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: () {
+                          GoRouter.of(context).push(AppRoutes.selfDriveHome);
+                          // Flushbar(
+                          //   flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
+                          //   margin: const EdgeInsets.all(12),
+                          //   borderRadius: BorderRadius.circular(12),
+                          //   backgroundColor: AppColors.blueSecondary,
+                          //   duration: const Duration(seconds: 3),
+                          //   icon: const Icon(Icons.campaign, color: Colors.white),
+                          //   messageText: const Text(
+                          //     "Coming soon!",
+                          //     style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                          //   ),
+                          // ).show(context);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1F192653),
+                                offset: Offset(0, 3),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/self_drive.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                Text('Self Drive', style: CommonFonts.blueText1),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ),
+                      InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: () async{
+                          bookingRideController.selectedIndex.value = 0;
+                          fetchCurrentLocationAndAddress();
+
+                          // Navigate immediately
+                          if (Platform.isAndroid) {
+                            GoRouter.of(context)
+                                .push(AppRoutes.bookingRide);
+                          } else {
+                            navigatorKey.currentContext
+                                ?.push(AppRoutes.bookingRide);
+                          }
+                          currencyController.resetCurrencyAfterSelfDrive();
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1F192653),
+                                offset: Offset(0, 3),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/airport.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                Text('Airport', style: CommonFonts.blueText1),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        color: Colors.transparent,
+                        child: SizedBox.expand(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.topCenter, // 👈 ensures "Popular" centers horizontally
                             children: [
-                              Expanded(
-                                child: Image.asset(
-                                  'assets/images/rental.png',
-                                  fit: BoxFit.contain,
+                              InkWell(
+                                splashColor: Colors.transparent,
+                                onTap: () async{
+                                  bookingRideController.selectedIndex.value = 1;
+                                  fetchCurrentLocationAndAddress();
+
+                                  // Navigate immediately
+                                  if (Platform.isAndroid) {
+                                    GoRouter.of(context)
+                                        .push(AppRoutes.bookingRide);
+                                  } else {
+                                    navigatorKey.currentContext
+                                        ?.push(AppRoutes.bookingRide);
+                                  }
+                                  currencyController.resetCurrencyAfterSelfDrive();
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x1F192653),
+                                        offset: Offset(0, 3),
+                                        blurRadius: 12,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Image.asset(
+                                            'assets/images/outstation.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                        Text('Outstation', style: CommonFonts.blueText1),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                              Text('Rental', style: CommonFonts.blueText1),
+                              Positioned(
+                                top: -8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 2,
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'Popular',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
+                      InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: () async{
+                          bookingRideController.selectedIndex.value = 2;
+                          fetchCurrentLocationAndAddress();
 
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 124,
-                child: Obx(() {
-                  if (bannerController.isLoading.value) {
-                    // 🔥 Shimmer loader while images load
-                    return Shimmer.fromColors(
-                      baseColor: Colors.grey.shade300,
-                      highlightColor: Colors.grey.shade100,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: 3, // dummy placeholders
-                        itemBuilder: (context, index) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            width: MediaQuery.of(context).size.width -
-                                32, // full width
-                            height: 124,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          );
+                          // Navigate immediately
+                          if (Platform.isAndroid) {
+                            GoRouter.of(context)
+                                .push(AppRoutes.bookingRide);
+                          } else {
+                            navigatorKey.currentContext
+                                ?.push(AppRoutes.bookingRide);
+                          }
+                          currencyController.resetCurrencyAfterSelfDrive();
                         },
-                      ),
-                    );
-                  }
-
-                  final images = bannerController
-                      .homepageImageResponse.value?.result?.topBanner?.images;
-
-                  if (images == null || images.isEmpty) {
-                    return const Center(child: Text("No banners available"));
-                  }
-
-                  return CarouselSlider.builder(
-                    itemCount: images.length,
-                    options: CarouselOptions(
-                      height: 124,
-                      viewportFraction: 1.0,
-                      enlargeCenterPage: false,
-                      autoPlay: true,
-                    ),
-                    itemBuilder: (context, index, realIdx) {
-                      final baseUrl = bannerController
-                          .homepageImageResponse.value?.result?.baseUrl ??
-                          '';
-                      final imageUrl = images[index].url ?? '';
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: Image.network(
-                            "$baseUrl$imageUrl",
-                            fit: BoxFit.fill,
-                            width: double.infinity,
-                            height: 124,
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return Shimmer.fromColors(
-                                baseColor: Colors.grey.shade300,
-                                highlightColor: Colors.grey.shade100,
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 124,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1F192653),
+                                offset: Offset(0, 3),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Image.asset(
+                                    'assets/images/rental.png',
+                                    fit: BoxFit.contain,
                                   ),
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(child: Icon(Icons.broken_image));
-                            },
+                                Text('Rental', style: CommonFonts.blueText1),
+                              ],
+                            ),
                           ),
                         ),
+                      ),
+
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 124,
+                  child: Obx(() {
+                    if (bannerController.isLoading.value) {
+                      // 🔥 Shimmer loader while images load
+                      return Shimmer.fromColors(
+                        baseColor: Colors.grey.shade300,
+                        highlightColor: Colors.grey.shade100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 3, // dummy placeholders
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              width: MediaQuery.of(context).size.width -
+                                  32, // full width
+                              height: 124,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            );
+                          },
+                        ),
                       );
-                    },
-                  );
-                }),
-              ),
-              const SizedBox(height: 24),
-              /// 🔹 FLEET GRID
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: const Text(
-                        'Fleets That Meets Your Needs',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF212F62),
+                    }
+
+                    final images = bannerController
+                        .homepageImageResponse.value?.result?.topBanner?.images;
+
+                    if (images == null || images.isEmpty) {
+                      return const Center(child: Text("No banners available"));
+                    }
+
+                    return CarouselSlider.builder(
+                      itemCount: images.length,
+                      options: CarouselOptions(
+                        height: 124,
+                        viewportFraction: 1.0,
+                        enlargeCenterPage: false,
+                        autoPlay: true,
+                      ),
+                      itemBuilder: (context, index, realIdx) {
+                        final baseUrl = bannerController
+                            .homepageImageResponse.value?.result?.baseUrl ??
+                            '';
+                        final imageUrl = images[index].url ?? '';
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12.0),
+                            child: Image.network(
+                              "$baseUrl$imageUrl",
+                              fit: BoxFit.fill,
+                              width: double.infinity,
+                              height: 124,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Shimmer.fromColors(
+                                  baseColor: Colors.grey.shade300,
+                                  highlightColor: Colors.grey.shade100,
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 124,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(child: Icon(Icons.broken_image));
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }),
+                ),
+                const SizedBox(height: 24),
+                /// 🔹 FLEET GRID
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: const Text(
+                          'Fleet That Meets Your Needs',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF212F62),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 400,
-                        child: CarGridScreen()),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 400,
+                          child: CarGridScreen()),
 
-                    CarCard()
-                  ],
+                      CarCard()
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1252,6 +1521,8 @@ class PillTabBarWithChild extends StatefulWidget {
 
 class _PillTabBarWithChildState extends State<PillTabBarWithChild> {
   final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
+  final FetchTopRatedRidesController fetchTopRatedRidesController = Get.put(FetchTopRatedRidesController());
+
   final tabs = ["Daily Rentals", "Monthly Rentals"];
   final children = [
     // Child for "Daily Rentals" - Remove Expanded
@@ -1276,10 +1547,11 @@ class _PillTabBarWithChildState extends State<PillTabBarWithChild> {
               final isSelected = searchInventorySdController.selectedIndex.value == index;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () {
+                  onTap: () async{
                     setState(() {
                       searchInventorySdController.selectedIndex.value = index;
                     });
+                   await fetchTopRatedRidesController.fetchAllRides();
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 240),
@@ -1399,7 +1671,7 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                         case "UK":
                           return "🇬🇧";
                         default:
-                          return "🌐"; // fallback globe
+                          return "🇦🇪"; // fallback globe
                       }
                     }
 
@@ -1430,6 +1702,7 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                             child: Theme(
                               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                               child: ExpansionTile(
+                                initiallyExpanded: true,
                                 collapsedBackgroundColor: Colors.grey.shade50,
                                 backgroundColor: Colors.grey.shade50,
                                 leading: CircleAvatar(
@@ -1734,7 +2007,7 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                         case "UK":
                           return "🇬🇧";
                         default:
-                          return "🌐"; // fallback globe
+                          return "🇦🇪"; // fallback globe
                       }
                     }
 
@@ -1753,8 +2026,7 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                             orElse: () => AvailableCountry(
                               label: countryCode, value: countryCode,
                             ),
-                          )
-                              .label ?? countryCode;
+                          ).label ?? countryCode;
 
                           return Card(
                             shape: RoundedRectangleBorder(
@@ -1766,6 +2038,7 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                             child: Theme(
                               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                               child: ExpansionTile(
+                                initiallyExpanded: true,
                                 collapsedBackgroundColor: Colors.grey.shade50,
                                 backgroundColor: Colors.grey.shade50,
                                 leading: CircleAvatar(
@@ -1803,7 +2076,7 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                                       setState(() {
                                         searchInventorySdController.countryCode.value = cityData.countryCode??'';
                                         searchInventorySdController.city.value = cityData.cityName??'';
-                                        searchInventorySdController.cityId.value = cityData.id??'';
+                                        searchInventorySdController.countryId.value = cityData.id??'';
                                       });
 
 
@@ -1953,7 +2226,10 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                   borderRadius: BorderRadius.circular(8)),
               elevation: 0,
             ),
-            onPressed: () async{
+            onPressed: () async {
+              // Show shimmer overlay screen
+
+              // Fetch your data
               await searchInventorySdController.fetchAllInventory(context: context);
             },
             child: Text("Search",
@@ -1996,6 +2272,7 @@ class CarGridScreen extends StatefulWidget {
 
 class _CarGridScreenState extends State<CarGridScreen> {
   final FetchAllFleetsController fetchAllFleetsController = Get.put(FetchAllFleetsController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
   @override
   void initState() {
     // TODO: implement initState
@@ -2045,24 +2322,7 @@ class _CarGridScreenState extends State<CarGridScreen> {
                 style: const TextStyle(
                     fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF333333)),
               ),
-              const SizedBox(height: 2),
-              Text(
-                '1240+ available',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF7878FF),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'From AED 60 / day',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 8),
+              SizedBox(height: 24,)
             ],
           ),
         );
@@ -2084,7 +2344,14 @@ class CarCard extends StatefulWidget {
 
 class _CarCardState extends State<CarCard> {
   final FetchTopRatedRidesController fetchTopRatedRidesController = Get.put(FetchTopRatedRidesController());
+  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
+  final FetchSdBookingDetailsController fetchSdBookingDetailsController = Get.put(FetchSdBookingDetailsController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
   int _currentIndex = 0;
+
+  //fake price
+  num getFakePriceWithPercent(num baseFare, num percent) =>
+      (baseFare * 100) / (100 - percent);
 
   @override
   void initState() {
@@ -2228,7 +2495,7 @@ class _CarCardState extends State<CarCard> {
                         children: [
                           _InfoIcon(icon: Icons.airline_seat_recline_extra, text: "${vehicle?.specs?.seats ?? "--"} Seat"),
                           _InfoIcon(icon: Icons.work, text: "${vehicle?.specs?.luggageCapacity ?? "--"} luggage bag"),
-                          _InfoIcon(icon: Icons.speed, text: "${vehicle?.specs?.mileageLimit ?? "--"} km/rental"),
+                          // _InfoIcon(icon: Icons.speed, text: "${vehicle?.specs?.mileageLimit ?? "--"} km/rental"),
                           _InfoIcon(icon: Icons.settings, text: "${vehicle?.specs?.transmission ?? "--"}"),
                           const _InfoIcon(icon: Icons.calendar_today, text: "Min. 2 days rental"),
                         ],
@@ -2250,15 +2517,68 @@ class _CarCardState extends State<CarCard> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children:  [
-                          Text("AED ${rides[index].tariffMonthly?.base}/month",
-                              style: TextStyle(
-                                color: Color(0xFF2F2F2F),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400
-                              )),
+
+                          Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  getFakePriceWithPercent(searchInventorySdController.selectedIndex.value == 0
+                                      ? (rides[index].tariffDaily?.base ?? 0)
+                                      : (rides[index].tariffMonthly?.base ?? 0), 20).toDouble(),
+                                ),
+                                builder: (context, snapshot) {
+                                  final convertedValue = snapshot.data ??
+                                      getFakePriceWithPercent(searchInventorySdController.selectedIndex.value == 0
+                                          ? (rides[index].tariffDaily?.base ?? 0)
+                                          : (rides[index].tariffMonthly?.base ?? 0), 20).toDouble();
+                                  return Text(
+                                    '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Colors.grey, // lighter color for cut-off price
+                                      decoration: TextDecoration.lineThrough, // 👈 adds cutoff
+                                    ),
+                                  );
+                                },
+                              ),
+          ]
+                          ),
+
                           SizedBox(height: 4),
-                          Text("AED ${rides[index].tariffDaily?.base}/day",
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: Color(0xFF131313))),
+                          FutureBuilder<double>(
+                            future: currencyController.convertPrice(
+                              (searchInventorySdController.selectedIndex.value == 0
+                                  ? (rides[index].tariffDaily?.base ?? 0)
+                                  : (rides[index].tariffMonthly?.base?? 0))
+                                  .toDouble(),
+                            ),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return const Text(
+                                  "Error in conversion",
+                                  style: TextStyle(color: Colors.red, fontSize: 11),
+                                );
+                              }
+
+                              // Show loading or fallback until data is ready
+                              final convertedPrice = snapshot.data ?? 0;
+
+                              return Text(
+                                searchInventorySdController.selectedIndex.value == 0
+                                    ? "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/day"
+                                    : "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/Month",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Color(0xFF131313),
+                                ),
+                              );
+                            },
+                          )
+
                         ],
                       ),
                       const Spacer(),
@@ -2268,16 +2588,37 @@ class _CarCardState extends State<CarCard> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
                         ),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            Platform.isIOS
-                                ? CupertinoPageRoute(
-                              builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: true),
-                            )
-                                : MaterialPageRoute(
-                              builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: true),
-                            ),
-                          );                        },
+                        onPressed: () async{
+          // Step 2: Show the transition loader (Chauffeur → Self Drive)
+          Navigator.of(context).push(
+          PageRouteBuilder(
+          opaque: false,
+          pageBuilder: (_, __, ___) => const SelfDriveInventoryShimmer(
+          ),
+          ),
+          );
+
+
+          // Step 3: Wait for animation to complete
+          await Future.delayed(const Duration(seconds: 2));
+
+          // Step 4: Close the loader and navigate via GoRouter
+          if (context.mounted) {
+            // Close loader overlay
+            Navigator.of(context).pop();
+          }
+                         await fetchSdBookingDetailsController.fetchBookingDetails(vehicle?.id??"", false).then((value){
+                            Navigator.of(context).push(
+                              Platform.isIOS
+                                  ? CupertinoPageRoute(
+                                builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false, isNavigateFromHome: true,),
+                              )
+                                  : MaterialPageRoute(
+                                builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false, isNavigateFromHome: true,),
+                              ),
+                            );
+                          });
+                                               },
                         child: const Text("Book Now", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),),
                       ),
                     ],

@@ -1,96 +1,63 @@
-// lib/controllers/pdf_download_controller.dart
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
+import '../../../api/self_drive_api_services.dart';
 
-import '../../api/api_services.dart';
-
-class PdfDownloadController extends GetxController {
-  var isDownloading = false.obs;
-
+class SdPdfDownloadController extends GetxController {
+  /// ✅ Ensure storage permission for Android (Android 13+ compatible)
   Future<void> _ensurePermissions() async {
-    if (Platform.isAndroid) {
-      if (await Permission.storage.isDenied) {
-        await Permission.storage.request();
-      }
+    if (!Platform.isAndroid) return;
+
+    // Android 13+ → use these new permissions
+    if (await Permission.photos.isDenied) {
+      await Permission.photos.request();
+    }
+
+    if (await Permission.videos.isDenied) {
+      await Permission.videos.request();
+    }
+
+    // Older Android (for writing to /storage/emulated/0/Download)
+    if (await Permission.storage.isDenied) {
+      await Permission.storage.request();
     }
   }
 
-  Future<void> downloadReceiptPdf(String objectId, BuildContext context) async {
-    print(
-        '🔽 [PdfDownloadController] Starting downloadReceiptPdf for objectId: $objectId');
-    isDownloading.value = true;
-
+  /// ✅ Reusable method to save PDF file
+  Future<void> savePdfFile(Uint8List bytes, String filePath) async {
     try {
-      await _ensurePermissions(); // 🔑 Ask storage permission (for Android <=12)
+      final file = File(filePath);
 
-      Directory? dir;
-      if (Platform.isAndroid) {
-        if (await Directory("/storage/emulated/0/Download").exists()) {
-          dir = Directory(
-              "/storage/emulated/0/Download"); // Public Downloads folder
-        } else {
-          dir =
-          await getExternalStorageDirectory(); // App-specific storage (Android 11+)
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory(); // iOS/macOS
+      // Ensure parent directory exists
+      if (!await file.parent.exists()) {
+        await file.parent.create(recursive: true);
       }
 
-      final filePath = "${dir!.path}/receipt_$objectId.pdf";
-      print('📂 Saving file to: $filePath');
-
-      await ApiService().downloadPdfWithHttp(
-        endpoint: 'chaufferReservation/printConfirmationChauffeur',
-        body: {"objectID": objectId},
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic aGFyc2g6MTIz',
-        },
-        filePath: filePath,
-      );
-
-      print('✅ PDF downloaded successfully for objectId: $objectId');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF saved to ${dir.path}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      final result = await OpenFile.open(filePath);
-      print('📖 OpenFile result: ${result.message}');
+      await file.writeAsBytes(bytes, flush: true);
+      print('📂 PDF saved at: $filePath');
     } catch (e) {
-      print(
-          '❌ Error in downloadReceiptPdf for objectId: $objectId | Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please wait for Booking Complete'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    } finally {
-      isDownloading.value = false;
-      print(
-          'ℹ️ downloadReceiptPdf completed for objectId: $objectId | isDownloading reset to false');
+      print('❌ Error saving PDF: $e');
+      throw Exception('Failed to save PDF');
     }
   }
 
-  Future<void> downloadChauffeurEInvoice({
+  /// ✅ Downloads PDF receipt using the GET API
+  Future<void> downloadReceiptPdf({
     required BuildContext context,
-    required String objectId,
+    required String orderRefId,
   }) async {
-    final endpoint = "chaufferReservation/pdfGeneratorEInvoice/$objectId/CUSTOMER";
-    print(
-        '🔽 [PdfDownloadController] Starting downloadChauffeurEInvoice for objectId: $objectId | Endpoint: $endpoint');
+    final endpoint = "pdf-receipt/generatePDFReceipt/$orderRefId";
+    print('🔽 Starting downloadReceiptPdf for: $orderRefId | Endpoint: $endpoint');
 
     try {
-      await _ensurePermissions(); // ✅ ask storage permission on Android <= 12
+      // ✅ Request permissions
+      await _ensurePermissions();
 
+      // ✅ Prefer visible Downloads folder on Android
       Directory? dir;
       if (Platform.isAndroid) {
         if (await Directory("/storage/emulated/0/Download").exists()) {
@@ -102,19 +69,21 @@ class PdfDownloadController extends GetxController {
         dir = await getApplicationDocumentsDirectory();
       }
 
-      final filePath = "${dir!.path}/e_invoice_$objectId.pdf";
+      final fileName = "e_invoice_$orderRefId.pdf";
+      final filePath = "${dir!.path}/$fileName";
       print('📂 Saving E-Invoice file to: $filePath');
 
-      // Assuming you already have ApiService.downloadPdfFromGetApi(filePath) updated to handle saving
-      await ApiService().downloadPdfFromGetApi(
+      // ✅ Pass full file path here (fix)
+      await SelfDriveApiService().downloadPdfFromGetApi(
         context: context,
         endpoint: endpoint,
-        fileName: filePath, // ✅ Pass full path instead of just fileName
+        filePath: filePath, // ✅ FIXED: full absolute path instead of fileName
         headers: {
           'Authorization': 'Basic aGFyc2g6MTIz',
         },
       );
 
+      // ✅ Confirm with user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('E-Invoice saved to ${dir.path}'),
@@ -122,12 +91,12 @@ class PdfDownloadController extends GetxController {
         ),
       );
 
+      // ✅ Try to open file
       final result = await OpenFile.open(filePath);
       print('📖 OpenFile result: ${result.message}');
-      print('✅ E-Invoice PDF downloaded successfully for objectId: $objectId');
+      print('✅ E-Invoice PDF downloaded successfully for orderRefId: $orderRefId');
     } catch (e) {
-      print(
-          '❌ Error in downloadChauffeurEInvoice for objectId: $objectId | Error: $e');
+      print('❌ Error in downloadReceiptPdf for $orderRefId | Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to download E-Invoice'),

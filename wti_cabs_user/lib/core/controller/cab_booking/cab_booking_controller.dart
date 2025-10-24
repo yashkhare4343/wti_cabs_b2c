@@ -278,8 +278,8 @@ class CabBookingController extends GetxController {
 
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.65,
-          minChildSize: 0.65,
+          initialChildSize: 0.45,
+          minChildSize: 0.45,
           maxChildSize: 0.9,
           builder: (_, controller) {
             return Padding(
@@ -324,27 +324,36 @@ class CabBookingController extends GetxController {
                       ),
                       const SizedBox(height: 16),
 
-                      _buildRow("Base Fare", "$symbol${data['baseFare']!.toStringAsFixed(2)}"),
-                      _buildRow("Night Charges", "$symbol${data['nightCharges']!.toStringAsFixed(2)}"),
-                      _buildRow("Toll Charges", "$symbol${data['tollCharges']!.toStringAsFixed(2)}"),
-                      _buildRow("Waiting Charges", "$symbol${data['waitingCharges']!.toStringAsFixed(2)}"),
-                      _buildRow("Parking Charges", "$symbol${data['parkingCharges']!.toStringAsFixed(2)}"),
-                      _buildRow("State Tax", "$symbol${data['stateTax']!.toStringAsFixed(2)}"),
-                      _buildRow("Driver Charge", "$symbol${data['driverCharge']!.toStringAsFixed(2)}"),
-                      _buildRow("Extras", "$symbol${data['extras']!.toStringAsFixed(2)}"),
+                      if ((data['baseFare'] ?? 0) != 0)
+                        _buildRow("Base Fare", "$symbol${data['baseFare']!.toStringAsFixed(2)}"),
+                      if ((data['nightCharges'] ?? 0) != 0)
+                        _buildRow("Night Charges", "$symbol${data['nightCharges']!.toStringAsFixed(2)}"),
+                      if ((data['tollCharges'] ?? 0) != 0)
+                        _buildRow("Toll Charges", "$symbol${data['tollCharges']!.toStringAsFixed(2)}"),
+                      if ((data['waitingCharges'] ?? 0) != 0)
+                        _buildRow("Waiting Charges", "$symbol${data['waitingCharges']!.toStringAsFixed(2)}"),
+                      if ((data['parkingCharges'] ?? 0) != 0)
+                        _buildRow("Parking Charges", "$symbol${data['parkingCharges']!.toStringAsFixed(2)}"),
+                      if ((data['stateTax'] ?? 0) != 0)
+                        _buildRow("State Tax", "$symbol${data['stateTax']!.toStringAsFixed(2)}"),
+                      if ((data['driverCharge'] ?? 0) != 0)
+                        _buildRow("Driver Charge", "$symbol${data['driverCharge']!.toStringAsFixed(2)}"),
+                      if ((data['extras'] ?? 0) != 0)
+                        _buildRow("Extras", "$symbol${data['extras']!.toStringAsFixed(2)}"),
 
                       const Divider(thickness: 1, height: 24),
 
                       _buildRow("Subtotal", "$symbol${data['subtotal']!.toStringAsFixed(2)}", isBold: true),
                       _buildRow("Tax include (5%)", "$symbol${data['tax']!.toStringAsFixed(2)}", isBold: true),
 
-                      if (data.containsKey("discount"))
+                      if ((data['discount'] ?? 0) != 0)
                         _buildRow("Coupon Applied", "-$symbol${data['discount']!.toStringAsFixed(2)}"),
 
                       _buildRow("Total Fare", "$symbol${data['total']!.toStringAsFixed(2)}",
                           isBold: true, highlight: true),
                     ],
                   );
+
                 },
               ),
             );

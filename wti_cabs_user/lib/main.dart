@@ -13,10 +13,14 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/version_check/version_check_controller.dart';
+import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
@@ -30,6 +34,7 @@ import 'core/controller/network_controller/network_controller.dart';
 import 'core/controller/popular_destination/popular_destination.dart';
 import 'core/controller/usp_controller/usp_controller.dart';
 import 'core/route_management/app_page.dart';
+import 'core/route_management/app_routes.dart';
 import 'core/services/cache_services.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/storage_services.dart';
@@ -41,7 +46,8 @@ import 'package:geocoding/geocoding.dart' as geocoding;
 import 'dart:convert'; // for jsonEncode
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
   'high_importance_channel', // Must match AndroidManifest
   'High Importance Notifications',
@@ -64,7 +70,42 @@ void serviceLocator() {
   getIt.registerSingleton<ApiService>(ApiService());
 }
 
+final VersionCheckController versionCheckController =
+    Get.put(VersionCheckController());
 
+Future<String> _determineStartRoute(
+    VersionCheckController controller, BuildContext context) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  // Step 1: Version check
+  await versionCheckController.verifyAppCompatibity(context: context);
+
+  final isCompatible =
+      controller.versionCheckResponse.value?.isCompatible ?? true;
+
+  if (!isCompatible) {
+    final Uri uri = Uri.parse(
+      Platform.isAndroid
+          ? 'https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share'
+          : 'https://apps.apple.com/in/app/wti-cabs/id1634737888',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+    return AppRoutes.bottomNav; // fallback in case user returns
+  }
+
+  // Step 2: First time check
+  final isFirstTime = prefs.getBool("isFirstTime") ?? true;
+
+  if (isFirstTime) {
+    await prefs.setBool("isFirstTime", false);
+    return AppRoutes.walkthrough;
+  }
+
+  // Step 3: Default route
+  return AppRoutes.bottomNav;
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -97,30 +138,32 @@ void main() async {
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
     Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController());
-    Get.lazyPut<DestinationLocationController>(() => DestinationLocationController());
+    Get.lazyPut<DestinationLocationController>(
+        () => DestinationLocationController());
 
     print('🌍 Initializing Time Zones');
     tz.initializeTimeZones();
 
     print('💳 Setting Stripe key');
     // test key stripe
-    Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
+    //  Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
     // live key stripe
-    // Stripe.publishableKey = 'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
+    Stripe.publishableKey =
+        'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
     await Stripe.instance.applySettings();
 
     print('📥 Initializing FlutterDownloader');
     await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
     await NotificationService().initialize();
+    // Initialize GetX controller
+
+    // Run version + onboarding logic before app starts
     runApp(const MyApp());
   } catch (e, stack) {
     print('❌ Caught exception in main: $e');
     print('🪵 StackTrace:\n$stack');
   }
 }
-
-
-
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -133,27 +176,166 @@ class _MyAppState extends State<MyApp> {
   String? _fcmToken = 'Fetching...';
   String address = '';
   final PopularDestinationController popularDestinationController =
-  Get.put(PopularDestinationController());
+      Get.put(PopularDestinationController());
   final UspController uspController = Get.put(UspController());
   final BannerController bannerController = Get.put(BannerController());
-  final ConnectivityController connectivityController = Get.put(ConnectivityController());
-  final VersionCheckController versionCheckController = Get.put(VersionCheckController());
-
-
+  final ConnectivityController connectivityController =
+      Get.put(ConnectivityController());
+  final VersionCheckController versionCheckController =
+      Get.put(VersionCheckController());
 
   @override
   void initState() {
     super.initState();
     initFCM();
     homeApiLoading();
+    fetchCurrentLocationAndAddress();
   }
 
-  void homeApiLoading() async{
+  // ✅ Determine initial route dynamically using context
+  Future<String> _getInitialRoute(BuildContext context) async {
+    final versionCheckController = Get.put(VersionCheckController());
+    final prefs = await SharedPreferences.getInstance();
+
+    // Step 1: Version check (with context)
+    await versionCheckController.verifyAppCompatibity(context: context);
+    final isCompatible = versionCheckController.versionCheckResponse.value?.isCompatible ?? true;
+
+    // Step 2: First-time check
+    final isFirstTime = prefs.getBool("isFirstTime") ?? true;
+     print('isFirstTime: $isFirstTime');
+
+    String initialRoute;
+    if (!isCompatible) {
+      final Uri uri = Uri.parse(
+        Platform.isAndroid
+            ? 'https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share'
+            : 'https://apps.apple.com/in/app/wti-cabs/id1634737888',
+      );
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      initialRoute = AppRoutes.bottomNav; // fallback
+    } else if (isFirstTime) {
+      await prefs.setBool("isFirstTime", false);
+      initialRoute = AppRoutes.walkthrough;
+    } else {
+      initialRoute = AppRoutes.bottomNav;
+    }
+
+    return initialRoute;
+  }
+
+  void homeApiLoading() async {
     await popularDestinationController.fetchPopularDestinations();
     await uspController.fetchUsps();
     await bannerController.fetchImages();
   }
 
+
+  Future<void> initFCM() async {
+    // Request permissions
+    NotificationSettings settings =
+        await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    print('🛂 User permission status: ${settings.authorizationStatus}');
+
+    // Skip APNs handling on iOS simulator
+    if (Platform.isIOS &&
+        !Platform.environment.containsKey('SIMULATOR_DEVICE_NAME')) {
+      String? apnsToken;
+      do {
+        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        await Future.delayed(const Duration(milliseconds: 500));
+      } while (apnsToken == null);
+      print('📲 APNs Token: $apnsToken');
+    } else {
+      print('ℹ️ Skipping APNs token setup (non-iOS or Simulator)');
+    }
+
+    // Get FCM token
+    String? token = await FirebaseMessaging.instance.getToken();
+    print("🔑 FCM Token: $token");
+
+    setState(() {
+      _fcmToken = token;
+    });
+
+    versionCheckController.fcmToken.value = token ?? '';
+
+    // Local notifications
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await _localNotificationsPlugin.initialize(initSettings);
+
+    await _localNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
+
+    // Foreground message handling
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('📩 Foreground message received!');
+      RemoteNotification? notification = message.notification;
+      AndroidNotification? android = message.notification?.android;
+
+      if (notification != null && android != null) {
+        _localNotificationsPlugin.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              _channel.id,
+              _channel.name,
+              icon: '@mipmap/ic_launcher',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      }
+    });
+
+    // Background open
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('📲 App opened from background notification: ${message.data}');
+    });
+
+    // Terminated open
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      print(
+          '🚀 App launched from terminated notification: ${initialMessage.data}');
+    }
+  }
+
+  Future<void> fetchCurrentLocationAndAddress() async {
+    final loc = location.Location();
+
+    // ✅ Ensure service is enabled
+    if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
+
+    // ✅ Ensure permission
+    var permission = await loc.hasPermission();
+    if (permission == location.PermissionStatus.denied) {
+      permission = await loc.requestPermission();
+      if (permission != location.PermissionStatus.granted) return;
+    }
+
+    // ✅ Fetch current location
+    final locData = await loc.getLocation();
+    if (locData.latitude == null || locData.longitude == null) return;
+
+    await _getAddressAndPrefillFromLatLng(
+      LatLng(locData.latitude!, locData.longitude!),
+    );
+  }
 
   Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
     try {
@@ -179,7 +361,8 @@ class _MyAppState extends State<MyApp> {
         place.postalCode ?? '',
         place.country ?? '',
       ];
-      final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
+      final fullAddress =
+      components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Show address on UI immediately
       setState(() => address = fullAddress);
@@ -201,7 +384,8 @@ class _MyAppState extends State<MyApp> {
       // 5. Fire-and-forget details/storage update
       Future.microtask(() async {
         try {
-          await placeSearchController.getLatLngDetails(suggestion.placeId, context);
+          await placeSearchController.getLatLngDetails(
+              suggestion.placeId, context);
 
           StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
           StorageServices.instance.save('sourceTitle', suggestion.primaryText);
@@ -245,99 +429,31 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> initFCM() async {
-    // Request permissions
-    NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    print('🛂 User permission status: ${settings.authorizationStatus}');
-
-    // Skip APNs handling on iOS simulator
-    if (Platform.isIOS && !Platform.environment.containsKey('SIMULATOR_DEVICE_NAME')) {
-      String? apnsToken;
-      do {
-        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-        await Future.delayed(const Duration(milliseconds: 500));
-      } while (apnsToken == null);
-      print('📲 APNs Token: $apnsToken');
-    } else {
-      print('ℹ️ Skipping APNs token setup (non-iOS or Simulator)');
-    }
-
-    // Get FCM token
-    String? token = await FirebaseMessaging.instance.getToken();
-    print("🔑 FCM Token: $token");
-
-    setState(() {
-      _fcmToken = token;
-    });
-
-    versionCheckController.fcmToken.value = token??'';
-
-    // Local notifications
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
-    await _localNotificationsPlugin.initialize(initSettings);
-
-    await _localNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
-
-    // Foreground message handling
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('📩 Foreground message received!');
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
-
-      if (notification != null && android != null) {
-        _localNotificationsPlugin.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channel.id,
-              _channel.name,
-              icon: '@mipmap/ic_launcher',
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-        );
-      }
-    });
-
-    // Background open
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('📲 App opened from background notification: ${message.data}');
-    });
-
-    // Terminated open
-    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) {
-      print('🚀 App launched from terminated notification: ${initialMessage.data}');
-    }
-  }
+  final router = AppPages.routerWithInitial(AppRoutes.walkthrough);
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      return connectivityController.isOnline.value
-          ? GetMaterialApp.router(
-        routerDelegate: AppPages.router.routerDelegate,
-        routeInformationParser: AppPages.router.routeInformationParser,
-        routeInformationProvider: AppPages.router.routeInformationProvider,
-        title: StringConstants.title,
-        debugShowCheckedModeBanner: false, // ✅ removes debug banner
-      )
-          : MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home:  NoInternetScreen(
-          onRetry: () => connectivityController.checkInitialConnection(),
-        ),
-      );
+    return FutureBuilder<String>(
+      future: _getInitialRoute(context),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: Scaffold(body: BottomNavScreen()),
+          );
+        }
 
-    });
-  }}
+        final initialRoute = snapshot.data!;
+        final router = AppPages.routerWithInitial(initialRoute);
+
+        return GetMaterialApp.router(
+          routerDelegate: router.routerDelegate,
+          routeInformationParser: router.routeInformationParser,
+          routeInformationProvider: router.routeInformationProvider,
+          title: "WTI Cabs",
+          debugShowCheckedModeBanner: false,
+        );
+      },
+    );
+  }
+}

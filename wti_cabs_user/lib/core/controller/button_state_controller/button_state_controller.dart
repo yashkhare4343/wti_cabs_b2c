@@ -38,15 +38,20 @@ class ButtonStateController extends GetxController {
     final pickupId = placeSearchController.placeId.value;
     final dropId = dropPlaceSearchController.dropPlaceId.value;
 
-    final samePlace = pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId;
-    final differntCountry = pickupId.isNotEmpty && dropId.isNotEmpty && placeSearchController.getPlacesLatLng.value?.country != dropPlaceSearchController.dropLatLng.value?.country;
+    final samePlace =
+        pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId;
+    final differntCountry = pickupId.isNotEmpty &&
+        dropId.isNotEmpty &&
+        placeSearchController.getPlacesLatLng.value?.country !=
+            dropPlaceSearchController.dropLatLng.value?.country;
 
-    final hasSourceError = (placeSearchController.findCntryDateTimeResponse.value?.sourceInput ?? false) ||
-        (dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput ?? false);
+    final hasSourceError =
+        (placeSearchController.findCntryDateTimeResponse.value?.sourceInput ??
+            false);
 
-    final hasDestinationError = (placeSearchController.findCntryDateTimeResponse.value?.destinationInputFalse ?? false) ||
-        (dropPlaceSearchController.dropDateTimeResponse.value?.destinationInputFalse ?? false);
-
+    final hasDestinationError = (dropPlaceSearchController
+            .dropDateTimeResponse.value?.destinationInputFalse ??
+        false);
     final isPlaceMissing = pickupId.isEmpty || dropId.isEmpty;
 
     final canProceed = !samePlace &&
@@ -54,15 +59,23 @@ class ButtonStateController extends GetxController {
         !hasDestinationError &&
         !differntCountry &&
         !isPlaceMissing &&
-        (
-            (placeSearchController.findCntryDateTimeResponse.value?.goToNextPage ?? false) ||
-                (placeSearchController.findCntryDateTimeResponse.value?.sameCountry ?? false) ||
-                (dropPlaceSearchController.dropDateTimeResponse.value?.sameCountry ?? false) ||
-                (dropPlaceSearchController.dropDateTimeResponse.value?.goToNextPage ?? false)
-        );
+        ((placeSearchController
+                    .findCntryDateTimeResponse.value?.goToNextPage ??
+                false) ||
+            (placeSearchController
+                    .findCntryDateTimeResponse.value?.sameCountry ??
+                false) ||
+            (dropPlaceSearchController
+                    .dropDateTimeResponse.value?.sameCountry ??
+                false) ||
+            (dropPlaceSearchController
+                    .dropDateTimeResponse.value?.goToNextPage ??
+                false));
 
     final forceDisable = samePlace || hasSourceError || hasDestinationError;
 
-    isEnabled.value = canProceed && !forceDisable && !bookingRideController.isInvalidTime.value;
+    isEnabled.value = canProceed &&
+        !forceDisable &&
+        !bookingRideController.isInvalidTime.value;
   }
 }

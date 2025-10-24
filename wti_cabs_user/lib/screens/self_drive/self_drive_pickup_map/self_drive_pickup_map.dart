@@ -259,13 +259,15 @@ class _SelfDrivePlaceMapState extends State<SelfDrivePlaceMap> {
                                             builder: (_) =>
                                                 SelfDriveFinalPageS1(
                                                     vehicleId: widget.vehicleId,
-                                                    isHomePage: false),
+                                                    isHomePage: false,
+                                                    shouldScrollToBottom: true),
                                           )
                                         : MaterialPageRoute(
                                             builder: (_) =>
                                                 SelfDriveFinalPageS1(
                                                     vehicleId: widget.vehicleId,
-                                                    isHomePage: false),
+                                                    isHomePage: false,
+                                                    shouldScrollToBottom: true),
                                           ),
                                   );
                                 });

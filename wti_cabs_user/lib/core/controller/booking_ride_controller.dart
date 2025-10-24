@@ -74,6 +74,13 @@ class BookingRideController extends GetxController {
     super.onInit();
   }
 
+  /// Trigger to reset the date picker from anywhere
+  var resetDateTrigger = false.obs;
+
+  void resetDate() {
+    resetDateTrigger.value = true;
+  }
+
   // ✅ Update local start time from string
   void updateLocalStartTimeFromString(String dateTimeString) {
     try {

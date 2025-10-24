@@ -1,12 +1,15 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -25,6 +28,7 @@ import '../../screens/user_fill_details/user_fill_details.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../buttons/main_button.dart';
 import '../name_initials/name_initial.dart';
+
 final UpcomingBookingController upcomingBookingController =
 Get.put(UpcomingBookingController());
 
@@ -40,15 +44,12 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
   final CurrencyController currencyController = Get.put(CurrencyController());
   final ProfileController profileController = Get.put(ProfileController());
 
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     checkLogin();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       profileController.fetchData();
-      // _showBottomSheet();
     });
   }
 
@@ -83,27 +84,24 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
+          serverClientId:
+          '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com',
         );
 
-        // Start the sign-in flow
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
           print("User cancelled the sign-in flow");
           return null;
         }
 
-        // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
         await googleUser.authentication;
 
-        // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        // Sign in to Firebase
         final userCredential =
         await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
@@ -126,39 +124,9 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
           builder: (_) => UserFillDetails(
               name: result?.user?.displayName ?? '',
               email: result?.user?.email ?? '',
-              phone: result?.user?.phoneNumber ?? ''), // your login widget
+              phone: result?.user?.phoneNumber ?? ''),
         ),
       );
-
-      // if (result != null) {
-      //   final Map<String, dynamic> requestData = {
-      //     "firstName": result.user?.displayName,
-      //     // "lastName": "Sahni",
-      //     "contact": result.user?.phoneNumber ?? '000000000',
-      //     "contactCode": "91",
-      //     "countryName": "India",
-      //     // "address": "String",
-      //     // "city": "String",
-      //     "gender": "MALE",
-      //     // "postalCode": "String",
-      //     "emailID": result.user?.email
-      //     // "password": "String"
-      //     // "otp": {
-      //     //     "code": "Number",
-      //     //     "otpExpiry": ""
-      //     // }
-      //   };
-      //   await registerController
-      //       .verifySignup(requestData: requestData, context: context)
-      //       .then((value) {
-      //     Navigator.of(context).pop();
-      //   });
-      //   print("✅ User signed in: ${result.user?.email}");
-      //
-      //   // close the bottom sheet
-      // } else {
-      //   print("❌ Google Sign-In cancelled or failed");
-      // }
     }
 
     PhoneNumber number = PhoneNumber(isoCode: 'IN');
@@ -218,7 +186,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                   textDirection: TextDirection.ltr,
                   child: ClipRRect(
                     borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
+                    const BorderRadius.vertical(top: Radius.circular(20)),
                     child: Material(
                       color: Colors.white,
                       child: SingleChildScrollView(
@@ -227,47 +195,51 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Header banner
-                            // Container(
-                            //   width: double.infinity,
-                            //   padding: const EdgeInsets.all(16),
-                            //   decoration: const BoxDecoration(
-                            //     color: Color(0xFFFFF6DD),
-                            //     borderRadius: BorderRadius.only(
-                            //       topLeft: Radius.circular(12),
-                            //       topRight: Radius.circular(12),
-                            //     ),
-                            //   ),
-                            //   child: Row(
-                            //     children: [
-                            //       Expanded(
-                            //         child: Column(
-                            //           crossAxisAlignment:
-                            //           CrossAxisAlignment.start,
-                            //           children: [
-                            //             Text(
-                            //               "Invite & Earn!",
-                            //               style: CommonFonts.heading1Bold,
-                            //             ),
-                            //             const SizedBox(height: 8),
-                            //             Text(
-                            //               "Invite your Friends & Get Up to",
-                            //               style: CommonFonts.bodyText6,
-                            //             ),
-                            //             Text("INR 2000*",
-                            //                 style: CommonFonts.bodyText6Bold),
-                            //           ],
-                            //         ),
-                            //       ),
-                            //       Image.asset('assets/images/offer.png',
-                            //           width: 85, height: 85),
-                            //     ],
-                            //   ),
-                            // ),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFF3563FF), Color(0xFF6B8FFF)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Welcome Back!",
+                                          style: CommonFonts.heading1Bold.copyWith(
+                                              color: Colors.white, fontSize: 20),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "Explore your travel options",
+                                          style: CommonFonts.bodyText6.copyWith(
+                                              color: Colors.white70, fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Image.asset('assets/images/offer.png',
+                                      width: 60, height: 60),
+                                ],
+                              ),
+                            ),
 
                             // Form section
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 24),
+                                  horizontal: 20, vertical: 24),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -279,9 +251,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                         showOtpField
                                             ? "OTP Authentication"
                                             : "Login or Create an Account",
-                                        style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold),
+                                        style: CommonFonts.heading1Bold.copyWith(
+                                            fontSize: 18, color: Colors.black87),
                                       ),
                                       const SizedBox(width: 8),
                                       const SizedBox(
@@ -311,9 +282,16 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                               border: Border.all(
                                                   color: hasError
                                                       ? Colors.red
-                                                      : Colors.grey),
+                                                      : Colors.grey.shade300),
                                               borderRadius:
                                               BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.grey.withOpacity(0.1),
+                                                  blurRadius: 6,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
                                             ),
                                             child: ClipRRect(
                                               borderRadius:
@@ -414,8 +392,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                               final isVerified =
                                               await otpController
                                                   .verifyOtp(
-                                                mobile:
-                                                phoneController
+                                                mobile: phoneController
                                                     .text
                                                     .trim(),
                                                 otp:
@@ -426,13 +403,9 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                               );
 
                                               otpController.hasError
-                                                  .value =
-                                              !isVerified;
+                                                  .value = !isVerified;
 
                                               if (isVerified) {
-                                                // Show popup loader
-
-                                                // Simulate 1-second wait
                                                 await Future.delayed(
                                                     const Duration(
                                                         seconds: 3));
@@ -441,15 +414,11 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                                     .value = true;
                                                 await upcomingBookingController
                                                     .fetchUpcomingBookingsData();
-                                                // Mark logged in
                                                 await profileController
                                                     .fetchData();
-
+                                                GoRouter.of(context).pop();
                                                 GoRouter.of(context)
-                                                    .go(AppRoutes
-                                                    .profile);
-
-                                                // Navigate
+                                                    .go(AppRoutes.profile);
                                               }
                                             } catch (e) {
                                               otpController.hasError
@@ -507,19 +476,22 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                                     builder: (_) => UserFillDetails(
                                                         name: '',
                                                         email: '',
-                                                        phone: ''), // your login widget
+                                                        phone: ''),
                                                   ),
-                                                );   // open register sheet
+                                                );
                                               },
                                               child: Text(
-                                                  "Don't have an account? Register"),
+                                                  "Don't have an account? Register",
+                                                  style: CommonFonts.bodyText6
+                                                      .copyWith(
+                                                      color:
+                                                      Color(0xFF3563FF))),
                                             ),
                                           ),
                                         ),
 
                                       const SizedBox(height: 16),
 
-                                      // Divider with Text
                                       if (!showOtpField)
                                         Row(
                                           children: [
@@ -529,9 +501,10 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                               padding: EdgeInsets.symmetric(
                                                   horizontal: 8.0),
                                               child: Text("Or Login Via",
-                                                  style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.black54)),
+                                                  style: CommonFonts.bodyText6
+                                                      .copyWith(
+                                                      color:
+                                                      Colors.black54)),
                                             ),
                                             const Expanded(
                                                 child: Divider(thickness: 1)),
@@ -540,91 +513,134 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
 
                                       const SizedBox(height: 16),
 
-                                      // Google Login
                                       if (!showOtpField)
-                                        GestureDetector(
-                                          onTap: isGoogleLoading
-                                              ? null
-                                              : () => _handleGoogleLogin(
-                                              setModalState),
-                                          child: Center(
-                                            child: Column(
+                                        Row(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: isGoogleLoading
+                                                  ? null
+                                                  : () => _handleGoogleLogin(
+                                                  setModalState),
+                                              child: Center(
+                                                child: Column(
+                                                  children: [
+                                                    Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      padding:
+                                                      const EdgeInsets.all(1),
+                                                      decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          shape: BoxShape.circle,
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors.grey
+                                                                  .withOpacity(
+                                                                  0.2),
+                                                              blurRadius: 4,
+                                                              offset: Offset(0, 2),
+                                                            ),
+                                                          ]),
+                                                      child: CircleAvatar(
+                                                        radius: 20,
+                                                        backgroundColor:
+                                                        Colors.white,
+                                                        child: isGoogleLoading
+                                                            ? const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth:
+                                                              2),
+                                                        )
+                                                            : Image.asset(
+                                                          'assets/images/google_icon.png',
+                                                          fit:
+                                                          BoxFit.contain,
+                                                          width: 29,
+                                                          height: 29,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text("Google",
+                                                        style: CommonFonts
+                                                            .bodyText6
+                                                            .copyWith(
+                                                            fontSize: 13)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Platform.isIOS
+                                                ? const SizedBox(
+                                              width: 24,
+                                            )
+                                                : SizedBox(),
+                                            Platform.isIOS
+                                                ? Column(
                                               children: [
-                                                Container(
-                                                  width: 48,
-                                                  height: 48,
-                                                  padding:
-                                                  const EdgeInsets.all(1),
-                                                  decoration:
-                                                  const BoxDecoration(
-                                                      color: Colors.grey,
+                                                GestureDetector(
+                                                  onTap: signInWithApple,
+                                                  child: Container(
+                                                    height: 45,
+                                                    width: 45,
+                                                    decoration:
+                                                    const BoxDecoration(
+                                                      color: Colors.black,
                                                       shape:
-                                                      BoxShape.circle),
-                                                  child: CircleAvatar(
-                                                    radius: 20,
-                                                    backgroundColor:
-                                                    Colors.white,
-                                                    child: isGoogleLoading
-                                                        ? const SizedBox(
-                                                      width: 20,
-                                                      height: 20,
-                                                      child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth:
-                                                          2),
-                                                    )
-                                                        : Image.asset(
-                                                      'assets/images/google_icon.png',
-                                                      fit: BoxFit.contain,
-                                                      width: 29,
-                                                      height: 29,
+                                                      BoxShape.circle,
+                                                    ),
+                                                    child: Center(
+                                                      child: Image.asset(
+                                                        'assets/images/apple.png',
+                                                        height: 48,
+                                                        color: Colors.white,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(height: 4),
-                                                const Text("Google",
-                                                    style: TextStyle(
-                                                        fontSize: 13)),
+                                                Platform.isIOS
+                                                    ? const SizedBox(
+                                                    height: 4)
+                                                    : SizedBox(),
+                                                Platform.isIOS
+                                                    ? Text("Apple",
+                                                    style: CommonFonts
+                                                        .bodyText6
+                                                        .copyWith(
+                                                        fontSize:
+                                                        13))
+                                                    : SizedBox(),
                                               ],
-                                            ),
-                                          ),
+                                            )
+                                                : SizedBox(),
+                                          ],
                                         ),
 
                                       const SizedBox(height: 20),
 
-                                      // Terms & Conditions
                                       Column(
                                         children: [
                                           Text.rich(
                                             TextSpan(
                                               text:
                                               "By logging in, I understand & agree to Wise Travel India Limited ",
-                                              style:
-                                              CommonFonts.bodyText3Medium,
-                                              // children: [
-                                              //   TextSpan(
-                                              //       text: "Terms & Conditions",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(text: ", "),
-                                              //   TextSpan(
-                                              //       text: "Privacy Policy",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(
-                                              //       text:
-                                              //       ", and User agreement",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              // ],
-                                              children: []
+                                              style: CommonFonts.bodyText3Medium
+                                                  .copyWith(
+                                                  color: Colors.black54,
+                                                  fontSize: 12),
+                                              children: [],
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ],
                                       ),
                                     ],
-                                  )
+                                  ),
                                 ],
                               ),
                             ),
@@ -642,16 +658,82 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
     );
   }
 
+  Future<void> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
 
+      final userId = credential.userIdentifier;
+      final email = credential.email;
+      final fullName =
+      '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+
+      print('User ID: $userId');
+
+      if (email != null) {
+        await StorageServices.instance.save('appleUserId', userId ?? '');
+        await StorageServices.instance.save('appleEmail', email ?? '');
+        await StorageServices.instance.save('appleName', fullName ?? '');
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) => UserFillDetails(
+              name: fullName ?? '',
+              email: email ?? '',
+              phone: '',
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+              name: fullName ?? '',
+              email: email ?? '',
+              phone: '',
+            ),
+          ),
+        );
+      } else {
+        String userId = await StorageServices.instance.read('appleUserId') ?? '';
+        String userEmail =
+            await StorageServices.instance.read('appleEmail') ?? '';
+        String userName =
+            await StorageServices.instance.read('appleName') ?? '';
+
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) => UserFillDetails(
+              name: userName,
+              email: userEmail,
+              phone: '',
+            ),
+          )
+              : MaterialPageRoute(
+            builder: (_) => UserFillDetails(
+              name: userName,
+              email: userEmail,
+              phone: '',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Apple Sign-In Error: $e');
+    }
+  }
+
+  @override
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: AppColors.homebg, // Status bar color set to white
-      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+      statusBarColor: AppColors.homebg,
+      statusBarIconBrightness: Brightness.light,
     ));
-    final double width = MediaQuery.of(context).size.width * 0.8;
+    final double width = MediaQuery.of(context).size.width * 0.85;
 
-    // Log Out
     void showLogoutDialog(BuildContext context) {
       showDialog(
         context: context,
@@ -660,7 +742,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
           return Dialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -668,36 +750,26 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Title
                   Text(
                     'Logout',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: CommonFonts.heading1Bold.copyWith(
+                        fontSize: 18, color: Colors.black87),
                   ),
-                  const SizedBox(height: 10),
-
-                  // Message
+                  const SizedBox(height: 12),
                   Text(
                     'Are you sure you want to Sign out?',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black54,
-                    ),
+                    style: CommonFonts.bodyText6.copyWith(
+                        fontSize: 15, color: Colors.black54),
                   ),
                   const SizedBox(height: 25),
-
-                  // Buttons Row
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            side: BorderSide(color: Colors.grey.shade400),
+                            side: BorderSide(color: Colors.grey.shade300),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -707,10 +779,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                           },
                           child: Text(
                             'Cancel',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
+                            style: CommonFonts.bodyText6.copyWith(
+                                fontSize: 14, color: Colors.black87),
                           ),
                         ),
                       ),
@@ -724,134 +794,112 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          onPressed: () async{
+                          onPressed: () async {
                             Navigator.of(dialogContext).pop();
-                            // 🚀 Sign out from Google if logged in
                             try {
                               final googleSignIn = GoogleSignIn();
                               if (await googleSignIn.isSignedIn()) {
-                            await googleSignIn.signOut();
-                            await googleSignIn.disconnect(); // optional but cleans up completely
-                            }
+                                await googleSignIn.signOut();
+                                await googleSignIn.disconnect();
+                              }
                               StorageServices.instance.clear();
                               await CacheHelper.clearAllCache();
 
-                              // 🚀 Also clear in-memory observables
-                              final upcomingBookingController = Get.find<UpcomingBookingController>();
-                              upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                              final upcomingBookingController =
+                              Get.find<UpcomingBookingController>();
+                              upcomingBookingController
+                                  .upcomingBookingResponse.value?.result
+                                  ?.clear();
                               upcomingBookingController.isLoggedIn.value = false;
-                              // Get.delete<BookingController>(force: true);
-// Remove controller from memory
+                              await FirebaseAuth.instance.signOut();
                               upcomingBookingController.reset();
-
-                              // or completely reset the controller
-                              // Get.delete<BookingController>(force: true);
                             } catch (e) {
-                            debugPrint("Google sign-out failed: $e");
-                            }// close popup
-                            // Get.deleteAll(force: true);
-                            Navigator.of(dialogContext)
-                                .pop(); // close popup first
+                              debugPrint("Google sign-out failed: $e");
+                            }
 
-                            // Clear data
-                            StorageServices.instance.clear();
-
-                            // Show success popup/snackbar
                             Future.delayed(const Duration(milliseconds: 200),
-                                () async{
-                              showDialog(
-                                context: navigatorKey.currentContext!,
-                                barrierDismissible: false,
-                                builder: (_) {
-                                  // Start auto-close timer
-                                  final upcomingBookingController = Get.find<UpcomingBookingController>();
-                                  upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
-                                  upcomingBookingController.isLoggedIn.value = false;
-                                  StorageServices.instance.read('firstName');
-                                  StorageServices.instance.read('contact');
-                                   StorageServices.instance.read('emailId');
-                                  Future.delayed(const Duration(seconds: 4),
-                                      () {
-                                    if (Navigator.of(
-                                            navigatorKey.currentContext!)
-                                        .canPop()) {
-                                      Navigator.of(navigatorKey.currentContext!).pushReplacement(
-                                        MaterialPageRoute(builder: (_) => BottomNavScreen()),
+                                    () async {
+                                  showDialog(
+                                    context: navigatorKey.currentContext!,
+                                    barrierDismissible: false,
+                                    builder: (_) {
+                                      final upcomingBookingController =
+                                      Get.find<UpcomingBookingController>();
+                                      upcomingBookingController
+                                          .upcomingBookingResponse.value?.result
+                                          ?.clear();
+                                      upcomingBookingController.isLoggedIn.value =
+                                      false;
+                                      StorageServices.instance.read('firstName');
+                                      StorageServices.instance.read('contact');
+                                      StorageServices.instance.read('emailId');
+                                      Future.delayed(const Duration(seconds: 4), () {
+                                        if (Navigator.of(navigatorKey.currentContext!)
+                                            .canPop()) {
+                                          Navigator.of(navigatorKey.currentContext!)
+                                              .pushReplacement(
+                                            MaterialPageRoute(
+                                                builder: (_) => BottomNavScreen()),
+                                          );
+                                        }
+                                      });
+
+                                      return AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16)),
+                                        backgroundColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 24),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.check_circle,
+                                                color: Colors.green, size: 60),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              "Logout Successful",
+                                              style: CommonFonts.heading1Bold.copyWith(
+                                                  fontSize: 20, color: Colors.black87),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              "You have been logged out successfully.",
+                                              textAlign: TextAlign.center,
+                                              style: CommonFonts.bodyText6.copyWith(
+                                                  fontSize: 14, color: Colors.black54),
+                                            ),
+                                          ],
+                                        ),
+                                        actionsAlignment: MainAxisAlignment.center,
+                                        actions: [
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.of(
+                                                navigatorKey.currentContext!).pop(),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.mainButtonBg,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 24, vertical: 12),
+                                            ),
+                                            child: Text(
+                                              "Okay",
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
+                                            ),
+                                          ),
+                                        ],
                                       );
-
-                                      // 🚀 Optional: Navigate to login after close
-                                      // context.go("/login");
-                                    }
-                                  });
-
-                                  return AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(16)),
-                                    backgroundColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 24),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.check_circle,
-                                            color: Colors.green, size: 60),
-                                        const SizedBox(height: 16),
-                                        const Text(
-                                          "Logout Successful",
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          "You have been logged out successfully.",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    actionsAlignment: MainAxisAlignment.center,
-                                    actions: [
-                                      ElevatedButton(
-                                        onPressed: () => Navigator.of(
-                                                navigatorKey.currentContext!)
-                                            .pop(),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AppColors.mainButtonBg,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 24, vertical: 12),
-                                        ),
-                                        child: const Text(
-                                          "Okay",
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
+                                    },
                                   );
-                                },
-                              );
-                            });
+                                });
                             GoRouter.of(context).go(AppRoutes.bottomNav);
                           },
                           child: Text(
                             'Sign Out',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white,
-                            ),
+                            style: CommonFonts.bodyText6.copyWith(
+                                fontSize: 14, color: Colors.white),
                           ),
                         ),
                       ),
@@ -865,7 +913,6 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       );
     }
 
-    // Delete Account
     void showDeleteDialog(BuildContext context) {
       showDialog(
         context: context,
@@ -874,7 +921,7 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
           return Dialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -882,36 +929,26 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Title
                   Text(
                     'Delete Account',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: CommonFonts.heading1Bold.copyWith(
+                        fontSize: 18, color: Colors.black87),
                   ),
-                  const SizedBox(height: 10),
-
-                  // Message
+                  const SizedBox(height: 12),
                   Text(
                     'Are you sure you want to delete account?',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black54,
-                    ),
+                    style: CommonFonts.bodyText6.copyWith(
+                        fontSize: 15, color: Colors.black54),
                   ),
                   const SizedBox(height: 25),
-
-                  // Buttons Row
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            side: BorderSide(color: Colors.grey.shade400),
+                            side: BorderSide(color: Colors.grey.shade300),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -921,10 +958,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                           },
                           child: Text(
                             'Cancel',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
+                            style: CommonFonts.bodyText6.copyWith(
+                                fontSize: 14, color: Colors.black87),
                           ),
                         ),
                       ),
@@ -933,75 +968,63 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: AppColors.mainButtonBg,
+                            backgroundColor: Colors.redAccent,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          onPressed: () async{
+                          onPressed: () async {
                             Navigator.of(dialogContext).pop();
-                            // 🚀 Sign out from Google if logged in
                             try {
                               final googleSignIn = GoogleSignIn();
                               if (await googleSignIn.isSignedIn()) {
                                 await googleSignIn.signOut();
-                                await googleSignIn.disconnect(); // optional but cleans up completely
+                                await googleSignIn.disconnect();
                               }
                               StorageServices.instance.clear();
                               await CacheHelper.clearAllCache();
 
-                              // 🚀 Also clear in-memory observables
-                              final upcomingBookingController = Get.find<UpcomingBookingController>();
-                              upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+                              final upcomingBookingController =
+                              Get.find<UpcomingBookingController>();
+                              upcomingBookingController
+                                  .upcomingBookingResponse.value?.result
+                                  ?.clear();
                               upcomingBookingController.isLoggedIn.value = false;
-                              // Get.delete<BookingController>(force: true);
-// Remove controller from memory
                               upcomingBookingController.reset();
-
-                              // or completely reset the controller
-                              // Get.delete<BookingController>(force: true);
                             } catch (e) {
                               debugPrint("Google sign-out failed: $e");
-                            }// close popup
-                            // Get.deleteAll(force: true);
-                            Navigator.of(dialogContext)
-                                .pop(); // close popup first
+                            }
 
-                            // Clear data
-                            StorageServices.instance.clear();
-
-                            // Show success popup/snackbar
                             Future.delayed(const Duration(milliseconds: 200),
-                                    () async{
+                                    () async {
                                   showDialog(
                                     context: navigatorKey.currentContext!,
                                     barrierDismissible: false,
                                     builder: (_) {
-                                      // Start auto-close timer
-                                      final upcomingBookingController = Get.find<UpcomingBookingController>();
-                                      upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
-                                      upcomingBookingController.isLoggedIn.value = false;
+                                      final upcomingBookingController =
+                                      Get.find<UpcomingBookingController>();
+                                      upcomingBookingController
+                                          .upcomingBookingResponse.value?.result
+                                          ?.clear();
+                                      upcomingBookingController.isLoggedIn.value =
+                                      false;
                                       StorageServices.instance.read('firstName');
                                       StorageServices.instance.read('contact');
                                       StorageServices.instance.read('emailId');
-                                      Future.delayed(const Duration(seconds: 4),
-                                              () {
-                                            if (Navigator.of(
-                                                navigatorKey.currentContext!)
-                                                .canPop()) {
-                                              Navigator.of(navigatorKey.currentContext!).pushReplacement(
-                                                MaterialPageRoute(builder: (_) => BottomNavScreen()),
-                                              );
-
-                                              // 🚀 Optional: Navigate to login after close
-                                              // context.go("/login");
-                                            }
-                                          });
+                                      Future.delayed(const Duration(seconds: 4), () {
+                                        if (Navigator.of(navigatorKey.currentContext!)
+                                            .canPop()) {
+                                          Navigator.of(navigatorKey.currentContext!)
+                                              .pushReplacement(
+                                            MaterialPageRoute(
+                                                builder: (_) => BottomNavScreen()),
+                                          );
+                                        }
+                                      });
 
                                       return AlertDialog(
                                         shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(16)),
+                                            borderRadius: BorderRadius.circular(16)),
                                         backgroundColor: Colors.white,
                                         contentPadding: const EdgeInsets.symmetric(
                                             horizontal: 20, vertical: 24),
@@ -1011,22 +1034,17 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                             const Icon(Icons.check_circle,
                                                 color: Colors.green, size: 60),
                                             const SizedBox(height: 16),
-                                            const Text(
+                                            Text(
                                               "Delete Account Successful",
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
+                                              style: CommonFonts.heading1Bold.copyWith(
+                                                  fontSize: 20, color: Colors.black87),
                                             ),
                                             const SizedBox(height: 8),
-                                            const Text(
+                                            Text(
                                               "Account has been deleted successfully.",
                                               textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.black54,
-                                              ),
+                                              style: CommonFonts.bodyText6.copyWith(
+                                                  fontSize: 14, color: Colors.black54),
                                             ),
                                           ],
                                         ),
@@ -1034,22 +1052,19 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                         actions: [
                                           ElevatedButton(
                                             onPressed: () => Navigator.of(
-                                                navigatorKey.currentContext!)
-                                                .pop(),
+                                                navigatorKey.currentContext!).pop(),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                              AppColors.mainButtonBg,
+                                              backgroundColor: AppColors.mainButtonBg,
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(8),
+                                                borderRadius: BorderRadius.circular(8),
                                               ),
                                               padding: const EdgeInsets.symmetric(
                                                   horizontal: 24, vertical: 12),
                                             ),
-                                            child: const Text(
+                                            child: Text(
                                               "Okay",
-                                              style: TextStyle(
+                                              style: CommonFonts.bodyText6.copyWith(
                                                   fontWeight: FontWeight.bold),
                                             ),
                                           ),
@@ -1062,10 +1077,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                           },
                           child: Text(
                             'Delete',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white,
-                            ),
+                            style: CommonFonts.bodyText6.copyWith(
+                                fontSize: 14, color: Colors.white),
                           ),
                         ),
                       ),
@@ -1079,217 +1092,438 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       );
     }
 
-
-
+    if(Platform.isAndroid){
+      return SafeArea(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: width,
+              height: MediaQuery.of(context).size.height, // Set full height
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(34),
+                  bottomRight: Radius.circular(34),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(2, 0),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(34),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/wti_logo.svg',
+                          height: 24,
+                          width: 50,
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 20,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // User Info
+                        Obx(() => Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.grey.shade200,
+                              child: upcomingBookingController.isLoggedIn.value
+                                  ? NameInitialHomeCircle(
+                                  name: profileController.profileResponse.value
+                                      ?.result?.firstName ??
+                                      '')
+                                  : const Icon(Icons.person,
+                                  color: Colors.grey, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  upcomingBookingController.isLoggedIn.value
+                                      ? (profileController.profileResponse.value?.result
+                                      ?.firstName ??
+                                      'Guest')
+                                      : 'Guest',
+                                  style: CommonFonts.heading1Bold.copyWith(
+                                      fontSize: 18, color: Colors.black87),
+                                ),
+                                Text(
+                                  upcomingBookingController.isLoggedIn.value
+                                      ? (profileController.profileResponse.value?.result
+                                      ?.emailID ??
+                                      'Sign in to access your profile')
+                                      : 'Sign in to access your profile',
+                                  style: CommonFonts.bodyText6.copyWith(
+                                      fontSize: 12, color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )),
+                        const SizedBox(height: 16),
+                        const Divider(thickness: 1, color: Colors.grey),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            Obx(() => _buildDrawerItem(
+                              icon: upcomingBookingController.isLoggedIn.value
+                                  ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: NameInitialHomeCircle(
+                                    name: profileController.profileResponse.value
+                                        ?.result?.firstName ??
+                                        ''),
+                              )
+                                  : const Icon(Icons.person,
+                                  color: Colors.grey, size: 24),
+                              title: 'Profile',
+                              onTap: () async {
+                                if (await StorageServices.instance.read('token') ==
+                                    null) {
+                                  _showAuthBottomSheet();
+                                } else {
+                                  GoRouter.of(context).push(AppRoutes.profile);
+                                }
+                              },
+                            )),
+                            _buildDrawerItem(
+                              icon: const Icon(Icons.work_outline,
+                                  color: Colors.grey, size: 24),
+                              title: 'Manage Bookings',
+                              onTap: () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) =>
+                                        BottomNavScreen(initialIndex: 1)));
+                              },
+                            ),
+                            Obx(() => _buildDrawerItem(
+                              icon: SvgPicture.asset(
+                                'assets/images/payments.svg',
+                                height: 24,
+                                width: 24,
+                                color: Colors.grey,
+                              ),
+                              title:
+                              'Currency (${currencyController.selectedCurrency.value.code})',
+                              onTap: () {
+                                GoRouter.of(context).push(AppRoutes.selectCurrency);
+                              },
+                            )),
+                            _buildDrawerItem(
+                              icon: const Icon(Icons.phone,
+                                  color: Colors.grey, size: 24),
+                              title: 'Contact Us',
+                              onTap: () {
+                                GoRouter.of(context).push(AppRoutes.contact);
+                              },
+                            ),
+                            // if (isLogin) ...[
+                            //   _buildDrawerItem(
+                            //     icon: SvgPicture.asset(
+                            //       'assets/images/logout.svg',
+                            //       height: 24,
+                            //       width: 24,
+                            //       color: Colors.redAccent,
+                            //     ),
+                            //     title: 'Sign Out',
+                            //     onTap: () {
+                            //       showLogoutDialog(context);
+                            //     },
+                            //   ),
+                            //   Platform.isIOS? _buildDrawerItem(
+                            //     icon: const Icon(Icons.delete_forever_outlined,
+                            //         color: Colors.redAccent, size: 24),
+                            //     title: 'Delete Account',
+                            //     onTap: () {
+                            //       showDeleteDialog(context);
+                            //     },
+                            //   ) : SizedBox.shrink(),
+                            // ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Align(
       alignment: Alignment.centerLeft,
       child: Material(
         color: Colors.transparent,
         child: Container(
           width: width,
-          // height: double.infinity,
-          margin: const EdgeInsets.only(top: 16),
+          height: MediaQuery.of(context).size.height, // Set full height
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
               topRight: Radius.circular(34),
-              bottomRight: Radius.circular(20),
+              bottomRight: Radius.circular(34),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 10,
+                offset: Offset(2, 0),
+              ),
+            ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// Header
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 30,),
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(34),
+                  ),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     SvgPicture.asset(
                       'assets/images/wti_logo.svg',
-                      height: 22,
-                      width: 47,
+                      height: 24,
+                      width: 50,
                     ),
-                    // InkWell(
-                    //   splashColor: Colors.transparent,
-                    //   onTap: () {
-                    //     Navigator.pop(context);
-                    //   },
-                    //   child: Container(
-                    //     decoration: BoxDecoration(
-                    //       color: Color(0xFFE6EAF9),
-                    //       borderRadius: BorderRadius.circular(4),
-                    //     ),
-                    //     padding: EdgeInsets.all(6.0),
-                    //     child: Icon(
-                    //       Icons.arrow_back,
-                    //       size: 16,
-                    //       color: Color(0xFF192653),
-                    //     ),
-                    //   ),
-                    // ),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                SizedBox(
-                  height: 12,
-                ),
-                const Divider(),
-                SizedBox(
-                  height: 8,
-                ),
-
-                /// Drawer Items
-                // Obx((){
-                //   return _buildDrawerItem(
-                //     icon: SvgPicture.asset(
-                //       'assets/images/india_logo.svg',
-                //       height: 16,
-                //       width: 24,
-                //     ),
-                //     title: 'Country',
-                //     subtitle: currencyController.country.value,
-                //     onTap: () {},
-                //   );
-                // }),
-   Obx((){
-                  return _buildDrawerItem(
-                    icon: upcomingBookingController.isLoggedIn.value == true? SizedBox(
-                      width:30,height: 30,
-                      child: NameInitialHomeCircle(
-                          name: profileController.profileResponse
-                              .value?.result?.firstName ??
-                              ''),
-                    ) : Icon(Icons.person, color: Colors.grey,),
-                    title: 'Profile',
-                    subtitle: currencyController.country.value,
-                    onTap: () async{
-                      if (await StorageServices.instance
-                          .read('token') ==
-                      null) {
-                      _showAuthBottomSheet();
-                      }
-                      if (await StorageServices.instance
-                          .read('token') !=
-                      null) {
-                      GoRouter.of(context)
-                          .push(AppRoutes.profile);
-                      }
-                    },
-                  );
-                }),
-                _buildDrawerItem(
-                  icon: Icon(Icons.work_outline, color: Colors.grey,),
-                  title: 'Manage Bookings',
-                  subtitle: 'Easily manage or cancel your rides anytime',
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => BottomNavScreen(initialIndex: 1,)));
-                  },
-                ),
-                Obx((){
-                  return _buildDrawerItem(
-                    icon: SvgPicture.asset(
-                      'assets/images/payments.svg',
-                      height: 20,
-                      width: 20,
-                    ),
-                    title: 'Currency (${currencyController.selectedCurrency.value.code})',
-                    subtitle: currencyController.selectedCurrency.value.code,
-                    onTap: () {
-                      GoRouter.of(context).push(AppRoutes.selectCurrency);
-                    },
-                  );
-                }),
-              _buildDrawerItem(
-                icon: Icon(Icons.phone, color: Colors.grey,),
-                title: 'Contact Us',
-                subtitle: 'Get in Touch',
-                onTap: () {
-                  GoRouter.of(context).push(AppRoutes.contact);
-                },
               ),
-                // Obx((){
-                //   return _buildDrawerItem(
-                //     icon: Icon(Icons.phone),
-                //     title: 'Contact Us',
-                //     subtitle: 'Get in Touch',
-                //     onTap: () {
-                //       GoRouter.of(context).push(AppRoutes.selectCurrency);
-                //     },
-                //   );
-                // }),
-
-                // _buildDrawerItem(
-                //   icon: SvgPicture.asset(
-                //     'assets/images/refer.svg',
-                //     height: 20,
-                //     width: 20,
-                //   ),
-                //   title: 'Refer & Earn',
-                //   subtitle: 'Driving Licence, Passport, ID etc.',
-                //   onTap: () {},
-                // ),
-                // _buildDrawerItem(
-                //   icon: SvgPicture.asset(
-                //     'assets/images/language.svg',
-                //     height: 20,
-                //     width: 20,
-                //   ),
-                //   title: 'Language',
-                //   subtitle: 'English',
-                //   onTap: () {},
-                // ),
-                // _buildDrawerItem(
-                //   icon: SvgPicture.asset(
-                //     'assets/images/docs.svg',
-                //     height: 20,
-                //     width: 20,
-                //   ),
-                //   title: 'Documents',
-                //   subtitle: 'Driving Licence, Passport, ID etc.',
-                //   onTap: () {},
-                // ),
-                // _buildDrawerItem(
-                //   icon: SvgPicture.asset(
-                //     'assets/images/legal.svg',
-                //     height: 20,
-                //     width: 20,
-                //   ),
-                //   title: 'Legal',
-                //   subtitle: 'Privacy Policy, Terms & Conditions',
-                //   onTap: () {},
-                // ),
-                isLogin == true ? _buildDrawerItem(
-                  icon: SvgPicture.asset(
-                    'assets/images/logout.svg',
-                    height: 20,
-                    width: 20,
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User Info
+                    Obx(() => Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.grey.shade200,
+                          child: upcomingBookingController.isLoggedIn.value
+                              ? NameInitialHomeCircle(
+                              name: profileController.profileResponse.value
+                                  ?.result?.firstName ??
+                                  '')
+                              : const Icon(Icons.person,
+                              color: Colors.grey, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              upcomingBookingController.isLoggedIn.value
+                                  ? (profileController.profileResponse.value?.result
+                                  ?.firstName ??
+                                  'Guest')
+                                  : 'Guest',
+                              style: CommonFonts.heading1Bold.copyWith(
+                                  fontSize: 18, color: Colors.black87),
+                            ),
+                            Text(
+                              upcomingBookingController.isLoggedIn.value
+                                  ? (profileController.profileResponse.value?.result
+                                  ?.emailID ??
+                                  'Sign in to access your profile')
+                                  : 'Sign in to access your profile',
+                              style: CommonFonts.bodyText6.copyWith(
+                                  fontSize: 12, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )),
+                    const SizedBox(height: 16),
+                    const Divider(thickness: 1, color: Colors.grey),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Obx(() => _buildDrawerItem(
+                          icon: upcomingBookingController.isLoggedIn.value
+                              ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: NameInitialHomeCircle(
+                                name: profileController.profileResponse.value
+                                    ?.result?.firstName ??
+                                    ''),
+                          )
+                              : const Icon(Icons.person,
+                              color: Colors.grey, size: 24),
+                          title: 'Profile',
+                          onTap: () async {
+                            if (await StorageServices.instance.read('token') ==
+                                null) {
+                              _showAuthBottomSheet();
+                            } else {
+                              GoRouter.of(context).push(AppRoutes.profile);
+                            }
+                          },
+                        )),
+                        _buildDrawerItem(
+                          icon: const Icon(Icons.work_outline,
+                              color: Colors.grey, size: 24),
+                          title: 'Manage Bookings',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              Platform.isIOS
+                                  ? CupertinoPageRoute(
+                                builder: (_) =>  BottomNavScreen(initialIndex: 1,),
+                              )
+                                  : MaterialPageRoute(
+                                builder: (_) =>  BottomNavScreen(initialIndex: 1,),
+                              ),
+                            );
+                          },
+                        ),
+                        Obx(() => _buildDrawerItem(
+                          icon: SvgPicture.asset(
+                            'assets/images/payments.svg',
+                            height: 24,
+                            width: 24,
+                            color: Colors.grey,
+                          ),
+                          title:
+                          'Currency (${currencyController.selectedCurrency.value.code})',
+                          onTap: () {
+                            GoRouter.of(context).push(AppRoutes.selectCurrency);
+                          },
+                        )),
+                        _buildDrawerItem(
+                          icon: const Icon(Icons.phone,
+                              color: Colors.grey, size: 24),
+                          title: 'Contact Us',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              Platform.isIOS
+                                  ? CupertinoPageRoute(
+                                builder: (_) =>  BottomNavScreen(initialIndex: 2,),
+                              )
+                                  : MaterialPageRoute(
+                                builder: (_) =>  BottomNavScreen(initialIndex: 2,),
+                              ),
+                            );                          },
+                        ),
+                        if (isLogin) ...[
+                          _buildDrawerItem(
+                            icon: SvgPicture.asset(
+                              'assets/images/logout.svg',
+                              height: 24,
+                              width: 24,
+                              color: Colors.redAccent,
+                            ),
+                            title: 'Sign Out',
+                            onTap: () {
+                              showLogoutDialog(context);
+                            },
+                          ),
+                          _buildDrawerItem(
+                            icon: const Icon(Icons.delete_forever_outlined,
+                                color: Colors.redAccent, size: 24),
+                            title: 'Delete Account',
+                            onTap: () {
+                              showDeleteDialog(context);
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  title: 'Sign Out',
-                  subtitle: 'You will be signed out of your account.',
-                  onTap: () {
-                    showLogoutDialog(context);
-                  },
-                ) : SizedBox(),
-                isLogin == true ? _buildDrawerItem(
-                  icon: Icon(Icons.delete_forever_outlined, color: Colors.redAccent,),
-                  title: 'Delete',
-                  subtitle: 'You will be signed out of your account.',
-                  onTap: () {
-                    showDeleteDialog(context);
-                  },
-                ) : SizedBox(),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
-  }
 
+
+  }
   Widget _buildDrawerItem({
-    required Widget icon, // Accepts any widget now
+    required Widget icon,
     required String title,
-    required String subtitle,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -1297,49 +1531,41 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Color(0xFFE2E2E2), // Change as needed
-            width: 1,
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            SizedBox(
-                width: 24, height: 24, child: icon), // Consistent icon size
-            const SizedBox(width: 20),
+            SizedBox(width: 24, height: 24, child: icon),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: Color(0xFF3F3F3F)),
+                    style: CommonFonts.bodyText6.copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: Colors.black87),
                   ),
-                  // SizedBox(
-                  //   height: 4,
-                  // ),
-                  // Text(
-                  //   subtitle,
-                  //   style: const TextStyle(
-                  //     color: Color(0xFF929292),
-                  //     fontWeight: FontWeight.w500,
-                  //     fontSize: 10,
-                  //   ),
-                  // ),
+                  const SizedBox(height: 4),
                 ],
               ),
             ),
             const Icon(
               Icons.arrow_forward_ios_rounded,
-              size: 12,
-              color: Color(0xFF919191),
+              size: 16,
+              color: Colors.grey,
             ),
           ],
         ),

@@ -12,7 +12,9 @@ import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/drop_location_controller/drop_location_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
+import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
@@ -177,6 +179,7 @@ class _InventoryListState extends State<InventoryList> {
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value = 0;
           final tabName = bookingRideController.currentTabName;
+
           final route = tabName == 'rental'
               ? '${AppRoutes.bookingRide}?tab=airport'
               : '${AppRoutes.bookingRide}?tab=airport';
@@ -204,6 +207,27 @@ class _InventoryListState extends State<InventoryList> {
         canPop: true,
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value = 0;
+          Get.delete<PlaceSearchController>(force: true);
+          Get.delete<DropPlaceSearchController>(force: true);
+          Get.delete<SourceLocationController>(force: true);
+          Get.delete<DestinationLocationController>(force: true);
+          Get.delete<SearchCabInventoryController>(force: true);
+          Get.delete<BookingRideController>(force: true);
+          Get.put(PlaceSearchController());
+          Get.put(DropPlaceSearchController());
+          Get.put(SourceLocationController());
+          Get.put(DestinationLocationController());
+          Get.put(SearchCabInventoryController());
+          Get.put(BookingRideController());
+         if (isIndia && indiaData == null) {
+            bookingRideController.prefilled.value = indiaData?.result?.tripType?.source?.address??'';
+            bookingRideController.prefilledDrop.value = indiaData?.result?.tripType?.destination?.address??'';
+          }
+           else if (!isIndia && globalData == null){
+           bookingRideController.prefilled.value = globalData?.result.first.iterator.current.tripDetails?.source.title??'';
+           bookingRideController.prefilledDrop.value = globalData?.result.first.iterator.current.tripDetails?.destination.title??'';
+         }
+
           final tabName = bookingRideController.currentTabName;
           final route = tabName == 'rental'
               ? '${AppRoutes.bookingRide}?tab=airport'
@@ -292,6 +316,7 @@ class _InventoryListState extends State<InventoryList> {
 
                     return Column(
                       children: [
+                        SizedBox(height: 12,),
                         Text.rich(
                           TextSpan(
                             style: const TextStyle(
@@ -905,6 +930,7 @@ class _InventoryListState extends State<InventoryList> {
                             //     color: Colors.grey, // lighter color for cut-off price
                             //   ),
                             // ),
+                            // ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
@@ -1253,6 +1279,7 @@ class TopBookingDialogWrapper extends StatefulWidget {
 class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
   final FetchPackageController fetchPackageController = Get.find();
+  String? _country;
 
   @override
   void initState() {
@@ -1270,6 +1297,10 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final isIndia = _country?.toLowerCase() == 'india';
+    final indiaData = searchCabInventoryController.indiaData.value;
+    final globalData = searchCabInventoryController.globalData.value;
+
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.white, // Status bar color set to white
       statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
@@ -1299,6 +1330,37 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                         IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () {
+                            bookingRideController.selectedIndex.value = 0;
+                            // Get.delete<PlaceSearchController>(force: true);
+                            // Get.delete<DropPlaceSearchController>(force: true);
+                            // Get.delete<SourceLocationController>(force: true);
+                            // Get.delete<DestinationLocationController>(force: true);
+                            // Get.delete<SearchCabInventoryController>(force: true);
+                            // Get.delete<BookingRideController>(force: true);
+                            // Get.put(BookingRideController());
+                            // Get.put(PlaceSearchController());
+                            // Get.put(DropPlaceSearchController());
+                            // Get.put(SourceLocationController());
+                            // Get.put(DestinationLocationController());
+                            // Get.put(SearchCabInventoryController());
+                            // if (isIndia && indiaData == null) {
+                            //   bookingRideController.prefilled.value = indiaData?.result?.tripType?.source?.address??'';
+                            //   bookingRideController.prefilledDrop.value = indiaData?.result?.tripType?.destination?.address??'';
+                            // }
+                            // else if (!isIndia && globalData == null){
+                            //   bookingRideController.prefilled.value = globalData?.result.first.iterator.current.tripDetails?.source.title??'';
+                            //   bookingRideController.prefilledDrop.value = globalData?.result.first.iterator.current.tripDetails?.destination.title??'';
+                            // }
+                            // bookingRideController.resetDate();
+                            final tabName = bookingRideController.currentTabName;
+                            final route = tabName == 'rental'
+                                ? '${AppRoutes.bookingRide}?tab=airport'
+                                : '${AppRoutes.bookingRide}?tab=airport';
+                            // GoRouter.of(context).push(
+                            //     route,
+                            //     extra: (context) => Platform.isIOS
+                            //         ? CupertinoPage(child: const BottomNavScreen())
+                            //         : MaterialPage(child: const BottomNavScreen()));
                             GoRouter.of(context).pop();
                           },
                         ),

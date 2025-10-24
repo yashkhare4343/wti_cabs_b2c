@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 // import '../bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/self_drive_payment_status/self_drive_payment_booking_controller.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_manage_bookings/manage_bookings.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../../core/route_management/app_routes.dart';
@@ -17,12 +19,14 @@ class SelfDrivePaymentSuccessPage extends StatefulWidget {
   const SelfDrivePaymentSuccessPage({super.key});
 
   @override
-  State<SelfDrivePaymentSuccessPage> createState() => _SelfDrivePaymentSuccessPageState();
+  State<SelfDrivePaymentSuccessPage> createState() =>
+      _SelfDrivePaymentSuccessPageState();
 }
 
-class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPage> {
+class _SelfDrivePaymentSuccessPageState
+    extends State<SelfDrivePaymentSuccessPage> {
   final SelfDrivePaymentBookingController selfDrivePaymentBookingController =
-  Get.put(SelfDrivePaymentBookingController());
+      Get.put(SelfDrivePaymentBookingController());
 
   @override
   void initState() {
@@ -35,7 +39,7 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
         return false;
       },
       child: Scaffold(
@@ -46,7 +50,8 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
               return const Center(child: CircularProgressIndicator());
             }
 
-            final bookingResponse = selfDrivePaymentBookingController.sdPaymentBookingResponse.value;
+            final bookingResponse = selfDrivePaymentBookingController
+                .sdPaymentBookingResponse.value;
             if (bookingResponse == null) {
               return const Center(child: Text("No booking details available"));
             }
@@ -66,11 +71,13 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 50),
+                        const Icon(Icons.check_circle,
+                            color: Colors.green, size: 50),
                         const SizedBox(height: 12),
                         const Text(
                           'Booking Confirmed',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -81,7 +88,8 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
                         const SizedBox(height: 18),
 
                         // 🚗 Car image
-                        if (result?.vehicleImg != null && result!.vehicleImg!.isNotEmpty)
+                        if (result?.vehicleImg != null &&
+                            result!.vehicleImg!.isNotEmpty)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
@@ -98,19 +106,34 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
                           title: "Booking Details",
                           icon: Icons.assignment,
                           details: [
-                            _detailItem("Booking Id", result?.bookingSummary?.first.value ?? ''),
-                            _detailItem("User Name", result?.bookingSummary?[1].value ?? ''),
-                            _detailItem("User Contact", result?.bookingSummary?[2].value.toString() ?? ''),
-                            _detailItem("User Email", result?.bookingSummary?[3].value ?? ''),
-                            _detailItem("Rental Type", result?.bookingSummary?[4].value ?? ''),
-                            _detailItem("Vehicle", result?.bookingSummary?[5].value ?? ''),
-                            _detailItem("Booked On", result?.bookingSummary?[6].value ?? ''),
-                            _detailItem("Pickup", result?.pickup?.address ?? ''),
-                            _detailItem("Pickup Date", result?.pickup?.date ?? ''),
-                            _detailItem("Pickup Time", result?.pickup?.time ?? ''),
-                            _detailItem("Drop Off", result?.drop?.address ?? ''),
-                            _detailItem("Drop Off Date", result?.drop?.date ?? ''),
-                            _detailItem("Drop Off Time", result?.drop?.time ?? ''),
+                            _detailItem("Booking Id",
+                                result?.bookingSummary?.first.value ?? ''),
+                            _detailItem("User Name",
+                                result?.bookingSummary?[1].value ?? ''),
+                            _detailItem(
+                                "User Contact",
+                                result?.bookingSummary?[2].value.toString() ??
+                                    ''),
+                            _detailItem("User Email",
+                                result?.bookingSummary?[3].value ?? ''),
+                            _detailItem("Rental Type",
+                                result?.bookingSummary?[4].value ?? ''),
+                            _detailItem("Vehicle",
+                                result?.bookingSummary?[5].value ?? ''),
+                            _detailItem("Booked On",
+                                result?.bookingSummary?[6].value ?? ''),
+                            _detailItem(
+                                "Pickup", result?.pickup?.address ?? ''),
+                            _detailItem(
+                                "Pickup Date", result?.pickup?.date ?? ''),
+                            _detailItem(
+                                "Pickup Time", result?.pickup?.time ?? ''),
+                            _detailItem(
+                                "Drop Off", result?.drop?.address ?? ''),
+                            _detailItem(
+                                "Drop Off Date", result?.drop?.date ?? ''),
+                            _detailItem(
+                                "Drop Off Time", result?.drop?.time ?? ''),
                           ],
                         ),
 
@@ -125,14 +148,17 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(
-                                        color: AppColors.mainButtonBg, width: 1.5),
+                                        color: AppColors.mainButtonBg,
+                                        width: 1.5),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
                                   ),
                                   onPressed: () {
-                                    GoRouter.of(context).go(AppRoutes.bottomNav);
+                                    GoRouter.of(context)
+                                        .go(AppRoutes.selfDriveBottomSheet);
                                   },
                                   child: Text(
                                     'Go to Home',
@@ -154,7 +180,9 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
                                           builder: (context) =>
-                                              SelfDriveHomeScreen()),
+                                              SelfDriveBottomNavScreen(
+                                                initialIndex: 1,
+                                              )),
                                     );
                                   },
                                 ),
@@ -173,5 +201,61 @@ class _SelfDrivePaymentSuccessPageState extends State<SelfDrivePaymentSuccessPag
       ),
     );
   }
-  Widget _buildDetailCard({ required String title, required IconData icon, required List<Widget> details, }) { return Card( elevation: 0.2, color: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: Padding( padding: const EdgeInsets.all(14), child: Column( crossAxisAlignment: CrossAxisAlignment.start, children: [ Row( children: [ Icon(icon, color: Colors.green), const SizedBox(width: 8), Text( title, style: const TextStyle( fontSize: 14, fontWeight: FontWeight.w600), ), ], ), const Divider(height: 16), ...details, ], ), ), ); } Widget _detailItem(String label, String value) { return Padding( padding: const EdgeInsets.symmetric(vertical: 6), child: Row( children: [ Expanded( flex: 5, child: Text(label, style: const TextStyle(fontSize: 14, color: Colors.black54)), ), Expanded( flex: 7, child: Text( value, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500), ), ), ], ), ); }
+
+  Widget _buildDetailCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> details,
+  }) {
+    return Card(
+      elevation: 0.2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            ...details,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(label,
+                style: const TextStyle(fontSize: 14, color: Colors.black54)),
+          ),
+          Expanded(
+            flex: 7,
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

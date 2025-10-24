@@ -180,23 +180,23 @@ class DropPlaceSearchController extends GetxController {
       int tripCode,
       BuildContext context,
       ) async {
+    final pickupLatLng = pickupController.getPlacesLatLng.value;
+
+    final requestData = {
+      "sourceLat": pickupLatLng?.latLong.lat,
+      "sourceLng": pickupLatLng?.latLong.lng,
+      "sourceCountry": pickupLatLng?.country,
+      "destinationLat": dLat,
+      "destinationLng": dLng,
+      "destinationCountry": dCountry,
+      "dateTime": dateTime,
+      "offset": offset,
+      "timeZone": timezone,
+      "tripCode": tripCode,
+    };
+    print('yash choose drop request body : $requestData');
+    if (pickupLatLng == null) throw Exception('Pickup LatLng not available for drop time calculation');
     try {
-      final pickupLatLng = pickupController.getPlacesLatLng.value;
-      if (pickupLatLng == null) throw Exception('Pickup LatLng not available for drop time calculation');
-
-      final requestData = {
-        "sourceLat": pickupLatLng.latLong.lat,
-        "sourceLng": pickupLatLng.latLong.lng,
-        "sourceCountry": pickupLatLng.country,
-        "destinationLat": dLat,
-        "destinationLng": dLng,
-        "destinationCountry": dCountry,
-        "dateTime": dateTime,
-        "offset": offset,
-        "timeZone": timezone,
-        "tripCode": tripCode,
-      };
-
       debugPrint('🚀 Request body for findCountryDateTimeForDrop: $requestData');
 
       final response = await apiService.postRequest(

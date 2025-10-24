@@ -9,6 +9,8 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
 import 'package:wti_cabs_user/core/controller/self_drive/service_hub/service_hub_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -27,8 +29,14 @@ class SelfDriveFinalPageS1 extends StatefulWidget {
   final String? vehicleId;
   final bool? isHomePage;
   final bool? fromReturnMapPage;
+  final bool? shouldScrollToBottom;
+  final bool? isNavigateFromHome;
   const SelfDriveFinalPageS1(
-      {super.key, this.vehicleId, this.isHomePage, this.fromReturnMapPage});
+      {super.key,
+      this.vehicleId,
+      this.isHomePage,
+      this.fromReturnMapPage,
+      this.shouldScrollToBottom, this.isNavigateFromHome});
 
   @override
   State<SelfDriveFinalPageS1> createState() => _SelfDriveFinalPageS1State();
@@ -37,18 +45,39 @@ class SelfDriveFinalPageS1 extends StatefulWidget {
 class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
   final FetchSdBookingDetailsController fetchSdBookingDetailsController =
       Get.put(FetchSdBookingDetailsController());
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
-  final FileUploadValidController fileUploadController = Get.put(FileUploadValidController());
-
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
+  final FileUploadValidController fileUploadController =
+      Get.put(FileUploadValidController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchSdBookingDetailsController.isSameLocation.value =
+          widget.fromReturnMapPage == true ? false : true;
+
+      if (widget.shouldScrollToBottom ?? false) scrollToBottom();
+    });
   }
 
-  void showFareBreakdownSheet(BuildContext context,
-      FetchSdBookingDetailsController controller) {
+  void scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void showFareBreakdownSheet(
+      BuildContext context, FetchSdBookingDetailsController controller) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -82,6 +111,24 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
             );
           }
 
+          Widget convertedFare(double amount) {
+            return FutureBuilder<double>(
+              future: currencyController.convertPrice(amount),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text(
+                    "Error in conversion",
+                    style: TextStyle(color: Colors.red, fontSize: 11),
+                  );
+                }
+                final convertedPrice = snapshot.data ?? 0.0;
+                return Text(
+                  "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                );
+              },
+            );
+          }
+
           return Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -100,16 +147,42 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
 
                 Text(
                   "$selectedType Fare Breakdown",
-                  style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
 
-                _fareRow("Base fare", "AED ${fareDetails.baseFare ?? 0}"),
-                _fareRow("Delivery Charge", "AED ${fareDetails.delivery_charges ?? 0}"),
-                _fareRow("Collection Charge", "AED ${fareDetails.collection_charges ?? 0}"),
-                _fareRow("Deposite Free Rides", "AED ${fareDetails.deposit_free_ride ?? 0}"),
-                _fareRow("Tax", "AED ${fareDetails.tax ?? 0}"),
+                if ((fareDetails.baseFare ?? 0) != 0)
+                  _fareRow("Base fare", convertedFare(fareDetails.baseFare?.toDouble() ?? 0)),
+
+                if (fetchSdBookingDetailsController.cdw == true &&
+                    (selectedTariff?.collisionDamageWaiver ?? 0) != 0)
+                  _fareRow(
+                    "Collision Damage Waiver",
+                    convertedFare(selectedTariff?.collisionDamageWaiver?.toDouble() ?? 0),
+                  ),
+
+                if (fetchSdBookingDetailsController.pai == true &&
+                    (selectedTariff?.parsonalAccidentalInsurance ?? 0) != 0)
+                  _fareRow(
+                    "Personal Accidental Insurance",
+                    convertedFare(
+                        selectedTariff?.parsonalAccidentalInsurance?.toDouble() ?? 0),
+                  ),
+
+                if ((fareDetails.delivery_charges ?? 0) != 0)
+                  _fareRow("Delivery Charge",
+                      convertedFare(fareDetails.delivery_charges?.toDouble() ?? 0)),
+
+                if ((fareDetails.collection_charges ?? 0) != 0)
+                  _fareRow("Collection Charge",
+                      convertedFare(fareDetails.collection_charges?.toDouble() ?? 0)),
+
+                if ((fareDetails.tax ?? 0) != 0)
+                  _fareRow("Tax", convertedFare(fareDetails.tax?.toDouble() ?? 0)),
+
+                if ((fareDetails.deposit_free_ride ?? 0) != 0)
+                  _fareRow("Deposite Free Rides",
+                      convertedFare(fareDetails.deposit_free_ride?.toDouble() ?? 0)),
 
 
 
@@ -117,7 +190,7 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
 
                 _fareRow(
                   "Grand Total",
-                  "AED ${fareDetails.grandTotal ?? 0}",
+                  convertedFare(fareDetails.grandTotal?.toDouble() ?? 0),
                   isTotal: true,
                 ),
 
@@ -139,12 +212,14 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
               ],
             ),
           );
+
         });
       },
     );
   }
 
-  Widget _fareRow(String title, String amount, {bool isTotal = false}) {
+
+  Widget _fareRow(String title, Widget amount, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -157,49 +232,76 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
-          Text(
-            amount,
-            style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
+          amount
         ],
       ),
     );
   }
 
+  void validateAndProceed(BuildContext context) async {
+    final controller = fetchSdBookingDetailsController;
 
-
-  void validateAndProceed(BuildContext context) {
     // ✅ Validate pickup
-    fetchSdBookingDetailsController.showPickupError.value =
-        fetchSdBookingDetailsController.selectedPickupOption.value.isEmpty;
+    controller.showPickupError.value =
+        controller.selectedPickupOption.value.isEmpty;
 
     // ✅ Validate dropoff only if "Return to same location" is OFF
-    if (!fetchSdBookingDetailsController.isSameLocation.value) {
-      fetchSdBookingDetailsController.showDropoffError.value =
-          fetchSdBookingDetailsController.selectedDropoffOption.value.isEmpty;
+    if (!controller.isSameLocation.value) {
+      controller.showDropoffError.value =
+          controller.selectedDropoffOption.value.isEmpty;
     } else {
-      fetchSdBookingDetailsController.showDropoffError.value = false;
+      controller.showDropoffError.value = false;
     }
 
-    // ✅ If both are valid, navigate
-    if (!fetchSdBookingDetailsController.showPickupError.value &&
-        !fetchSdBookingDetailsController.showDropoffError.value) {
-      Navigator.of(context).push(
-        Platform.isIOS
-            ? CupertinoPageRoute(
-          builder: (_) => SelfDriveFinalPageS2(
-              vehicleId: widget.vehicleId, isHomePage: false),
-        )
-            : MaterialPageRoute(
-          builder: (_) => SelfDriveFinalPageS2(
-              vehicleId: widget.vehicleId, isHomePage: false),
-        ),
-      );
+    // ✅ If validation fails
+    if (controller.showPickupError.value || controller.showDropoffError.value) {
+      // Wait for UI to rebuild after state changes
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+      return;
+    }
+
+    // ✅ Validation passed — show shimmer overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const FullPageShimmer(),
+    );
+
+    // ✅ Wait a frame to ensure the dialog is displayed
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    try {
+      // Simulate loading
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Navigate to next page
+      if (context.mounted) {
+        Navigator.of(context).pop(); // close shimmer first
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+            builder: (_) =>
+                SelfDriveFinalPageS2(vehicleId: widget.vehicleId, isHomePage: false),
+          )
+              : MaterialPageRoute(
+            builder: (_) =>
+                SelfDriveFinalPageS2(vehicleId: widget.vehicleId, isHomePage: false),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.of(context).pop();
+      rethrow;
     }
   }
+
 
 
   @override
@@ -210,9 +312,14 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
     });
 
     return PopScope(
-      canPop: false, // 🚀 Stops the default "pop and close app"
+      canPop: true, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
-         searchInventorySdController.fetchAllInventory(context: context);
+        if(widget.isHomePage == true){
+          GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
+        }
+        else if(widget.isHomePage == false) {
+          searchInventorySdController.fetchAllInventory(context: context);
+        }
 
         // Navigator.of(context).push(
         //   Platform.isIOS
@@ -248,22 +355,25 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
         backgroundColor: AppColors.scaffoldBgPrimary1,
         body: SafeArea(
             child: SingleChildScrollView(
+          controller: _scrollController, // ✅ attach here
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     InkWell(
                       onTap: () {
-                        searchInventorySdController.fetchAllInventory(context: context);
+                        searchInventorySdController.fetchAllInventory(
+                            context: context);
                       },
                       child: CircleAvatar(
                         backgroundColor: Colors.white,
                         radius: 16,
-                        child:
-                            Icon(Icons.arrow_back, color: Colors.black, size: 22),
+                        child: Icon(Icons.arrow_back,
+                            color: Colors.black, size: 22),
                       ),
                     ),
                     SizedBox(
@@ -287,7 +397,8 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                 child: Text(
                   'Book your car',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -295,7 +406,7 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 200,
+                height: 260,
                 child: BookYourCarScreen(
                   vehicleId: widget.vehicleId ?? '',
                   isHomePage: widget.isHomePage ?? false,
@@ -345,84 +456,201 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Price Container
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children:  [
-                      Text(
-                        "Total Fare | ",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      SizedBox(width: 4),
-                      Obx(() {
-                        if (fetchSdBookingDetailsController.getAllBookingData
-                            .value?.result?.tarrifSelected ==
-                            'Daily'){
-                          return Text(
-                            "AED ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?.first.fareDetails?.grandTotal}", // Bind dynamically
+                      child: Row(
+                        children: [
+                          Text(
+                            "Total Fare | ",
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              fontSize: 13,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
                             ),
-                          );
-                        }
-                        else if (fetchSdBookingDetailsController.getAllBookingData
-                            .value?.result?.tarrifSelected ==
-                            'Weekly'){
-                          return Text(
-                            "AED ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].fareDetails?.grandTotal}", // Bind dynamically
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          );
-                        }
-                        else if (fetchSdBookingDetailsController.getAllBookingData
-                            .value?.result?.tarrifSelected ==
-                            'Monthly'){
-                          return Text(
-                            "AED ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].fareDetails?.grandTotal}", // Bind dynamically
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          );
-                        }
-                        return Text(
-                          "AED ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?.first.fareDetails?.grandTotal}", // Bind dynamically
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
                           ),
-                        );
-                      }),                  ],
-                  ),
+                          SizedBox(width: 4),
+                          Obx(() {
+                            if (fetchSdBookingDetailsController
+                                    .getAllBookingData
+                                    .value
+                                    ?.result
+                                    ?.tarrifSelected ==
+                                'Daily') {
+                              return FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  (fetchSdBookingDetailsController
+                                      .getAllBookingData.value
+                                      ?.result
+                                      ?.tarrifs
+                                      ?.first
+                                      .fareDetails
+                                      ?.grandTotal ??
+                                      0)
+                                      .toDouble(),
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      "Error in conversion",
+                                      style: TextStyle(color: Colors.red, fontSize: 11),
+                                    );
+                                  }
+
+                                  final convertedPrice = snapshot.data ?? 0.0;
+
+                                  return Text(
+                                    "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  );
+                                },
+                              );
+
+                            } else if (fetchSdBookingDetailsController
+                                    .getAllBookingData
+                                    .value
+                                    ?.result
+                                    ?.tarrifSelected ==
+                                'Weekly') {
+                              return FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  (fetchSdBookingDetailsController
+                                      .getAllBookingData.value
+                                      ?.result
+                                      ?.tarrifs?[1]
+                                      .fareDetails
+                                      ?.grandTotal ??
+                                      0)
+                                      .toDouble(),
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      "Error in conversion",
+                                      style: TextStyle(color: Colors.red, fontSize: 11),
+                                    );
+                                  }
+
+                                  final convertedPrice = snapshot.data ?? 0.0;
+
+                                  return Text(
+                                    "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  );
+                                },
+                              );
+
+                            } else if (fetchSdBookingDetailsController
+                                    .getAllBookingData
+                                    .value
+                                    ?.result
+                                    ?.tarrifSelected ==
+                                'Monthly') {
+                              return FutureBuilder<double>(
+                                future: currencyController.convertPrice(
+                                  (fetchSdBookingDetailsController
+                                      .getAllBookingData.value
+                                      ?.result
+                                      ?.tarrifs?[2]
+                                      .fareDetails
+                                      ?.grandTotal ??
+                                      0)
+                                      .toDouble(),
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      "Error in conversion",
+                                      style: TextStyle(color: Colors.red, fontSize: 11),
+                                    );
+                                  }
+
+                                  final convertedPrice = snapshot.data ?? 0.0;
+
+                                  return Text(
+                                    "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+                            return FutureBuilder<double>(
+                              future: currencyController.convertPrice(
+                                (fetchSdBookingDetailsController
+                                    .getAllBookingData.value
+                                    ?.result
+                                    ?.tarrifs
+                                    ?.first
+                                    .fareDetails
+                                    ?.grandTotal ??
+                                    0)
+                                    .toDouble(),
+                              ),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return const Text(
+                                    "Error in conversion",
+                                    style: TextStyle(color: Colors.red, fontSize: 11),
+                                  );
+                                }
+
+                                final convertedPrice = snapshot.data ?? 0.0;
+
+                                return Text(
+                                  "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                );
+                              },
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 4,),
+                    InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: () {
+                          showFareBreakdownSheet(
+                              context, fetchSdBookingDetailsController);
+                        },
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Colors.grey,
+                        )),
+                  ],
                 ),
-                InkWell(
-                    splashColor: Colors.transparent,
-                    onTap: (){
-                      showFareBreakdownSheet(context, fetchSdBookingDetailsController);
-                    },
-                    child: Icon(Icons.info_outline, size: 20, color: Colors.grey,)),
+
                 // Continue Button
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () {
-                     validateAndProceed(context);
+                      validateAndProceed(context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
@@ -482,107 +710,99 @@ class _BookYourCarScreenState extends State<BookYourCarScreen> {
         .getAllBookingData.value?.result?.vehicleId?.images ??
         [];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                    bottom: Radius.circular(20),
-                  ),
-                  child: CarouselSlider.builder(
-                    itemCount: images.length,
-                    itemBuilder: (context, imgIndex, realIndex) {
-                      final img = images[imgIndex];
-                      return SizedBox(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(16),
+          bottom: Radius.circular(20),
+        ),
+        child: SizedBox(
+          width: double.infinity, // full screen width
+          height: 800,            // fixed height
+          child: Stack(
+            children: [
+              // Image carousel
+              CarouselSlider.builder(
+                itemCount: images.length,
+                itemBuilder: (context, imgIndex, realIndex) {
+                  final img = images[imgIndex];
+                  return CachedNetworkImage(
+                    imageUrl: img ?? '',
+                    fit: BoxFit.fill, // fills container without stretching
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    useOldImageOnUrlChange: true,
+                    memCacheHeight: 800,
+                    memCacheWidth: 1200,
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey.shade300,
+                      highlightColor: Colors.grey.shade100,
+                      child: Container(
                         width: double.infinity,
-                        height: 350,
-                        child: CachedNetworkImage(
-                          imageUrl: img ?? '',
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                          useOldImageOnUrlChange: true,
-                          memCacheHeight: 320,
-                          memCacheWidth: 550,
-                          placeholder: (context, url) => Shimmer.fromColors(
-                            baseColor: Colors.grey.shade300,
-                            highlightColor: Colors.grey.shade100,
-                            child: Container(
-                              width: double.infinity,
-                              height: 320,
-                              color: Colors.grey,
-                            ),
+                        height: 1000,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) =>
+                    const Icon(Icons.error, size: 50),
+                  );
+                },
+                options: CarouselOptions(
+                  height: 1000, // same as container height
+                  viewportFraction: 1.0,
+                  enableInfiniteScroll: false,
+                  autoPlay: true,
+                  autoPlayInterval: const Duration(seconds: 4),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                  onPageChanged: (imgIndex, reason) {
+                    setState(() {
+                      _currentIndex = imgIndex;
+                    });
+                  },
+                ),
+              ),
+
+              // Overlay text aligned at bottom
+              if (_currentIndex >= 1 && _showOverlayText)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.black87.withOpacity(0.7),
+                      borderRadius:
+                      const BorderRadius.vertical(bottom: Radius.circular(20)),
+                    ),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            "We’ll try to provide the model you chose, but the car may vary in make, model, or color within the same category",
+                            style: TextStyle(color: Colors.white, fontSize: 11),
                           ),
-                          errorWidget: (context, url, error) =>
-                          const Icon(Icons.error, size: 50),
                         ),
-                      );
-                    },
-                    options: CarouselOptions(
-                      height: 320,
-                      viewportFraction: 1.0,
-                      enableInfiniteScroll: true,
-                      autoPlay: true,
-                      autoPlayInterval: const Duration(seconds: 4),
-                      autoPlayAnimationDuration:
-                      const Duration(milliseconds: 800),
-                      onPageChanged: (imgIndex, reason) {
-                        setState(() {
-                          _currentIndex = imgIndex;
-                        });
-                      },
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showOverlayText = false; // dismiss text
+                            });
+                          },
+                          child: Icon(Icons.close,
+                              color: Colors.white.withOpacity(0.75), size: 24),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                // Show overlay text only from 2nd slide and if not dismissed
-                if (_currentIndex >= 1 && _showOverlayText)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.black87.withOpacity(0.7),
-                        borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(20)),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              "We’ll try to provide the model you chose, but the car may vary in make, model, or color within the same category",
-                              style:
-                              TextStyle(color: Colors.white, fontSize: 11),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _showOverlayText = false; // dismiss text
-                              });
-                            },
-                            child: Icon(Icons.close,
-                                color: Colors.white.withOpacity(0.75), size: 24),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -667,27 +887,120 @@ class _CarRentalCardState extends State<CarRentalCard> {
                         .getAllBookingData.value?.result?.tarrifSelected ==
                     'Daily')
                   Expanded(
-                    child: Text(
-                      '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].pickup?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].pickup?.time} - ${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].drop?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].drop?.time}',
-                      style: TextStyle(fontSize: 15),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].pickup?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].pickup?.time} - '
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].drop?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].drop?.time} | ',
+                            style: const TextStyle(
+                                fontSize: 15, color: Colors.black),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.blueAccent,
+                            ),
+                          ),
+                          child: Text(
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].days} Days',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 if (fetchSdBookingDetailsController
                         .getAllBookingData.value?.result?.tarrifSelected ==
                     'Weekly')
                   Expanded(
-                    child: Text(
-                      '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].pickup?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].pickup?.time} - ${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].drop?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].drop?.time}',
-                      style: TextStyle(fontSize: 15),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].pickup?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].pickup?.time} - '
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].drop?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].drop?.time} | ',
+                            style: const TextStyle(
+                                fontSize: 15, color: Colors.black),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.blueAccent,
+                            ),
+                          ),
+                          child: Text(
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[1].days} Days',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 if (fetchSdBookingDetailsController
                         .getAllBookingData.value?.result?.tarrifSelected ==
                     'Monthly')
                   Expanded(
-                    child: Text(
-                      '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].pickup?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].pickup?.time} - ${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].drop?.date ?? '')} ${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].drop?.time}',
-                      style: TextStyle(fontSize: 15),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].pickup?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].pickup?.time} - '
+                            '${formatToDayMonth(fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].drop?.date ?? '')} '
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].drop?.time} | ',
+                            style: const TextStyle(
+                                fontSize: 15, color: Colors.black),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.blueAccent,
+                            ),
+                          ),
+                          child: Text(
+                            '${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[2].days} Days',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -715,6 +1028,7 @@ class _PricingTilesState extends State<PricingTiles> {
       Get.put(FetchSdBookingDetailsController());
   final SearchInventorySdController searchInventorySdController =
       Get.put(SearchInventorySdController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   int selectedIndex = 0;
   final List<String> tariffTypes = ["Daily", "Weekly", "Monthly"];
@@ -894,14 +1208,31 @@ class _PricingTilesState extends State<PricingTiles> {
                         ),
                         child: Column(
                           children: [
-                            Text(
-                              'AED ${item?.base.toString() ?? ''}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                            FutureBuilder<double>(
+                              future: currencyController.convertPrice(
+                                (item?.base ?? 0).toDouble(),
                               ),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return const Text(
+                                    "Error in conversion",
+                                    style: TextStyle(color: Colors.red, fontSize: 11),
+                                  );
+                                }
+
+                                final convertedPrice = snapshot.data ?? 0;
+
+                                return Text(
+                                  "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                );
+                              },
                             ),
+
                             const SizedBox(height: 2),
                             Text(
                               '/ ${item?.tariffType}',
@@ -944,7 +1275,15 @@ class _PricingTilesState extends State<PricingTiles> {
                               .value?.result?.tarrifSelected ==
                           'Daily')
                         Obx(() => Text(
-                              "${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].mileageLimit} km",
+                              fetchSdBookingDetailsController
+                                          .getAllBookingData
+                                          .value
+                                          ?.result
+                                          ?.tarrifs?[0]
+                                          .isMileageUnlimited ==
+                                      true
+                                  ? "Unlimited Mileage"
+                                  : "${fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifs?[0].mileageLimit} km",
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: 14,
@@ -1022,159 +1361,202 @@ class _CarServiceOverviewState extends State<CarServiceOverview>
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     fetchSdBookingDetailsController.fetchBookingDetails(
         widget.vehicleId, widget.isHomePage);
   }
 
-  Widget buildTile(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: Colors.black87,
-            ),
-          ),
-          // const SizedBox(width: 8),
-          // const Icon(Icons.chevron_right, size: 20, color: Colors.black45),
-        ],
-      ),
-    );
-  }
-
-  final List<Map<String, dynamic>> overviewData = [
-    {
-      "icon": Icons.payment,
-      "title": "Payment Modes",
-      "value": "Crypto, Cash & more"
-    },
-    {"icon": Icons.directions_car, "title": "Body Type", "value": "Sports Car"},
-    {
-      "icon": Icons.local_taxi,
-      "title": "Salik / Toll Charges",
-      "value": "AED 5"
-    },
-    {"icon": Icons.directions_car_filled, "title": "Make", "value": "Audi"},
-    {
-      "icon": Icons.directions_car_outlined,
-      "title": "Model",
-      "value": "R8 Performance Spyder"
-    },
-    {"icon": Icons.settings, "title": "Gearbox", "value": "Auto"},
-    {
-      "icon": Icons.event_seat,
-      "title": "Seating Capacity",
-      "value": "2 passengers"
-    },
-    {"icon": Icons.sensor_door, "title": "No. of Doors", "value": "2"},
-    {"icon": Icons.work_outline, "title": "Fits No. of Bags", "value": "1"},
-    {"icon": Icons.local_gas_station, "title": "Fuel Type", "value": "Petrol"},
-    {
-      "icon": Icons.color_lens,
-      "title": "Exterior / Interior Color",
-      "value": "Yellow / Black"
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // 🔹 Filter out unwanted labels (like _id)
+    final specs = fetchSdBookingDetailsController
+            .getAllBookingData.value?.result?.vehicleId?.specs
+            ?.where((item) => item.label?.toLowerCase() != "_id") // skip _id
+            .toList() ??
+        [];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Header (tap to expand/collapse)
-                ListTile(
-                  title: const Text(
-                    "CAR & SERVICE OVERVIEW",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
+          GestureDetector(
+            onTap: () {
+              setState(() => _isExpanded = !_isExpanded);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: CupertinoColors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Heading row inside card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14),
+                    child: Row(
+                      children: [
+                        const Text(
+                          "CAR OVERVIEW",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                            color: CupertinoColors.black,
+                          ),
+                        ),
+                        const Spacer(),
+                        AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 300),
+                          child: const Icon(
+                            CupertinoIcons.chevron_down,
+                            color: CupertinoColors.inactiveGray,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  trailing: AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0,
+                  // Expandable rows
+                  AnimatedSize(
                     duration: const Duration(milliseconds: 300),
-                    child: const Icon(Icons.keyboard_arrow_down,
-                        color: Colors.black54),
-                  ),
-                  onTap: () {
-                    setState(() => _isExpanded = !_isExpanded);
-                  },
-                ),
+                    curve: Curves.easeInOut,
+                    child: _isExpanded
+                        ? Column(
+                      children: List.generate(
+                        specs.length,
+                            (index) {
+                          final items = specs[index];
+                          final isLast = index == specs.length - 1;
 
-                // Expandable content
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: _isExpanded
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 0),
-                          child: ListView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: fetchSdBookingDetailsController
-                                .getAllBookingData
-                                .value
-                                ?.result
-                                ?.vehicleId
-                                ?.specs
-                                ?.length,
-                            itemBuilder: (context, index) {
-                              final items = fetchSdBookingDetailsController
-                                  .getAllBookingData
-                                  .value
-                                  ?.result
-                                  ?.vehicleId
-                                  ?.specs?[index];
-                              return buildTile(
-                                items?.label ?? '',
-                                items?.value.toString() ?? '',
-                              );
-                            },
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: isLast
+                                    ? BorderSide.none
+                                    : const BorderSide(
+                                  color: CupertinoColors.systemGrey5,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    getIconForLabel(items.label ?? ''),
+                                    size: 20,
+                                    color: CupertinoColors.black,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      items.label ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: CupertinoColors.black,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    items.value.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: CupertinoColors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  IconData getIconForLabel(String label) {
+    switch (label.toLowerCase()) {
+    // 🔥 Fuel type
+      case 'fuel type':
+      case 'fuel':
+        return Icons.local_gas_station_rounded;
+
+    // ⚙️ Transmission
+      case 'transmission':
+        return Icons.settings_input_component_rounded;
+
+    // 🧠 Engine
+      case 'engine':
+        return Icons.engineering_rounded;
+
+    // 🛞 Mileage / Speed
+      case 'mileage':
+      case 'average':
+        return Icons.speed_rounded;
+
+    // 🧍‍♂️ Seats
+      case 'seating capacity':
+      case 'seats':
+        return Icons.event_seat_rounded;
+
+    // 🌬️ Air Conditioning
+      case 'air conditioning':
+      case 'ac':
+        return Icons.ac_unit_rounded;
+
+    // 🧳 Luggage
+      case 'luggage':
+      case 'boot space':
+        return Icons.card_travel_rounded;
+
+    // 🚪 Doors
+      case 'doors':
+        return Icons.door_back_door;
+
+    // 🎨 Color
+      case 'color':
+        return Icons.color_lens_rounded;
+
+    // 📅 Year / Model Year
+      case 'year':
+      case 'model year':
+        return Icons.calendar_today_rounded;
+
+    // ⚡ Power / BHP
+      case 'power':
+      case 'bhp':
+        return Icons.flash_on_rounded;
+
+    // 🔁 Torque
+      case 'torque':
+        return Icons.sync_rounded;
+
+    // 🚘 Default generic car
+      default:
+        return Icons.directions_car_rounded;
+    }
+  }
+
+  // Cupertino-specific icons
 }
 
 class InsuranceOptions extends StatefulWidget {
@@ -1198,8 +1580,6 @@ class _InsuranceOptionsState extends State<InsuranceOptions> {
     fetchSdBookingDetailsController.fetchBookingDetails(
         widget.vehicleId, widget.isHomePage);
   }
-
-  int index = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -1279,37 +1659,6 @@ class _InsuranceOptionsState extends State<InsuranceOptions> {
             ),
             const SizedBox(height: 16),
 
-            // Insurance Info
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Comprehensive insurance",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Excess amount of 20% of the damage cost.",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.shield_outlined, color: Colors.green, size: 22),
-              ],
-            ),
-            const SizedBox(height: 20),
-
             // Collision Damage Waiver (CDW)
             Obx(() {
               final result = fetchSdBookingDetailsController
@@ -1319,7 +1668,7 @@ class _InsuranceOptionsState extends State<InsuranceOptions> {
 
               String? amount;
               if (selected == 'Daily') {
-                amount = tarrifs?[0].collisionDamageWaiver?.toStringAsFixed(2);
+                amount = tarrifs?[0].collisionDamageWaiver?.toString();
               } else if (selected == 'Weekly') {
                 amount = tarrifs?[1].collisionDamageWaiver?.toString();
               } else if (selected == 'Monthly') {
@@ -1379,70 +1728,45 @@ class _InsuranceOptionsState extends State<InsuranceOptions> {
               final result = fetchSdBookingDetailsController
                   .getAllBookingData.value?.result;
               final tarrifs = result?.tarrifs;
+              final selected = result?.tarrifSelected;
 
-              Widget buildTitleWithChip(String? amount) {
-                return Row(
-                  children: [
-                    const Text(
-                      "Enjoy a deposit-free ride for ",
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    if (amount != null) priceChipUI(amount),
-                  ],
-                );
+              // Get the correct amount
+              String? amount;
+              if (selected == 'Daily') {
+                amount = tarrifs?[0].securityDeposit?.amount?.toString();
+              } else if (selected == 'Weekly') {
+                amount = tarrifs?[1].securityDeposit?.amount?.toString();
+              } else if (selected == 'Monthly') {
+                amount = tarrifs?[2].securityDeposit?.amount?.toString();
+              } else {
+                amount = tarrifs?[0].securityDeposit?.amount?.toString();
               }
 
-              if (result?.tarrifSelected == 'Daily') {
-                return buildOptionTile(
-                  buildTitleWithChip(
-                      tarrifs?[0].securityDeposit?.amount?.toString()),
-                  "You can rent a car without any deposit by including the additional service fee in your rental price",
-                  fetchSdBookingDetailsController.freeDeposit.value,
-                  (val) {
-                    setState(() => fetchSdBookingDetailsController
-                        .freeDeposit.value = val);
-                    fetchSdBookingDetailsController.fetchBookingDetails(
-                        widget.vehicleId, false);
-                  },
-                );
-              } else if (result?.tarrifSelected == 'Weekly') {
-                return buildOptionTile(
-                  buildTitleWithChip(
-                      tarrifs?[1].securityDeposit?.amount?.toString()),
-                  "You can rent a car without any deposit by including the additional service fee in your rental price",
-                  fetchSdBookingDetailsController.freeDeposit.value,
-                  (val) {
-                    setState(() => fetchSdBookingDetailsController
-                        .freeDeposit.value = val);
-                    fetchSdBookingDetailsController.fetchBookingDetails(
-                        widget.vehicleId, false);
-                  },
-                );
-              } else if (result?.tarrifSelected == 'Monthly') {
-                return buildOptionTile(
-                  buildTitleWithChip(
-                      tarrifs?[2].securityDeposit?.amount?.toString()),
-                  "You can rent a car without any deposit by including the additional service fee in your rental price",
-                  fetchSdBookingDetailsController.freeDeposit.value,
-                  (val) {
-                    setState(() => fetchSdBookingDetailsController
-                        .freeDeposit.value = val);
-                    fetchSdBookingDetailsController.fetchBookingDetails(
-                        widget.vehicleId, false);
-                  },
-                );
-              }
-
-              // Default
               return buildOptionTile(
-                buildTitleWithChip(
-                    tarrifs?[0].securityDeposit?.amount?.toString()),
-                "You can rent a car without any deposit by including the additional service fee in your rental price",
+                "Enjoy a deposit-free ride for",
+                "",
                 fetchSdBookingDetailsController.freeDeposit.value,
-                (val) => setState(() =>
-                    fetchSdBookingDetailsController.freeDeposit.value = val),
+                (val) {
+                  setState(() =>
+                      fetchSdBookingDetailsController.freeDeposit.value = val);
+                  fetchSdBookingDetailsController.fetchBookingDetails(
+                      widget.vehicleId, false);
+                },
+                trailing: priceChipUI(amount),
               );
             }),
+            Container(
+              color: Colors.grey[100],
+              padding: const EdgeInsets.only(
+                  top: 4, left: 16, right: 16, bottom: 12),
+              child: Text(
+                'You can rent a car without any deposit by including the additional service fee in your rental price',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1450,84 +1774,130 @@ class _InsuranceOptionsState extends State<InsuranceOptions> {
   }
 
   Widget buildOptionTile(
-      dynamic title, String subtitle, bool value, Function(bool) onChanged,
-      {Widget? trailing}) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: title is String
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500)),
-                        if (subtitle.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              subtitle,
+    dynamic title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged, {
+    Widget? trailing,
+  }) {
+    return Container(
+      color: Colors.grey[100],
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.35,
+                  child: title is String
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.black54),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
                             ),
-                          ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        title, // Row with chip
-                        if (subtitle.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              subtitle,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.black54),
-                            ),
-                          ),
-                      ],
-                    ),
+                            if (subtitle.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  subtitle,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            title,
+                            if (subtitle.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  subtitle,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                if (trailing != null) ...[
+                  trailing,
+                  const SizedBox(width: 8),
+                ],
+                CupertinoSwitch(
+                  value: value,
+                  onChanged: onChanged,
+                  activeColor: Colors.green,
+                ),
+              ],
             ),
-            if (trailing != null) ...[
-              trailing,
-              const SizedBox(width: 8),
-            ],
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeColor: Colors.green,
-            ),
-          ],
-        ),
-        const Divider(),
-      ],
+          ),
+          const Divider(
+            height: 1,
+            thickness: 0.6,
+            color: Color(0xFFDDDDDD),
+            indent: 16,
+            endIndent: 16,
+          ),
+        ],
+      ),
     );
   }
 
   Widget priceChipUI(String? amount) {
+    final CurrencyController currencyController = Get.put(CurrencyController());
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.green, width: 1),
-      ),
-      child: Text(
-        "AED $amount",
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: Colors.green,
+        color: CupertinoColors.systemGreen.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: CupertinoColors.systemGreen,
+          width: 0.8,
         ),
       ),
+      child: FutureBuilder<double>(
+        future: currencyController.convertPrice((double.parse(amount??'') ?? 0)),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text(
+              "Error in conversion",
+              style: TextStyle(color: Colors.red, fontSize: 11),
+            );
+          }
+
+          final convertedPrice = snapshot.data ?? 0;
+
+          return Text(
+            "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.systemGreen,
+            ),
+          );
+        },
+      )
+
     );
   }
 }
 
-// important info
 class ImportantInfoCard extends StatefulWidget {
   const ImportantInfoCard({Key? key}) : super(key: key);
 
@@ -1539,9 +1909,8 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
   void showInfoBottomSheet(BuildContext context,
       {required String title, required String body}) {
     showModalBottomSheet(
-      backgroundColor: Colors.white,
       context: context,
-      isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1552,7 +1921,6 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
               Text(
                 title,
                 style: const TextStyle(
@@ -1562,8 +1930,6 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Body text
               Text(
                 body,
                 style: const TextStyle(
@@ -1573,13 +1939,11 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Close button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFE8262B),
+                    backgroundColor: const Color(0xFFE8262B),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1595,7 +1959,6 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
             ],
           ),
         );
@@ -1609,15 +1972,8 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, // card-like background
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          )
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1631,55 +1987,66 @@ class _ImportantInfoCardState extends State<ImportantInfoCard> {
             ),
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1),
+          const Divider(height: 1, thickness: 0.6),
           InfoTile(
             icon: Icons.account_balance_wallet_outlined,
             title: "Payment on pickup",
-            subtitle: "Credit card, Debit card (Visa, Mastercard)",
+            subtitle:
+                "Cash, Credit card, Crypto, Debit card (Visa, Mastercard), DepositFree",
             linkText: "Other options?",
             onTap: () {
-              showInfoBottomSheet(context,
-                  title: 'Payment',
-                  body:
-                      'Other payment options include Debit Card, Credit Card, Net Banking, etc.');
+              showInfoBottomSheet(
+                context,
+                title: 'Payment',
+                body:
+                    "• Other payment options include Debit Card\n• Credit Card\n• Net Banking\n• etc.",
+              );
             },
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, thickness: 0.6),
           InfoTile(
             icon: Icons.person_outline,
             title: "Minimum age",
-            subtitle: "21 y.o.",
+            subtitle: "23 y.o.",
             linkText: "Other age?",
             onTap: () {
-              showInfoBottomSheet(context,
-                  title: 'Minimum age',
-                  body:
-                      'Drivers must be at least 25 years old. Age requirements may vary depending on the location and vehicle type.');
+              showInfoBottomSheet(
+                context,
+                title: 'Minimum age',
+                body:
+                    "• Drivers must be at least 25 years old\n• Age requirements may vary depending on location and vehicle type",
+              );
             },
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, thickness: 0.6),
           InfoTile(
             icon: Icons.sports_motorsports_outlined,
             title: "Minimum driving experience",
             subtitle: "1 year",
             linkText: "Less experienced?",
             onTap: () {
-              showInfoBottomSheet(context,
-                  title: 'Minimum driving experience',
-                  body:
-                      'A minimum of 6 months of driving experience is required. If you have less experience, additional conditions may apply.');
+              showInfoBottomSheet(
+                context,
+                title: 'Minimum driving experience',
+                body:
+                    "• A minimum of 6 months of driving experience is required\n• If you have less experience, additional conditions may apply",
+              );
             },
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, thickness: 0.6),
           InfoTile(
             icon: Icons.description_outlined,
             title: "Required documents",
-            trailing: const Icon(Icons.chevron_right, color: Colors.black54),
+            subtitle: "Driving license, Identity proof, Valid visa document",
+            trailing: const Icon(Icons.chevron_right,
+                color: Colors.black54, size: 20),
             onTap: () {
-              showInfoBottomSheet(context,
-                  title: 'Required documents',
-                  body:
-                      'Required documents include your driving license or international driving license, identity proof (passport, emirates id), and a valid visa document in case of non resident.');
+              showInfoBottomSheet(
+                context,
+                title: 'Required documents',
+                body:
+                    "• Driving license or international driving license\n• Identity proof (passport, emirates id)\n• Valid visa document (for non-residents)",
+              );
             },
           ),
         ],
@@ -1711,11 +2078,11 @@ class InfoTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 24, color: Colors.black87),
+            Icon(icon, size: 22, color: Colors.black87),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1724,42 +2091,38 @@ class InfoTile extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
                       color: Colors.black,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            subtitle!,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                        if (linkText != null)
-                          GestureDetector(
-                            onTap: onTap,
-                            child: Text(
-                              linkText!,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
+                    Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
+            if (linkText != null)
+              GestureDetector(
+                onTap: onTap,
+                child: Text(
+                  linkText!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             if (trailing != null) trailing!,
           ],
         ),
@@ -1767,7 +2130,6 @@ class InfoTile extends StatelessWidget {
     );
   }
 }
-
 
 class PickupReturnLocationPage extends StatefulWidget {
   final String vehicleId;
@@ -1786,13 +2148,14 @@ class PickupReturnLocationPage extends StatefulWidget {
 
 class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
   final ServiceHubController serviceHubController =
-  Get.put(ServiceHubController());
+      Get.put(ServiceHubController());
   final GoogleLatLngController googleLatLngController =
-  Get.put(GoogleLatLngController());
+      Get.put(GoogleLatLngController());
   final FetchSdBookingDetailsController fetchSdBookingDetailsController =
-  Get.put(FetchSdBookingDetailsController());
+      Get.put(FetchSdBookingDetailsController());
   final SdCreateStripePaymentController sdCreateStripePaymentController =
-  Get.put(SdCreateStripePaymentController());
+      Get.put(SdCreateStripePaymentController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
   bool returnToSameLocation = false;
 
@@ -1800,272 +2163,357 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
   void initState() {
     super.initState();
     serviceHubController.fetchServicehub();
-
-    // Keep them empty initially → no selection
-    fetchSdBookingDetailsController.selectedPickupOption.value =
-        fetchSdBookingDetailsController.selectedPickupOption.value;
-    fetchSdBookingDetailsController.selectedDropoffOption.value =
-        fetchSdBookingDetailsController.selectedDropoffOption.value;
-
     returnToSameLocation = fetchSdBookingDetailsController.isSameLocation.value;
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Card(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        elevation: 2,
-        child: Padding(
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: CupertinoColors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Bring the car to me",
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-
-              // Delivery option
-              Obx(() => _buildOptionTile(
-                title: sdCreateStripePaymentController.sourceCity.value ==
-                    ''
-                    ? "Select delivery address"
-                    : sdCreateStripePaymentController.sourceCity.value,
-                subtitle: sdCreateStripePaymentController.sourceCity.value ==
-                    ''
-                    ? "AED 0.0"
-                    : 'AED ${fetchSdBookingDetailsController.delivery_charge.value.toString()}',
-                value: "delivery_address",
-                groupValue: fetchSdBookingDetailsController
-                    .selectedPickupOption.value.isEmpty
-                    ? null
-                    : fetchSdBookingDetailsController.selectedPickupOption.value,
-                error: fetchSdBookingDetailsController.showPickupError.value,
-                onChanged: (val) {
-                  fetchSdBookingDetailsController.selectedPickupOption.value =
-                      val ?? "";
-                  fetchSdBookingDetailsController.showPickupError.value = false;
-                  Navigator.of(context).push(
-                    Platform.isIOS
-                        ? CupertinoPageRoute(
-                      builder: (_) => SelfDriveMostPopularLocation(
-                        vehicleId: widget.vehicleId,
-                        isHomePage: widget.isHomePage,
-                      ),
-                    )
-                        : MaterialPageRoute(
-                      builder: (_) => SelfDriveMostPopularLocation(
-                        vehicleId: widget.vehicleId,
-                        isHomePage: widget.isHomePage,
-                      ),
-                    ),
-                  );
-                },
-              )),
-
-              const SizedBox(height: 16),
-              const Text(
-                "Free pickup locations",
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-
-              Obx(() => _buildLocationTile(
-                address: serviceHubController
-                    .serviceHubResponse.value?.result?.first.address ??
-                    '',
-                value: "pickup_location_1",
-                price: 'AED 0.0',
-                groupValue: fetchSdBookingDetailsController
-                    .selectedPickupOption.value.isEmpty
-                    ? null
-                    : fetchSdBookingDetailsController.selectedPickupOption.value,
-                error: fetchSdBookingDetailsController.showPickupError.value,
-                onChanged: (val) {
-                  fetchSdBookingDetailsController.selectedPickupOption.value =
-                      val ?? "";
-                  fetchSdBookingDetailsController.showPickupError.value = false;
-                  fetchSdBookingDetailsController.isFreePickup.value = true;
-                  fetchSdBookingDetailsController.fetchBookingDetails(
-                      widget.vehicleId, false);
-                },
-              )),
-
-              const SizedBox(height: 16),
-
-              // Return to same location
-              Obx(() => SwitchListTile(
-                value: fetchSdBookingDetailsController.isSameLocation.value,
-                onChanged: (val) {
-                  fetchSdBookingDetailsController.isSameLocation.value = val;
-                  returnToSameLocation = val;
-                  fetchSdBookingDetailsController.fetchBookingDetails(
-                      widget.vehicleId, false);
-                },
-                title: const Text(
-                  "Return to the same location",
-                  style:
-                  TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          child: CupertinoScrollbar(
+            child: ListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                const Text(
+                  "Bring the car to me",
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: CupertinoColors.black),
                 ),
-              )),
+                const SizedBox(height: 8),
 
-              // Dropoff section only if not same
-              Obx(() =>
-              fetchSdBookingDetailsController.isSameLocation.value == false
-                  ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Take the car from me",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-
-                  _buildOptionTile(
-                    title: sdCreateStripePaymentController
-                        .destinationCity.value ==
-                        ''
-                        ? "Select return delivery address"
-                        : sdCreateStripePaymentController
-                        .destinationCity.value,
-                    subtitle:
-                    'AED ${fetchSdBookingDetailsController.collection_charges.value.toString()}',
-                    value: "return_address",
-                    groupValue: fetchSdBookingDetailsController
-                        .selectedDropoffOption.value.isEmpty
-                        ? null
-                        : fetchSdBookingDetailsController
-                        .selectedDropoffOption.value,
-                    error: fetchSdBookingDetailsController
-                        .showDropoffError.value,
-                    onChanged: (val) {
-                      fetchSdBookingDetailsController
-                          .selectedDropoffOption.value = val ?? "";
-                      fetchSdBookingDetailsController
-                          .showDropoffError.value = false;
-                      fetchSdBookingDetailsController
-                          .isSameLocation.value = false;
-                      Navigator.of(context).push(
-                        Platform.isIOS
-                            ? CupertinoPageRoute(
-                          builder: (_) =>
-                              SelfDriveReturnPopularLocation(
-                                  vehicleId:
-                                  widget.vehicleId,
-                                  isHomePage:
-                                  widget.isHomePage),
-                        )
-                            : MaterialPageRoute(
-                          builder: (_) =>
-                              SelfDriveReturnPopularLocation(
-                                  vehicleId:
-                                  widget.vehicleId,
-                                  isHomePage:
-                                  widget.isHomePage),
+                // Delivery option
+                Obx(() => _buildOptionTile(
+                      title: sdCreateStripePaymentController.sourceCity.value ==
+                              ''
+                          ? "Select delivery address"
+                          : sdCreateStripePaymentController.sourceCity.value,
+                      subtitle: FutureBuilder<double>(
+                        future: currencyController.convertPrice(
+                          (sdCreateStripePaymentController.sourceCity.value == ''
+                              ? 0.0
+                              : (double.tryParse(
+                            fetchSdBookingDetailsController.delivery_charge.value.toString(),
+                          ) ??
+                              0.0)),
                         ),
-                      );
-                    },
-                  ),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return const Text(
+                              "Error in conversion",
+                              style: TextStyle(color: Colors.red, fontSize: 11),
+                            );
+                          }
 
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Free dropoff locations",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
+                          final convertedPrice = snapshot.data ?? 0.0;
 
-                  Obx(() => _buildLocationTile(
-                    address: serviceHubController.serviceHubResponse
-                        .value?.result?.first.address ??
-                        '',
-                    value: "pickup_location_1",
-                    price: 'AED 0.0',
-                    groupValue: fetchSdBookingDetailsController
-                        .selectedDropoffOption.value.isEmpty
-                        ? null
-                        : fetchSdBookingDetailsController
-                        .selectedDropoffOption.value,
-                    error: fetchSdBookingDetailsController
-                        .showDropoffError.value,
-                    onChanged: (val) {
-                      fetchSdBookingDetailsController
-                          .selectedDropoffOption.value = val ?? "";
-                      fetchSdBookingDetailsController
-                          .showDropoffError.value = false;
-                      fetchSdBookingDetailsController.isFreeDrop.value =
-                      true;
-                      fetchSdBookingDetailsController.isSameLocation.value =
-                      false;
-                      fetchSdBookingDetailsController.fetchBookingDetails(
-                          widget.vehicleId, false);
-                    },
-                  )),
-                ],
-              )
-                  : const SizedBox()),
+                          return Text(
+                            "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  color: CupertinoColors.activeBlue)
+                          );
+                        },
+                      ),
+                  value: "delivery_address",
+                      groupValue: fetchSdBookingDetailsController
+                              .selectedPickupOption.value.isEmpty
+                          ? null
+                          : fetchSdBookingDetailsController
+                              .selectedPickupOption.value,
+                      error:
+                          fetchSdBookingDetailsController.showPickupError.value,
+                      onChanged: (val) {
+                        fetchSdBookingDetailsController
+                            .selectedPickupOption.value = val ?? "";
+                        fetchSdBookingDetailsController.showPickupError.value =
+                            false;
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(
+                            builder: (_) => SelfDriveMostPopularLocation(
+                              vehicleId: widget.vehicleId,
+                              isHomePage: widget.isHomePage,
+                            ),
+                          ),
+                        );
+                      },
+                    )),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                const Text(
+                  "Free pickup locations",
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: CupertinoColors.black),
+                ),
+                const SizedBox(height: 8),
 
-            ],
+                Obx(() => _buildLocationTile(
+                      address: serviceHubController.serviceHubResponse.value
+                              ?.result?.first.address ??
+                          '',
+                      value: "pickup_location_1",
+                      price: FutureBuilder<double>(
+                        future: currencyController.convertPrice(0.0),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return const Text(
+                              "Error in conversion",
+                              style: TextStyle(color: Colors.red, fontSize: 11),
+                            );
+                          }
+
+                          final convertedPrice = snapshot.data ?? 0.0;
+
+                          return Text(
+                            "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                            style: const TextStyle(
+                                fontSize: 14,
+                                color: CupertinoColors.activeBlue),
+                          );
+                        },
+                      ),
+                      groupValue: fetchSdBookingDetailsController
+                              .selectedPickupOption.value.isEmpty
+                          ? null
+                          : fetchSdBookingDetailsController
+                              .selectedPickupOption.value,
+                      error:
+                          fetchSdBookingDetailsController.showPickupError.value,
+                      onChanged: (val) {
+                        fetchSdBookingDetailsController
+                            .selectedPickupOption.value = val ?? "";
+                        fetchSdBookingDetailsController.showPickupError.value =
+                            false;
+                        fetchSdBookingDetailsController.isFreePickup.value =
+                            true;
+                        fetchSdBookingDetailsController.fetchBookingDetails(
+                            widget.vehicleId, false);
+                      },
+                    )),
+
+                const SizedBox(height: 16),
+
+                // Return to same location toggle
+                Obx(() => CupertinoFormRow(
+                      prefix: const Text(
+                        "Return to the same location",
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: CupertinoColors.black),
+                      ),
+                      child: CupertinoSwitch(
+                        value: fetchSdBookingDetailsController
+                            .isSameLocation.value,
+                        onChanged: (val) {
+                          fetchSdBookingDetailsController.isSameLocation.value =
+                              val;
+                          returnToSameLocation = val;
+                          fetchSdBookingDetailsController.fetchBookingDetails(
+                              widget.vehicleId, false);
+                        },
+                      ),
+                    )),
+
+                // Dropoff section only if not same
+                Obx(() => fetchSdBookingDetailsController.isSameLocation.value
+                    ? const SizedBox()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          const Text(
+                            "Take the car from me",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: CupertinoColors.black),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildOptionTile(
+                            title: sdCreateStripePaymentController
+                                        .destinationCity.value ==
+                                    ''
+                                ? "Select return delivery address"
+                                : sdCreateStripePaymentController
+                                    .destinationCity.value,
+                            subtitle: FutureBuilder<double>(
+                              future: currencyController.convertPrice(
+                                (double.tryParse(
+                                  fetchSdBookingDetailsController.collection_charges.value.toString(),
+                                ) ??
+                                    0.0),
+                              ),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return const Text(
+                                    "Error in conversion",
+                                    style: TextStyle(color: Colors.red, fontSize: 11),
+                                  );
+                                }
+
+                                final convertedPrice = snapshot.data ?? 0.0;
+
+                                return Text(
+                                  "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                 style: const TextStyle(
+                                    fontSize: 14,
+                                    color: CupertinoColors.activeBlue),
+                                );
+                              },
+                            ),
+                            value: "return_address",
+                            groupValue: fetchSdBookingDetailsController
+                                    .selectedDropoffOption.value.isEmpty
+                                ? null
+                                : fetchSdBookingDetailsController
+                                    .selectedDropoffOption.value,
+                            error: fetchSdBookingDetailsController
+                                .showDropoffError.value,
+                            onChanged: (val) {
+                              fetchSdBookingDetailsController
+                                  .selectedDropoffOption.value = val ?? "";
+                              fetchSdBookingDetailsController
+                                  .showDropoffError.value = false;
+                              fetchSdBookingDetailsController
+                                  .isSameLocation.value = false;
+                              Navigator.of(context).push(
+                                CupertinoPageRoute(
+                                  builder: (_) =>
+                                      SelfDriveReturnPopularLocation(
+                                    vehicleId: widget.vehicleId,
+                                    isHomePage: widget.isHomePage,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Free dropoff locations",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: CupertinoColors.black),
+                          ),
+                          const SizedBox(height: 8),
+                          Obx(() => _buildLocationTile(
+                                address: serviceHubController.serviceHubResponse
+                                        .value?.result?.first.address ??
+                                    '',
+                                value: "drop_location_1",
+                                price: FutureBuilder<double>(
+                                  future: currencyController.convertPrice(0.0),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasError) {
+                                      return const Text(
+                                        "Error in conversion",
+                                        style: TextStyle(color: Colors.red, fontSize: 11),
+                                      );
+                                    }
+
+                                    final convertedPrice = snapshot.data ?? 0.0;
+
+                                    return Text(
+                                      "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}",
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          color: CupertinoColors.activeBlue),
+                                    );
+                                  },
+                                ),
+                                groupValue: fetchSdBookingDetailsController
+                                        .selectedDropoffOption.value.isEmpty
+                                    ? null
+                                    : fetchSdBookingDetailsController
+                                        .selectedDropoffOption.value,
+                                error: fetchSdBookingDetailsController
+                                    .showDropoffError.value,
+                                onChanged: (val) {
+                                  fetchSdBookingDetailsController
+                                      .selectedDropoffOption.value = val ?? "";
+                                  fetchSdBookingDetailsController
+                                      .showDropoffError.value = false;
+                                  fetchSdBookingDetailsController
+                                      .isFreeDrop.value = true;
+                                  fetchSdBookingDetailsController
+                                      .isSameLocation.value = false;
+                                  fetchSdBookingDetailsController
+                                      .fetchBookingDetails(
+                                          widget.vehicleId, false);
+                                },
+                              )),
+                        ],
+                      )),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // ==================== Widgets with error display ====================
+  // ==================== Cupertino Option Tile ====================
 
   Widget _buildOptionTile({
     required String title,
-    required String subtitle,
+    required Widget subtitle,
     required String value,
     required String? groupValue,
     required bool error,
     required Function(String?) onChanged,
   }) {
+    final isSelected = value == groupValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        GestureDetector(
           onTap: () => onChanged(value),
           child: Container(
-            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 12),
+            padding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              border: Border.all(
-                  color: error ? Colors.red : Colors.transparent, width: 1.5),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: error ? CupertinoColors.systemRed : Colors.transparent,
+                width: 1.5,
+              ),
             ),
             child: Row(
               children: [
-                Radio<String>(
+                CupertinoRadio(
                   value: value,
                   groupValue: groupValue,
                   onChanged: onChanged,
-                  activeColor: error ? Colors.red : Colors.blue,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 4),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.blue)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: CupertinoColors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      subtitle
                     ],
                   ),
                 ),
@@ -2078,7 +2526,10 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
             padding: EdgeInsets.only(left: 12.0, top: 4),
             child: Text(
               "Please select an option to continue",
-              style: TextStyle(color: Colors.red, fontSize: 12),
+              style: TextStyle(
+                color: CupertinoColors.systemRed,
+                fontSize: 12,
+              ),
             ),
           ),
       ],
@@ -2088,32 +2539,35 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
   Widget _buildLocationTile({
     required String address,
     required String value,
-    required String? price,
+    required Widget price,
     required String? groupValue,
     required bool error,
     required Function(String?) onChanged,
   }) {
+    final isSelected = value == groupValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        GestureDetector(
           onTap: () => onChanged(value),
           child: Container(
-            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 12),
+            padding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              border: Border.all(
-                  color: error ? Colors.red : Colors.transparent, width: 1.5),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: error ? CupertinoColors.systemRed : Colors.transparent,
+                width: 1.5,
+              ),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Radio<String>(
+                CupertinoRadio(
                   value: value,
                   groupValue: groupValue,
                   onChanged: onChanged,
-                  activeColor: error ? Colors.red : Colors.blue,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -2122,13 +2576,9 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                     children: [
                       Text(address,
                           style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w500)),
-                      if (price != null && price.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text("AED 0.0",
-                            style: const TextStyle(
-                                fontSize: 14, color: Colors.blue)),
-                      ],
+                              fontSize: 14, fontWeight: FontWeight.w400)),
+                        const SizedBox(height: 2),
+                        price
                     ],
                   ),
                 ),
@@ -2141,11 +2591,10 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
             padding: EdgeInsets.only(left: 12.0, top: 4),
             child: Text(
               "Please select an option to continue",
-              style: TextStyle(color: Colors.red, fontSize: 12),
+              style: TextStyle(color: CupertinoColors.systemRed, fontSize: 12),
             ),
           ),
       ],
     );
   }
 }
-

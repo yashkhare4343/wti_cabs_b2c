@@ -9,8 +9,12 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
+import 'package:wti_cabs_user/core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
+import '../../../common_widget/loader/shimmer/shimmer.dart';
 import '../../../core/controller/self_drive/search_inventory_sd_controller/search_inventory_sd_controller.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../self_drive_final_page_st1/self_drive_final_page_s1.dart';
@@ -35,47 +39,26 @@ class SelfDriveAllInventory extends StatefulWidget {
   State<SelfDriveAllInventory> createState() => _SelfDriveAllInventoryState();
 }
 
+// ✅ UI Updated version, signature untouched
 class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
   final SearchInventorySdController searchInventorySdController =
-      Get.put(SearchInventorySdController());
+  Get.put(SearchInventorySdController());
   final ScrollController _scrollController = ScrollController();
+  final FetchSdBookingDetailsController fetchSdBookingDetailsController =
+  Get.put(FetchSdBookingDetailsController());
   int _currentIndex = 0;
   bool _isLoadingMore = false;
-  int _page = 1; // Track the current page for pagination
+  int _page = 1;
+  final CurrencyController currencyController = Get.put(CurrencyController());
+
+  num getFakePriceWithPercent(num baseFare, num percent) =>
+      (baseFare * 100) / (100 - percent);
 
   @override
   void initState() {
     super.initState();
-    // searchInventorySdController.fetchAllInventory(context: context);
     // _scrollController.addListener(_onScroll);
   }
-
-  // void fetchInventoryData({bool isLoadMore = false}) async {
-  //   if (_isLoadingMore) return; // Prevent multiple simultaneous API calls
-  //   setState(() {
-  //     _isLoadingMore = true;
-  //   });
-  //
-  //   // await searchInventorySdController.fetchAllInventory(
-  //   //   context: context,
-  //   //   // page: isLoadMore ? _page + 1 : _page, // Enable this when backend supports pagination
-  //   // );
-  //
-  //   setState(() {
-  //     if (isLoadMore) _page++;
-  //     _isLoadingMore = false;
-  //   });
-  // }
-  //
-  // void _onScroll() {
-  //   if (_isLoadingMore) return; // Already fetching, ignore
-  //
-  //   const threshold = 200; // px from bottom before triggering load more
-  //   if (_scrollController.position.pixels >=
-  //       _scrollController.position.maxScrollExtent - threshold) {
-  //     fetchInventoryData(isLoadMore: true);
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -83,17 +66,116 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
     super.dispose();
   }
 
+  void _showFilterSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Container(
+          width: MediaQuery.of(context).size.width, // full width
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Filter by Vehicle Class",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF002CC0))),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                children: ["All", "Economy", "SUV"].map((cls) {
+                  final selected =
+                      searchInventorySdController.selectedVehicleClass.value == cls;
+                  return ChoiceChip(
+                    label: Text(cls),
+                    selected: selected,
+                    onSelected: (_) {
+                      searchInventorySdController.setVehicleClass(cls);
+                      Navigator.pop(context); // close sheet
+                    },
+                    selectedColor: const Color(0xFF002CC0),
+                    backgroundColor: Colors.grey.shade200,
+                    labelStyle: TextStyle(
+                        color: selected ? Colors.white : Colors.black),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSortSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Container(
+          width: MediaQuery.of(context).size.width, // full width
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Sort by Price",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF002CC0))),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                children: ["None", "LowToHigh", "HighToLow"].map((order) {
+                  final selected =
+                      searchInventorySdController.selectedPriceOrder.value ==
+                          order;
+                  return ChoiceChip(
+                    label: Text(order == "None"
+                        ? "Default"
+                        : order == "LowToHigh"
+                        ? "Low → High"
+                        : "High → Low"),
+                    selected: selected,
+                    onSelected: (_) {
+                      searchInventorySdController.setPriceOrder(order);
+                      Navigator.pop(context); // close sheet
+                    },
+                    selectedColor: const Color(0xFF002CC0),
+                    backgroundColor: Colors.grey.shade200,
+                    labelStyle: TextStyle(
+                        color: selected ? Colors.white : Colors.black),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: AppColors.homebg, // Status bar color set to white
-      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+      statusBarColor: AppColors.homebg,
+      statusBarIconBrightness: Brightness.dark,
     ));
+
     return PopScope(
-      canPop: true, // 🚀 Stops the default "pop and close app"
+      canPop: true,
       onPopInvoked: (didPop) {
-        // This will be called for hardware back and gesture
-        GoRouter.of(context).push(AppRoutes.selfDriveHome);
+        GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFE9E9ED),
@@ -110,33 +192,34 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
                   toTime: widget.toTime,
                   selectedMonth: widget.selectedMonth,
                 ),
-                SizedBox(
-                  height: 8,
-                ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: Obx(() {
-                    final rides = searchInventorySdController
-                            .topRatedRidesResponse.value?.result ??
-                        [];
+                    final rides =
+                        searchInventorySdController.topRatedRidesResponse.value?.result ??
+                            [];
 
                     if (rides.isEmpty && !_isLoadingMore) {
-                      return const Center(child: Text("No rides available"));
+                      return const Center(
+                          child: Text("No rides available",
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.black54)));
                     }
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: ListView.builder(
                         key: const PageStorageKey(
-                            "SelfDriveAllInventoryList"), // 👈 preserves scroll position
-                        controller:
-                            _scrollController, // Attach ScrollController
+                            "SelfDriveAllInventoryList"),
+                        controller: _scrollController,
                         itemCount: rides.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == rides.length) {
-                            // Show loading indicator at the end of the list
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Center(child: CircularProgressIndicator()),
+                              child: Center(
+                                  child: CircularProgressIndicator(
+                                      color: Color(0xFFE8262B))),
                             );
                           }
 
@@ -145,35 +228,42 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
                             color: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
-                            elevation: 0.3,
-                            margin: const EdgeInsets.all(8),
+                            elevation: 4,
+                            margin: const EdgeInsets.symmetric(vertical: 8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Top Carousel
+                                // Carousel
                                 ClipRRect(
                                   borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(16)),
                                   child: Stack(
                                     children: [
                                       CarouselSlider(
-                                        items: rides[index].vehicleId?.images?.map((img) {
+                                        items: rides[index]
+                                            .vehicleId
+                                            ?.images
+                                            ?.map((img) {
                                           return CachedNetworkImage(
                                             imageUrl: img,
-                                            fit: BoxFit.fill,
-                                            useOldImageOnUrlChange: true,
-                                            memCacheHeight: 300,
-                                            memCacheWidth: 550,
-                                            placeholder: (context, url) => Shimmer.fromColors(
-                                              baseColor: Colors.grey.shade300,
-                                              highlightColor: Colors.grey.shade100,
-                                              child: Container(
-                                                width: double.infinity,
-                                                height: 280, // same as CarouselSlider height
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                            errorWidget: (context, url, error) => const Icon(Icons.error, size: 50),
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            height: 280,
+                                            placeholder: (context, url) =>
+                                                Shimmer.fromColors(
+                                                  baseColor: Colors.grey.shade300,
+                                                  highlightColor:
+                                                  Colors.grey.shade100,
+                                                  child: Container(
+                                                    width: double.infinity,
+                                                    height: 280,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                            const Icon(Icons.error,
+                                                size: 50),
                                           );
                                         }).toList(),
                                         options: CarouselOptions(
@@ -188,154 +278,116 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
                                           },
                                         ),
                                       ),
+                                      // Carousel indicator
                                       Positioned(
-                                        bottom: 0,
+                                        bottom: 8,
                                         left: 0,
                                         right: 0,
-                                        child: SizedBox(
-                                          height: 20,
-                                          child: Transform.translate(
-                                            offset: const Offset(0.0, 0.0),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: rides[index]
-                                                  .vehicleId!
-                                                  .images!
-                                                  .asMap()
-                                                  .entries
-                                                  .map((entry) {
-                                                final isActive =
-                                                    _currentIndex == entry.key;
-                                                return Container(
-                                                  margin: const EdgeInsets
-                                                      .symmetric(horizontal: 2),
-                                                  width: 40,
-                                                  height: 4,
-                                                  decoration: BoxDecoration(
-                                                    color: isActive
-                                                        ? Colors.white
-                                                        : Colors.grey,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            2),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.2),
-                                                        blurRadius: 4,
-                                                        offset:
-                                                            const Offset(0, 2),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              }).toList(),
-                                            ),
-                                          ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                          children: rides[index]
+                                              .vehicleId!
+                                              .images!
+                                              .asMap()
+                                              .entries
+                                              .map((entry) {
+                                            final isActive =
+                                                _currentIndex == entry.key;
+                                            return AnimatedContainer(
+                                              duration:
+                                              const Duration(milliseconds: 300),
+                                              margin: const EdgeInsets.symmetric(
+                                                  horizontal: 3),
+                                              width: isActive ? 24 : 16,
+                                              height: 4,
+                                              decoration: BoxDecoration(
+                                                color: isActive
+                                                    ? Colors.white
+                                                    : Colors.grey.shade400,
+                                                borderRadius:
+                                                BorderRadius.circular(2),
+                                              ),
+                                            );
+                                          }).toList(),
                                         ),
                                       ),
-                                      if (rides[index]
-                                              .vehicleId
-                                              ?.vehiclePromotionTag !=
-                                          null)
+                                      // Promotion tag
+                                      if (vehicle?.vehiclePromotionTag != null)
                                         Positioned(
                                           top: 12,
                                           left: 12,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.25),
-                                                  blurRadius: 6,
-                                                  offset: Offset(2, 4),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Image.asset(
-                                              rides[index]
-                                                          .vehicleId!
-                                                          .vehiclePromotionTag!
-                                                          .toLowerCase() ==
-                                                      'popular'
-                                                  ? 'assets/images/popular.png'
-                                                  : 'assets/images/trending.png',
-                                              width: 106,
-                                              height: 28,
-                                            ),
+                                          child: Image.asset(
+                                            vehicle!.vehiclePromotionTag!
+                                                .toLowerCase() ==
+                                                'popular'
+                                                ? 'assets/images/popular.png'
+                                                : 'assets/images/trending.png',
+                                            width: 106,
+                                            height: 28,
                                           ),
                                         ),
                                     ],
                                   ),
                                 ),
 
-                                // Car Info
+                                // Car info
                                 Padding(
-                                  padding: const EdgeInsets.only(
-                                      top: 16.0,
-                                      left: 16.0,
-                                      right: 16.0,
-                                      bottom: 8),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 16, 16, 8),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         vehicle?.modelName ?? "",
                                         style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 20,
-                                          color: Color(0xFF000000),
-                                        ),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 20,
+                                            color: Color(0xFF000000)),
                                       ),
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: 6),
                                       Row(
                                         children: [
                                           Text(
                                             "${vehicle?.vehicleRating ?? "-"}",
                                             style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              color: Color(0xFF373737),
-                                            ),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: Color(0xFF373737)),
                                           ),
                                           const SizedBox(width: 4),
                                           const Icon(Icons.star,
                                               color: Color(0xFFFEC200),
                                               size: 16),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 6),
                                           const Text(
                                             "450 Reviews",
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              color: Color(0xFF373737),
-                                            ),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: Color(0xFF373737)),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: 10),
                                       Wrap(
-                                        spacing: 12,
+                                        spacing: 16,
+                                        runSpacing: 6,
                                         children: [
                                           _InfoIcon(
                                               icon: Icons
                                                   .airline_seat_recline_extra,
                                               text:
-                                                  "${vehicle?.specs?.seats ?? "--"} Seat"),
+                                              "${vehicle?.specs?.seats ?? "--"} Seat"),
                                           _InfoIcon(
                                               icon: Icons.work,
                                               text:
-                                                  "${vehicle?.specs?.luggageCapacity ?? "--"} luggage bag"),
-                                          _InfoIcon(
-                                              icon: Icons.speed,
-                                              text:
-                                                  "${vehicle?.specs?.mileageLimit ?? "--"} km/rental"),
+                                              "${vehicle?.specs?.luggageCapacity ?? "--"} luggage bag"),
                                           _InfoIcon(
                                               icon: Icons.settings,
                                               text:
-                                                  "${vehicle?.specs?.transmission ?? "--"}"),
+                                              "${vehicle?.specs?.transmission ?? "--"}"),
                                           const _InfoIcon(
                                               icon: Icons.calendar_today,
                                               text: "Min. 2 days rental"),
@@ -344,13 +396,7 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
                                     ],
                                   ),
                                 ),
-
-                                const Padding(
-                                  padding:
-                                      EdgeInsets.symmetric(horizontal: 16.0),
-                                  child: Divider(color: Color(0xFFDCDCDC)),
-                                ),
-
+                                const Divider(color: Color(0xFFDCDCDC)),
                                 // Price + Button
                                 Padding(
                                   padding: const EdgeInsets.all(12.0),
@@ -358,56 +404,143 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
                                     children: [
                                       Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            "AED ${rides[index].tariffMonthly?.base ?? "--"}/month",
-                                            style: const TextStyle(
-                                              color: Color(0xFF2F2F2F),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w400,
+                                          FutureBuilder<double>(
+                                            future: currencyController.convertPrice(
+                                              getFakePriceWithPercent(
+                                                  searchInventorySdController
+                                                      .selectedIndex
+                                                      .value ==
+                                                      0
+                                                      ? (rides[index]
+                                                      .tariffDaily
+                                                      ?.base ??
+                                                      0)
+                                                      : (rides[index]
+                                                      .tariffMonthly
+                                                      ?.base ??
+                                                      0),
+                                                  20)
+                                                  .toDouble(),
                                             ),
+                                            builder: (context, snapshot) {
+                                              final convertedValue =
+                                                  snapshot.data ??
+                                                      getFakePriceWithPercent(
+                                                          searchInventorySdController
+                                                              .selectedIndex
+                                                              .value ==
+                                                              0
+                                                              ? (rides[index]
+                                                              .tariffDaily
+                                                              ?.base ??
+                                                              0)
+                                                              : (rides[index]
+                                                              .tariffMonthly
+                                                              ?.base ??
+                                                              0),
+                                                          20)
+                                                          .toDouble();
+                                              return Text(
+                                                '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                  decoration: TextDecoration
+                                                      .lineThrough,
+                                                ),
+                                              );
+                                            },
                                           ),
                                           const SizedBox(height: 4),
-                                          Text(
-                                            "AED ${rides[index].tariffDaily?.base ?? "--"}/day",
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 20,
-                                              color: Color(0xFF131313),
+                                          FutureBuilder<double>(
+                                            future: currencyController.convertPrice(
+                                              (searchInventorySdController
+                                                  .selectedIndex
+                                                  .value ==
+                                                  0
+                                                  ? (rides[index].tariffDaily
+                                                  ?.base ??
+                                                  0)
+                                                  : (rides[index].tariffMonthly
+                                                  ?.base ??
+                                                  0))
+                                                  .toDouble(),
                                             ),
-                                          ),
+                                            builder: (context, snapshot) {
+                                              final convertedPrice =
+                                                  snapshot.data ?? 0;
+                                              return Text(
+                                                searchInventorySdController
+                                                    .selectedIndex
+                                                    .value ==
+                                                    0
+                                                    ? "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/day"
+                                                    : "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/Month",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 16,
+                                                  color: Color(0xFF131313),
+                                                ),
+                                              );
+                                            },
+                                          )
                                         ],
                                       ),
                                       const Spacer(),
                                       ElevatedButton(
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
-                                              const Color(0xFFE8262B),
+                                          const Color(0xFFE8262B),
                                           shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(10)),
+                                              BorderRadius.circular(12)),
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 32, vertical: 10),
+                                              horizontal: 28, vertical: 12),
                                         ),
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                            Platform.isIOS
-                                                ? CupertinoPageRoute(
-                                              builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false),
-                                            )
-                                                : MaterialPageRoute(
-                                              builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false),
-                                            ),
+                                        onPressed: () async {
+                                          // 1️⃣ Show the shimmer
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) => const Center(
+                                                child: FullPageShimmer()),
                                           );
+
+                                          // 2️⃣ Fetch data
+                                          await fetchSdBookingDetailsController
+                                              .fetchBookingDetails(vehicle?.id ?? "", false);
+
+                                          // 3️⃣ Close shimmer
+                                          if (context.mounted) {
+                                            Navigator.of(context).pop(); // remove shimmer
+
+                                            // 4️⃣ Navigate to final page
+                                            Navigator.of(context).push(
+                                              Platform.isIOS
+                                                  ? CupertinoPageRoute(
+                                                builder: (_) => SelfDriveFinalPageS1(
+                                                  vehicleId: vehicle?.id ?? "",
+                                                  isHomePage: false,
+                                                ),
+                                              )
+                                                  : MaterialPageRoute(
+                                                builder: (_) => SelfDriveFinalPageS1(
+                                                  vehicleId: vehicle?.id ?? "",
+                                                  isHomePage: false,
+                                                ),
+                                              ),
+                                            );
+                                          }
                                         },
                                         child: const Text(
                                           "Book Now",
                                           style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white),
                                         ),
                                       ),
                                     ],
@@ -425,7 +558,65 @@ class _SelfDriveAllInventoryState extends State<SelfDriveAllInventory> {
             ),
           ),
         ),
+        bottomNavigationBar: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () => _showFilterSheet(context),
+                  icon: const Icon(
+                    Icons.filter_alt,
+                    size: 16,
+                    color: Colors.black87,
+                  ),
+                  label: const Text(
+                    "Filter",
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.grey.shade300,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () => _showSortSheet(context),
+                  icon: const Icon(
+                    Icons.sort,
+                    size: 16,
+                    color: Colors.black87,
+                  ),
+                  label: const Text(
+                    "Sort",
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+        ),
       ),
+
     );
   }
 }
@@ -518,7 +709,7 @@ class _ModifyRentalState extends State<ModifyRental> {
                           IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () {
-                              Navigator.of(context).pop();
+                              GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
                             },
                           ),
                           SizedBox(

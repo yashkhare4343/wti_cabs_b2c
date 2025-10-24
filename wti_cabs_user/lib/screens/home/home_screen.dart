@@ -17,6 +17,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfield.dart';
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
@@ -31,6 +32,7 @@ import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 
 import '../../common_widget/buttons/main_button.dart';
 import '../../common_widget/drawer/custom_drawer.dart';
+import '../../common_widget/loader/module_transition/module_transition_loader.dart';
 import '../../common_widget/loader/popup_loader.dart';
 import '../../common_widget/name_initials/name_initial.dart';
 import '../../core/controller/auth/mobile_controller.dart';
@@ -38,8 +40,25 @@ import '../../core/controller/auth/otp_controller.dart';
 import '../../core/controller/auth/register_controller.dart';
 import '../../core/controller/auth/resend_otp_controller.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
+import '../../core/controller/download_receipt/download_receipt_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/controller/profile_controller/profile_controller.dart';
+import '../../core/controller/self_drive/date_time_self_drive/date_time_self_drive.dart';
+import '../../core/controller/self_drive/fetch_all_cities_controller/fetch_all_cities_controller.dart';
+import '../../core/controller/self_drive/fetch_fleet_sd_homepage/fetch_fleet_sd_homepage_controller.dart';
+import '../../core/controller/self_drive/fetch_most_popular_location/fetch_most_popular_location_controller.dart';
+import '../../core/controller/self_drive/fetch_top_rated_rides_controller/fetch_top_rated_rides_controller.dart';
+import '../../core/controller/self_drive/file_upload_controller/file_upload_controller.dart';
+import '../../core/controller/self_drive/google_lat_lng_controller/google_lat_lng_controller.dart';
+import '../../core/controller/self_drive/sd_google_suggestions/sd_google_suggestions_controller.dart';
+import '../../core/controller/self_drive/search_inventory_sd_controller/search_inventory_sd_controller.dart';
+import '../../core/controller/self_drive/self_drive_booking_details/self_drive_booking_details_controller.dart';
+import '../../core/controller/self_drive/self_drive_manage_booking/self_drive_manage_booking_controller.dart';
+import '../../core/controller/self_drive/self_drive_payment_status/self_drive_payment_booking_controller.dart';
+import '../../core/controller/self_drive/self_drive_stripe_payment/sd_create_stripe_payment.dart';
+import '../../core/controller/self_drive/self_drive_upload_file_controller/self_drive_upload_file_controller.dart';
+import '../../core/controller/self_drive/service_hub/service_hub_controller.dart';
 import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
@@ -53,7 +72,7 @@ import '../trip_history_controller/trip_history_controller.dart';
 import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'dart:convert'; // for jsonEncode
-import 'package:google_maps_flutter/google_maps_flutter.dart';// For LatLng
+import 'package:google_maps_flutter/google_maps_flutter.dart'; // For LatLng
 
 // keep this as is
 
@@ -85,7 +104,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Get.put(DestinationLocationController());
   final ProfileController profileController = Get.put(ProfileController());
   final UpcomingBookingController upcomingBookingController =
-  Get.put(UpcomingBookingController());
+      Get.put(UpcomingBookingController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
       context: context,
@@ -131,6 +151,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  void resetAllControllers() {
+    // Delete existing controller instances (if already registered)
+    Get.delete<ServiceHubController>(force: true);
+    Get.delete<FileUploadController>(force: true);
+    Get.delete<SdCreateStripePaymentController>(force: true);
+    Get.delete<SelfDrivePaymentBookingController>(force: true);
+    Get.delete<SelfDriveManageBookingController>(force: true);
+    Get.delete<PdfDownloadController>(force: true);
+    Get.delete<FetchSdBookingDetailsController>(force: true);
+    // Get.delete<SearchInventorySdController>(force: true);
+    Get.delete<SdGoogleSuggestionsController>(force: true);
+    Get.delete<GoogleLatLngController>(force: true);
+    Get.delete<FileUploadValidController>(force: true);
+    Get.delete<FetchTopRatedRidesController>(force: true);
+    Get.delete<FetchMostPopularLocationController>(force: true);
+    Get.delete<FetchAllFleetsController>(force: true);
+    Get.delete<FetchAllCitiesController>(force: true);
+    Get.delete<DateTimeController>(force: true);
+
+    // Recreate fresh instances (reinitialize all)
+    Get.put(FileUploadController());
+    Get.put(SdCreateStripePaymentController());
+    Get.put(SelfDrivePaymentBookingController());
+    Get.put(SelfDriveManageBookingController());
+    Get.put(PdfDownloadController());
+    Get.put(FetchSdBookingDetailsController());
+    Get.put(SearchInventorySdController());
+    Get.put(SdGoogleSuggestionsController());
+    Get.put(GoogleLatLngController());
+    Get.put(FileUploadValidController());
+    Get.put(FetchTopRatedRidesController());
+    Get.put(FetchMostPopularLocationController());
+    Get.put(FetchAllFleetsController());
+    Get.put(FetchAllCitiesController());
   }
 
   @override
@@ -239,7 +295,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         place.postalCode ?? '',
         place.country ?? '',
       ];
-      final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
+      final fullAddress =
+          components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Show address on UI immediately
       setState(() => address = fullAddress);
@@ -261,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // 5. Fire-and-forget details/storage update
       Future.microtask(() async {
         try {
-          await placeSearchController.getLatLngDetails(suggestion.placeId, context);
+          await placeSearchController.getLatLngDetails(
+              suggestion.placeId, context);
 
           StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
           StorageServices.instance.save('sourceTitle', suggestion.primaryText);
@@ -304,7 +362,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() => address = 'Error fetching address');
     }
   }
-
 
   void _showBottomSheet() {
     showModalBottomSheet(
@@ -361,13 +418,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     bool isButtonEnabled = false;
     bool showOtpField = false;
 
-
-
     Future<UserCredential?> signInWithGoogle() async {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
+          serverClientId:
+              '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -379,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+            await googleUser.authentication;
 
         // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
@@ -389,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Sign in to Firebase
         final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+            await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -397,7 +453,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return null;
       }
     }
-
 
     void _handleGoogleLogin(StateSetter setModalState) async {
       setModalState(() => isGoogleLoading = true);
@@ -410,19 +465,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         Navigator.of(context).push(
           Platform.isIOS
               ? CupertinoPageRoute(
-            builder: (_) => UserFillDetails(
-              name: result?.user?.displayName ?? '',
-              email: result?.user?.email ?? '',
-              phone: result?.user?.phoneNumber ?? '',
-            ),
-          )
+                  builder: (_) => UserFillDetails(
+                    name: result?.user?.displayName ?? '',
+                    email: result?.user?.email ?? '',
+                    phone: result?.user?.phoneNumber ?? '',
+                  ),
+                )
               : MaterialPageRoute(
-            builder: (_) => UserFillDetails(
-              name: result?.user?.displayName ?? '',
-              email: result?.user?.email ?? '',
-              phone: result?.user?.phoneNumber ?? '',
-            ),
-          ),
+                  builder: (_) => UserFillDetails(
+                    name: result?.user?.displayName ?? '',
+                    email: result?.user?.email ?? '',
+                    phone: result?.user?.phoneNumber ?? '',
+                  ),
+                ),
         );
         // // ✅ Prefill controllers
         // nameController.text = result.user?.displayName ?? '';
@@ -695,46 +750,90 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  GestureDetector(
-                                    onTap: isGoogleLoading
-                                        ? null
-                                        : () =>
-                                            _handleGoogleLogin(setModelState),
-                                    child: Center(
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            padding: const EdgeInsets.all(1),
-                                            decoration: const BoxDecoration(
-                                                color: Colors.grey,
-                                                shape: BoxShape.circle),
-                                            child: CircleAvatar(
-                                              radius: 20,
-                                              backgroundColor: Colors.white,
-                                              child: isGoogleLoading
-                                                  ? const SizedBox(
-                                                      width: 20,
-                                                      height: 20,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                              strokeWidth: 2),
-                                                    )
-                                                  : Image.asset(
-                                                      'assets/images/google_icon.png',
-                                                      fit: BoxFit.contain,
-                                                      width: 29,
-                                                      height: 29,
-                                                    ),
-                                            ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: isGoogleLoading
+                                            ? null
+                                            : () => _handleGoogleLogin(
+                                                setModelState),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 48,
+                                                height: 48,
+                                                padding:
+                                                    const EdgeInsets.all(1),
+                                                decoration: const BoxDecoration(
+                                                    color: Colors.grey,
+                                                    shape: BoxShape.circle),
+                                                child: CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor: Colors.white,
+                                                  child: isGoogleLoading
+                                                      ? const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2),
+                                                        )
+                                                      : Image.asset(
+                                                          'assets/images/google_icon.png',
+                                                          fit: BoxFit.contain,
+                                                          width: 29,
+                                                          height: 29,
+                                                        ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text("Google",
+                                                  style:
+                                                      TextStyle(fontSize: 13)),
+                                            ],
                                           ),
-                                          const SizedBox(height: 4),
-                                          const Text("Google",
-                                              style: TextStyle(fontSize: 13)),
-                                        ],
+                                        ),
                                       ),
-                                    ),
+                                      SizedBox(
+                                        width: 24,
+                                      ),
+                                      Platform.isIOS
+                                          ? Column(
+                                              children: [
+                                                GestureDetector(
+                                                  onTap: signInWithApple,
+                                                  child: Container(
+                                                    height: 45,
+                                                    width: 45,
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                      color: Colors.black,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Center(
+                                                      child: Image.asset(
+                                                        'assets/images/apple.png',
+                                                        height: 48,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Platform.isIOS
+                                                    ? const SizedBox(height: 4)
+                                                    : SizedBox(),
+                                                Platform.isIOS
+                                                    ? const Text("Apple",
+                                                        style: TextStyle(
+                                                            fontSize: 13))
+                                                    : SizedBox()
+                                              ],
+                                            )
+                                          : SizedBox()
+                                    ],
                                   ),
                                   const SizedBox(height: 20),
                                   GestureDetector(
@@ -745,26 +844,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       children: [
                                         Text.rich(
                                           TextSpan(
-                                            text:
-                                                "By logging in, I understand & agree to Wise Travel India Limited ",
-                                            style: CommonFonts.bodyText3Medium,
-                                            children: []
-                                            // children: [
-                                            //   TextSpan(
-                                            //       text: "Terms & Conditions",
-                                            //       style: CommonFonts
-                                            //           .bodyText3MediumBlue),
-                                            //   TextSpan(text: ", "),
-                                            //   TextSpan(
-                                            //       text: "Privacy Policy",
-                                            //       style: CommonFonts
-                                            //           .bodyText3MediumBlue),
-                                            //   TextSpan(
-                                            //       text: ", and User agreement",
-                                            //       style: CommonFonts
-                                            //           .bodyText3MediumBlue),
-                                            // ],
-                                          ),
+                                              text:
+                                                  "By logging in, I understand & agree to Wise Travel India Limited ",
+                                              style:
+                                                  CommonFonts.bodyText3Medium,
+                                              children: []
+                                              // children: [
+                                              //   TextSpan(
+                                              //       text: "Terms & Conditions",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(text: ", "),
+                                              //   TextSpan(
+                                              //       text: "Privacy Policy",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(
+                                              //       text: ", and User agreement",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              // ],
+                                              ),
                                           textAlign: TextAlign.center,
                                         ),
                                       ],
@@ -787,6 +887,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final userId = credential.userIdentifier;
+      final email = credential.email;
+      final fullName =
+          '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+
+      // Always returned
+      print('User ID: $userId');
+
+      if (email != null) {
+        // First-time login — store data
+        await StorageServices.instance.save('appleUserId', userId ?? '');
+        await StorageServices.instance.save('appleEmail', email ?? '');
+        await StorageServices.instance.save('appleName', fullName ?? '');
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+                  builder: (_) => UserFillDetails(
+                    name: fullName ?? '',
+                    email: email ?? '',
+                    phone: '',
+                  ),
+                )
+              : MaterialPageRoute(
+                  builder: (_) => UserFillDetails(
+                    name: fullName ?? '',
+                    email: email ?? '',
+                    phone: '',
+                  ),
+                ),
+        );
+      } else {
+        // Returning user — load data from local storage
+        String userId =
+            await StorageServices.instance.read('appleUserId') ?? '';
+        String userEmail =
+            await StorageServices.instance.read('appleEmail') ?? '';
+        String userName =
+            await StorageServices.instance.read('appleName') ?? '';
+
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+                  builder: (_) => UserFillDetails(
+                    name: userName,
+                    email: userEmail,
+                    phone: '',
+                  ),
+                )
+              : MaterialPageRoute(
+                  builder: (_) => UserFillDetails(
+                    name: userName,
+                    email: userEmail,
+                    phone: '',
+                  ),
+                ),
+        );
+      }
+
+      // (Optional) Use userId + email for backend auth here
+    } catch (e) {
+      print('❌ Apple Sign-In Error: $e');
+    }
+  }
+
   void _showAuthBottomSheet() {
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController phoneController = TextEditingController();
@@ -799,6 +972,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final RegisterController registerController = Get.put(RegisterController());
     final UpcomingBookingController upcomingBookingController =
         Get.put(UpcomingBookingController());
+    final CurrencyController currencyController = Get.put(CurrencyController());
 
     bool isGoogleLoading = false;
 
@@ -806,7 +980,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         final GoogleSignIn _googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
-          serverClientId: '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
+          serverClientId:
+              '880138699529-in25a6554o0jcp0610fucg4s94k56agt.apps.googleusercontent.com', // Web Client ID
         );
 
         // Start the sign-in flow
@@ -818,7 +993,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Obtain the auth tokens
         final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+            await googleUser.authentication;
 
         // Create a Firebase credential
         final credential = GoogleAuthProvider.credential(
@@ -828,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Sign in to Firebase
         final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+            await FirebaseAuth.instance.signInWithCredential(credential);
         print("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
@@ -847,19 +1022,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Navigator.of(context).push(
         Platform.isIOS
             ? CupertinoPageRoute(
-          builder: (_) => UserFillDetails(
-            name: result?.user?.displayName ?? '',
-            email: result?.user?.email ?? '',
-            phone: result?.user?.phoneNumber ?? '',
-          ),
-        )
+                builder: (_) => UserFillDetails(
+                  name: result?.user?.displayName ?? '',
+                  email: result?.user?.email ?? '',
+                  phone: result?.user?.phoneNumber ?? '',
+                ),
+              )
             : MaterialPageRoute(
-          builder: (_) => UserFillDetails(
-            name: result?.user?.displayName ?? '',
-            email: result?.user?.email ?? '',
-            phone: result?.user?.phoneNumber ?? '',
-          ),
-        ),
+                builder: (_) => UserFillDetails(
+                  name: result?.user?.displayName ?? '',
+                  email: result?.user?.email ?? '',
+                  phone: result?.user?.phoneNumber ?? '',
+                ),
+              ),
       );
 
       // if (result != null) {
@@ -1237,20 +1412,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                 Navigator.of(context).push(
                                                   Platform.isIOS
                                                       ? CupertinoPageRoute(
-                                                    builder: (_) => const UserFillDetails(
-                                                      name: '',
-                                                      email: '',
-                                                      phone: '',
-                                                    ),
-                                                  )
+                                                          builder: (_) =>
+                                                              const UserFillDetails(
+                                                            name: '',
+                                                            email: '',
+                                                            phone: '',
+                                                          ),
+                                                        )
                                                       : MaterialPageRoute(
-                                                    builder: (_) => const UserFillDetails(
-                                                      name: '',
-                                                      email: '',
-                                                      phone: '',
-                                                    ),
-                                                  ),
-                                                );  // open register sheet
+                                                          builder: (_) =>
+                                                              const UserFillDetails(
+                                                            name: '',
+                                                            email: '',
+                                                            phone: '',
+                                                          ),
+                                                        ),
+                                                ); // open register sheet
                                               },
                                               child: Text(
                                                   "Don't have an account? Register"),
@@ -1283,52 +1460,99 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                                       // Google Login
                                       if (!showOtpField)
-                                        GestureDetector(
-                                          onTap: isGoogleLoading
-                                              ? null
-                                              : () => _handleGoogleLogin(
-                                                  setModalState),
-                                          child: Center(
-                                            child: Column(
-                                              children: [
-                                                Container(
-                                                  width: 48,
-                                                  height: 48,
-                                                  padding:
-                                                      const EdgeInsets.all(1),
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                          color: Colors.grey,
-                                                          shape:
-                                                              BoxShape.circle),
-                                                  child: CircleAvatar(
-                                                    radius: 20,
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    child: isGoogleLoading
-                                                        ? const SizedBox(
-                                                            width: 20,
-                                                            height: 20,
-                                                            child:
-                                                                CircularProgressIndicator(
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: isGoogleLoading
+                                                  ? null
+                                                  : () => _handleGoogleLogin(
+                                                      setModalState),
+                                              child: Center(
+                                                child: Column(
+                                                  children: [
+                                                    Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              1),
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                              color:
+                                                                  Colors.grey,
+                                                              shape: BoxShape
+                                                                  .circle),
+                                                      child: CircleAvatar(
+                                                        radius: 20,
+                                                        backgroundColor:
+                                                            Colors.white,
+                                                        child: isGoogleLoading
+                                                            ? const SizedBox(
+                                                                width: 20,
+                                                                height: 20,
+                                                                child: CircularProgressIndicator(
                                                                     strokeWidth:
                                                                         2),
-                                                          )
-                                                        : Image.asset(
-                                                            'assets/images/google_icon.png',
-                                                            fit: BoxFit.contain,
-                                                            width: 29,
-                                                            height: 29,
-                                                          ),
-                                                  ),
+                                                              )
+                                                            : Image.asset(
+                                                                'assets/images/google_icon.png',
+                                                                fit: BoxFit
+                                                                    .contain,
+                                                                width: 29,
+                                                                height: 29,
+                                                              ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    const Text("Google",
+                                                        style: TextStyle(
+                                                            fontSize: 13)),
+                                                  ],
                                                 ),
-                                                const SizedBox(height: 4),
-                                                const Text("Google",
-                                                    style: TextStyle(
-                                                        fontSize: 13)),
-                                              ],
+                                              ),
                                             ),
-                                          ),
+                                            SizedBox(
+                                              width: 24,
+                                            ),
+                                            Platform.isIOS
+                                                ? Column(
+                                                    children: [
+                                                      GestureDetector(
+                                                        onTap: signInWithApple,
+                                                        child: Container(
+                                                          height: 45,
+                                                          width: 45,
+                                                          decoration:
+                                                              const BoxDecoration(
+                                                            color: Colors.black,
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                          child: Center(
+                                                            child: Image.asset(
+                                                              'assets/images/apple.png',
+                                                              height: 48,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Platform.isIOS
+                                                          ? const SizedBox(
+                                                              height: 4)
+                                                          : SizedBox(),
+                                                      Platform.isIOS
+                                                          ? const Text("Apple",
+                                                              style: TextStyle(
+                                                                  fontSize: 13))
+                                                          : SizedBox()
+                                                    ],
+                                                  )
+                                                : SizedBox()
+                                          ],
                                         ),
 
                                       const SizedBox(height: 20),
@@ -1338,28 +1562,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         children: [
                                           Text.rich(
                                             TextSpan(
-                                              text:
-                                                  "By logging in, I understand & agree to Wise Travel India Limited ",
-                                              style:
-                                                  CommonFonts.bodyText3Medium,
-                                              // children: [
-                                              //   TextSpan(
-                                              //       text: "Terms & Conditions",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(text: ", "),
-                                              //   TextSpan(
-                                              //       text: "Privacy Policy",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              //   TextSpan(
-                                              //       text:
-                                              //           ", and User agreement",
-                                              //       style: CommonFonts
-                                              //           .bodyText3MediumBlue),
-                                              // ],
-                                              children: []
-                                            ),
+                                                text:
+                                                    "By logging in, I understand & agree to Wise Travel India Limited ",
+                                                style:
+                                                    CommonFonts.bodyText3Medium,
+                                                // children: [
+                                                //   TextSpan(
+                                                //       text: "Terms & Conditions",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                //   TextSpan(text: ", "),
+                                                //   TextSpan(
+                                                //       text: "Privacy Policy",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                //   TextSpan(
+                                                //       text:
+                                                //           ", and User agreement",
+                                                //       style: CommonFonts
+                                                //           .bodyText3MediumBlue),
+                                                // ],
+                                                children: []),
                                             textAlign: TextAlign.center,
                                           ),
                                         ],
@@ -1390,7 +1613,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onWillPop: () async {
         // Reapply status bar color when navigating back
         _setStatusBarColor();
-        return true;
+        return false;
       },
       child: Scaffold(
         backgroundColor: Color(0xFFE9E9ED),
@@ -1525,91 +1748,107 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ),
                                 Obx(() {
                                   return Row(
-                                  children: [
-                                    // Transform.translate(
-                                    //     offset: Offset(0.0, -4.0),
-                                    //     child: Image.asset(
-                                    //       'assets/images/wallet.png',
-                                    //       height: 31,
-                                    //       width: 28,
-                                    //     )),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    upcomingBookingController.isLoggedIn.value == true ?  InkWell(
-                                      splashColor: Colors.transparent,
-                                      onTap: () async {
-                                        print(
-                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                        if (await StorageServices.instance
-                                            .read('token') ==
-                                            null) {
-                                          _showAuthBottomSheet();
-                                        }
-                                        if (await StorageServices.instance
-                                            .read('token') !=
-                                            null) {
-                                          GoRouter.of(context)
-                                              .push(AppRoutes.profile);
-                                        }
-                                      },
-                                      child: SizedBox(
-                                        width:30,height: 30,
-                                        child: NameInitialHomeCircle(
-                                            name: profileController.profileResponse
-                                                .value?.result?.firstName ??
-                                                ''),
+                                    children: [
+                                      // Transform.translate(
+                                      //     offset: Offset(0.0, -4.0),
+                                      //     child: Image.asset(
+                                      //       'assets/images/wallet.png',
+                                      //       height: 31,
+                                      //       width: 28,
+                                      //     )),
+                                      SizedBox(
+                                        width: 12,
                                       ),
-                                    ) :  InkWell(
-                                      splashColor: Colors.transparent,
-                                      onTap: () async {
-                                        print(
-                                            'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                        if (await StorageServices.instance
-                                            .read('token') ==
-                                            null) {
-                                          _showAuthBottomSheet();
-                                        }
-                                        if (await StorageServices.instance
-                                            .read('token') !=
-                                            null) {
-                                          GoRouter.of(context)
-                                              .push(AppRoutes.profile);
-                                        }
-                                      },
-                                      child:
-                                      Transform.translate(
-                                        offset: Offset(0.0, -4.0),
-                                        child: const CircleAvatar(
-                                          foregroundColor: Colors.transparent,
-                                          backgroundColor: Colors.transparent,
-                                          radius: 14,
-                                          backgroundImage: AssetImage(
-                                            'assets/images/user.png',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
+                                      upcomingBookingController
+                                                  .isLoggedIn.value ==
+                                              true
+                                          ? InkWell(
+                                              splashColor: Colors.transparent,
+                                              onTap: () async {
+                                                print(
+                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') ==
+                                                    null) {
+                                                  _showAuthBottomSheet();
+                                                }
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') !=
+                                                    null) {
+                                                  GoRouter.of(context)
+                                                      .push(AppRoutes.profile);
+                                                }
+                                              },
+                                              child: SizedBox(
+                                                width: 30,
+                                                height: 30,
+                                                child: NameInitialHomeCircle(
+                                                    name: profileController
+                                                            .profileResponse
+                                                            .value
+                                                            ?.result
+                                                            ?.firstName ??
+                                                        ''),
+                                              ),
+                                            )
+                                          : InkWell(
+                                              splashColor: Colors.transparent,
+                                              onTap: () async {
+                                                print(
+                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') ==
+                                                    null) {
+                                                  _showAuthBottomSheet();
+                                                }
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') !=
+                                                    null) {
+                                                  GoRouter.of(context)
+                                                      .push(AppRoutes.profile);
+                                                }
+                                              },
+                                              child: Transform.translate(
+                                                offset: Offset(0.0, -4.0),
+                                                child: const CircleAvatar(
+                                                  foregroundColor:
+                                                      Colors.transparent,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  radius: 14,
+                                                  backgroundImage: AssetImage(
+                                                    'assets/images/user.png',
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                    ],
+                                  );
                                 })
-
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async{
                               Navigator.push(
                                 context,
                                 Platform.isIOS
                                     ? CupertinoPageRoute(
-                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
-                                )
+                                        builder: (context) => const SelectDrop(
+                                            fromInventoryScreen: false),
+                                      )
                                     : MaterialPageRoute(
-                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
-                                ),
-                              );                            },
+                                        builder: (context) => const SelectDrop(
+                                            fromInventoryScreen: false),
+                                      ),
+                              );
+                             await fetchCurrentLocationAndAddress();
+                            },
                             child: Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -1618,17 +1857,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     TextEditingController(text: 'Where to?'),
                                 icon: Icons.search,
                                 prefixText: '',
-                                onTap: (){
+                                onTap: () {
+                                  bookingRideController.prefilledDrop.value = '';
+
                                   Navigator.push(
                                     context,
                                     Platform.isIOS
                                         ? CupertinoPageRoute(
-                                      builder: (context) => const SelectDrop(fromInventoryScreen: false),
-                                    )
+                                            builder: (context) =>
+                                                const SelectDrop(
+                                                    fromInventoryScreen: false),
+                                          )
                                         : MaterialPageRoute(
-                                      builder: (context) => const SelectDrop(fromInventoryScreen: false),
-                                    ),
-                                  );                                },
+                                            builder: (context) =>
+                                                const SelectDrop(
+                                                    fromInventoryScreen: false),
+                                          ),
+                                  );
+                                },
                                 // onTap: () {
                                 //   if (placeSearchController
                                 //       .suggestions.isEmpty) {
@@ -1739,13 +1985,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 0;
-                              if(Platform.isAndroid) {
-                                GoRouter.of(context).push(
-                                    AppRoutes.bookingRide);
-                              }
-                              else {
-                                navigatorKey.currentContext?.push(
-                                    AppRoutes.bookingRide);
+
+                              // Start fetching location asynchronously without waiting
+                              fetchCurrentLocationAndAddress();
+
+                              // Navigate immediately
+                              if (Platform.isAndroid) {
+                                GoRouter.of(context)
+                                    .push(AppRoutes.bookingRide);
+                              } else {
+                                navigatorKey.currentContext
+                                    ?.push(AppRoutes.bookingRide);
                               }
                             },
                             child: Container(
@@ -1763,7 +2013,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Image.asset(
@@ -1771,99 +2022,112 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         fit: BoxFit.contain,
                                       ),
                                     ),
-                                    Text('Airport', style: CommonFonts.blueText1),
+                                    Text('Airport',
+                                        style: CommonFonts.blueText1),
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                      Container(
-                        color: Colors.transparent,
-                        child: SizedBox.expand(
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.topCenter, // 👈 ensures "Popular" centers horizontally
-                            children: [
-                              InkWell(
-                                splashColor: Colors.transparent,
-                                onTap: () {
-                                  bookingRideController.selectedIndex.value = 1;
-                                  if(Platform.isAndroid) {
-                                    GoRouter.of(context).push(
-                                        AppRoutes.bookingRide);
-                                  }
-                                  else {
-                                    navigatorKey.currentContext?.push(
-                                        AppRoutes.bookingRide);
-                                  }                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x1F192653),
-                                        offset: Offset(0, 3),
-                                        blurRadius: 12,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Image.asset(
-                                            'assets/images/outstation.png',
-                                            fit: BoxFit.contain,
+                          Container(
+                            color: Colors.transparent,
+                            child: SizedBox.expand(
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                alignment: Alignment
+                                    .topCenter, // 👈 ensures "Popular" centers horizontally
+                                children: [
+                                  InkWell(
+                                    splashColor: Colors.transparent,
+                                    onTap: () {
+                                      bookingRideController
+                                          .selectedIndex.value = 1;
+                                      fetchCurrentLocationAndAddress();
+                                      // Navigate immediately
+                                      if (Platform.isAndroid) {
+                                        GoRouter.of(context)
+                                            .push(AppRoutes.bookingRide);
+                                      } else {
+                                        navigatorKey.currentContext
+                                            ?.push(AppRoutes.bookingRide);
+                                      }
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x1F192653),
+                                            offset: Offset(0, 3),
+                                            blurRadius: 12,
                                           ),
+                                        ],
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Image.asset(
+                                                'assets/images/outstation.png',
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                            Text('Outstation',
+                                                style: CommonFonts.blueText1),
+                                          ],
                                         ),
-                                        Text('Outstation', style: CommonFonts.blueText1),
-                                      ],
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  Positioned(
+                                    top: -8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                        horizontal: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFFC6CD00),
+                                            Color(0xFF00DC3E)
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        'Popular',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Positioned(
-                                top: -8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 2,
-                                    horizontal: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text(
-                                    'Popular',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
                           InkWell(
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 2;
-                              if(Platform.isAndroid) {
-                                GoRouter.of(context).push(
-                                    AppRoutes.bookingRide);
+                              fetchCurrentLocationAndAddress();
+
+                              // Navigate immediately
+                              if (Platform.isAndroid) {
+                                GoRouter.of(context)
+                                    .push(AppRoutes.bookingRide);
+                              } else {
+                                navigatorKey.currentContext
+                                    ?.push(AppRoutes.bookingRide);
                               }
-                              else {
-                                navigatorKey.currentContext?.push(
-                                    AppRoutes.bookingRide);
-                              }                            },
+                            },
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -1879,7 +2143,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Image.asset(
@@ -1887,7 +2152,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         fit: BoxFit.contain,
                                       ),
                                     ),
-                                    Text('Rental', style: CommonFonts.blueText1),
+                                    Text('Rental',
+                                        style: CommonFonts.blueText1),
                                   ],
                                 ),
                               ),
@@ -1895,8 +2161,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                           InkWell(
                             splashColor: Colors.transparent,
-                            onTap: () {
-                              GoRouter.of(context).push(AppRoutes.selfDriveHome);
+                            onTap: () async {
+                              // Step 1: Update currency logic first
+                              currencyController.setSelfDriveCurrency();
+
+                              // Step 2: Show the transition loader (Chauffeur → Self Drive)
+                              Navigator.of(context).push(
+                                PageRouteBuilder(
+                                  opaque: false,
+                                  pageBuilder: (_, __, ___) =>
+                                      const ModuleTransitionLoader(),
+                                ),
+                              );
+
+                              // Step 3: Wait for animation to complete
+                              await Future.delayed(const Duration(seconds: 2));
+
+                              // Step 4: Close the loader and navigate via GoRouter
+                              if (context.mounted) {
+                                // Close loader overlay
+                                Navigator.of(context).pop();
+
+                                // Use GoRouter for navigation
+                                GoRouter.of(context)
+                                    .push(AppRoutes.selfDriveBottomSheet);
+                                resetAllControllers();
+                              }
                               // Flushbar(
                               //   flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
                               //   margin: const EdgeInsets.all(12),
@@ -1925,7 +2215,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Image.asset(
@@ -1933,7 +2224,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         fit: BoxFit.contain,
                                       ),
                                     ),
-                                    Text('Self Drive', style: CommonFonts.blueText1),
+                                    Text('Self Drive',
+                                        style: CommonFonts.blueText1),
                                   ],
                                 ),
                               ),
@@ -2055,7 +2347,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Padding(
                     padding: EdgeInsets.only(left: 12),
                     child: CustomCarousel()),
-                SizedBox(height: 12,),
+                SizedBox(
+                  height: 12,
+                ),
                 // special offers
                 // SizedBox(
                 //   height: 20,
@@ -2108,8 +2402,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       );
                     }
 
-                    final images = bannerController.homepageImageResponse.value?.result?.bottomBanner?.images;
-                    final baseUrl = bannerController.homepageImageResponse.value?.result?.baseUrl ?? '';
+                    final images = bannerController.homepageImageResponse.value
+                        ?.result?.bottomBanner?.images;
+                    final baseUrl = bannerController
+                            .homepageImageResponse.value?.result?.baseUrl ??
+                        '';
 
                     if (images == null || images.isEmpty) {
                       return const Center(child: Text("No banners available"));
@@ -2135,7 +2432,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               fit: BoxFit.fill,
                               useOldImageOnUrlChange: true,
                               fadeInDuration: const Duration(milliseconds: 300),
-                              fadeOutDuration: const Duration(milliseconds: 200),
+                              fadeOutDuration:
+                                  const Duration(milliseconds: 200),
                               memCacheWidth: 1500, // ✅ sharp banners
                               placeholder: (context, url) => Shimmer.fromColors(
                                 baseColor: Colors.grey.shade300,
@@ -2152,7 +2450,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               errorWidget: (context, url, error) => Container(
                                 color: Colors.grey.shade200,
                                 child: const Center(
-                                  child: Icon(Icons.broken_image, color: Colors.grey),
+                                  child: Icon(Icons.broken_image,
+                                      color: Colors.grey),
                                 ),
                               ),
                             ),
@@ -2174,8 +2473,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
-
-
 
 class CustomCarousel extends StatefulWidget {
   const CustomCarousel({super.key});
@@ -2230,7 +2527,7 @@ class _CustomCarouselState extends State<CustomCarousel>
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(8)),
+                      const BorderRadius.vertical(top: Radius.circular(8)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -2240,7 +2537,7 @@ class _CustomCarouselState extends State<CustomCarousel>
                 ),
                 child: ClipRRect(
                   borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(8)),
+                      const BorderRadius.vertical(top: Radius.circular(8)),
                   child: CachedNetworkImage(
                     imageUrl: item.imgUrl ?? '',
                     fit: BoxFit.fill,
@@ -2268,8 +2565,7 @@ class _CustomCarouselState extends State<CustomCarousel>
 
               // title
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 color: Colors.white,
                 width: MediaQuery.of(context).size.width * 0.56,
                 margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -2310,7 +2606,7 @@ class _CustomCarouselState extends State<CustomCarousel>
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius:
-                  BorderRadius.vertical(bottom: Radius.circular(8)),
+                      BorderRadius.vertical(bottom: Radius.circular(8)),
                 ),
               ),
             ],
@@ -2330,7 +2626,7 @@ class _CustomCarouselState extends State<CustomCarousel>
       ),
       items: List.generate(
         4,
-            (_) => _buildShimmerItem(context),
+        (_) => _buildShimmerItem(context),
       ),
     );
   }
@@ -2379,9 +2675,11 @@ class _CustomCarouselState extends State<CustomCarousel>
             highlightColor: Colors.grey.shade100,
             child: Column(
               children: [
-                Container(height: 10, color: Colors.grey, width: double.infinity),
+                Container(
+                    height: 10, color: Colors.grey, width: double.infinity),
                 const SizedBox(height: 6),
-                Container(height: 10, color: Colors.grey, width: double.infinity),
+                Container(
+                    height: 10, color: Colors.grey, width: double.infinity),
               ],
             ),
           ),
@@ -2403,7 +2701,6 @@ class _CustomCarouselState extends State<CustomCarousel>
   bool get wantKeepAlive => true;
 }
 
-
 class UspCard extends StatefulWidget {
   final dynamic item; // replace with your USP model
   const UspCard({super.key, required this.item});
@@ -2412,8 +2709,7 @@ class UspCard extends StatefulWidget {
   State<UspCard> createState() => _UspCardState();
 }
 
-class _UspCardState extends State<UspCard>
-    with AutomaticKeepAliveClientMixin {
+class _UspCardState extends State<UspCard> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context); // required for keep-alive
@@ -2517,6 +2813,7 @@ class _UspCardState extends State<UspCard>
   @override
   bool get wantKeepAlive => true;
 }
+
 class CustomTabBar extends StatefulWidget {
   const CustomTabBar({super.key});
 
@@ -2947,7 +3244,9 @@ class _RecentTripListState extends State<RecentTripList> {
             return SizedBox(
               height: tripController.topRecentTrips.length != 1 ? 180 : 95,
               child: ListView.builder(
-                itemCount: tripController.topRecentTrips.length >= 2 ? 2 : tripController.topRecentTrips.length,
+                itemCount: tripController.topRecentTrips.length >= 2
+                    ? 2
+                    : tripController.topRecentTrips.length,
                 itemBuilder: (context, index) {
                   final trip = tripController.topRecentTrips[index];
                   final pickup = trip['pickup']['title'];
@@ -2974,19 +3273,26 @@ class _RecentTripListState extends State<RecentTripList> {
                       FocusScope.of(context).unfocus();
                       PageRoute platformPageRoute(Widget child) {
                         if (Platform.isIOS) {
-                          return CupertinoPageRoute(builder: (_) => const SelectDrop(fromInventoryScreen: false));
+                          return CupertinoPageRoute(
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false));
                         } else {
-                          return MaterialPageRoute(builder: (_) => const SelectDrop(fromInventoryScreen: false));
+                          return MaterialPageRoute(
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false));
                         }
                       }
+
                       Navigator.of(context).push(
                         Platform.isIOS
                             ? CupertinoPageRoute(
-                          builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                        )
+                                builder: (_) => const SelectDrop(
+                                    fromInventoryScreen: false),
+                              )
                             : MaterialPageRoute(
-                          builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                        ),
+                                builder: (_) => const SelectDrop(
+                                    fromInventoryScreen: false),
+                              ),
                       );
                       // 🧠 3. Background work (fire-and-forget, non-blocking)
                       Future.microtask(() async {
@@ -3134,18 +3440,21 @@ class _RecentTripListState extends State<RecentTripList> {
                     fetchCurrentLocationAndAddress();
 
                     bookingRideController.prefilledDrop.value = popularTitle;
-                    dropPlaceSearchController.dropPlaceId.value = popularPlaceId;
+                    dropPlaceSearchController.dropPlaceId.value =
+                        popularPlaceId;
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
                     Navigator.of(context).push(
                       Platform.isIOS
                           ? CupertinoPageRoute(
-                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                      )
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false),
+                            )
                           : MaterialPageRoute(
-                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                      ),
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false),
+                            ),
                     );
                     // 🧠 3. Background work (fire-and-forget, non-blocking)
                     Future.microtask(() async {
@@ -3251,22 +3560,26 @@ class _RecentTripListState extends State<RecentTripList> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){
+                  onTap: () {
                     fetchCurrentLocationAndAddress();
 
-                    bookingRideController.prefilledDrop.value = popularTitleOutStation;
-                    dropPlaceSearchController.dropPlaceId.value = popularSubPopularTitle;
+                    bookingRideController.prefilledDrop.value =
+                        popularTitleOutStation;
+                    dropPlaceSearchController.dropPlaceId.value =
+                        popularSubPopularTitle;
 
                     // 🚀 2. Navigate immediately
                     FocusScope.of(context).unfocus();
                     Navigator.of(context).push(
                       Platform.isIOS
                           ? CupertinoPageRoute(
-                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                      )
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false),
+                            )
                           : MaterialPageRoute(
-                        builder: (_) => const SelectDrop(fromInventoryScreen: false),
-                      ),
+                              builder: (_) =>
+                                  const SelectDrop(fromInventoryScreen: false),
+                            ),
                     );
                     // 🧠 3. Background work (fire-and-forget, non-blocking)
                     Future.microtask(() async {
@@ -3474,12 +3787,12 @@ class _BottomCarouselBannerState extends State<BottomCarouselBanner> {
 }
 
 Widget _buildCategoryCard(
-    BuildContext context, {
-      required String label,
-      required String image,
-      required VoidCallback onTap,
-      String? badge,
-    }) {
+  BuildContext context, {
+  required String label,
+  required String image,
+  required VoidCallback onTap,
+  String? badge,
+}) {
   final size = MediaQuery.of(context).size.width / 5; // 🔑 responsive size
 
   return InkWell(

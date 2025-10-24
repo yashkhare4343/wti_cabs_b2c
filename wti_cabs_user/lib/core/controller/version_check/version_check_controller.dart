@@ -45,7 +45,11 @@ class VersionCheckController extends GetxController {
         await updateFcm(context: context);
       }
       print('app compitable : ${isAppCompatible.value}');
-    } finally {
+    }
+    catch(e){
+
+    }
+    finally {
       isLoading.value = false;
     }
   }

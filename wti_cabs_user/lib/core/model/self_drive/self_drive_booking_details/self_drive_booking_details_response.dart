@@ -158,6 +158,7 @@ class Tariff {
   final num? hikePercentage;
   final PickupDrop? pickup;
   final PickupDrop? drop;
+  final int? days;
   final String? tariffType;
   final FareDetails? fareDetails;
   final num? collisionDamageWaiver;
@@ -173,6 +174,7 @@ class Tariff {
     this.hikePercentage,
     this.pickup,
     this.drop,
+    this.days,
     this.tariffType,
     this.fareDetails,
     this.collisionDamageWaiver,
@@ -190,6 +192,7 @@ class Tariff {
       hikePercentage: json['hikePercentage'],
       pickup: json['pickup'] != null ? PickupDrop.fromJson(json['pickup']) : null,
       drop: json['drop'] != null ? PickupDrop.fromJson(json['drop']) : null,
+      days: json['days'],
       tariffType: json['tariff_type'],
       fareDetails: json['fare_Details'] != null
           ? FareDetails.fromJson(json['fare_Details'])
@@ -211,6 +214,7 @@ class Tariff {
     "hikePercentage": hikePercentage,
     "pickup": pickup?.toJson(),
     "drop": drop?.toJson(),
+    "days":days,
     "tariff_type": tariffType,
     "fare_Details": fareDetails?.toJson(),
     "collision_damage_waiver": collisionDamageWaiver,

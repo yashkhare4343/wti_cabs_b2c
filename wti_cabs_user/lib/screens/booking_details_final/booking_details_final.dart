@@ -2413,7 +2413,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
   Widget build(BuildContext context) {
     return Container(
       padding:
-          const EdgeInsets.symmetric(vertical: 8, horizontal: 12), // reduced
+         Platform.isIOS ? const EdgeInsets.only(top: 8, bottom: 24, left: 12, right: 12) : const EdgeInsets.only(top: 8, bottom: 8, left: 12, right: 12), // reduced
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -2428,7 +2428,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
         children: [
           Expanded(
             child: Container(
-              height: 48,
+              height: Platform.isAndroid? 48 : 48,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(6),
@@ -2840,7 +2840,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                             ?.tripTypeDetails
                                             ?.basicTripType ??
                                         '',
-                                    "trip_type": "ONE_WAY",
+                                    "trip_type": cabBookingController
+                                        .indiaData
+                                        .value
+                                        ?.tripType?.tripType,
                                     cabBookingController
                                                 .indiaData
                                                 .value

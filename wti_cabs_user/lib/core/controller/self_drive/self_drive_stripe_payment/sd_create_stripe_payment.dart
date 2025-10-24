@@ -7,6 +7,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/api/self_drive_api_services.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/model/self_drive/create_user/self_drive_user_response.dart';
 import 'package:wti_cabs_user/core/model/self_drive/sd_provision_response/sd_provision_response.dart';
 import 'package:http/http.dart' as http;
@@ -25,6 +26,7 @@ class SdCreateStripePaymentController extends GetxController {
   Rx<SdProvisionResponse?> selfDriveProvisionResponse =
   Rx<SdProvisionResponse?>(null);
   final fetchSdBookingDetailsController = Get.find<FetchSdBookingDetailsController>();
+  final CurrencyController currencyController = Get.put(CurrencyController());
   RxString sourceCity = ''.obs;
    RxDouble sourceLat = 0.0.obs;
    RxDouble sourceLng = 0.0.obs;
@@ -113,8 +115,9 @@ class SdCreateStripePaymentController extends GetxController {
         "extrasSelected": [],
         "paymentType": "FULL",
         "user_documents": [],
-        "currencyRate": 1,
-        "currency": "AED",
+        "currencyRate": currencyController.convertedRate.value ?? 1,
+        "currency": currencyController
+            .selectedCurrency.value.code,
         "selectedTarrif": fetchSdBookingDetailsController.getAllBookingData.value?.result?.tarrifSelected??'',
         "source": {
           "address":
@@ -128,12 +131,12 @@ class SdCreateStripePaymentController extends GetxController {
         },
         "destination": {
           "address":
-          destinationCity.value,
+          fetchSdBookingDetailsController.isSameLocation.value == false ?  destinationCity.value : sourceCity.value,
           "city":
-          destinationCity.value,
+          fetchSdBookingDetailsController.isSameLocation.value == false ?  destinationCity.value : sourceCity.value,
           "latlng": {
-            "lat": destinationLat.value,
-            "lng": destinationLng.value,
+            "lat": fetchSdBookingDetailsController.isSameLocation.value == false ? destinationLat.value : sourceLat.value,
+            "lng": fetchSdBookingDetailsController.isSameLocation.value == false? destinationLng.value : sourceLng.value,
           }
         }
       };

@@ -5,6 +5,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/screens/verify_mobile.dart';
 
 import '../../common_widget/buttons/main_button.dart';
@@ -39,6 +40,7 @@ class _UserFillDetailsState extends State<UserFillDetails> {
   PhoneNumber number = PhoneNumber(isoCode: 'IN');
   final RegisterController registerController = Get.put(RegisterController());
   final ProfileController profileController = Get.put(ProfileController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
 
 
 
@@ -677,8 +679,8 @@ class _UserFillDetailsState extends State<UserFillDetails> {
                             "firstName": _nameController.text.trim(),
                             // "lastName": "Sahni",
                             "contact": _phoneController.text.trim() ?? '000000000',
-                            "contactCode": "91",
-                            "countryName": "India",
+                            "contactCode": contactCode??'',
+                            "countryName": currencyController.country.value,
                             // "address": "String",
                             // "city": "String",
                             "gender": "MALE",

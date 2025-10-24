@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/primary_button.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_picker_tile.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_time_picker.dart';
@@ -27,12 +29,16 @@ import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
 import '../../common_widget/datepicker/drop_date_picker.dart';
 import '../../common_widget/time_picker/drop_time_picker.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
+import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
+import '../../core/controller/source_controller/source_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
+import 'package:location/location.dart' as location;
+import 'package:geocoding/geocoding.dart' as geocoding;
 
 class BookingRide extends StatefulWidget {
   final String? initialTab;
@@ -49,6 +55,15 @@ class _BookingRideState extends State<BookingRide> {
   Get.put(BookingRideController());
   final PlaceSearchController placeSearchController =
   Get.put(PlaceSearchController());
+  final PlaceSearchController searchController =
+  Get.put(PlaceSearchController());
+  final SourceLocationController sourceController =
+  Get.put(SourceLocationController());
+  final DestinationLocationController destinationLocationController =
+  Get.put(DestinationLocationController());
+
+  String address = '';
+
 
   @override
   void initState() {
@@ -59,12 +74,127 @@ class _BookingRideState extends State<BookingRide> {
     // }
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
+    setPickup();
     fetchPackageController.fetchPackages();
     if (placeSearchController.suggestions.isNotEmpty) {
       bookingRideController.prefilled.value =
           placeSearchController.suggestions.first.primaryText ?? '';
     }
     loadSeletedPackage();
+  }
+
+  Future<void> fetchCurrentLocationAndAddress() async {
+    final loc = location.Location();
+
+    // ✅ Ensure service is enabled
+    if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
+
+    // ✅ Ensure permission
+    var permission = await loc.hasPermission();
+    if (permission == location.PermissionStatus.denied) {
+      permission = await loc.requestPermission();
+      if (permission != location.PermissionStatus.granted) return;
+    }
+
+    // ✅ Fetch current location
+    final locData = await loc.getLocation();
+    if (locData.latitude == null || locData.longitude == null) return;
+
+    await _getAddressAndPrefillFromLatLng(
+      LatLng(locData.latitude!, locData.longitude!),
+    );
+  }
+
+  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
+    try {
+      // 1. Reverse geocode to get human-readable address
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
+      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
+
+      if (placemarks.isEmpty) {
+        setState(() => address = 'Address not found');
+        return;
+      }
+
+      final place = placemarks.first;
+      final components = <String>[
+        place.name ?? '',
+        place.street ?? '',
+        place.subLocality ?? '',
+        place.locality ?? '',
+        place.administrativeArea ?? '',
+        place.postalCode ?? '',
+        place.country ?? '',
+      ];
+      final fullAddress =
+      components.where((s) => s.trim().isNotEmpty).join(', ');
+
+      // 2. Show address on UI immediately
+      setState(() => address = fullAddress);
+
+      // 3. Try searching the place (may fail or return empty)
+      await placeSearchController.searchPlaces(fullAddress, context);
+
+      if (placeSearchController.suggestions.isEmpty) {
+        print("No search suggestions found for $fullAddress");
+        return; // stop here – do not prefill controllers/storage
+      }
+
+      final suggestion = placeSearchController.suggestions.first;
+
+      // 4. Update booking controller ONLY if valid suggestion exists
+      bookingRideController.prefilled.value = fullAddress;
+      placeSearchController.placeId.value = suggestion.placeId;
+
+      // 5. Fire-and-forget details/storage update
+      Future.microtask(() async {
+        try {
+          await placeSearchController.getLatLngDetails(
+              suggestion.placeId, context);
+
+          StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+          StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+          StorageServices.instance.save('sourceCity', suggestion.city);
+          StorageServices.instance.save('sourceState', suggestion.state);
+          StorageServices.instance.save('sourceCountry', suggestion.country);
+
+          if (suggestion.types.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTypes',
+              jsonEncode(suggestion.types),
+            );
+          }
+
+          if (suggestion.terms.isNotEmpty) {
+            StorageServices.instance.save(
+              'sourceTerms',
+              jsonEncode(suggestion.terms),
+            );
+          }
+
+          sourceController.setPlace(
+            placeId: suggestion.placeId,
+            title: suggestion.primaryText,
+            city: suggestion.city,
+            state: suggestion.state,
+            country: suggestion.country,
+            types: suggestion.types,
+            terms: suggestion.terms,
+          );
+
+          print('akash country: ${suggestion.country}');
+          print('Current location address saved: $fullAddress');
+        } catch (err) {
+          print('Background save failed: $err');
+        }
+      });
+    } catch (e) {
+      print('Error fetching location/address: $e');
+      setState(() => address = 'Error fetching address');
+    }
   }
 
   void loadSeletedPackage() {
@@ -74,14 +204,25 @@ class _BookingRideState extends State<BookingRide> {
     });
   }
 
+
+  void setPickup() async{
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstTime = prefs.getBool("isFirstTime") ?? true;
+    if(isFirstTime){
+        await fetchCurrentLocationAndAddress();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
     return PopScope(
       canPop: true, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
         GoRouter.of(context).push(AppRoutes.bottomNav);
       },
+
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
@@ -686,7 +827,7 @@ class _OutStationState extends State<OutStation> {
                             builder: (context) => InventoryList(requestData: requestData),
                           ),
                         );
-                        Navigator.of(context).pop();
+                        // Navigator.of(context).pop();
                       } catch (e) {
                         debugPrint('[SearchNow] Error: $e');
                       }
@@ -703,15 +844,23 @@ class _OutStationState extends State<OutStation> {
   }
 
   String? _getPickupErrorText() {
-    final pickupId = placeSearchController.placeId.value;
-    final dropId = dropPlaceSearchController.dropPlaceId.value;
+    final pickupId = placeSearchController.placeId.value.trim();
+    final dropId = dropPlaceSearchController.dropPlaceId.value.trim();
 
-    if (pickupId.isEmpty) return "Please enter pickup location";
-    if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) return "Pickup and Drop cannot be the same";
+    // ✅ Fix: Only show error if both text and placeId are empty
+    if (pickupController.text.trim().isEmpty && pickupId.isEmpty) {
+      return "Please enter pickup location";
+    }
+
+    if (pickupId.isNotEmpty && dropId.isNotEmpty && pickupId == dropId) {
+      return "Pickup and Drop cannot be the same";
+    }
+
     if (placeSearchController.findCntryDateTimeResponse.value?.sourceInput == true ||
         dropPlaceSearchController.dropDateTimeResponse.value?.sourceInput == true) {
       return "We don't offer services from this region";
     }
+
     return null;
   }
 
@@ -1142,10 +1291,11 @@ class _RidesState extends State<Rides> {
                         hintText: 'Enter Pickup Location',
                         controller: ridePickupController,
                         errorText: (() {
-                          final pickupId = placeSearchController.placeId.value;
-                          final dropId = dropPlaceSearchController.dropPlaceId.value;
+                          final pickupId = placeSearchController.placeId.value.trim();
+                          final dropId = dropPlaceSearchController.dropPlaceId.value.trim();
 
-                          if (pickupId.isEmpty) {
+                          // ✅ Fix: only show error if controller text is empty AND placeId is empty
+                          if (ridePickupController.text.trim().isEmpty && pickupId.isEmpty) {
                             return "Please enter pickup location";
                           }
 
@@ -1170,16 +1320,16 @@ class _RidesState extends State<Rides> {
                                 bookingRideController.prefilledDrop.value;
                           });
                           bookingRideController.isInvalidTime.value = false;
-                            Navigator.push(
-                              context,
-                              Platform.isIOS
-                                  ? CupertinoPageRoute(
-                                builder: (context) => const SelectPickup(),
-                              )
-                                  : MaterialPageRoute(
-                                builder: (context) => const SelectPickup(),
-                              ),
-                            );
+                          Navigator.push(
+                            context,
+                            Platform.isIOS
+                                ? CupertinoPageRoute(
+                              builder: (context) => const SelectPickup(),
+                            )
+                                : MaterialPageRoute(
+                              builder: (context) => const SelectPickup(),
+                            ),
+                          );
                         },
                       ),
                       const SizedBox(height: 12),

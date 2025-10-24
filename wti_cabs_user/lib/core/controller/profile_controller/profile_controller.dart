@@ -37,6 +37,8 @@ class ProfileController extends GetxController {
       await StorageServices.instance.save('firstName', profileResponse.value?.result?.firstName ?? '');
       await StorageServices.instance.save('contact', profileResponse.value?.result?.contact.toString() ?? '');
       await StorageServices.instance.save('contactCode', profileResponse.value?.result?.contactCode.toString() ?? '');
+      await StorageServices.instance.save('city', profileResponse.value?.result?.city.toString() ?? '');
+      await StorageServices.instance.save('state', profileResponse.value?.result?.stateName.toString() ?? '');
       await StorageServices.instance.save('emailId', profileResponse.value?.result?.emailID.toString() ?? '');
     } catch (e) {
       print('Error fetching data: $e');
