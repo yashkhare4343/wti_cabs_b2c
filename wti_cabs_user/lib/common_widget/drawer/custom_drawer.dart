@@ -1266,28 +1266,28 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                 GoRouter.of(context).push(AppRoutes.contact);
                               },
                             ),
-                            // if (isLogin) ...[
-                            //   _buildDrawerItem(
-                            //     icon: SvgPicture.asset(
-                            //       'assets/images/logout.svg',
-                            //       height: 24,
-                            //       width: 24,
-                            //       color: Colors.redAccent,
-                            //     ),
-                            //     title: 'Sign Out',
-                            //     onTap: () {
-                            //       showLogoutDialog(context);
-                            //     },
-                            //   ),
-                            //   Platform.isIOS? _buildDrawerItem(
-                            //     icon: const Icon(Icons.delete_forever_outlined,
-                            //         color: Colors.redAccent, size: 24),
-                            //     title: 'Delete Account',
-                            //     onTap: () {
-                            //       showDeleteDialog(context);
-                            //     },
-                            //   ) : SizedBox.shrink(),
-                            // ],
+                            if (isLogin) ...[
+                              _buildDrawerItem(
+                                icon: SvgPicture.asset(
+                                  'assets/images/logout.svg',
+                                  height: 24,
+                                  width: 24,
+                                  color: Colors.redAccent,
+                                ),
+                                title: 'Sign Out',
+                                onTap: () {
+                                  showLogoutDialog(context);
+                                },
+                              ),
+                              // Platform.isIOS? _buildDrawerItem(
+                              //   icon: const Icon(Icons.delete_forever_outlined,
+                              //       color: Colors.redAccent, size: 24),
+                              //   title: 'Delete Account',
+                              //   onTap: () {
+                              //     showDeleteDialog(context);
+                              //   },
+                              // ) : SizedBox.shrink(),
+                            ],
                           ],
                         ),
                       ),
