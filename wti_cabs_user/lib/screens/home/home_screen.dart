@@ -28,10 +28,12 @@ import 'package:wti_cabs_user/core/controller/source_controller/source_controlle
 import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/core/model/home_page_images/home_page_image_response.dart';
+import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 
 import '../../common_widget/buttons/main_button.dart';
 import '../../common_widget/drawer/custom_drawer.dart';
+import '../../common_widget/loader/full_screen_gif/full_screen_gif.dart';
 import '../../common_widget/loader/module_transition/module_transition_loader.dart';
 import '../../common_widget/loader/popup_loader.dart';
 import '../../common_widget/name_initials/name_initial.dart';
@@ -59,6 +61,7 @@ import '../../core/controller/self_drive/self_drive_payment_status/self_drive_pa
 import '../../core/controller/self_drive/self_drive_stripe_payment/sd_create_stripe_payment.dart';
 import '../../core/controller/self_drive/self_drive_upload_file_controller/self_drive_upload_file_controller.dart';
 import '../../core/controller/self_drive/service_hub/service_hub_controller.dart';
+import '../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../core/route_management/app_routes.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
@@ -67,6 +70,7 @@ import '../../main.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
+import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 import 'package:location/location.dart' as location;
@@ -1860,20 +1864,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 onTap: () {
                                   bookingRideController.prefilledDrop.value = '';
 
-                                  Navigator.push(
-                                    context,
-                                    Platform.isIOS
-                                        ? CupertinoPageRoute(
-                                            builder: (context) =>
-                                                const SelectDrop(
-                                                    fromInventoryScreen: false),
-                                          )
-                                        : MaterialPageRoute(
-                                            builder: (context) =>
-                                                const SelectDrop(
-                                                    fromInventoryScreen: false),
-                                          ),
-                                  );
+                                  GoRouter.of(context).go(AppRoutes.chooseDrop);
                                 },
                                 // onTap: () {
                                 //   if (placeSearchController
@@ -3118,6 +3109,7 @@ class _RecentTripListState extends State<RecentTripList> {
       Get.put(PopularDestinationController());
   final DestinationLocationController dropLocationController =
       Get.put(DestinationLocationController());
+  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
 
   String address = '';
   List<Map<String, dynamic>> recentTrips = [];
@@ -3232,6 +3224,176 @@ class _RecentTripListState extends State<RecentTripList> {
     }
   }
 
+  void _handlePlaceSelection(BuildContext context, SuggestionPlacesResponse place) {
+    // Step 1️⃣ — Update Rx values first (Drop API context)
+    bookingRideController.prefilledDrop.value = place.primaryText;
+    dropPlaceSearchController.dropPlaceId.value = place.placeId;
+
+    // FocusScope.of(context).unfocus();
+    // Navigator.of(context).push(
+    //   Platform.isIOS
+    //       ? CupertinoPageRoute(
+    //     builder: (_) => const BookingRide(),
+    //   )
+    //       : MaterialPageRoute(
+    //     builder: (_) => const BookingRide(),
+    //   ),
+    // );
+    // Step 3️⃣ — Run Drop API first, then current location
+    Future.microtask(() async {
+      try {
+        // --- Drop LatLng API ---
+        print('API Call: getLatLngForDrop for placeId: ${place.placeId}');
+        await dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
+
+        // --- Pickup LatLng API ---
+        final pickupPlaceId = placeSearchController.placeId.value;
+        if (pickupPlaceId.isNotEmpty) {
+          print('API Call: getLatLngDetails for pickupPlaceId: $pickupPlaceId');
+          await placeSearchController.getLatLngDetails(pickupPlaceId, context);
+        }
+
+        // --- Record trip ---
+        tripController.recordTrip(
+          bookingRideController.prefilled.value,
+          pickupPlaceId,
+          place.primaryText,
+          place.placeId,
+          context,
+        );
+
+        // --- Storage operations ---
+        StorageServices.instance.save('destinationPlaceId', place.placeId);
+        StorageServices.instance.save('destinationTitle', place.primaryText);
+        if (place.types.isNotEmpty) {
+          StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
+        }
+        if (place.terms.isNotEmpty) {
+          StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+        }
+
+        // --- Update destination controller ---
+        dropLocationController.setPlace(
+          placeId: place.placeId,
+          title: place.primaryText,
+          city: place.city,
+          state: place.state,
+          country: place.country,
+          types: place.types,
+          terms: place.terms,
+        );
+
+        // Step 4️⃣ — Finally fetch current location
+        // await fetchCurrentLocationAndAddress();
+
+      } catch (e, st) {
+        debugPrint('❌ Error in _handlePlaceSelection: $e\n$st');
+      }
+    });
+  }
+
+  Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
+    final now = DateTime.now();
+    final searchDate = now.toIso8601String().split('T').first;
+    final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final offset = now.timeZoneOffset.inMinutes;
+    final BookingRideController bookingRideController =
+    Get.put(BookingRideController());
+    final PlaceSearchController placeSearchController =
+    Get.put(PlaceSearchController());
+    final DropPlaceSearchController dropPlaceSearchController =
+    Get.put(DropPlaceSearchController());
+
+    final keys = [
+      'country', 'userOffset', 'userDateTime', 'userTimeWithOffset',
+      'actualTimeWithOffset', 'actualOffset', 'timeZone', 'sourceTitle',
+      'sourcePlaceId', 'sourceTypes', 'sourceTerms', 'destinationPlaceId',
+      'destinationTitle', 'destinationTypes', 'destinationTerms',
+    ];
+
+    final values = await Future.wait(keys.map(StorageServices.instance.read));
+    final data = Map<String, dynamic>.fromIterables(keys, values);
+
+    return {
+      "timeOffSet": -offset,
+      "countryName": data['country'],
+      "searchDate": searchDate,
+      "searchTime": searchTime,
+      "offset": int.parse(data['userOffset'] ?? '0'),
+      "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
+      "returnDateAndTime": "",
+      "tripCode": "2",
+      "source": {
+        "sourceTitle": data['sourceTitle'],
+        "sourcePlaceId": data['sourcePlaceId'],
+        "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString(),
+        "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString(),
+        "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString(),
+        "sourceType": _parseList<String>(data['sourceTypes']),
+        "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+        "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+        "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
+      },
+      "destination": {
+        "destinationTitle": data['destinationTitle'],
+        "destinationPlaceId": data['destinationPlaceId'],
+        "destinationCity": dropPlaceSearchController.dropLatLng.value?.city.toString(),
+        "destinationState": dropPlaceSearchController.dropLatLng.value?.state.toString(),
+        "destinationCountry": dropPlaceSearchController.dropLatLng.value?.country.toString(),
+        "destinationType": _parseList<String>(data['destinationTypes']),
+        "destinationLat": dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString(),
+        "destinationLng": dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString(),
+        "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
+      },
+      "packageSelected": {"km": "", "hours": ""},
+      "stopsArray": [],
+      "pickUpTime": {
+        "time": data['actualTimeWithOffset'],
+        "offset": data['actualOffset'],
+        "timeZone": data['timeZone']
+      },
+      "dropTime": {},
+      "mindate": {
+        "date": data['userTimeWithOffset'],
+        "time": data['userTimeWithOffset'],
+        "offset": data['userOffset'],
+        "timeZone": data['timeZone']
+      },
+      "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
+    };
+  }
+  List<T> _parseList<T>(dynamic json) {
+    if (json != null && json.isNotEmpty) {
+      return List<T>.from(jsonDecode(json));
+    }
+    return [];
+  }
+
+  void resetDropSelection(BuildContext context) {
+    // 1. Dismiss the FullScreenGifLoader dialog if it's open
+    // 2. Reset controller states
+    bookingRideController.prefilledDrop.value = ''; // Clear prefilled drop value
+    dropPlaceSearchController.dropPlaceId.value = ''; // Clear drop place ID
+    dropPlaceSearchController.dropSuggestions.clear(); // Clear drop suggestions
+
+    // 3. Clear storage data related to destination
+    StorageServices.instance.delete('destinationPlaceId');
+    StorageServices.instance.delete('destinationTitle');
+    StorageServices.instance.delete('destinationCity');
+    StorageServices.instance.delete('destinationState');
+    StorageServices.instance.delete('destinationCountry');
+    StorageServices.instance.delete('destinationTypes');
+    StorageServices.instance.delete('destinationTerms');
+
+    // 4. Optionally reset location-related data
+    // If fetchCurrentLocationAndAddress stores data, reset it (implementation depends on your setup)
+    // Example: Reset any cached location data
+    // locationController.clearLocation(); // Uncomment if you have such a method
+
+    // 5. Prevent any pending navigation
+    // If GoRouter has pending navigation, clear it (optional, depending on your use case)
+    // GoRouter.of(context).clearStack(); // Uncomment if you want to reset the navigation stack
+  }
   @override
   Widget build(BuildContext context) {
     popularDestinationController.fetchPopularDestinations();
@@ -3261,87 +3423,92 @@ class _RecentTripListState extends State<RecentTripList> {
 
                   return InkWell(
                     splashColor: Colors.transparent,
-                    onTap: () {
-                      // 🚀 1. Instant local updates
-                      // 🚀 1. Instant UI updates (no waiting)
-                      fetchCurrentLocationAndAddress();
+                    onTap: () async {
+                      // 🚀 1️⃣ Instant feedback: show loader
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => FullScreenGifLoader(),
+                      );
+                      // GoRouter.of(context).go(AppRoutes.bottomNav);
+                      // resetDropSelection(context);
 
+                      // 🚀 2️⃣ Instant local updates (no await)
+                      fetchCurrentLocationAndAddress();
                       bookingRideController.prefilledDrop.value = dropTitle;
                       dropPlaceSearchController.dropPlaceId.value = dropPlaceId;
 
-                      // 🚀 2. Navigate immediately
-                      FocusScope.of(context).unfocus();
-                      PageRoute platformPageRoute(Widget child) {
-                        if (Platform.isIOS) {
-                          return CupertinoPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false));
-                        } else {
-                          return MaterialPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false));
+                      // 🚀 3️⃣ Background work (non-blocking but awaited for correctness)
+                      try {
+                        await dropPlaceSearchController.searchDropPlaces(dropTitle, context);
+                        if (dropPlaceSearchController.dropSuggestions.isEmpty) {
+                          Navigator.pop(context);
+                          return;
                         }
+
+                        final dropSuggestion = dropPlaceSearchController.dropSuggestions.first;
+
+                        // Fetch LatLng (optional if already available)
+                        await dropPlaceSearchController.getLatLngForDrop(dropPlaceId, context);
+
+                        // Save destination details in Storage
+                        StorageServices.instance.save('destinationPlaceId', dropPlaceId);
+                        StorageServices.instance.save('destinationTitle', dropTitle);
+                        StorageServices.instance.save('destinationCity', dropSuggestion.city);
+                        StorageServices.instance.save('destinationState', dropSuggestion.state);
+                        StorageServices.instance.save('destinationCountry', dropSuggestion.country);
+                        if (dropSuggestion.types.isNotEmpty) {
+                          StorageServices.instance.save('destinationTypes', jsonEncode(dropSuggestion.types));
+                        }
+                        if (dropSuggestion.terms.isNotEmpty) {
+                          StorageServices.instance.save('destinationTerms', jsonEncode(dropSuggestion.terms));
+                        }
+
+                        // Update controller state
+                        dropLocationController.setPlace(
+                          placeId: dropPlaceId,
+                          title: dropTitle,
+                          city: dropSuggestion.city,
+                          state: dropSuggestion.state,
+                          country: dropSuggestion.country,
+                          types: dropSuggestion.types,
+                          terms: dropSuggestion.terms,
+                        );
+
+                        // 🚀 4️⃣ Build request data
+                        final requestData = await _buildRequestData(context);
+
+                        // Close loader before navigation
+                        Navigator.pop(context);
+
+                        // 🚀 5️⃣ Navigate safely with requestData
+                        // GoRouter.of(context).push(
+                        //   AppRoutes.inventoryList,
+                        //   extra: requestData,
+                        // );
+
+
+                        Navigator.of(context).push(
+                          Platform.isIOS
+                              ? CupertinoPageRoute(
+                            builder: (_) =>
+                             InventoryList(
+                              requestData: requestData,
+                              fromRecentSearch: true,
+                            ),
+                          )
+                              :  MaterialPageRoute(
+                            builder: (context) => InventoryList(
+                              requestData: requestData,
+                              fromRecentSearch: true,
+                            ),
+                          ),
+                        );
+
+                      } catch (e) {
+                        Navigator.pop(context);
+                        debugPrint("❌ Error during drop setup: $e");
                       }
-
-                      Navigator.of(context).push(
-                        Platform.isIOS
-                            ? CupertinoPageRoute(
-                                builder: (_) => const SelectDrop(
-                                    fromInventoryScreen: false),
-                              )
-                            : MaterialPageRoute(
-                                builder: (_) => const SelectDrop(
-                                    fromInventoryScreen: false),
-                              ),
-                      );
-                      // 🧠 3. Background work (fire-and-forget, non-blocking)
-                      Future.microtask(() async {
-                        // LatLng for drop (non-blocking)
-                        await dropPlaceSearchController.searchDropPlaces(
-                            dropTitle, context);
-                        await dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceSearchController
-                                .dropSuggestions.first.placeId,
-                            context);
-
-                        if (dropPlaceSearchController
-                            .dropSuggestions.isNotEmpty) {
-                          var dropSuggestions =
-                              dropPlaceSearchController.dropSuggestions.first;
-                          // Storage (fast, no await)
-                          StorageServices.instance.save(
-                              'destinationPlaceId', dropSuggestions.placeId);
-                          StorageServices.instance.save(
-                              'destinationTitle', dropSuggestions.primaryText);
-                          StorageServices.instance
-                              .save('destinationCity', dropSuggestions.city);
-                          StorageServices.instance
-                              .save('destinationState', dropSuggestions.state);
-                          StorageServices.instance.save(
-                              'destinationCountry', dropSuggestions.country);
-
-                          if (dropSuggestions.types.isNotEmpty) {
-                            StorageServices.instance.save('destinationTypes',
-                                jsonEncode(dropSuggestions.types));
-                          }
-
-                          if (dropSuggestions.terms.isNotEmpty) {
-                            StorageServices.instance.save('destinationTerms',
-                                jsonEncode(dropSuggestions.terms));
-                          }
-
-                          // Set in controller
-                          dropLocationController.setPlace(
-                            placeId: dropSuggestions.placeId,
-                            title: dropSuggestions.primaryText,
-                            city: dropSuggestions.city,
-                            state: dropSuggestions.state,
-                            country: dropSuggestions.country,
-                            types: dropSuggestions.types,
-                            terms: dropSuggestions.terms,
-                          );
-                        }
-                      });
                     },
                     child: Container(
                       padding: EdgeInsets.zero,
@@ -3449,7 +3616,7 @@ class _RecentTripListState extends State<RecentTripList> {
                       Platform.isIOS
                           ? CupertinoPageRoute(
                               builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false),
+                                  const SelectDrop(fromInventoryScreen: false,),
                             )
                           : MaterialPageRoute(
                               builder: (_) =>
@@ -3462,8 +3629,7 @@ class _RecentTripListState extends State<RecentTripList> {
                       await dropPlaceSearchController.searchDropPlaces(
                           popularTitle, context);
                       await dropPlaceSearchController.getLatLngForDrop(
-                          dropPlaceSearchController
-                              .dropSuggestions.first.placeId,
+                          popularPlaceId,
                           context);
 
                       if (dropPlaceSearchController
@@ -3472,9 +3638,9 @@ class _RecentTripListState extends State<RecentTripList> {
                             dropPlaceSearchController.dropSuggestions.first;
                         // Storage (fast, no await)
                         StorageServices.instance.save(
-                            'destinationPlaceId', dropSuggestions.placeId);
+                            'destinationPlaceId', popularPlaceId);
                         StorageServices.instance.save(
-                            'destinationTitle', dropSuggestions.primaryText);
+                            'destinationTitle', popularTitle);
                         StorageServices.instance
                             .save('destinationCity', dropSuggestions.city);
                         StorageServices.instance
@@ -3494,8 +3660,8 @@ class _RecentTripListState extends State<RecentTripList> {
 
                         // Set in controller
                         dropLocationController.setPlace(
-                          placeId: dropSuggestions.placeId,
-                          title: dropSuggestions.primaryText,
+                          placeId: popularPlaceId,
+                          title: popularTitle,
                           city: dropSuggestions.city,
                           state: dropSuggestions.state,
                           country: dropSuggestions.country,
@@ -3690,6 +3856,8 @@ class _RecentTripListState extends State<RecentTripList> {
           });
   }
 }
+
+
 
 class BottomCarouselBanner extends StatefulWidget {
   const BottomCarouselBanner({super.key});

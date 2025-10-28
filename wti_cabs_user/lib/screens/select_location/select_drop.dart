@@ -86,86 +86,100 @@ class _SelectDropState extends State<SelectDrop> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.scaffoldBgPrimary1,
-      appBar: AppBar(
-        elevation: 0,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        bookingRideController.selectedIndex.value = 0;
+        final tabName = bookingRideController.currentTabName;
+
+        final route = tabName == 'rental'
+            ? '${AppRoutes.bookingRide}?tab=airport'
+            : '${AppRoutes.bookingRide}?tab=airport';
+
+        GoRouter.of(context).push(AppRoutes.bookingRide);
+
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: AppColors.scaffoldBgPrimary1,
-        iconTheme: IconThemeData(color: AppColors.blue4),
-        title: Text("Choose Drop", style: CommonFonts.appBarText),
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DropGooglePlacesTextField(
-                hintText: "Enter drop location",
-                controller: dropController,
-                onPlaceSelected: (newSuggestion) {
-                  dropController.text = newSuggestion.primaryText;
-                  bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
-                  FocusScope.of(context).unfocus();
-                  Navigator.of(context).pop();
-                },
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: AppColors.scaffoldBgPrimary1,
+          iconTheme: IconThemeData(color: AppColors.blue4),
+          title: Text("Choose Drop", style: CommonFonts.appBarText),
+          centerTitle: false,
+        ),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DropGooglePlacesTextField(
+                  hintText: "Enter drop location",
+                  controller: dropController,
+                  onPlaceSelected: (newSuggestion) {
+                    dropController.text = newSuggestion.primaryText;
+                    bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
+                    FocusScope.of(context).unfocus();
+                    Navigator.of(context).pop();
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.bgGrey1,
-              child: const Row(
-                // mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.history_outlined, size: 18, color: Colors.black),
-                  SizedBox(width: 6),
-                  Text(
-                    'Drop Places Suggestions',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
-                  ),
-                ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.bgGrey1,
+                child: const Row(
+                  // mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.history_outlined, size: 18, color: Colors.black),
+                    SizedBox(width: 6),
+                    Text(
+                      'Drop Places Suggestions',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Obx(() {
-              final suggestions = dropPlaceSearchController.dropSuggestions.value;
-              if (suggestions.isEmpty) return const SizedBox.shrink();
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: suggestions.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.bgGrey2),
-                itemBuilder: (context, index) {
-                  final place = suggestions[index];
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    leading: const Icon(Icons.location_on, size: 20),
-                    title: Text(
-                      place.primaryText.split(',').first.trim(),
-                      style: CommonFonts.bodyText1Black,
-                    ),
-                    subtitle: Text(
-                      place.secondaryText,
-                      style: CommonFonts.bodyText6Black,
-                    ),
-                    onTap: () {
-                      if (_isProcessingTap) return; // Prevent double tap
-                      setState(() => _isProcessingTap = true);
-                      dropController.text = place.primaryText;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _handlePlaceSelection(context, place);
-                        setState(() => _isProcessingTap = false);
-                      });
-                    },
-                  );
-                },
-              );
-            }),
-          ],
+              const SizedBox(height: 8),
+              Obx(() {
+                final suggestions = dropPlaceSearchController.dropSuggestions.value;
+                if (suggestions.isEmpty) return const SizedBox.shrink();
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: suggestions.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.bgGrey2),
+                  itemBuilder: (context, index) {
+                    final place = suggestions[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      leading: const Icon(Icons.location_on, size: 20),
+                      title: Text(
+                        place.primaryText.split(',').first.trim(),
+                        style: CommonFonts.bodyText1Black,
+                      ),
+                      subtitle: Text(
+                        place.secondaryText,
+                        style: CommonFonts.bodyText6Black,
+                      ),
+                      onTap: () {
+                        if (_isProcessingTap) return; // Prevent double tap
+                        setState(() => _isProcessingTap = true);
+                        dropController.text = place.primaryText;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _handlePlaceSelection(context, place);
+                          setState(() => _isProcessingTap = false);
+                        });
+                      },
+                    );
+                  },
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -177,22 +191,18 @@ class _SelectDropState extends State<SelectDrop> {
     dropPlaceSearchController.dropPlaceId.value = place.placeId;
 
     print('fromInventoryPage = ${widget.fromInventoryScreen}');
+    FocusScope.of(context).unfocus();
+
     // Navigation
     if(widget.fromInventoryScreen == false) {
       final tabName = bookingRideController.currentTabName;
       final route = tabName == 'rental'
           ? '${AppRoutes.bookingRide}?tab=rental'
           : '${AppRoutes.bookingRide}?tab=$tabName';
-      GoRouter.of(context).push(
-        route,
-        extra: (context) => Platform.isIOS
-            ? CupertinoPage(child: const BottomNavScreen())
-            : MaterialPage(child: const BottomNavScreen()),
-      );    }
+      GoRouter.of(context).push(AppRoutes.bookingRide);   }
     else{
-      Navigator.of(context).pop();
+      GoRouter.of(context).push(AppRoutes.bookingRide);
     }
-    FocusScope.of(context).unfocus();
 
     // Background tasks
     Future.microtask(() {

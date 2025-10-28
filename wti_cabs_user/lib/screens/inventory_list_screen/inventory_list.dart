@@ -38,15 +38,16 @@ import '../bottom_nav/bottom_nav.dart';
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
   final bool? fromFinalBookingPage;
+  final bool? fromRecentSearch;
 
-  const InventoryList({super.key, required this.requestData, this.fromFinalBookingPage});
+  const InventoryList({super.key, required this.requestData, this.fromFinalBookingPage, this.fromRecentSearch});
 
   @override
   State<InventoryList> createState() => _InventoryListState();
 }
 
 class _InventoryListState extends State<InventoryList> {
-  final SearchCabInventoryController searchCabInventoryController = Get.find();
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
   final TripController tripController = Get.put(TripController());
   final FetchPackageController fetchPackageController =
       Get.put(FetchPackageController());
@@ -175,7 +176,7 @@ class _InventoryListState extends State<InventoryList> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return PopScope(
-        canPop: true,
+        canPop: false,
         onPopInvoked: (didPop) {
           bookingRideController.selectedIndex.value = 0;
           final tabName = bookingRideController.currentTabName;
@@ -183,11 +184,18 @@ class _InventoryListState extends State<InventoryList> {
           final route = tabName == 'rental'
               ? '${AppRoutes.bookingRide}?tab=airport'
               : '${AppRoutes.bookingRide}?tab=airport';
-          GoRouter.of(context).push(
-              route,
-              extra: (context) => Platform.isIOS
-              ? CupertinoPage(child: const BottomNavScreen())
-              : MaterialPage(child: const BottomNavScreen()));
+
+          if(widget.fromRecentSearch == true){
+            GoRouter.of(context).push(
+                route,
+                extra: (context) => Platform.isIOS
+                    ? CupertinoPage(child: const BottomNavScreen())
+                    : MaterialPage(child: const BottomNavScreen()));
+          }
+          else{
+            GoRouter.of(context).push(AppRoutes.bookingRide);
+          }
+
         },
         child: Scaffold(
           backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -255,11 +263,13 @@ class _InventoryListState extends State<InventoryList> {
         final route = tabName == 'rental'
             ? '${AppRoutes.bookingRide}?tab=airport'
             : '${AppRoutes.bookingRide}?tab=airport';
-        GoRouter.of(context).push(
-            route,
-            extra: (context) => Platform.isIOS
-                ? CupertinoPage(child: const BottomNavScreen())
-                : MaterialPage(child: const BottomNavScreen()));
+
+        if(widget.fromRecentSearch == false){
+          GoRouter.of(context).go(AppRoutes.bookingRide);
+        }
+        else if(widget.fromRecentSearch == true){
+          GoRouter.of(context).go(AppRoutes.bottomNav);
+        }
 
       },
       child: Scaffold(
@@ -1045,6 +1055,9 @@ class _InventoryListState extends State<InventoryList> {
 }
 
 class BookingTopBar extends StatefulWidget {
+  final bool? fromRecentSearch;
+
+  const BookingTopBar({super.key, this.fromRecentSearch});
   @override
   State<BookingTopBar> createState() => _BookingTopBarState();
 }
@@ -1160,12 +1173,17 @@ class _BookingTopBarState extends State<BookingTopBar> {
             final route = tabName == 'rental'
                 ? '${AppRoutes.bookingRide}?tab=airport'
                 : '${AppRoutes.bookingRide}?tab=airport';
-            GoRouter.of(context).push(
-                route,
-                extra: (context) => Platform.isIOS
-                    ? CupertinoPage(child: const BottomNavScreen())
-                    : MaterialPage(child: const BottomNavScreen()));
-            GoRouter.of(context).pop();
+
+            if(widget.fromRecentSearch == true){
+              GoRouter.of(context).push(
+                  route,
+                  extra: (context) => Platform.isIOS
+                      ? CupertinoPage(child: const BottomNavScreen())
+                      : MaterialPage(child: const BottomNavScreen()));
+            }
+            else{
+              GoRouter.of(context).push(AppRoutes.bookingRide);
+            }
           },
           child: Container(
             padding: const EdgeInsets.all(5),

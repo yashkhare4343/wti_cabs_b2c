@@ -17,7 +17,7 @@ class SearchInventorySdController extends GetxController {
   Rx<TopRatedRidesResponse?> topRatedRidesResponse =
       Rx<TopRatedRidesResponse?>(null);
   final FetchAllCitiesController fetchAllCitiesController =
-      Get.find<FetchAllCitiesController>();
+      Get.put(FetchAllCitiesController());
   RxBool isLoading = false.obs;
 
   RxString city = 'Dubai'.obs;
