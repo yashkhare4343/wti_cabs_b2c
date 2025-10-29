@@ -1838,7 +1838,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
-                            onTap: () async{
+                            onTap: () async {
                               Navigator.push(
                                 context,
                                 Platform.isIOS
@@ -1851,7 +1851,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             fromInventoryScreen: false),
                                       ),
                               );
-                             await fetchCurrentLocationAndAddress();
+                              await fetchCurrentLocationAndAddress();
                             },
                             child: Padding(
                               padding:
@@ -1862,7 +1862,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 icon: Icons.search,
                                 prefixText: '',
                                 onTap: () {
-                                  bookingRideController.prefilledDrop.value = '';
+                                  bookingRideController.prefilledDrop.value =
+                                      '';
 
                                   GoRouter.of(context).go(AppRoutes.chooseDrop);
                                 },
@@ -3109,7 +3110,8 @@ class _RecentTripListState extends State<RecentTripList> {
       Get.put(PopularDestinationController());
   final DestinationLocationController dropLocationController =
       Get.put(DestinationLocationController());
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
 
   String address = '';
   List<Map<String, dynamic>> recentTrips = [];
@@ -3224,7 +3226,8 @@ class _RecentTripListState extends State<RecentTripList> {
     }
   }
 
-  void _handlePlaceSelection(BuildContext context, SuggestionPlacesResponse place) {
+  void _handlePlaceSelection(
+      BuildContext context, SuggestionPlacesResponse place) {
     // Step 1️⃣ — Update Rx values first (Drop API context)
     bookingRideController.prefilledDrop.value = place.primaryText;
     dropPlaceSearchController.dropPlaceId.value = place.placeId;
@@ -3244,7 +3247,8 @@ class _RecentTripListState extends State<RecentTripList> {
       try {
         // --- Drop LatLng API ---
         print('API Call: getLatLngForDrop for placeId: ${place.placeId}');
-        await dropPlaceSearchController.getLatLngForDrop(place.placeId, context);
+        await dropPlaceSearchController.getLatLngForDrop(
+            place.placeId, context);
 
         // --- Pickup LatLng API ---
         final pickupPlaceId = placeSearchController.placeId.value;
@@ -3266,10 +3270,12 @@ class _RecentTripListState extends State<RecentTripList> {
         StorageServices.instance.save('destinationPlaceId', place.placeId);
         StorageServices.instance.save('destinationTitle', place.primaryText);
         if (place.types.isNotEmpty) {
-          StorageServices.instance.save('destinationTypes', jsonEncode(place.types));
+          StorageServices.instance
+              .save('destinationTypes', jsonEncode(place.types));
         }
         if (place.terms.isNotEmpty) {
-          StorageServices.instance.save('destinationTerms', jsonEncode(place.terms));
+          StorageServices.instance
+              .save('destinationTerms', jsonEncode(place.terms));
         }
 
         // --- Update destination controller ---
@@ -3285,7 +3291,6 @@ class _RecentTripListState extends State<RecentTripList> {
 
         // Step 4️⃣ — Finally fetch current location
         // await fetchCurrentLocationAndAddress();
-
       } catch (e, st) {
         debugPrint('❌ Error in _handlePlaceSelection: $e\n$st');
       }
@@ -3295,20 +3300,32 @@ class _RecentTripListState extends State<RecentTripList> {
   Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
     final now = DateTime.now();
     final searchDate = now.toIso8601String().split('T').first;
-    final searchTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final searchTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final offset = now.timeZoneOffset.inMinutes;
     final BookingRideController bookingRideController =
-    Get.put(BookingRideController());
+        Get.put(BookingRideController());
     final PlaceSearchController placeSearchController =
-    Get.put(PlaceSearchController());
+        Get.put(PlaceSearchController());
     final DropPlaceSearchController dropPlaceSearchController =
-    Get.put(DropPlaceSearchController());
+        Get.put(DropPlaceSearchController());
 
     final keys = [
-      'country', 'userOffset', 'userDateTime', 'userTimeWithOffset',
-      'actualTimeWithOffset', 'actualOffset', 'timeZone', 'sourceTitle',
-      'sourcePlaceId', 'sourceTypes', 'sourceTerms', 'destinationPlaceId',
-      'destinationTitle', 'destinationTypes', 'destinationTerms',
+      'country',
+      'userOffset',
+      'userDateTime',
+      'userTimeWithOffset',
+      'actualTimeWithOffset',
+      'actualOffset',
+      'timeZone',
+      'sourceTitle',
+      'sourcePlaceId',
+      'sourceTypes',
+      'sourceTerms',
+      'destinationPlaceId',
+      'destinationTitle',
+      'destinationTypes',
+      'destinationTerms',
     ];
 
     final values = await Future.wait(keys.map(StorageServices.instance.read));
@@ -3326,23 +3343,33 @@ class _RecentTripListState extends State<RecentTripList> {
       "source": {
         "sourceTitle": data['sourceTitle'],
         "sourcePlaceId": data['sourcePlaceId'],
-        "sourceCity": placeSearchController.getPlacesLatLng.value?.city.toString(),
-        "sourceState": placeSearchController.getPlacesLatLng.value?.state.toString(),
-        "sourceCountry": placeSearchController.getPlacesLatLng.value?.country.toString(),
+        "sourceCity":
+            placeSearchController.getPlacesLatLng.value?.city.toString(),
+        "sourceState":
+            placeSearchController.getPlacesLatLng.value?.state.toString(),
+        "sourceCountry":
+            placeSearchController.getPlacesLatLng.value?.country.toString(),
         "sourceType": _parseList<String>(data['sourceTypes']),
-        "sourceLat": placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
-        "sourceLng": placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+        "sourceLat":
+            placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
+        "sourceLng":
+            placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
         "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
       },
       "destination": {
         "destinationTitle": data['destinationTitle'],
         "destinationPlaceId": data['destinationPlaceId'],
-        "destinationCity": dropPlaceSearchController.dropLatLng.value?.city.toString(),
-        "destinationState": dropPlaceSearchController.dropLatLng.value?.state.toString(),
-        "destinationCountry": dropPlaceSearchController.dropLatLng.value?.country.toString(),
+        "destinationCity":
+            dropPlaceSearchController.dropLatLng.value?.city.toString(),
+        "destinationState":
+            dropPlaceSearchController.dropLatLng.value?.state.toString(),
+        "destinationCountry":
+            dropPlaceSearchController.dropLatLng.value?.country.toString(),
         "destinationType": _parseList<String>(data['destinationTypes']),
-        "destinationLat": dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString(),
-        "destinationLng": dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString(),
+        "destinationLat":
+            dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString(),
+        "destinationLng":
+            dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString(),
         "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
       },
       "packageSelected": {"km": "", "hours": ""},
@@ -3362,6 +3389,7 @@ class _RecentTripListState extends State<RecentTripList> {
       "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
     };
   }
+
   List<T> _parseList<T>(dynamic json) {
     if (json != null && json.isNotEmpty) {
       return List<T>.from(jsonDecode(json));
@@ -3372,7 +3400,8 @@ class _RecentTripListState extends State<RecentTripList> {
   void resetDropSelection(BuildContext context) {
     // 1. Dismiss the FullScreenGifLoader dialog if it's open
     // 2. Reset controller states
-    bookingRideController.prefilledDrop.value = ''; // Clear prefilled drop value
+    bookingRideController.prefilledDrop.value =
+        ''; // Clear prefilled drop value
     dropPlaceSearchController.dropPlaceId.value = ''; // Clear drop place ID
     dropPlaceSearchController.dropSuggestions.clear(); // Clear drop suggestions
 
@@ -3394,6 +3423,7 @@ class _RecentTripListState extends State<RecentTripList> {
     // If GoRouter has pending navigation, clear it (optional, depending on your use case)
     // GoRouter.of(context).clearStack(); // Uncomment if you want to reset the navigation stack
   }
+
   @override
   Widget build(BuildContext context) {
     popularDestinationController.fetchPopularDestinations();
@@ -3440,28 +3470,38 @@ class _RecentTripListState extends State<RecentTripList> {
 
                       // 🚀 3️⃣ Background work (non-blocking but awaited for correctness)
                       try {
-                        await dropPlaceSearchController.searchDropPlaces(dropTitle, context);
+                        await dropPlaceSearchController.searchDropPlaces(
+                            dropTitle, context);
                         if (dropPlaceSearchController.dropSuggestions.isEmpty) {
                           Navigator.pop(context);
                           return;
                         }
 
-                        final dropSuggestion = dropPlaceSearchController.dropSuggestions.first;
+                        final dropSuggestion =
+                            dropPlaceSearchController.dropSuggestions.first;
 
                         // Fetch LatLng (optional if already available)
-                        await dropPlaceSearchController.getLatLngForDrop(dropPlaceId, context);
+                        await dropPlaceSearchController.getLatLngForDrop(
+                            dropPlaceId, context);
 
                         // Save destination details in Storage
-                        StorageServices.instance.save('destinationPlaceId', dropPlaceId);
-                        StorageServices.instance.save('destinationTitle', dropTitle);
-                        StorageServices.instance.save('destinationCity', dropSuggestion.city);
-                        StorageServices.instance.save('destinationState', dropSuggestion.state);
-                        StorageServices.instance.save('destinationCountry', dropSuggestion.country);
+                        StorageServices.instance
+                            .save('destinationPlaceId', dropPlaceId);
+                        StorageServices.instance
+                            .save('destinationTitle', dropTitle);
+                        StorageServices.instance
+                            .save('destinationCity', dropSuggestion.city);
+                        StorageServices.instance
+                            .save('destinationState', dropSuggestion.state);
+                        StorageServices.instance
+                            .save('destinationCountry', dropSuggestion.country);
                         if (dropSuggestion.types.isNotEmpty) {
-                          StorageServices.instance.save('destinationTypes', jsonEncode(dropSuggestion.types));
+                          StorageServices.instance.save('destinationTypes',
+                              jsonEncode(dropSuggestion.types));
                         }
                         if (dropSuggestion.terms.isNotEmpty) {
-                          StorageServices.instance.save('destinationTerms', jsonEncode(dropSuggestion.terms));
+                          StorageServices.instance.save('destinationTerms',
+                              jsonEncode(dropSuggestion.terms));
                         }
 
                         // Update controller state
@@ -3487,24 +3527,21 @@ class _RecentTripListState extends State<RecentTripList> {
                         //   extra: requestData,
                         // );
 
-
                         Navigator.of(context).push(
                           Platform.isIOS
                               ? CupertinoPageRoute(
-                            builder: (_) =>
-                             InventoryList(
-                              requestData: requestData,
-                              fromRecentSearch: true,
-                            ),
-                          )
-                              :  MaterialPageRoute(
-                            builder: (context) => InventoryList(
-                              requestData: requestData,
-                              fromRecentSearch: true,
-                            ),
-                          ),
+                                  builder: (_) => InventoryList(
+                                    requestData: requestData,
+                                    fromRecentSearch: true,
+                                  ),
+                                )
+                              : MaterialPageRoute(
+                                  builder: (context) => InventoryList(
+                                    requestData: requestData,
+                                    fromRecentSearch: true,
+                                  ),
+                                ),
                         );
-
                       } catch (e) {
                         Navigator.pop(context);
                         debugPrint("❌ Error during drop setup: $e");
@@ -3601,75 +3638,99 @@ class _RecentTripListState extends State<RecentTripList> {
               children: [
                 InkWell(
                   splashColor: Colors.transparent,
-                  onTap: () {
-                    // 🚀 1. Instant local updates
-                    // 🚀 1. Instant UI updates (no waiting)
-                    fetchCurrentLocationAndAddress();
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => FullScreenGifLoader(),
+                    );
+                    // GoRouter.of(context).go(AppRoutes.bottomNav);
+                    // resetDropSelection(context);
 
+                    // 🚀 2️⃣ Instant local updates (no await)
+                    fetchCurrentLocationAndAddress();
                     bookingRideController.prefilledDrop.value = popularTitle;
                     dropPlaceSearchController.dropPlaceId.value =
                         popularPlaceId;
 
-                    // 🚀 2. Navigate immediately
-                    FocusScope.of(context).unfocus();
-                    Navigator.of(context).push(
-                      Platform.isIOS
-                          ? CupertinoPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false,),
-                            )
-                          : MaterialPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false),
-                            ),
-                    );
-                    // 🧠 3. Background work (fire-and-forget, non-blocking)
-                    Future.microtask(() async {
-                      // LatLng for drop (non-blocking)
+                    // 🚀 3️⃣ Background work (non-blocking but awaited for correctness)
+                    try {
                       await dropPlaceSearchController.searchDropPlaces(
                           popularTitle, context);
-                      await dropPlaceSearchController.getLatLngForDrop(
-                          popularPlaceId,
-                          context);
-
-                      if (dropPlaceSearchController
-                          .dropSuggestions.isNotEmpty) {
-                        var dropSuggestions =
-                            dropPlaceSearchController.dropSuggestions.first;
-                        // Storage (fast, no await)
-                        StorageServices.instance.save(
-                            'destinationPlaceId', popularPlaceId);
-                        StorageServices.instance.save(
-                            'destinationTitle', popularTitle);
-                        StorageServices.instance
-                            .save('destinationCity', dropSuggestions.city);
-                        StorageServices.instance
-                            .save('destinationState', dropSuggestions.state);
-                        StorageServices.instance.save(
-                            'destinationCountry', dropSuggestions.country);
-
-                        if (dropSuggestions.types.isNotEmpty) {
-                          StorageServices.instance.save('destinationTypes',
-                              jsonEncode(dropSuggestions.types));
-                        }
-
-                        if (dropSuggestions.terms.isNotEmpty) {
-                          StorageServices.instance.save('destinationTerms',
-                              jsonEncode(dropSuggestions.terms));
-                        }
-
-                        // Set in controller
-                        dropLocationController.setPlace(
-                          placeId: popularPlaceId,
-                          title: popularTitle,
-                          city: dropSuggestions.city,
-                          state: dropSuggestions.state,
-                          country: dropSuggestions.country,
-                          types: dropSuggestions.types,
-                          terms: dropSuggestions.terms,
-                        );
+                      if (dropPlaceSearchController.dropSuggestions.isEmpty) {
+                        Navigator.pop(context);
+                        return;
                       }
-                    });
+
+                      final dropSuggestion =
+                          dropPlaceSearchController.dropSuggestions.first;
+
+                      // Fetch LatLng (optional if already available)
+                      await dropPlaceSearchController.getLatLngForDrop(
+                          popularPlaceId, context);
+
+                      // Save destination details in Storage
+                      StorageServices.instance
+                          .save('destinationPlaceId', popularPlaceId);
+                      StorageServices.instance
+                          .save('destinationTitle', popularTitle);
+                      StorageServices.instance
+                          .save('destinationCity', dropSuggestion.city);
+                      StorageServices.instance
+                          .save('destinationState', dropSuggestion.state);
+                      StorageServices.instance
+                          .save('destinationCountry', dropSuggestion.country);
+                      if (dropSuggestion.types.isNotEmpty) {
+                        StorageServices.instance.save('destinationTypes',
+                            jsonEncode(dropSuggestion.types));
+                      }
+                      if (dropSuggestion.terms.isNotEmpty) {
+                        StorageServices.instance.save('destinationTerms',
+                            jsonEncode(dropSuggestion.terms));
+                      }
+
+                      // Update controller state
+                      dropLocationController.setPlace(
+                        placeId: popularPlaceId,
+                        title: popularTitle,
+                        city: dropSuggestion.city,
+                        state: dropSuggestion.state,
+                        country: dropSuggestion.country,
+                        types: dropSuggestion.types,
+                        terms: dropSuggestion.terms,
+                      );
+
+                      // 🚀 4️⃣ Build request data
+                      final requestData = await _buildRequestData(context);
+
+                      // Close loader before navigation
+                      Navigator.pop(context);
+
+                      // 🚀 5️⃣ Navigate safely with requestData
+                      // GoRouter.of(context).push(
+                      //   AppRoutes.inventoryList,
+                      //   extra: requestData,
+                      // );
+
+                      Navigator.of(context).push(
+                        Platform.isIOS
+                            ? CupertinoPageRoute(
+                                builder: (_) => InventoryList(
+                                  requestData: requestData,
+                                  fromRecentSearch: true,
+                                ),
+                              )
+                            : MaterialPageRoute(
+                                builder: (context) => InventoryList(
+                                  requestData: requestData,
+                                  fromRecentSearch: true,
+                                ),
+                              ),
+                      );
+                    } catch (e) {
+                      Navigator.pop(context);
+                      debugPrint("❌ Error during drop setup: $e");
+                    }
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -3726,75 +3787,99 @@ class _RecentTripListState extends State<RecentTripList> {
                   ),
                 ),
                 InkWell(
-                  onTap: () {
-                    fetchCurrentLocationAndAddress();
-
-                    bookingRideController.prefilledDrop.value =
-                        popularTitleOutStation;
-                    dropPlaceSearchController.dropPlaceId.value =
-                        popularSubPopularTitle;
-
-                    // 🚀 2. Navigate immediately
-                    FocusScope.of(context).unfocus();
-                    Navigator.of(context).push(
-                      Platform.isIOS
-                          ? CupertinoPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false),
-                            )
-                          : MaterialPageRoute(
-                              builder: (_) =>
-                                  const SelectDrop(fromInventoryScreen: false),
-                            ),
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => FullScreenGifLoader(),
                     );
-                    // 🧠 3. Background work (fire-and-forget, non-blocking)
-                    Future.microtask(() async {
-                      // LatLng for drop (non-blocking)
+                    // GoRouter.of(context).go(AppRoutes.bottomNav);
+                    // resetDropSelection(context);
+
+                    // 🚀 2️⃣ Instant local updates (no await)
+                    fetchCurrentLocationAndAddress();
+                    bookingRideController.prefilledDrop.value = popularTitleOutStation;
+                    dropPlaceSearchController.dropPlaceId.value =
+                        popularplaceIDOutStation;
+
+                    // 🚀 3️⃣ Background work (non-blocking but awaited for correctness)
+                    try {
                       await dropPlaceSearchController.searchDropPlaces(
                           popularTitleOutStation, context);
-                      await dropPlaceSearchController.getLatLngForDrop(
-                          dropPlaceSearchController
-                              .dropSuggestions.first.placeId,
-                          context);
-
-                      if (dropPlaceSearchController
-                          .dropSuggestions.isNotEmpty) {
-                        var dropSuggestions =
-                            dropPlaceSearchController.dropSuggestions.first;
-                        // Storage (fast, no await)
-                        StorageServices.instance.save(
-                            'destinationPlaceId', dropSuggestions.placeId);
-                        StorageServices.instance.save(
-                            'destinationTitle', dropSuggestions.primaryText);
-                        StorageServices.instance
-                            .save('destinationCity', dropSuggestions.city);
-                        StorageServices.instance
-                            .save('destinationState', dropSuggestions.state);
-                        StorageServices.instance.save(
-                            'destinationCountry', dropSuggestions.country);
-
-                        if (dropSuggestions.types.isNotEmpty) {
-                          StorageServices.instance.save('destinationTypes',
-                              jsonEncode(dropSuggestions.types));
-                        }
-
-                        if (dropSuggestions.terms.isNotEmpty) {
-                          StorageServices.instance.save('destinationTerms',
-                              jsonEncode(dropSuggestions.terms));
-                        }
-
-                        // Set in controller
-                        dropLocationController.setPlace(
-                          placeId: dropSuggestions.placeId,
-                          title: dropSuggestions.primaryText,
-                          city: dropSuggestions.city,
-                          state: dropSuggestions.state,
-                          country: dropSuggestions.country,
-                          types: dropSuggestions.types,
-                          terms: dropSuggestions.terms,
-                        );
+                      if (dropPlaceSearchController.dropSuggestions.isEmpty) {
+                        Navigator.pop(context);
+                        return;
                       }
-                    });
+
+                      final dropSuggestion =
+                          dropPlaceSearchController.dropSuggestions.first;
+
+                      // Fetch LatLng (optional if already available)
+                      await dropPlaceSearchController.getLatLngForDrop(
+                          popularplaceIDOutStation, context);
+
+                      // Save destination details in Storage
+                      StorageServices.instance
+                          .save('destinationPlaceId', popularplaceIDOutStation);
+                      StorageServices.instance
+                          .save('destinationTitle', popularTitleOutStation);
+                      StorageServices.instance
+                          .save('destinationCity', dropSuggestion.city);
+                      StorageServices.instance
+                          .save('destinationState', dropSuggestion.state);
+                      StorageServices.instance
+                          .save('destinationCountry', dropSuggestion.country);
+                      if (dropSuggestion.types.isNotEmpty) {
+                        StorageServices.instance.save('destinationTypes',
+                            jsonEncode(dropSuggestion.types));
+                      }
+                      if (dropSuggestion.terms.isNotEmpty) {
+                        StorageServices.instance.save('destinationTerms',
+                            jsonEncode(dropSuggestion.terms));
+                      }
+
+                      // Update controller state
+                      dropLocationController.setPlace(
+                        placeId: popularplaceIDOutStation,
+                        title: popularTitleOutStation,
+                        city: dropSuggestion.city,
+                        state: dropSuggestion.state,
+                        country: dropSuggestion.country,
+                        types: dropSuggestion.types,
+                        terms: dropSuggestion.terms,
+                      );
+
+                      // 🚀 4️⃣ Build request data
+                      final requestData = await _buildRequestData(context);
+
+                      // Close loader before navigation
+                      Navigator.pop(context);
+
+                      // 🚀 5️⃣ Navigate safely with requestData
+                      // GoRouter.of(context).push(
+                      //   AppRoutes.inventoryList,
+                      //   extra: requestData,
+                      // );
+
+                      Navigator.of(context).push(
+                        Platform.isIOS
+                            ? CupertinoPageRoute(
+                                builder: (_) => InventoryList(
+                                  requestData: requestData,
+                                  fromRecentSearch: true,
+                                ),
+                              )
+                            : MaterialPageRoute(
+                                builder: (context) => InventoryList(
+                                  requestData: requestData,
+                                  fromRecentSearch: true,
+                                ),
+                              ),
+                      );
+                    } catch (e) {
+                      Navigator.pop(context);
+                      debugPrint("❌ Error during drop setup: $e");
+                    }
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -3856,8 +3941,6 @@ class _RecentTripListState extends State<RecentTripList> {
           });
   }
 }
-
-
 
 class BottomCarouselBanner extends StatefulWidget {
   const BottomCarouselBanner({super.key});

@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wti_cabs_user/core/controller/fetch_country/fetch_country_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
 class Walkthrough extends StatefulWidget {
@@ -12,6 +15,7 @@ class Walkthrough extends StatefulWidget {
 
 class _WalkthroughState extends State<Walkthrough> {
   final PageController _controller = PageController();
+  final FetchCountryController fetchCountryController = Get.put(FetchCountryController());
   int _currentPage = 0;
   Timer? _autoScrollTimer;
   double _progress = 0.0; // Tracks progress for the active page's progress bar
@@ -27,6 +31,7 @@ class _WalkthroughState extends State<Walkthrough> {
   void initState() {
     super.initState();
     _startAutoScroll();
+    fetchCountryController.fetchCurrentCountry();
   }
 
   @override
@@ -90,7 +95,12 @@ class _WalkthroughState extends State<Walkthrough> {
   }
 
   void _finishOnboarding() {
-    GoRouter.of(context).go(AppRoutes.bottomNav);
+    if(fetchCountryController.currentCountry.value == 'United Arab Emirates'){
+      GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
+    }
+    else{
+      GoRouter.of(context).go(AppRoutes.bottomNav);
+    }
   }
 
   @override

@@ -19,9 +19,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/fetch_country/fetch_country_controller.dart';
 import 'package:wti_cabs_user/core/controller/version_check/version_check_controller.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
+import 'package:wti_cabs_user/screens/self_drive/self_drive_bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/utility/constants/strings/string_constants.dart';
 
 import 'common_widget/network_banner/network_banner.dart';
@@ -109,6 +111,8 @@ Future<String> _determineStartRoute(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final FetchCountryController fetchCountryController =
+      Get.put(FetchCountryController());
 
   print('🟢 Starting main');
 
@@ -137,6 +141,7 @@ void main() async {
     print('🚕 Registering controllers');
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
+    Get.put(FetchCountryController());
     Get.lazyPut<DropPlaceSearchController>(() => DropPlaceSearchController());
     Get.lazyPut<DestinationLocationController>(
         () => DestinationLocationController());
@@ -146,15 +151,17 @@ void main() async {
 
     print('💳 Setting Stripe key');
     // test key stripe
-    //  Stripe.publishableKey = 'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
-    // live key stripe
     Stripe.publishableKey =
-        'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
+        'pk_test_51QwGPYICDiJ5BoSQa8eKsWdvifkn4LOeuBoTTMx4ES6SCI2iDMWY4p74wOCc8bFLuJQwU37DMbmIA3ACuZDhReuO00dxg0qfsS';
+    // live key stripe
+    // Stripe.publishableKey =
+    //     'pk_live_51QwGPYICDiJ5BoSQlX6wLMO0kcQmQZILh7c0zqjuG2tMd751qU2jIEkPBaUcCiBsBbepF2uCfiXoBT0GXBpqqOE800YYFCgE53';
     await Stripe.instance.applySettings();
 
     print('📥 Initializing FlutterDownloader');
     await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
     await NotificationService().initialize();
+    await fetchCountryController.fetchCurrentCountry();
     // Initialize GetX controller
 
     // Run version + onboarding logic before app starts
@@ -183,6 +190,8 @@ class _MyAppState extends State<MyApp> {
       Get.put(ConnectivityController());
   final VersionCheckController versionCheckController =
       Get.put(VersionCheckController());
+  final FetchCountryController fetchCountryController =
+      Get.put(FetchCountryController());
 
   @override
   void initState() {
@@ -190,6 +199,7 @@ class _MyAppState extends State<MyApp> {
     initFCM();
     homeApiLoading();
     fetchCurrentLocationAndAddress();
+    fetchCountryController.fetchCurrentCountry();
   }
 
   // ✅ Determine initial route dynamically using context
@@ -199,11 +209,12 @@ class _MyAppState extends State<MyApp> {
 
     // Step 1: Version check (with context)
     await versionCheckController.verifyAppCompatibity(context: context);
-    final isCompatible = versionCheckController.versionCheckResponse.value?.isCompatible ?? true;
+    final isCompatible =
+        versionCheckController.versionCheckResponse.value?.isCompatible ?? true;
 
     // Step 2: First-time check
     final isFirstTime = prefs.getBool("isFirstTime") ?? true;
-     print('isFirstTime: $isFirstTime');
+    print('isFirstTime: $isFirstTime');
 
     String initialRoute;
     if (!isCompatible) {
@@ -215,12 +226,24 @@ class _MyAppState extends State<MyApp> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
-      initialRoute = AppRoutes.bottomNav; // fallback
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (fetchCountryController.currentCountry.value ==
+          'United Arab Emirates') {
+        initialRoute = AppRoutes.selfDriveBottomSheet;
+      } else {
+        initialRoute = AppRoutes.bottomNav; // fallback
+      }
     } else if (isFirstTime) {
       await prefs.setBool("isFirstTime", false);
       initialRoute = AppRoutes.walkthrough;
     } else {
-      initialRoute = AppRoutes.bottomNav;
+      if (fetchCountryController.currentCountry.value ==
+          'United Arab Emirates') {
+        initialRoute = AppRoutes.selfDriveBottomSheet;
+      } else {
+        initialRoute = AppRoutes.bottomNav; // fallback
+      }
     }
 
     return initialRoute;
@@ -231,7 +254,6 @@ class _MyAppState extends State<MyApp> {
     await uspController.fetchUsps();
     await bannerController.fetchImages();
   }
-
 
   Future<void> initFCM() async {
     // Request permissions
@@ -362,7 +384,7 @@ class _MyAppState extends State<MyApp> {
         place.country ?? '',
       ];
       final fullAddress =
-      components.where((s) => s.trim().isNotEmpty).join(', ');
+          components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Show address on UI immediately
       setState(() => address = fullAddress);
@@ -437,9 +459,10 @@ class _MyAppState extends State<MyApp> {
       future: _getInitialRoute(context),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const MaterialApp(
+          return MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: Scaffold(body: BottomNavScreen()),
+            home: Scaffold(body: fetchCountryController.currentCountry.value ==
+                'United Arab Emirates'? SelfDriveBottomNavScreen():BottomNavScreen()),
           );
         }
 
