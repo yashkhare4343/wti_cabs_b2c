@@ -1,0 +1,573 @@
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:go_router/go_router.dart';
+import 'package:wti_cabs_user/common_widget/crp_branch_selectbox/crp_branch_selectbox.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_register_controller/crp_register_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
+
+import '../../../common_widget/dropdown/cpr_select_box.dart';
+import '../../../common_widget/textformfield/crp_text_form_field.dart';
+import '../../../core/api/corporate/cpr_api_services.dart';
+import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
+import '../../../core/model/corporate/get_entity_list/get_entity_list_response.dart';
+import '../../../core/route_management/app_routes.dart';
+import '../../../utility/constants/colors/app_colors.dart';
+import 'package:http/http.dart' as http;
+
+
+class CprRegister extends StatefulWidget {
+  const CprRegister({super.key});
+
+  @override
+  State<CprRegister> createState() => _CprRegisterState();
+}
+
+class _CprRegisterState extends State<CprRegister> {
+  String? selectedDomain;
+  Entity? selectedEntity;
+
+  final emailController = TextEditingController();
+  final nameController = TextEditingController();
+  final phoneNoController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  final empIdController = TextEditingController();
+
+  final _formKey = GlobalKey<FormState>();
+  final _emailFieldKey = GlobalKey<FormFieldState<String>>();
+  final CrpGetEntityListController crpGetEntityListController =
+      Get.put(CrpGetEntityListController());
+
+  final FocusNode emailFocusNode = FocusNode();
+
+  bool _autoValidate = false;
+  bool _isEmailValid = false;
+  String? _emailError;
+
+  final VerifyCorporateController verifyCorporateController =
+      Get.put(VerifyCorporateController());
+  final CrpBranchListController crpGetBranchListController =
+      Get.put(CrpBranchListController());
+
+  bool _isValidating = false; // Prevent duplicate validation calls
+
+  final CrpRegisterController crpRegisterController = Get.put(CrpRegisterController());
+  // specific error
+  String? _emailFieldError;
+  String? _phoneFieldError;
+  String? _entityFieldError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Validate when user leaves the email field (on blur)
+    emailFocusNode.addListener(() async {
+      // Only validate on blur if not already validating and email is not empty
+      if (!emailFocusNode.hasFocus &&
+          emailController.text.trim().isNotEmpty &&
+          !_isValidating) {
+        await _validateEmail();
+        // Trigger validation to show error immediately
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _emailFieldKey.currentState?.validate();
+        });
+      }
+    });
+  }
+
+  void _validateAndSubmit(Map<String, dynamic> params) async {
+    setState(() => _autoValidate = true);
+
+    // Reset field errors
+    _emailFieldError = null;
+    _phoneFieldError = null;
+    _entityFieldError = null;
+
+    // Validate form
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
+
+    print('✅ Form is valid, proceed to API call');
+
+    await crpRegisterController.verifyCrpRegister(params, context);
+
+    final response = crpRegisterController.crpRegisterResponse.value;
+    if (response != null) {
+      final msg = response.msg ?? '';
+      if (msg.startsWith('-1')) {
+        // Email error
+        setState(() {
+          _emailFieldError = msg.substring(3).trim();
+        });
+      } else if (msg.startsWith('0')) {
+        // Phone error
+        setState(() {
+          _phoneFieldError = msg.substring(2).trim();
+        });
+      } else if (msg.startsWith('-2')) {
+        // Entity selection error
+        setState(() {
+          _entityFieldError = msg.substring(3).trim();
+        });
+      } else {
+        // Success
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.green,
+          ),
+        );
+        GoRouter.of(context).push(AppRoutes.cprLogin);
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration failed. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// 🔍 Validate email using regex and call API if valid
+  Future<void> _validateEmail() async {
+    if (_isValidating) return; // Prevent duplicate calls
+    _isValidating = true;
+
+    final email = emailController.text.trim();
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
+    // Basic client-side validation
+    if (email.isEmpty) {
+      setState(() {
+        _emailError = "Email is required";
+        _isEmailValid = false;
+      });
+      _revalidateFields();
+      _isValidating = false;
+      return;
+    }
+
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        _emailError = "Enter a valid email address";
+        _isEmailValid = false;
+      });
+      _revalidateFields();
+      _isValidating = false;
+      return;
+    }
+
+    // Clear any previous error
+    setState(() {
+      _emailError = null;
+      _isEmailValid = false;
+    });
+    _revalidateFields();
+
+    try {
+      await verifyCorporateController.verifyCorporate(email, selectedEntity?.entityId.toString()??'');
+      final response = verifyCorporateController.cprVerifyResponse.value;
+
+      if (response == null) {
+        setState(() {
+          _emailError = "Unable to verify email. Try again.";
+          _isEmailValid = false;
+        });
+        _revalidateFields();
+        return;
+      }
+
+      final code = response.code;
+      final msg = response.msg ?? "";
+
+      debugPrint("🔍 Corporate Verify -> Code: $code | Msg: $msg");
+
+      if (code == 1) {
+        setState(() {
+          _emailError = msg.isNotEmpty ? msg : "Corporate not registered";
+          _isEmailValid = false;
+        });
+      } else if (code == 0) {
+        // ✅ Valid
+        setState(() {
+          _emailError = null;
+          _isEmailValid = true;
+        });
+      } else {
+        // Unexpected response
+        setState(() {
+          _emailError = msg.isNotEmpty ? msg : "Unexpected server response";
+          _isEmailValid = false;
+        });
+      }
+      await crpGetEntityListController.fetchAllEntities(email, verifyCorporateController.cprID.value);
+      await crpGetBranchListController.fetchBranches(verifyCorporateController.cprID.value);
+      _revalidateFields();
+    } catch (e) {
+      debugPrint("❌ Corporate email validation error: $e");
+      setState(() {
+        _emailError = "Error validating email";
+        _isEmailValid = false;
+      });
+      _revalidateFields();
+    } finally {
+      _isValidating = false;
+    }
+  }
+
+  /// 🔁 Helper: Re-run validations for field + form
+  void _revalidateFields() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _emailFieldKey.currentState?.validate();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          reverse: true,
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+              key: _formKey,
+              autovalidateMode: _autoValidate
+                  ? AutovalidateMode.always
+                  : AutovalidateMode.disabled,
+              child: Obx(() {
+                // if(crpGetEntityListController.isLoading.value){
+                //   return Center(child: const CupertinoActivityIndicator());
+                // }
+
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✅ Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/wti_logo.svg',
+                          height: 17,
+                          width: 15,
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: AppColors.mainButtonBg,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 8),
+                            ),
+                            onPressed: () {},
+                            child: const Text(
+                              "Corporate",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Welcome to the Team',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ✅ Name
+                    CprTextFormField(
+                      controller: nameController,
+                      hintText: "Enter Name",
+                      labelText: "Name",
+                      validator: (value) => value == null || value.isEmpty
+                          ? "Name is required"
+                          : null,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Phone
+                    CprTextFormField(
+                      controller: phoneNoController,
+                      hintText: "Enter Phone Number",
+                      labelText: "Phone Number",
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (_phoneFieldError != null) return _phoneFieldError;
+
+                        if (value == null || value.isEmpty) {
+                          return "Phone number is required";
+                        }
+                        if (value.length < 10) {
+                          return "Minimum 10 digits required";
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Email with focus + async API validation
+                    CprTextFormField(
+                        fieldKey: _emailFieldKey,
+                        controller: emailController,
+                        focusNode: emailFocusNode,
+                        hintText: "Enter your email",
+                        labelText: "Enter Official Email ID (Used as login ID)",
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          // Check API validation error first (highest priority)
+                          // This will show the error when _emailError is set
+                          if (_emailFieldError != null) return _emailFieldError;
+
+                          if (_emailError != null && _emailError!.isNotEmpty) {
+                            return _emailError;
+                          }
+                          // Basic validation
+                          if (value == null || value.isEmpty) {
+                            return "Email is required";
+                          }
+                          final emailRegex = RegExp(
+                              r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                          if (!emailRegex.hasMatch(value)) {
+                            return "Enter a valid email address";
+                          }
+                          // If email format is valid but API validation hasn't run yet, return null
+                          // The API validation will be triggered on field submit or blur
+                          return null;
+                        },
+                        onFieldSubmitted: (_) async {
+                          // Validate email when user submits the field (presses enter/done)
+                          final email = emailController.text.trim();
+
+                          // First, do basic validation (format check)
+                          _emailFieldKey.currentState?.validate();
+
+                          if (email.isNotEmpty) {
+                            // Run API validation
+                            await _validateEmail();
+                            // The _validateEmail() method already triggers validation via addPostFrameCallback
+                            // But we also trigger it here to ensure it shows immediately
+                            if (mounted) {
+                              // Small delay to ensure state is updated
+                              await Future.delayed(
+                                  const Duration(milliseconds: 50));
+                              _emailFieldKey.currentState?.validate();
+                              // Remove focus to show the error clearly
+                              emailFocusNode.unfocus();
+                            }
+                          }
+                        },
+                        onChanged: (value) {
+                          // Clear error when user starts typing (for better UX)
+                          if (_emailError != null && value.isNotEmpty) {
+                            setState(() {
+                              _emailError = null;
+                              _isEmailValid = false;
+                            });
+                          }
+
+                          // 🔥 Force revalidation to show/hide error text dynamically
+                          _revalidateFields();
+                        }),
+
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Password
+                    CprTextFormField(
+                      controller: passwordController,
+                      hintText: "Enter Password",
+                      labelText: "Password",
+                      isPassword: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Password is required";
+                        }
+                        if (value.length < 8) {
+                          return "At least 8 characters required";
+                        }
+                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                          return "Include at least one uppercase letter";
+                        }
+                        if (!RegExp(r'[a-z]').hasMatch(value)) {
+                          return "Include at least one lowercase letter";
+                        }
+                        if (!RegExp(r'[0-9]').hasMatch(value)) {
+                          return "Include at least one number";
+                        }
+                        if (!RegExp(r'[!@#\$&*~_]').hasMatch(value)) {
+                          return "Include at least one special character";
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Confirm Password
+                    CprTextFormField(
+                      controller: confirmPasswordController,
+                      hintText: "Enter Confirm Password",
+                      labelText: "Confirm Password",
+                      isPassword: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Confirm password is required";
+                        }
+                        if (value != passwordController.text) {
+                          return "Passwords do not match";
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ✅ Employee ID
+                    CprTextFormField(
+                      controller: empIdController,
+                      hintText: "Enter Employee ID",
+                      labelText: "Employee ID",
+                      validator: (value) => null,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // City
+                    verifyCorporateController.cprVerifyResponse.value?.code == 0 ? CorporateBranchDropdown(corpId: selectedEntity?.entityId.toString()??''): SizedBox.shrink(),
+                    const SizedBox(height: 14),
+                    // Entity List
+                    CprSelectBox(
+                      labelText: "Choose Corporate",
+                      hintText: "Choose Corporate",
+                      items: crpGetEntityListController
+                          .getAllEntityList.value?.getEntityList
+                          ?.map((val) => val.entityName ?? '')
+                          .toList() ??
+                          ['Choose Entity'],
+                      selectedValue: selectedEntity?.entityName,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedEntity = crpGetEntityListController
+                              .getAllEntityList.value?.getEntityList
+                              ?.firstWhere((e) => e.entityName == value);
+                        });
+                        print(
+                            "Selected Entity ID: ${selectedEntity?.entityId}");
+                        print(
+                            "Selected Entity Name: ${selectedEntity?.entityName}");               },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ✅ Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                             onPressed: crpRegisterController.isLoading.value?(){} : (){
+                              final Map<String, dynamic> params = {
+                                "guestName": nameController.text.trim(),
+                                "corporate_Name": verifyCorporateController.cprName.value,
+                                "CorpID": verifyCorporateController.cprID.value,
+                                "mobile": phoneNoController.text.trim(),
+                                "emailID": emailController.text.trim(),
+                                "password": passwordController.text.trim(),
+                                "employeeID": empIdController.text.trim(),
+                                "branchID": crpGetBranchListController.selectedBranchId.value,
+                                "location": crpGetBranchListController.selectedBranchName.value,
+                                "IP": "local",
+                                "android_gcm": "",
+                                "ios_token": "",
+                                "EntityID": selectedEntity?.entityId,
+                                "ManagerEmail": "",
+                                "register_sourceID": "Mobile"
+                              };
+                              _validateAndSubmit(params);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF01ACF2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: crpRegisterController.isLoading.value? SizedBox(
+                              width: 10,
+                                height: 10,
+                                child: CircularProgressIndicator(color: Colors.white,)) : const Text(
+                              "Register Now",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // const SizedBox(width: 12),
+                        // Expanded(
+                        //   child: ElevatedButton(
+                        //     onPressed: () {},
+                        //     style: ElevatedButton.styleFrom(
+                        //       backgroundColor: Colors.white,
+                        //       shape: RoundedRectangleBorder(
+                        //         borderRadius: BorderRadius.circular(16),
+                        //         side: const BorderSide(color: Colors.black12),
+                        //       ),
+                        //       padding: const EdgeInsets.symmetric(vertical: 14),
+                        //     ),
+                        //     child: const Text(
+                        //       "Cancel",
+                        //       style: TextStyle(
+                        //         color: Colors.black,
+                        //         fontSize: 15,
+                        //         fontWeight: FontWeight.w600,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                  ],
+                );
+              })),
+        ),
+      ),
+    );
+  }
+}

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 import 'package:wti_cabs_user/core/controller/fetch_country/fetch_country_controller.dart';
 import 'package:wti_cabs_user/core/controller/version_check/version_check_controller.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
@@ -192,6 +196,12 @@ class _MyAppState extends State<MyApp> {
       Get.put(VersionCheckController());
   final FetchCountryController fetchCountryController =
       Get.put(FetchCountryController());
+  // final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
+  // final CrpBranchListController crpBranchListController = Get.put(CrpBranchListController());
+  // final CrpGetEntityListController crpGetEntityListController = Get.put(CrpGetEntityListController());
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  final FirebaseAnalyticsObserver _observer =
+  FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance);
 
   @override
   void initState() {
@@ -475,6 +485,7 @@ class _MyAppState extends State<MyApp> {
           routeInformationProvider: router.routeInformationProvider,
           title: "WTI Cabs",
           debugShowCheckedModeBanner: false,
+          navigatorObservers: [_observer],
         );
       },
     );

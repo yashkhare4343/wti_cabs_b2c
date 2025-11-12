@@ -15,7 +15,9 @@ class BookingRideController extends GetxController {
   RxString selectedLocalDate = ''.obs;
   RxString selectedLocalTime = ''.obs;
   RxBool isInventoryPage =  false.obs;
-
+  RxBool fromHomePage = false.obs;
+  final RxBool isPopupOpen = false.obs;
+  final RxBool shouldShowPopup = true.obs;
   // inventory req data
   final RxMap<String, dynamic> requestData = <String, dynamic>{}.obs;
 

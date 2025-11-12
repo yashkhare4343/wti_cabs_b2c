@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,8 @@ import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../../common_widget/loader/popup_loader.dart';
 import '../../../api/api_services.dart';
+import '../../analytics_tracking/analytics_tracking.dart';
+import '../../cab_booking/cab_booking_controller.dart';
 import '../../fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
 
 class IndiaPaymentController extends GetxController {
@@ -20,6 +23,7 @@ class IndiaPaymentController extends GetxController {
   final currencyController = Get.find<CurrencyController>();
   Map<String, dynamic>? lastProvisionalRequest;
   RxString ? orderId;
+  final cabBookingController = Get.put(CabBookingController());
 
 
   Map<String, dynamic>? registeredUser;
@@ -42,6 +46,44 @@ class IndiaPaymentController extends GetxController {
     _razorpay.clear();
     super.onClose();
   }
+
+  Future<void> logAddToCart() async {
+    final selectedTripController = Get.find<SelectedTripController>();
+    final currencyController = Get.find<CurrencyController>();
+    final convertedPartialAmount = await currencyController.convertPrice(cabBookingController.partFare.toDouble());
+    final convertFullAmount = await currencyController.convertPrice(cabBookingController.totalFare.toDouble());
+    // 🧩 Add or merge custom keys (including converted amount)
+    // 🧾 Get stored values
+    final storedItem = selectedTripController.selectedItem.value;
+    final storedParams = selectedTripController.parameters;
+
+    if (storedItem == null || storedParams.isEmpty) {
+      print('⚠️ No trip data found in controller, skipping log.');
+      return;
+    }
+
+    // 🧩 You can modify or add new keys if needed
+    selectedTripController.addCustomParameters({
+      'event': 'add_to_cart',
+      'screen_name': 'Booking Details Screen',
+      'partial_amount':convertedPartialAmount,
+      'payment_option': cabBookingController.selectedOption.value == 1 ? "FULL" : "PART",
+      'total_amount' : convertFullAmount
+    });
+
+    // ✅ Prepare final parameters to send
+    final updatedParams = Map<String, Object>.from(selectedTripController.parameters);
+
+    // ✅ Log to Firebase Analytics
+    await FirebaseAnalytics.instance.logAddToCart(
+      items: [storedItem],
+      parameters: updatedParams,
+    );
+
+    print('✅ Logged add to cart for ${storedItem.itemName}');
+    print('📦 Parameters sent: $updatedParams');
+  }
+
 
   Future<void> verifySignup({
     required Map<String, dynamic> requestData,
@@ -122,6 +164,7 @@ class IndiaPaymentController extends GetxController {
             ),
           );
           _openRazorpayCheckout(order);
+
         } else {
           print("⚠️ Missing Razorpay order ID or amount");
         }
@@ -159,6 +202,7 @@ class IndiaPaymentController extends GetxController {
       };
 
       _razorpay.open(options);
+      // logAddToCart();
     } catch (e) {
       print('❌ Razorpay open error: $e');
     }

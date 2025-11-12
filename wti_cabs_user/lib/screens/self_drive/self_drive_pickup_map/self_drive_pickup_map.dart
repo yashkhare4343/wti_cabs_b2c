@@ -249,6 +249,8 @@ class _SelfDrivePlaceMapState extends State<SelfDrivePlaceMap> {
                                     ? widget.lng ?? 0.0
                                     : result?.latlng?.lng??0.0;
 
+
+
                                 fetchSdBookingDetailsController
                                     .fetchBookingDetails(
                                         widget.vehicleId, false)

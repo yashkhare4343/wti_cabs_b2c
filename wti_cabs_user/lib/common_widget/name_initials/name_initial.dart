@@ -81,7 +81,7 @@ class NameInitialHomeCircle extends StatelessWidget {
     final trimmed = name.trim();
     final letter = (trimmed.isEmpty ? '?' : trimmed.characters.first).toUpperCase();
 
-    final bg = Color(0xFFEA580C);
+    final bg = Colors.blueAccent;
 
     final fg = Colors.white;
 
@@ -99,7 +99,7 @@ class NameInitialHomeCircle extends StatelessWidget {
       child: Text(
         letter,
         style: TextStyle(
-          fontSize: 14,
+          fontSize: 24,
           fontWeight: FontWeight.w700,
           color: fg,
           letterSpacing: 0.2,

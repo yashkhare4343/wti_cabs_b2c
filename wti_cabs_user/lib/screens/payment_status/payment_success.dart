@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -11,6 +12,9 @@ import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
+import '../../core/controller/analytics_tracking/analytics_tracking.dart';
+import '../../core/controller/currency_controller/currency_controller.dart';
+import '../booking_details_final/booking_details_final.dart';
 import '../bottom_nav/bottom_nav.dart';
 
 import 'package:flutter/material.dart';
@@ -38,6 +42,9 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
   void initState() {
     super.initState();
     fetchReservationBookingData.fetchReservationData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
+      await logPurchase();
+    });
   }
 
   String convertUtcToLocal(String utcTimeString, String timezoneString) {
@@ -46,6 +53,46 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
     final localTime = tz.TZDateTime.from(utcTime, location);
     return DateFormat("d MMM yyyy, hh:mm a").format(localTime);
   }
+
+  Future<void> logPurchase() async {
+    final selectedTripController = Get.find<SelectedTripController>();
+    final currencyController = Get.find<CurrencyController>();
+    final convertedPartialAmount = await currencyController.convertPrice(cabBookingController.partFare.toDouble());
+    final convertFullAmount = await currencyController.convertPrice(cabBookingController.totalFare.toDouble());
+    // 🧩 Add or merge custom keys (including converted amount)
+    // 🧾 Get stored values
+    final storedItem = selectedTripController.selectedItem.value;
+    final storedParams = selectedTripController.parameters;
+
+    if (storedItem == null || storedParams.isEmpty) {
+      print('⚠️ No trip data found in controller, skipping log.');
+      return;
+    }
+
+    // 🧩 You can modify or add new keys if needed
+    selectedTripController.addCustomParameters({
+      'event': 'purchase',
+      'screen_name': 'Payment Success',
+      'partial_amount':convertedPartialAmount,
+      'payment_option': cabBookingController.selectedOption.value == 1 ? "FULL" : "PART",
+      'total_amount' : convertFullAmount,
+      'value': convertFullAmount,
+      'transaction_id': fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.orderReferenceNumber??''
+    });
+
+    // ✅ Prepare final parameters to send
+    final updatedParams = Map<String, Object>.from(selectedTripController.parameters);
+
+    // ✅ Log to Firebase Analytics
+    await FirebaseAnalytics.instance.logPurchase(
+      items: [storedItem],
+      parameters: updatedParams,
+    );
+
+    print('✅ Logged purchase for ${storedItem.itemName}');
+    print('📦 Parameters sent: $updatedParams');
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +173,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                                 convertUtcToLocal(
                                     booking.startTime ?? '', booking.timezone ?? '')),
                             _detailItem("Pickup", booking.source?.address ?? ''),
-                            _detailItem("Drop", booking.destination?.address ?? ''),
+                            if (booking.tripTypeDetails?.basicTripType != 'LOCAL') _detailItem("Drop", booking.destination?.address ?? ''),
                             booking.startTime !=null ? _detailItem(
                                 "Pickup Date",
                                 convertUtcToLocal(

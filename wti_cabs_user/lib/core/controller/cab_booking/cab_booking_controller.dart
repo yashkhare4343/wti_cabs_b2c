@@ -18,6 +18,7 @@ class CabBookingController extends GetxController {
   Rx<GlobalBookingFlat?> globalData = Rx<GlobalBookingFlat?>(null);
   final ApplyCouponController applyCouponController = Get.put(ApplyCouponController());
   RxBool isLoading = false.obs;
+  RxInt selectedOption = 0.obs;
 
   // NEW: Extra selected facilities (label -> price)
   RxMap<String, double> selectedExtras = <String, double>{}.obs;

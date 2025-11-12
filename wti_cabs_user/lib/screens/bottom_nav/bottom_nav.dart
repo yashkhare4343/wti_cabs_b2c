@@ -21,7 +21,9 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/contact/contact.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
+import 'package:wti_cabs_user/screens/my_account/my_account.dart';
 import 'package:wti_cabs_user/screens/offers/offers.dart';
+import 'package:wti_cabs_user/screens/profile/profile.dart';
 
 import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/banner/banner_controller.dart';
@@ -1295,6 +1297,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     HomeScreen(),
     ManageBookings(),
     Contact(),
+    MyAccount()
   ];
 
   void _onItemTapped(int index) {
@@ -1405,6 +1408,7 @@ class _BottomNavScreenState extends State<BottomNavScreen>
                 _buildBarItem(Icons.home_filled, 'Home', 0),
                 _buildBarItem(Icons.work_outline, 'Bookings', 1),
                 _buildBarItem(Icons.phone_in_talk_outlined, 'Contact', 2),
+                _buildBarItem(Icons.person_outline_outlined, 'Profile', 3),
               ],
             ),
           ),

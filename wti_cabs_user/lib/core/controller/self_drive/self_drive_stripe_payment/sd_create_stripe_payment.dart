@@ -143,6 +143,7 @@ class SdCreateStripePaymentController extends GetxController {
     print("🔄 Starting openStripeCheckout...");
 
     print('yash self drive proviosion: $requestData');
+    print('is same location: ${fetchSdBookingDetailsController.isSameLocation.value}');
     try {
       final res = await http.post(
         Uri.parse('${SelfDriveApiService().baseUrl}/reservations/createProvisionalReservation'),

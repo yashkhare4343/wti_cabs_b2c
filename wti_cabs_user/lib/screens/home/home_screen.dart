@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:another_flushbar/flushbar.dart';
 import 'package:carousel_slider/carousel_options.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:wti_cabs_user/common_widget/progress_page/progress_page.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfield.dart';
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
@@ -29,6 +31,7 @@ import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/core/model/home_page_images/home_page_image_response.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
+import 'package:wti_cabs_user/screens/corporate/corporate_landing_page/corporate_landing_page.dart';
 import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 
 import '../../common_widget/buttons/main_button.dart';
@@ -77,6 +80,7 @@ import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'dart:convert'; // for jsonEncode
 import 'package:google_maps_flutter/google_maps_flutter.dart'; // For LatLng
+import 'dart:math' as math; // 👈 ADD THIS LINE
 
 // keep this as is
 
@@ -156,7 +160,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
   }
-
   void resetAllControllers() {
     // Delete existing controller instances (if already registered)
     Get.delete<ServiceHubController>(force: true);
@@ -193,6 +196,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Get.put(FetchAllCitiesController());
   }
 
+  // corporte page transitiion loader
+  bool _isCorporateLoading = false;
+
+
   @override
   void initState() {
     super.initState();
@@ -213,6 +220,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       profileController.fetchData();
       // _showBottomSheet();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      logScreenView();
+      // _showBottomSheet();
+    });
+
+  }
+
+  Future<void> logScreenView() async{
+    final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+    await _analytics.logScreenView(
+      screenName: 'HomeScreen',
+      screenClass: 'Rides',
+      parameters: {
+        'event':'screen_view',
+      },// or 'OutStation', depending on widget
+    );
   }
 
   @override
@@ -1619,13 +1642,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _setStatusBarColor();
         return false;
       },
-      child: Scaffold(
+      child: (_isCorporateLoading) ?
+      const ProgressPage() : Scaffold(
         backgroundColor: Color(0xFFE9E9ED),
         // backgroundColor: AppColors.homebg,
         body: SafeArea(
           child: SingleChildScrollView(
             child: Column(
               children: [
+
                 Column(
                   children: [
                     Container(
@@ -1636,7 +1661,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Expanded(
                                   child: Row(
@@ -1648,58 +1673,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       //   radius: 24,
                                       //   backgroundImage: AssetImage('assets/images/user.png'),
                                       // ),
-                                      InkWell(
-                                        splashColor: Colors.transparent,
-                                        onTap: () {
-                                          showGeneralDialog(
-                                            context: context,
-                                            barrierDismissible: true,
-                                            barrierLabel: "Drawer",
-                                            barrierColor: Colors
-                                                .black54, // transparent black background
-                                            transitionDuration: const Duration(
-                                                milliseconds: 300),
-                                            pageBuilder: (_, __, ___) =>
-                                                const CustomDrawerSheet(),
-                                            transitionBuilder:
-                                                (_, anim, __, child) {
-                                              return SlideTransition(
-                                                position: Tween<Offset>(
-                                                  begin: const Offset(-1,
-                                                      0), // slide in from left
-                                                  end: Offset.zero,
-                                                ).animate(CurvedAnimation(
-                                                  parent: anim,
-                                                  curve: Curves.easeOutCubic,
-                                                )),
-                                                child: child,
-                                              );
-                                            },
-                                          );
-                                        },
-                                        child: Transform.translate(
-                                          offset: Offset(0.0, -4.0),
-                                          child: Container(
-                                            width:
-                                                28, // same as 24dp with padding
-                                            height: 28,
-                                            decoration: BoxDecoration(
-                                              color: Color.fromRGBO(
-                                                  0, 44, 192, 0.1), // deep blue
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      4), // rounded square
-                                            ),
-                                            child: const Icon(
-                                              Icons.density_medium_outlined,
-                                              color:
-                                                  Color.fromRGBO(0, 17, 73, 1),
-                                              size: 16,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
+                                      // InkWell(
+                                      //   splashColor: Colors.transparent,
+                                      //   onTap: () {
+                                      //     showGeneralDialog(
+                                      //       context: context,
+                                      //       barrierDismissible: true,
+                                      //       barrierLabel: "Drawer",
+                                      //       barrierColor: Colors
+                                      //           .black54, // transparent black background
+                                      //       transitionDuration: const Duration(
+                                      //           milliseconds: 300),
+                                      //       pageBuilder: (_, __, ___) =>
+                                      //           const CustomDrawerSheet(),
+                                      //       transitionBuilder:
+                                      //           (_, anim, __, child) {
+                                      //         return SlideTransition(
+                                      //           position: Tween<Offset>(
+                                      //             begin: const Offset(-1,
+                                      //                 0), // slide in from left
+                                      //             end: Offset.zero,
+                                      //           ).animate(CurvedAnimation(
+                                      //             parent: anim,
+                                      //             curve: Curves.easeOutCubic,
+                                      //           )),
+                                      //           child: child,
+                                      //         );
+                                      //       },
+                                      //     );
+                                      //   },
+                                      //   child: Transform.translate(
+                                      //     offset: Offset(0.0, -4.0),
+                                      //     child: Container(
+                                      //       width:
+                                      //           28, // same as 24dp with padding
+                                      //       height: 28,
+                                      //       decoration: BoxDecoration(
+                                      //         color: Color.fromRGBO(
+                                      //             0, 44, 192, 0.1), // deep blue
+                                      //         borderRadius:
+                                      //             BorderRadius.circular(
+                                      //                 4), // rounded square
+                                      //       ),
+                                      //       child: const Icon(
+                                      //         Icons.density_medium_outlined,
+                                      //         color:
+                                      //             Color.fromRGBO(0, 17, 73, 1),
+                                      //         size: 16,
+                                      //       ),
+                                      //     ),
+                                      //   ),
+                                      // ),
+                                      // const SizedBox(width: 12),
                                       Transform.translate(
                                         offset: Offset(0.0, -4.0),
                                         child: SizedBox(
@@ -1750,95 +1775,143 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ],
                                   ),
                                 ),
-                                Obx(() {
-                                  return Row(
-                                    children: [
-                                      // Transform.translate(
-                                      //     offset: Offset(0.0, -4.0),
-                                      //     child: Image.asset(
-                                      //       'assets/images/wallet.png',
-                                      //       height: 31,
-                                      //       width: 28,
-                                      //     )),
-                                      SizedBox(
-                                        width: 12,
+                                Row(
+                                  children: [
+                                    // Transform.translate(
+                                    //     offset: Offset(0.0, -4.0),
+                                    //     child: Image.asset(
+                                    //       'assets/images/wallet.png',
+                                    //       height: 31,
+                                    //       width: 28,
+                                    //     )),
+                                    SizedBox(
+                                      width: 12,
+                                    ),
+                                    Container(
+                                      height: 35,
+                                      decoration: BoxDecoration(
+                                        /*gradient: const LinearGradient(
+                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),*/
+                                        color: AppColors.mainButtonBg,
+                                        borderRadius: BorderRadius.circular(24),
                                       ),
-                                      upcomingBookingController
-                                                  .isLoggedIn.value ==
-                                              true
-                                          ? InkWell(
-                                              splashColor: Colors.transparent,
-                                              onTap: () async {
-                                                print(
-                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') ==
-                                                    null) {
-                                                  _showAuthBottomSheet();
-                                                }
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') !=
-                                                    null) {
-                                                  GoRouter.of(context)
-                                                      .push(AppRoutes.profile);
-                                                }
-                                              },
-                                              child: SizedBox(
-                                                width: 30,
-                                                height: 30,
-                                                child: NameInitialHomeCircle(
-                                                    name: profileController
-                                                            .profileResponse
-                                                            .value
-                                                            ?.result
-                                                            ?.firstName ??
-                                                        ''),
-                                              ),
-                                            )
-                                          : InkWell(
-                                              splashColor: Colors.transparent,
-                                              onTap: () async {
-                                                print(
-                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') ==
-                                                    null) {
-                                                  _showAuthBottomSheet();
-                                                }
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') !=
-                                                    null) {
-                                                  GoRouter.of(context)
-                                                      .push(AppRoutes.profile);
-                                                }
-                                              },
-                                              child: Transform.translate(
-                                                offset: Offset(0.0, -4.0),
-                                                child: const CircleAvatar(
-                                                  foregroundColor:
-                                                      Colors.transparent,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  radius: 14,
-                                                  backgroundImage: AssetImage(
-                                                    'assets/images/user.png',
-                                                  ),
-                                                ),
-                                              ),
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent, // transparent to show gradient
+                                          shadowColor: Colors.transparent, // remove default shadow
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                        ),
+                                        onPressed:  _isCorporateLoading ? null :  () async{
+                                          // handle tap
+                                          setState(() => _isCorporateLoading = true);
+
+                                          // Simulate a network delay or loading operation
+                                          await Future.delayed(const Duration(milliseconds: 1200));
+
+
+
+                                          // Now navigate with flip animation
+                                          Navigator.of(context).push(
+                                            PlatformFlipPageRoute(
+                                              builder: (context) => const CorporateLandingPage(),
                                             ),
-                                    ],
-                                  );
-                                })
+                                          );
+                                          setState(() => _isCorporateLoading = false);
+
+                                        },
+                                        child: const Text(
+                                          "Go Corporate",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+
+                                    // upcomingBookingController
+                                    //             .isLoggedIn.value ==
+                                    //         true
+                                    //     ? InkWell(
+                                    //         splashColor: Colors.transparent,
+                                    //         onTap: () async {
+                                    //           print(
+                                    //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                    //           if (await StorageServices
+                                    //                   .instance
+                                    //                   .read('token') ==
+                                    //               null) {
+                                    //             _showAuthBottomSheet();
+                                    //           }
+                                    //           if (await StorageServices
+                                    //                   .instance
+                                    //                   .read('token') !=
+                                    //               null) {
+                                    //             GoRouter.of(context)
+                                    //                 .push(AppRoutes.profile);
+                                    //           }
+                                    //         },
+                                    //         child: SizedBox(
+                                    //           width: 30,
+                                    //           height: 30,
+                                    //           child: NameInitialHomeCircle(
+                                    //               name: profileController
+                                    //                       .profileResponse
+                                    //                       .value
+                                    //                       ?.result
+                                    //                       ?.firstName ??
+                                    //                   ''),
+                                    //         ),
+                                    //       )
+                                    //     : InkWell(
+                                    //         splashColor: Colors.transparent,
+                                    //         onTap: () async {
+                                    //           print(
+                                    //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                    //           if (await StorageServices
+                                    //                   .instance
+                                    //                   .read('token') ==
+                                    //               null) {
+                                    //             _showAuthBottomSheet();
+                                    //           }
+                                    //           if (await StorageServices
+                                    //                   .instance
+                                    //                   .read('token') !=
+                                    //               null) {
+                                    //             GoRouter.of(context)
+                                    //                 .push(AppRoutes.profile);
+                                    //           }
+                                    //         },
+                                    //         child: Transform.translate(
+                                    //           offset: Offset(0.0, -4.0),
+                                    //           child: const CircleAvatar(
+                                    //             foregroundColor:
+                                    //                 Colors.transparent,
+                                    //             backgroundColor:
+                                    //                 Colors.transparent,
+                                    //             radius: 14,
+                                    //             backgroundImage: AssetImage(
+                                    //               'assets/images/user.png',
+                                    //             ),
+                                    //           ),
+                                    //         ),
+                                    //       ),
+                                  ],
+                                )
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
                             onTap: () async {
+                              bookingRideController.fromHomePage.value = true;
                               Navigator.push(
                                 context,
                                 Platform.isIOS
@@ -2003,7 +2076,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ],
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                                padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                                 child: Column(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -2016,92 +2089,113 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                     Text('Airport',
                                         style: CommonFonts.blueText1),
+                                    SizedBox(height: 8,),
+                                  bookingRideController.selectedIndex.value == 0 ?  Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                      child: Container(
+                                        height: 3,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF888888), // background line
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    ) : SizedBox()
+
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                          Container(
-                            color: Colors.transparent,
-                            child: SizedBox.expand(
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                alignment: Alignment
-                                    .topCenter, // 👈 ensures "Popular" centers horizontally
-                                children: [
-                                  InkWell(
-                                    splashColor: Colors.transparent,
-                                    onTap: () {
-                                      bookingRideController
-                                          .selectedIndex.value = 1;
-                                      fetchCurrentLocationAndAddress();
-                                      // Navigate immediately
-                                      if (Platform.isAndroid) {
-                                        GoRouter.of(context)
-                                            .push(AppRoutes.bookingRide);
-                                      } else {
-                                        navigatorKey.currentContext
-                                            ?.push(AppRoutes.bookingRide);
-                                      }
-                                    },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x1F192653),
-                                            offset: Offset(0, 3),
-                                            blurRadius: 12,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Image.asset(
-                                                'assets/images/outstation.png',
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ),
-                                            Text('Outstation',
-                                                style: CommonFonts.blueText1),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: -8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                        horizontal: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFFC6CD00),
-                                            Color(0xFF00DC3E)
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Text(
-                                        'Popular',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
+                          InkWell(
+                            splashColor: Colors.transparent,
+                            onTap: () {
+                              bookingRideController
+                                  .selectedIndex.value = 1;
+                              fetchCurrentLocationAndAddress();
+                              // Navigate immediately
+                              if (Platform.isAndroid) {
+                                GoRouter.of(context)
+                                    .push(AppRoutes.bookingRide);
+                              } else {
+                                navigatorKey.currentContext
+                                    ?.push(AppRoutes.bookingRide);
+                              }
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x1F192653),
+                                    offset: Offset(0, 3),
+                                    blurRadius: 12,
                                   ),
                                 ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  alignment: Alignment.topCenter,
+                                  children: [
+                                    Transform.translate(
+                                      offset: const Offset(0.0, -15.0),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 2,
+                                          horizontal: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFFC6CD00),
+                                              Color(0xFF00DC3E)
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Text(
+                                          'Popular',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+
+                                        Expanded(
+                                          child: Image.asset(
+                                            'assets/images/outstation.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                        Text('Outstation',
+                                            style: CommonFonts.blueText1),
+                                        SizedBox(height: 8,),
+                                        (bookingRideController.selectedIndex.value == 1)?  Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                          child: Container(
+                                            height: 3,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFF888888), // background line
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                          ),
+                                        ) : SizedBox()
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -2133,7 +2227,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ],
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                                padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                                 child: Column(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -2146,6 +2240,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                     Text('Rental',
                                         style: CommonFonts.blueText1),
+                                    SizedBox(height: 8,),
+                                    (bookingRideController.selectedIndex.value == 2)?  Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                      child: Container(
+                                        height: 3,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF888888), // background line
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    ) : SizedBox()
                                   ],
                                 ),
                               ),
@@ -2154,6 +2260,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           InkWell(
                             splashColor: Colors.transparent,
                             onTap: () async {
+                              bookingRideController.selectedIndex.value = 3;
                               // Step 1: Update currency logic first
                               currencyController.setSelfDriveCurrency();
 
@@ -2205,7 +2312,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ],
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                                padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                                 child: Column(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -2218,6 +2325,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                     Text('Self Drive',
                                         style: CommonFonts.blueText1),
+                                    SizedBox(height: 8,),
+                                    (bookingRideController.selectedIndex.value == 3 )?  Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                      child: Container(
+                                        height: 3,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF888888), // background line
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    ) : SizedBox()
                                   ],
                                 ),
                               ),
@@ -4104,5 +4223,74 @@ Widget _buildCategoryCard(
           ),
       ],
     ),
+  );
+}
+
+
+// flip page animation
+class PlatformFlipPageRoute extends PageRouteBuilder {
+  final WidgetBuilder builder;
+
+  PlatformFlipPageRoute({required this.builder})
+      : super(
+    transitionDuration: const Duration(milliseconds: 3000),
+    reverseTransitionDuration: const Duration(milliseconds: 1700),
+    pageBuilder: (context, animation, secondaryAnimation) =>
+        builder(context),
+    transitionsBuilder:
+        (context, animation, secondaryAnimation, child) {
+      final isIOS =
+          Theme.of(context).platform == TargetPlatform.iOS ||
+              Theme.of(context).platform == TargetPlatform.macOS;
+
+      final curvedAnim = CurvedAnimation(
+        parent: animation,
+        curve: isIOS
+            ? Curves.easeInOutCubic
+            : Curves.easeInOutCubicEmphasized,
+      );
+
+      return AnimatedBuilder(
+        animation: curvedAnim,
+        builder: (context, _) {
+          final double rotation = curvedAnim.value * math.pi;
+          final Matrix4 transform = Matrix4.identity()
+            ..setEntry(3, 2, isIOS ? 0.001 : 0.002) // perspective
+            ..rotateY(rotation);
+
+          final bool isBackVisible = rotation > math.pi / 2;
+          final double shadowOpacity =
+              0.3 * (1 - (rotation / math.pi).abs());
+
+          return Container(
+            color: isIOS
+                ? CupertinoColors.systemBackground
+                : Colors.white,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black
+                        .withOpacity(shadowOpacity.clamp(0, 0.3)),
+                  ),
+                ),
+                Transform(
+                  transform: transform,
+                  alignment: Alignment.center,
+                  child: isBackVisible
+                      ? Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..scale(-1.0, 1.0, 1.0),
+                    child: child,
+                  )
+                      : child,
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
   );
 }

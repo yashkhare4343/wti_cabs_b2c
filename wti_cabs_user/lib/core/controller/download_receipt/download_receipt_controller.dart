@@ -148,4 +148,61 @@ class PdfDownloadController extends GetxController {
       );
     }
   }
+
+  // cab invoice
+  Future<void> downloadChauffeurEInvoiceCab({
+    required BuildContext context,
+    required String objectId,
+  }) async {
+    final endpoint = "chaufferReservation/pdfGeneratorEInvoice/$objectId/CUSTOMER";
+    print('🔽 [PdfDownloadController] Starting download for $objectId');
+    print('🔗 Endpoint: $endpoint');
+
+    try {
+      await _ensurePermissions();
+
+      Directory? dir;
+      if (Platform.isAndroid) {
+        // ✅ Prefer Downloads folder
+        if (await Directory("/storage/emulated/0/Download").exists()) {
+          dir = Directory("/storage/emulated/0/Download");
+        } else {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      final filePath = "${dir!.path}/e_invoice_$objectId.pdf";
+      print('📂 Target save path: $filePath');
+
+      await ApiService().downloadPdfFromGetApiCab(
+        context: context,
+        endpoint: endpoint,
+        filePath: filePath, // ✅ Correctly passing full path
+        headers: {
+          'Authorization': 'Basic aGFyc2g6MTIz',
+        },
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('E-Invoice saved to ${dir.path}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      final result = await OpenFile.open(filePath);
+      print('📖 OpenFile result: ${result.message}');
+      print('✅ E-Invoice PDF downloaded successfully for $objectId');
+    } catch (e) {
+      print('❌ Error downloading E-Invoice for $objectId: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to download E-Invoice'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
 }

@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,8 +17,12 @@ import 'package:http/http.dart' as http;
 // import 'package:wti_cabs/core/model/upload_image/upload_image.dart';
 import '../../common_widget/loader/popup_loader.dart';
 import '../../config/enviornment_config.dart';
+import '../../main.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
+import '../controller/manage_booking/upcoming_booking_controller.dart';
 import '../response/api_response.dart';
+import '../route_management/app_routes.dart';
+import '../services/cache_services.dart';
 import '../services/storage_services.dart';
 
 class ApiService {
@@ -30,8 +37,8 @@ class ApiService {
 
   // Base URLs
   // final String baseUrl = '${EnvironmentConfig.baseUrl}/global/app/v1';
-  final String baseUrl = 'http://13.200.168.251:3002/global/app/v1';
-  // final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
+  // final String baseUrl = 'http://13.200.168.251:3002/global/app/v1';
+  final String baseUrl = 'https://www.wticabs.com:3001/global/app/v1';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
@@ -39,9 +46,48 @@ class ApiService {
     return await StorageServices.instance.read('token');
   }
 
+  /// Handles logout when 401 Unauthorized is received
+  Future<void> _handleLogout() async {
+    try {
+      if (kDebugMode) debugPrint("🔐 401 Unauthorized - Logging out user");
+
+      // Google sign-out
+      final googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+        await googleSignIn.disconnect();
+      }
+
+      // Clear storage and cache
+      await StorageServices.instance.clear();
+      await CacheHelper.clearAllCache();
+
+      // Reset booking controller if present
+      try {
+        final upcomingBookingController = Get.find<UpcomingBookingController>();
+        upcomingBookingController.upcomingBookingResponse.value?.result?.clear();
+        upcomingBookingController.isLoggedIn.value = false;
+        upcomingBookingController.reset();
+      } catch (e) {
+        if (kDebugMode) debugPrint("⚠️ UpcomingBookingController not found: $e");
+      }
+
+      // Firebase sign-out
+      await FirebaseAuth.instance.signOut();
+
+      // ✅ Navigate safely
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        AppRoutes.bottomNav,
+            (route) => false,
+      );    } catch (e) {
+      if (kDebugMode) debugPrint("❌ Logout error: $e");
+    }
+  }
+
   Future<Map<String, dynamic>> getRequest(String endpoint) async {
     final url = Uri.parse('$baseUrl/$endpoint');
     final token = await _getToken();
+    // final token = await '';
     print('yash token : $token');
     final basicAuth = token !=null ? 'Basic $token' : 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
     // final basicAuth = 'Basic ${base64Encode(utf8.encode('harsh:123'))}';
@@ -53,10 +99,13 @@ class ApiService {
     print('url is : $baseUrl/$endpoint');
     print('header is : $headers');
 
-
     try {
       final response = await http.get(url, headers: headers);
       print('response is : ${response.body}');
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -86,6 +135,10 @@ class ApiService {
     try {
       final response = await http.get(url, headers: headers);
       print('response is : ${response.body}');
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -126,6 +179,11 @@ class ApiService {
         debugPrint("📥 Response Body:\n${response.body}");
       }
 
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
+
       final Map<String, dynamic> jsonData = json.decode(response.body);
 
       if (response.statusCode == 200) {
@@ -150,6 +208,11 @@ class ApiService {
     };
     final url = Uri.parse("$baseUrl/currency/convert?from=$from");
     final res = await http.get(url, headers: headers);
+
+    if (res.statusCode == 401) {
+      await _handleLogout();
+      throw Exception("Unauthorized - Session expired");
+    }
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -195,6 +258,11 @@ class ApiService {
         debugPrint("📥 Response Body:\n${response.body}");
       }
 
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
+
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
@@ -229,6 +297,11 @@ class ApiService {
       if (kDebugMode) {
         print("Response status code: ${response.statusCode}");
         print("Response body: ${response.body}");
+      }
+
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
       }
 
       final responseData = json.decode(response.body);
@@ -288,6 +361,11 @@ class ApiService {
         debugPrint("📥 Response Body:\n${response.body}");
       }
 
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
+
       if (response.body.isEmpty) {
         debugPrint("❗ Empty response body");
         throw Exception("Server returned an empty response.");
@@ -338,6 +416,10 @@ class ApiService {
 
     try {
       final response = await http.patch(url, headers: headers, body: json.encode(data));
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
       if (response.statusCode == 200 || response.statusCode == 204) {
         return response.body.isNotEmpty ? json.decode(response.body) : {};
       } else {
@@ -376,6 +458,11 @@ class ApiService {
       body: jsonEncode(data),
     );
 
+    if (response.statusCode == 401) {
+      await _handleLogout();
+      throw Exception("Unauthorized - Session expired");
+    }
+
     return {
       "statusCode": response.statusCode,
       "body": jsonDecode(response.body),
@@ -399,6 +486,11 @@ class ApiService {
     );
     print('yash download reciept body : ${jsonEncode(body)}');
 
+    if (response.statusCode == 401) {
+      await _handleLogout();
+      throw Exception("Unauthorized - Session expired");
+    }
+
     if (response.statusCode == 200) {
       final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
@@ -406,62 +498,129 @@ class ApiService {
       throw Exception("Failed to download PDF. Status: ${response.statusCode}");
     }
   }
+  // old code
+  // Future<void> downloadPdfFromGetApi({
+  //   required BuildContext context,
+  //   required String endpoint,
+  //   required String fileName,
+  //   required Map<String, String> headers,
+  // }) async {
+  //   try {
+  //     // ✅ Permission check for Android
+  //     // if (Platform.isAndroid) {
+  //     //   final androidInfo = await DeviceInfoPlugin().androidInfo;
+  //     //   final sdkInt = androidInfo.version.sdkInt;
+  //     //
+  //     //   PermissionStatus permissionStatus;
+  //     //
+  //     //   if (sdkInt >= 30) {
+  //     //     permissionStatus = await Permission.manageExternalStorage.request();
+  //     //   } else {
+  //     //     permissionStatus = await Permission.storage.request();
+  //     //   }
+  //     //
+  //     //   if (!permissionStatus.isGranted) {
+  //     //     ScaffoldMessenger.of(context).showSnackBar(
+  //     //       const SnackBar(
+  //     //         content: Text("❌ Storage permission denied."),
+  //     //         backgroundColor: Colors.red,
+  //     //       ),
+  //     //     );
+  //     //     return;
+  //     //   }
+  //     // }
+  //
+  //     final url = Uri.parse('$baseUrl/$endpoint');
+  //
+  //     final response = await http.get(url, headers: headers);
+  //
+  //     if (response.statusCode == 401) {
+  //       await _handleLogout();
+  //       throw Exception("Unauthorized - Session expired");
+  //     }
+  //
+  //     if (response.statusCode == 200) {
+  //       final dir = await getApplicationDocumentsDirectory();
+  //       final filePath = "${dir.path}/$fileName";
+  //
+  //       final file = File(filePath);
+  //       await file.writeAsBytes(response.bodyBytes);
+  //       GoRouter.of(context).pop();
+  //
+  //       await OpenFile.open(filePath);
+  //     } else {
+  //       throw Exception("Failed to download PDF. Status: ${response.statusCode}");
+  //     }
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Please wait to complete bookings'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   }
+  // }
 
-  Future<void> downloadPdfFromGetApi({
+  Future<void> downloadPdfFromGetApiCab({
     required BuildContext context,
     required String endpoint,
-    required String fileName,
+    required String filePath, // ✅ renamed from fileName to filePath
     required Map<String, String> headers,
   }) async {
     try {
-      // ✅ Permission check for Android
-      // if (Platform.isAndroid) {
-      //   final androidInfo = await DeviceInfoPlugin().androidInfo;
-      //   final sdkInt = androidInfo.version.sdkInt;
-      //
-      //   PermissionStatus permissionStatus;
-      //
-      //   if (sdkInt >= 30) {
-      //     permissionStatus = await Permission.manageExternalStorage.request();
-      //   } else {
-      //     permissionStatus = await Permission.storage.request();
-      //   }
-      //
-      //   if (!permissionStatus.isGranted) {
-      //     ScaffoldMessenger.of(context).showSnackBar(
-      //       const SnackBar(
-      //         content: Text("❌ Storage permission denied."),
-      //         backgroundColor: Colors.red,
-      //       ),
-      //     );
-      //     return;
-      //   }
-      // }
-
       final url = Uri.parse('$baseUrl/$endpoint');
+      print("📡 Downloading PDF from: $url");
 
       final response = await http.get(url, headers: headers);
 
-      if (response.statusCode == 200) {
-        final dir = await getApplicationDocumentsDirectory();
-        final filePath = "${dir.path}/$fileName";
+      if (response.statusCode == 401) {
+        await _handleLogout();
+        throw Exception("Unauthorized - Session expired");
+      }
 
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
+      if (response.statusCode == 200) {
+        // ✅ Save the PDF directly to the provided full path
+        await savePdfFile(response.bodyBytes, filePath);
+
+        print("✅ PDF successfully saved at: $filePath");
+
+        // ✅ Close loader dialog (PopupLoader)
         GoRouter.of(context).pop();
 
-        await OpenFile.open(filePath);
+        // ✅ Try to open the saved file
+        final result = await OpenFile.open(filePath);
+        print("📖 OpenFile result: ${result.message}");
       } else {
         throw Exception("Failed to download PDF. Status: ${response.statusCode}");
       }
     } catch (e) {
+      print("❌ Error downloading PDF: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please wait to complete bookings'),
+        const SnackBar(
+          content: Text('Failed to download PDF. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
+
+  Future<void> savePdfFile(Uint8List bytes, String filePath) async {
+    try {
+      final file = File(filePath);
+
+      // ✅ Ensure directory exists
+      if (!await file.parent.exists()) {
+        await file.parent.create(recursive: true);
+      }
+
+      // ✅ Write PDF bytes to the file
+      await file.writeAsBytes(bytes, flush: true);
+      print("📄 PDF saved at: $filePath");
+    } catch (e) {
+      print("❌ Error saving PDF: $e");
+      throw Exception("Failed to save PDF file");
+    }
+  }
+
 
 }

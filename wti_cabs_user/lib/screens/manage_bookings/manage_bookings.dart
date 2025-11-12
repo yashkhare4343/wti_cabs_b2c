@@ -1344,7 +1344,7 @@ class _BookingCardState extends State<BookingCard> {
                                     ),
                                     TextSpan(
                                       text: upcomingBookingController
-                                          .confirmedBookings?[index].id,
+                                          .confirmedBookings?[index].orderReferenceNumber,
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Color(0xFF222222),
@@ -1817,6 +1817,14 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF373737)),
                                   ),
+                                  // Text(
+                                  //   "Yash" ??
+                                  //       "",
+                                  //   style: TextStyle(
+                                  //       fontSize: 14,
+                                  //       fontWeight: FontWeight.w600,
+                                  //       color: Color(0xFF373737)),
+                                  // ),
                                   SizedBox(height: 2),
                                   FutureBuilder<double>(
                                     future: currencyController.convertPrice(
@@ -2103,11 +2111,14 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                     'Downloading Invoice...',
                                   ),
                                 );
+                                print('order id no for cab: ${upcomingBookingController
+                                    .completedBookings?[index].orderReferenceNumber}');
                                 await pdfCtrl
-                                    .downloadChauffeurEInvoice(
+                                    .downloadChauffeurEInvoiceCab(
                                     context:
                                     context,
-                                    objectId: fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.orderReferenceNumber??'')
+                                    objectId: upcomingBookingController
+                                        .completedBookings?[index].orderReferenceNumber??'')
                                     .then((value) {
                                   GoRouter.of(context)
                                       .pop();

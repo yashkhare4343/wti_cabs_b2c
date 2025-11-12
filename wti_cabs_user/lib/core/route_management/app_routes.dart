@@ -19,6 +19,7 @@ class AppRoutes{
   static const String selectCurrency = '/selectCurrency';
   static const String splash = '/splash';
   static const String contact = '/contact';
+  static const String myAccount = '/myAccount';
   static const String selfDriveBottomSheet = '/selfDriveBottomSheet';
   static const String selfDriveHome = '/selfDriveHome';
   static const String selfDriveAllInventory = '/selfDriveAllInventory';
@@ -26,5 +27,10 @@ class AppRoutes{
   static const String selfDrivePaymentSuccess = '/selfDrivePaymentSuccess';
   static const String selfDrivePaymentFailure = '/selfDrivePaymentFailure';
   static const String selfDriveCancelBooking = '/selfDriveCancelBooking';
+  // corporate
+  static const String cprLogin = '/cprLogin';
+  static const String cprRegister = '/cprRegister';
+  static const String cprHomeScreen = '/cprHomeScreen';
+
 
 }

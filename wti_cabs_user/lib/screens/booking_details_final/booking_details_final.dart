@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -23,6 +24,7 @@ import 'package:wti_cabs_user/core/controller/profile_controller/profile_control
 import 'package:wti_cabs_user/core/model/fetch_coupon/fetch_coupon_response.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import '../../core/api/api_services.dart';
+import '../../core/controller/analytics_tracking/analytics_tracking.dart';
 import '../../core/controller/booking_ride_controller.dart';
 import '../../core/controller/country/country_controller.dart';
 import '../../core/controller/fetch_reservation_booking_data/fetch_reservation_booking_data.dart';
@@ -82,6 +84,44 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
     });
   }
 
+  Future<void> logCabViewItemList() async {
+    final selectedTripController = Get.find<SelectedTripController>();
+    final currencyController = Get.find<CurrencyController>();
+    final convertedPartialAmount = await currencyController.convertPrice(cabBookingController.partFare.toDouble());
+    final convertFullAmount = await currencyController.convertPrice(cabBookingController.totalFare.toDouble());
+    // 🧩 Add or merge custom keys (including converted amount)
+    // 🧾 Get stored values
+    final storedItem = selectedTripController.selectedItem.value;
+    final storedParams = selectedTripController.parameters;
+
+    if (storedItem == null || storedParams.isEmpty) {
+      print('⚠️ No trip data found in controller, skipping log.');
+      return;
+    }
+
+    // 🧩 You can modify or add new keys if needed
+    selectedTripController.addCustomParameters({
+      'event': 'view_item',
+      'screen_name': 'Booking Details Screen',
+      'partial_amount':convertedPartialAmount,
+      'payment_option': cabBookingController.selectedOption.value == 1 ? "FULL" : "PART",
+      'total_amount' : convertFullAmount
+    });
+
+    // ✅ Prepare final parameters to send
+    final updatedParams = Map<String, Object>.from(selectedTripController.parameters);
+
+    // ✅ Log to Firebase Analytics
+    await FirebaseAnalytics.instance.logViewItem(
+      items: [storedItem],
+      parameters: updatedParams,
+    );
+
+    print('✅ Logged view_item for ${storedItem.itemName}');
+    print('📦 Parameters sent: $updatedParams');
+  }
+
+
   Future<void> loadInitialData() async {
     _country = await StorageServices.instance.read('country');
     token = await StorageServices.instance.read('token');
@@ -115,6 +155,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
         cabBookingController.validateForm();
       });
     }); // to trigger rebuild once _country is loaded
+   await logCabViewItemList();
   }
 
   @override
@@ -2370,6 +2411,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
       Get.put(DestinationLocationController());
 
   int selectedOption = 0;
+
   String? _country;
   final IndiaPaymentController indiaPaymentController =
       Get.put(IndiaPaymentController());
@@ -2723,7 +2765,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                       ?.toInt(),
                                   "package": await StorageServices.instance
                                               .read('currentTripCode') ==
-                                          '4'
+                                          '3'
                                       ? cabBookingController
                                               .indiaData
                                               .value
@@ -2801,7 +2843,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "state": sourceController.state.value,
                                     "country": sourceController.country.value
                                   },
-                                  "destination": {
+                                  "destination": await StorageServices.instance
+                                      .read('currentTripCode') ==
+                                      '3'
+                                      ? {} : {
                                     "address": destinationController
                                             .title.value.isEmpty
                                         ? destinationData['destinationTitle']
@@ -2971,6 +3016,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                       selectedOption == 1 ? "FULL" : "PART"
                                 }
                               };
+
+                              cabBookingController.selectedOption.value = selectedOption;
 
                               await indiaPaymentController
                                   .verifySignup(

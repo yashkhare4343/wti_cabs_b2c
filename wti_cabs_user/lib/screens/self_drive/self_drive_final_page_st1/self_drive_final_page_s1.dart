@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,6 +23,7 @@ import '../../../core/controller/self_drive/file_upload_controller/file_upload_c
 import '../../../core/controller/self_drive/google_lat_lng_controller/google_lat_lng_controller.dart';
 import '../../../core/controller/self_drive/search_inventory_sd_controller/search_inventory_sd_controller.dart';
 import '../../../core/controller/self_drive/self_drive_stripe_payment/sd_create_stripe_payment.dart';
+import '../../../core/services/storage_services.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../self_drive_popular_location/self_drive_return_popular_location.dart';
 
@@ -50,6 +52,8 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
   final FileUploadValidController fileUploadController =
       Get.put(FileUploadValidController());
   final CurrencyController currencyController = Get.put(CurrencyController());
+  final SdCreateStripePaymentController sdCreateStripePaymentController =
+      Get.put(SdCreateStripePaymentController());
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -265,6 +269,20 @@ class _SelfDriveFinalPageS1State extends State<SelfDriveFinalPageS1> {
         );
       }
       return;
+    }
+
+    final sourceName = sdCreateStripePaymentController.sourceCity.value.trim();
+    final destinationName = controller.isSameLocation.value
+        ? sourceName
+        : sdCreateStripePaymentController.destinationCity.value.trim();
+
+    if (sourceName.isNotEmpty) {
+      await StorageServices.instance.save('selfDriveSourceName', sourceName);
+    }
+
+    if (destinationName.isNotEmpty) {
+      await StorageServices.instance
+          .save('selfDriveDestinationName', destinationName);
     }
 
     // ✅ Validation passed — show shimmer overlay
@@ -2158,12 +2176,42 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
   final CurrencyController currencyController = Get.put(CurrencyController());
 
   bool returnToSameLocation = false;
+  Worker? _sourceWorker;
+  Worker? _destinationWorker;
 
   @override
   void initState() {
     super.initState();
     serviceHubController.fetchServicehub();
     returnToSameLocation = fetchSdBookingDetailsController.isSameLocation.value;
+
+    _sourceWorker = ever<String>(
+      sdCreateStripePaymentController.sourceCity,
+      (value) {
+        final trimmed = value.trim();
+        if (trimmed.isNotEmpty) {
+          unawaited(StorageServices.instance.save('selfDriveSourceName', trimmed));
+        }
+      },
+    );
+
+    _destinationWorker = ever<String>(
+      sdCreateStripePaymentController.destinationCity,
+      (value) {
+        final trimmed = value.trim();
+        if (trimmed.isNotEmpty) {
+          unawaited(StorageServices.instance
+              .save('selfDriveDestinationName', trimmed));
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _sourceWorker?.dispose();
+    _destinationWorker?.dispose();
+    super.dispose();
   }
 
   @override
@@ -2237,6 +2285,9 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                             .selectedPickupOption.value = val ?? "";
                         fetchSdBookingDetailsController.showPickupError.value =
                             false;
+                        sdCreateStripePaymentController.sourceCity.value = serviceHubController.serviceHubResponse.value
+                            ?.result?.first.address ??
+                            '';
                         Navigator.of(context).push(
                           CupertinoPageRoute(
                             builder: (_) => SelfDriveMostPopularLocation(
@@ -2300,6 +2351,11 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                         fetchSdBookingDetailsController.fetchBookingDetails(
                             widget.vehicleId, false);
                       },
+                      isPickup: true,
+                      lat: serviceHubController.serviceHubResponse.value
+                          ?.result?.first.latlng?.lat,
+                      lng: serviceHubController.serviceHubResponse.value
+                          ?.result?.first.latlng?.lng,
                     )),
 
                 const SizedBox(height: 16),
@@ -2320,6 +2376,14 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                           fetchSdBookingDetailsController.isSameLocation.value =
                               val;
                           returnToSameLocation = val;
+                          if (val) {
+                            sdCreateStripePaymentController.destinationCity.value =
+                                sdCreateStripePaymentController.sourceCity.value;
+                            sdCreateStripePaymentController.destinationLat.value =
+                                sdCreateStripePaymentController.sourceLat.value;
+                            sdCreateStripePaymentController.destinationLng.value =
+                                sdCreateStripePaymentController.sourceLng.value;
+                          }
                           fetchSdBookingDetailsController.fetchBookingDetails(
                               widget.vehicleId, false);
                         },
@@ -2449,10 +2513,19 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                                       .isFreeDrop.value = true;
                                   fetchSdBookingDetailsController
                                       .isSameLocation.value = false;
+                                  sdCreateStripePaymentController.destinationCity.value = serviceHubController.serviceHubResponse
+                                      .value?.result?.first.address??'';
                                   fetchSdBookingDetailsController
                                       .fetchBookingDetails(
                                           widget.vehicleId, false);
                                 },
+                                isPickup: false,
+                                lat: serviceHubController
+                                    .serviceHubResponse.value?.result?.first
+                                    .latlng?.lat,
+                                lng: serviceHubController
+                                    .serviceHubResponse.value?.result?.first
+                                    .latlng?.lng,
                               )),
                         ],
                       )),
@@ -2543,14 +2616,37 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
     required String? groupValue,
     required bool error,
     required Function(String?) onChanged,
+    required bool isPickup,
+    double? lat,
+    double? lng,
   }) {
     final isSelected = value == groupValue;
+
+    void handleSelection() {
+      if (isPickup) {
+        sdCreateStripePaymentController.sourceCity.value = address;
+        sdCreateStripePaymentController.sourceLat.value = lat ?? 0.0;
+        sdCreateStripePaymentController.sourceLng.value = lng ?? 0.0;
+
+        if (fetchSdBookingDetailsController.isSameLocation.value) {
+          sdCreateStripePaymentController.destinationCity.value = address;
+          sdCreateStripePaymentController.destinationLat.value = lat ?? 0.0;
+          sdCreateStripePaymentController.destinationLng.value = lng ?? 0.0;
+        }
+      } else {
+        sdCreateStripePaymentController.destinationCity.value = address;
+        sdCreateStripePaymentController.destinationLat.value = lat ?? 0.0;
+        sdCreateStripePaymentController.destinationLng.value = lng ?? 0.0;
+      }
+
+      onChanged(value);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: () => onChanged(value),
+          onTap: handleSelection,
           child: Container(
             padding:
                 const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
@@ -2567,7 +2663,10 @@ class _PickupReturnLocationPageState extends State<PickupReturnLocationPage> {
                 CupertinoRadio(
                   value: value,
                   groupValue: groupValue,
-                  onChanged: onChanged,
+                  onChanged: (val) {
+                    if (val == null) return;
+                    handleSelection();
+                  },
                 ),
                 const SizedBox(width: 8),
                 Expanded(

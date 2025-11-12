@@ -194,15 +194,34 @@ class _SelectDropState extends State<SelectDrop> {
     FocusScope.of(context).unfocus();
 
     // Navigation
-    if(widget.fromInventoryScreen == false) {
-      final tabName = bookingRideController.currentTabName;
-      final route = tabName == 'rental'
-          ? '${AppRoutes.bookingRide}?tab=rental'
-          : '${AppRoutes.bookingRide}?tab=$tabName';
-      GoRouter.of(context).push(AppRoutes.bookingRide);   }
-    else{
-      GoRouter.of(context).push(AppRoutes.bookingRide);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (bookingRideController.fromHomePage.value == true) {
+        // ✅ Coming from Home → go directly to bookingRide
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          GoRouter.of(context).go(AppRoutes.bookingRide);
+        });
+      }
+      else if (widget.fromInventoryScreen == true) {
+        // ✅ Coming from Inventory → safely pop or fallback
+        if (GoRouter.of(context).canPop()) {
+          GoRouter.of(context).pop();
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            GoRouter.of(context).go(AppRoutes.bookingRide);
+          });
+        }
+      }
+      else {
+        // ✅ Default fallback → try pop, else go to bookingRide
+        if (GoRouter.of(context).canPop()) {
+          GoRouter.of(context).pop();
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            GoRouter.of(context).go(AppRoutes.bookingRide);
+          });
+        }
+      }
+    });
 
     // Background tasks
     Future.microtask(() {

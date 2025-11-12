@@ -925,6 +925,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
       onPopInvoked: (didPop) async{
         // This will be called for hardware back and gesture
         await currencyController.resetCurrencyAfterSelfDrive();
+        bookingRideController.selectedIndex.value = 0;
 
         GoRouter.of(context).push(AppRoutes.bottomNav);
       },
@@ -1177,8 +1178,11 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                     children: [
                       InkWell(
                         splashColor: Colors.transparent,
-                        onTap: () {
-                          GoRouter.of(context).push(AppRoutes.selfDriveHome);
+                        onTap: () async {
+                          bookingRideController.selectedIndex.value = 3;
+                          GoRouter.of(context)
+                              .push(AppRoutes.selfDriveBottomSheet);
+
                           // Flushbar(
                           //   flushbarPosition: FlushbarPosition.TOP, // ✅ Show at top
                           //   margin: const EdgeInsets.all(12),
@@ -1205,9 +1209,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1215,7 +1220,20 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                Text('Self Drive', style: CommonFonts.blueText1),
+                                Text('Self Drive',
+                                    style: CommonFonts.blueText1),
+                                SizedBox(height: 8,),
+                                (bookingRideController.selectedIndex.value == 3 )?  Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                  child: Container(
+                                    height: 3,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF888888), // background line
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ) : SizedBox()
                               ],
                             ),
                           ),
@@ -1223,8 +1241,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                       ),
                       InkWell(
                         splashColor: Colors.transparent,
-                        onTap: () async{
+                        onTap: () {
                           bookingRideController.selectedIndex.value = 0;
+
+                          // Start fetching location asynchronously without waiting
                           fetchCurrentLocationAndAddress();
 
                           // Navigate immediately
@@ -1236,6 +1256,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                 ?.push(AppRoutes.bookingRide);
                           }
                           currencyController.resetCurrencyAfterSelfDrive();
+
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -1250,9 +1271,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1260,94 +1282,123 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                Text('Airport', style: CommonFonts.blueText1),
+                                Text('Airport',
+                                    style: CommonFonts.blueText1),
+                                SizedBox(height: 8,),
+                                bookingRideController.selectedIndex.value == 0 ?  Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                  child: Container(
+                                    height: 3,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF888888), // background line
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ) : SizedBox()
+
                               ],
                             ),
                           ),
                         ),
                       ),
-                      Container(
-                        color: Colors.transparent,
-                        child: SizedBox.expand(
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.topCenter, // 👈 ensures "Popular" centers horizontally
-                            children: [
-                              InkWell(
-                                splashColor: Colors.transparent,
-                                onTap: () async{
-                                  bookingRideController.selectedIndex.value = 1;
-                                  fetchCurrentLocationAndAddress();
+                      InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: () {
+                          bookingRideController
+                              .selectedIndex.value = 1;
+                          fetchCurrentLocationAndAddress();
+                          // Navigate immediately
+                          if (Platform.isAndroid) {
+                            GoRouter.of(context)
+                                .push(AppRoutes.bookingRide);
+                          } else {
+                            navigatorKey.currentContext
+                                ?.push(AppRoutes.bookingRide);
+                          }
+                          currencyController.resetCurrencyAfterSelfDrive();
 
-                                  // Navigate immediately
-                                  if (Platform.isAndroid) {
-                                    GoRouter.of(context)
-                                        .push(AppRoutes.bookingRide);
-                                  } else {
-                                    navigatorKey.currentContext
-                                        ?.push(AppRoutes.bookingRide);
-                                  }
-                                  currencyController.resetCurrencyAfterSelfDrive();
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x1F192653),
-                                        offset: Offset(0, 3),
-                                        blurRadius: 12,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Image.asset(
-                                            'assets/images/outstation.png',
-                                            fit: BoxFit.contain,
-                                          ),
-                                        ),
-                                        Text('Outstation', style: CommonFonts.blueText1),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: -8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 2,
-                                    horizontal: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFC6CD00), Color(0xFF00DC3E)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text(
-                                    'Popular',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1F192653),
+                                offset: Offset(0, 3),
+                                blurRadius: 12,
                               ),
                             ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.topCenter,
+                              children: [
+                                Transform.translate(
+                                  offset: const Offset(0.0, -15.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                      horizontal: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFC6CD00),
+                                          Color(0xFF00DC3E)
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Popular',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                Column(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/outstation.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    Text('Outstation',
+                                        style: CommonFonts.blueText1),
+                                    SizedBox(height: 8,),
+                                    (bookingRideController.selectedIndex.value == 1)?  Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                      child: Container(
+                                        height: 3,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF888888), // background line
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    ) : SizedBox()
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       InkWell(
                         splashColor: Colors.transparent,
-                        onTap: () async{
+                        onTap: () {
                           bookingRideController.selectedIndex.value = 2;
                           fetchCurrentLocationAndAddress();
 
@@ -1360,6 +1411,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                 ?.push(AppRoutes.bookingRide);
                           }
                           currencyController.resetCurrencyAfterSelfDrive();
+
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -1374,9 +1426,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1384,7 +1437,20 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                Text('Rental', style: CommonFonts.blueText1),
+                                Text('Rental',
+                                    style: CommonFonts.blueText1),
+                                SizedBox(height: 8,),
+                                (bookingRideController.selectedIndex.value == 2)?  Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                                  child: Container(
+                                    height: 3,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF888888), // background line
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ) : SizedBox()
                               ],
                             ),
                           ),

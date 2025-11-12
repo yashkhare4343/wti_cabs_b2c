@@ -86,11 +86,11 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                         reservation['vehicle_details']?['model'] ?? ''),
                     bookingDetailRow(
                         'Pickup', reservation['source']?['address'] ?? ''),
-                    bookingDetailRow(
+                    if(reservation['trip_type_details']?['trip_type'] != 'LOCAL_RENTAL')  bookingDetailRow(
                         'Drop', reservation['destination']?['address'] ?? ''),
                     bookingDetailRow('Pickup Date',
                         convertUtcToLocal(reservation['start_time'] ?? '', reservation['timezone'] ?? 'UTC')),
-                    bookingDetailRow('Drop Date',
+                    if(reservation['trip_type_details']?['trip_type'] != 'LOCAL_RENTAL') bookingDetailRow('Drop Date',
                         convertUtcToLocal(reservation['end_time'] ?? '', reservation['timezone'] ?? 'UTC')),
                     bookingDetailRow('Amount',
                         '${CurrencyController().selectedCurrency.value.symbol} ${order['amount']?.toString()}' ?? '0'),

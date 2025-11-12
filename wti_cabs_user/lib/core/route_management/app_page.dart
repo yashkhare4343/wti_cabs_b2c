@@ -6,9 +6,12 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/screens/corporate/corporate_login/cpr_login.dart';
+import 'package:wti_cabs_user/screens/corporate/crp_register/crp_register.dart';
 import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
+import 'package:wti_cabs_user/screens/my_account/my_account.dart';
 import 'package:wti_cabs_user/screens/offers/offers.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_failure.dart';
 import 'package:wti_cabs_user/screens/payment_status/payment_success.dart';
@@ -29,6 +32,7 @@ import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
+import '../controller/corporate/crp_home_screen/crp_home_screen.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -155,6 +159,22 @@ class AppPages {
         final orderRefNo = state.extra as Map<String, dynamic>;
         return _platformPage(SelfDriveCancelBookingScreen(orderRefNo: orderRefNo));
       },
+    ),
+    GoRoute(
+      path: AppRoutes.myAccount,
+      pageBuilder: (context, state) => _platformPage(MyAccount()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprLogin,
+      pageBuilder: (context, state) => _platformPage(CprLogin()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprRegister,
+      pageBuilder: (context, state) => _platformPage(CprRegister()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprHomeScreen,
+      pageBuilder: (context, state) => _platformPage(CprHomeScreen()),
     ),
   ];
 
