@@ -31,8 +31,9 @@ import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
+import '../../screens/corporate/crp_booking_engine/crp_booking_engine.dart';
+import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
-import '../controller/corporate/crp_home_screen/crp_home_screen.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -175,6 +176,10 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprHomeScreen,
       pageBuilder: (context, state) => _platformPage(CprHomeScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprBookingEngine,
+      pageBuilder: (context, state) => _platformPage(CprBookingEngine()),
     ),
   ];
 

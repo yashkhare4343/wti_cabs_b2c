@@ -25,7 +25,6 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
-
 import '../../common_widget/loader/popup_loader.dart';
 import '../../core/controller/auth/mobile_controller.dart';
 import '../../core/controller/auth/otp_controller.dart';
@@ -1514,7 +1513,8 @@ class _BookingCardState extends State<BookingCard> {
                           color: Color(0xFFF2F2F2),
                           margin: EdgeInsets.symmetric(horizontal: 12),
                         ),
-                        Expanded(
+                      if(upcomingBookingController
+                          .confirmedBookings?[index].tripTypeDetails?.tripType != "LOCAL_RENTAL")  Expanded(
                           flex: 5,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1817,6 +1817,28 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF373737)),
                                   ),
+                                  SizedBox(height: 2),
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'Booking ID: ',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF929292),
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                        TextSpan(
+                                          text: upcomingBookingController
+                                              .completedBookings?[index].orderReferenceNumber,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF222222),
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   // Text(
                                   //   "Yash" ??
                                   //       "",
@@ -1892,33 +1914,6 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                                               fontSize: 12,
                                               color: Color(0xFF002CC0),
                                               fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'Paid Amount: ',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF929292),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                        TextSpan(
-                                          text: upcomingBookingController
-                                              .completedBookings?[index]
-                                              .recieptId
-                                              ?.fareDetails
-                                              ?.amountPaid
-                                              .toString() ??
-                                              '',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF2B2B2B),
-                                              fontWeight: FontWeight.w700),
                                         ),
                                       ],
                                     ),
@@ -2016,7 +2011,8 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
                               color: Color(0xFFF2F2F2),
                               margin: EdgeInsets.symmetric(horizontal: 12),
                             ),
-                            Expanded(
+                            if(upcomingBookingController
+                                .completedBookings?[index].tripTypeDetails?.tripType != "LOCAL_RENTAL") Expanded(
                               flex: 5,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2279,6 +2275,30 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                         color: Color(0xFF373737)),
                                   ),
                                   SizedBox(height: 2),
+
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'Booking ID: ',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF929292),
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                        TextSpan(
+                                          text: upcomingBookingController
+                                              .cancelledBookings?[index].orderReferenceNumber,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF222222),
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  SizedBox(height: 2),
                                   FutureBuilder<double>(
                                     future: currencyController.convertPrice(
                                       upcomingBookingController
@@ -2345,33 +2365,6 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                                               fontSize: 12,
                                               color: Color(0xFF002CC0),
                                               fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'Paid Amount: ',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF929292),
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                        TextSpan(
-                                          text: upcomingBookingController
-                                              .cancelledBookings?[index]
-                                              .recieptId
-                                              ?.fareDetails
-                                              ?.amountPaid
-                                              .toString() ??
-                                              '',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF2B2B2B),
-                                              fontWeight: FontWeight.w700),
                                         ),
                                       ],
                                     ),
@@ -2469,7 +2462,8 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
                               color: Color(0xFFF2F2F2),
                               margin: EdgeInsets.symmetric(horizontal: 12),
                             ),
-                            Expanded(
+                            if(upcomingBookingController
+                                .cancelledBookings?[index].tripTypeDetails?.tripType != "LOCAL_RENTAL")  Expanded(
                               flex: 5,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

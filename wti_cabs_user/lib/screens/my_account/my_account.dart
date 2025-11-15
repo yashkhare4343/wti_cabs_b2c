@@ -1215,33 +1215,33 @@ class _MyAccountState extends State<MyAccount> {
                           ),
                         ),
 
-                        InkWell(
-                          onTap: () {
-                            // Your onTap logic
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.home_outlined,
-                                  size: 20,
-                                  color: Color(0xFF404040),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Manage Address ',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF333333),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        // InkWell(
+                        //   onTap: () {
+                        //     // Your onTap logic
+                        //   },
+                        //   child: Padding(
+                        //     padding: const EdgeInsets.symmetric(
+                        //         horizontal: 16, vertical: 12),
+                        //     child: Row(
+                        //       children: [
+                        //         const Icon(
+                        //           Icons.home_outlined,
+                        //           size: 20,
+                        //           color: Color(0xFF404040),
+                        //         ),
+                        //         const SizedBox(width: 12),
+                        //         const Text(
+                        //           'Manage Address ',
+                        //           style: TextStyle(
+                        //             fontSize: 14,
+                        //             fontWeight: FontWeight.w500,
+                        //             color: Color(0xFF333333),
+                        //           ),
+                        //         ),
+                        //       ],
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),

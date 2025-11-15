@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../common_widget/textformfield/crp_text_form_field.dart';
 import '../../../core/route_management/app_routes.dart';
@@ -31,6 +32,15 @@ class _CprLoginState extends State<CprLogin> {
     print('✅ Form is valid, proceed to API call');
 
     await loginInfoController.fetchLoginInfo(params, context);
+
+    final response = loginInfoController.crpLoginInfo.value;
+    if(response?.bStatus == true){
+      StorageServices.instance.save('crpKey', response?.key??'');
+      StorageServices.instance.save('crpId', response?.corpID??'');
+      StorageServices.instance.save('branchId', response?.branchID??'');
+
+      GoRouter.of(context).push(AppRoutes.cprHomeScreen);
+    }
 
     // await crpRegisterController.verifyCrpRegister(params, context);
     //

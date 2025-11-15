@@ -42,16 +42,37 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
   void initState() {
     super.initState();
     fetchReservationBookingData.fetchReservationData();
+    tz.initializeTimeZones(); // ✅ add this
     WidgetsBinding.instance.addPostFrameCallback((_) async{
       await logPurchase();
     });
   }
 
-  String convertUtcToLocal(String utcTimeString, String timezoneString) {
-    DateTime utcTime = DateTime.parse(utcTimeString);
-    final location = tz.getLocation(timezoneString);
-    final localTime = tz.TZDateTime.from(utcTime, location);
-    return DateFormat("d MMM yyyy, hh:mm a").format(localTime);
+  String convertUtcToLocal(String utcTimeString, String? timezoneString) {
+    try {
+      if (utcTimeString.isEmpty) return '';
+
+      DateTime utcTime = DateTime.parse(utcTimeString);
+
+      // ✅ Default to UTC if timezone is null or invalid
+      tz.Location location;
+      try {
+        if (timezoneString == null || timezoneString.trim().isEmpty) {
+          location = tz.getLocation('UTC');
+        } else {
+          location = tz.getLocation(timezoneString);
+        }
+      } catch (e) {
+        // fallback again in case the timezone string is invalid
+        location = tz.getLocation('UTC');
+      }
+
+      final localTime = tz.TZDateTime.from(utcTime, location);
+      return DateFormat("d MMM yyyy, hh:mm a").format(localTime);
+    } catch (e) {
+      debugPrint('Error in convertUtcToLocal: $e');
+      return utcTimeString; // fallback: show original time
+    }
   }
 
   Future<void> logPurchase() async {

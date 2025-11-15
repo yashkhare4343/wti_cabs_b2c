@@ -22,7 +22,6 @@ import 'package:wti_cabs_user/core/controller/source_controller/source_controlle
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
-import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
@@ -38,6 +37,7 @@ import '../../core/services/storage_services.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../bottom_nav/bottom_nav.dart';
+import '../popup/popup_booking_ride.dart';
 
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
@@ -54,7 +54,7 @@ class InventoryList extends StatefulWidget {
   State<InventoryList> createState() => _InventoryListState();
 }
 
-class _InventoryListState extends State<InventoryList> {
+class _InventoryListState extends State<InventoryList> with WidgetsBindingObserver {
   final SearchCabInventoryController searchCabInventoryController =
   Get.put(SearchCabInventoryController());
   final TripController tripController = Get.put(TripController());
@@ -62,6 +62,8 @@ class _InventoryListState extends State<InventoryList> {
   Get.put(FetchPackageController());
   final BookingRideController bookingRideController =
   Get.put(BookingRideController());
+  final PlaceSearchController placeSearchController = Get.put(PlaceSearchController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
 
   static const Map<String, String> tripMessages = {
     '0': 'Your selected trip type has changed to Outstation One Way Trip.',
@@ -72,6 +74,9 @@ class _InventoryListState extends State<InventoryList> {
 
   String? _country;
   bool isLoading = true;
+  bool _isInitialLoad = true;
+  String? _previousPickupPlaceId;
+  String? _previousDropPlaceId;
 
   final _analytics = FirebaseAnalytics.instance;
 
@@ -80,13 +85,106 @@ class _InventoryListState extends State<InventoryList> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _previousPickupPlaceId = placeSearchController.placeId.value;
+    _previousDropPlaceId = dropPlaceSearchController.dropPlaceId.value;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _fetchData();
       await loadInitialData();
       bookingRideController.requestData.value = widget.requestData;
-      // WidgetsBinding.instance.addPostFrameCallback((_) => logCabViewItemList(searchCabInventoryController.indiaData.value!));
-
+      _isInitialLoad = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final data = searchCabInventoryController.indiaData.value;
+        if (data != null) {
+          logCabViewItemList(data);
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && !_isInitialLoad) {
+      _checkAndRefreshData();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialLoad && mounted) {
+      // Check if locations have changed when screen becomes visible again
+      // Use a small delay to ensure navigation is complete
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _checkAndRefreshData();
+        }
+      });
+    }
+  }
+
+  /// Check if location data has changed and refresh if needed
+  Future<void> _checkAndRefreshData() async {
+    if (!mounted || _isInitialLoad) return;
+    
+    final currentPickupId = placeSearchController.placeId.value;
+    final currentDropId = dropPlaceSearchController.dropPlaceId.value;
+    
+    // Check if locations have changed
+    if (currentPickupId != _previousPickupPlaceId || 
+        currentDropId != _previousDropPlaceId) {
+      _previousPickupPlaceId = currentPickupId;
+      _previousDropPlaceId = currentDropId;
+      
+      // Small delay to ensure location updates are complete
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // Refresh data if locations changed
+      if (mounted) {
+        await _refreshData();
+      }
+    }
+  }
+
+  /// Refresh inventory data
+  Future<void> _refreshData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      // Rebuild request data with updated locations
+      final updatedRequestData = Map<String, dynamic>.from(widget.requestData);
+      
+      await searchCabInventoryController.fetchBookingData(
+        country: updatedRequestData['countryName'] ?? _country ?? '',
+        requestData: updatedRequestData,
+        context: context,
+        isSecondPage: true,
+      );
+      
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> logCabViewItemList(IndiaResponse indiaResponse) async {
@@ -354,31 +452,47 @@ class _InventoryListState extends State<InventoryList> {
   num getFakePriceWithPercent(num baseFare, num percent) =>
       (baseFare * 100) / (100 - percent);
   num getFivePercentOfBaseFare(num baseFare) => baseFare * 0.05;
-  final DropPlaceSearchController dropPlaceSearchController =
-  Get.put(DropPlaceSearchController());
+
   final CurrencyController currencyController = Get.find<CurrencyController>();
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return PopScope(
-        canPop: true,
+        canPop: false,
         onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value = 0;
-          final tabName = bookingRideController.currentTabName;
-
-          final route = tabName == 'rental'
-              ? '${AppRoutes.bookingRide}?tab=airport'
-              : '${AppRoutes.bookingRide}?tab=airport';
-
-          if (widget.fromRecentSearch == true) {
-            GoRouter.of(context).push(route,
-                extra: (context) => Platform.isIOS
-                    ? CupertinoPage(child: const BottomNavScreen())
-                    : MaterialPage(child: const BottomNavScreen()));
-          } else {
-            GoRouter.of(context).push(AppRoutes.bookingRide);
+          if (didPop) return; // Already popped, nothing to do
+          
+          // Close any open popups/dialogs first
+          final navigator = Navigator.of(context);
+          int popAttempts = 0;
+          while (navigator.canPop() && popAttempts < 3) {
+            navigator.pop();
+            popAttempts++;
           }
+          
+          bookingRideController.selectedIndex.value = 0;
+          bookingRideController.isInventoryPage.value = false;
+          
+          // Navigate back - use microtask for immediate execution
+          Future.microtask(() {
+            if (!mounted) return;
+            
+            final tabName = bookingRideController.currentTabName;
+
+            final route = tabName == 'rental'
+                ? '${AppRoutes.bookingRide}?tab=airport'
+                : '${AppRoutes.bookingRide}?tab=airport';
+
+            if (widget.fromRecentSearch == true) {
+              GoRouter.of(context).push(route,
+                  extra: (context) => Platform.isIOS
+                      ? CupertinoPage(child: const BottomNavScreen())
+                      : MaterialPage(child: const BottomNavScreen()));
+            } else {
+              GoRouter.of(context).push(AppRoutes.bookingRide);
+            }
+          });
         },
         child: Scaffold(
           backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -395,43 +509,60 @@ class _InventoryListState extends State<InventoryList> {
         (isIndia && indiaData == null) ||
         (!isIndia && globalData == null)) {
       return PopScope(
-        canPop: true,
+        canPop: false,
         onPopInvoked: (didPop) {
-          bookingRideController.selectedIndex.value = 0;
-          Get.delete<PlaceSearchController>(force: true);
-          Get.delete<DropPlaceSearchController>(force: true);
-          Get.delete<SourceLocationController>(force: true);
-          Get.delete<DestinationLocationController>(force: true);
-          Get.delete<SearchCabInventoryController>(force: true);
-          Get.delete<BookingRideController>(force: true);
-          Get.put(PlaceSearchController());
-          Get.put(DropPlaceSearchController());
-          Get.put(SourceLocationController());
-          Get.put(DestinationLocationController());
-          Get.put(SearchCabInventoryController());
-          Get.put(BookingRideController());
-          if (isIndia && indiaData == null) {
-            bookingRideController.prefilled.value =
-                indiaData?.result?.tripType?.source?.address ?? '';
-            bookingRideController.prefilledDrop.value =
-                indiaData?.result?.tripType?.destination?.address ?? '';
-          } else if (!isIndia && globalData == null) {
-            bookingRideController.prefilled.value = globalData
-                ?.result.first.iterator.current.tripDetails?.source.title ??
-                '';
-            bookingRideController.prefilledDrop.value = globalData?.result.first
-                .iterator.current.tripDetails?.destination.title ??
-                '';
+          if (didPop) return; // Already popped, nothing to do
+          
+          // Close any open popups/dialogs first
+          final navigator = Navigator.of(context);
+          int popAttempts = 0;
+          while (navigator.canPop() && popAttempts < 3) {
+            navigator.pop();
+            popAttempts++;
           }
+          
+          bookingRideController.selectedIndex.value = 0;
+          bookingRideController.isInventoryPage.value = false;
+          
+          // Navigate back - use microtask for immediate execution
+          Future.microtask(() {
+            if (!mounted) return;
+            
+            Get.delete<PlaceSearchController>(force: true);
+            Get.delete<DropPlaceSearchController>(force: true);
+            Get.delete<SourceLocationController>(force: true);
+            Get.delete<DestinationLocationController>(force: true);
+            Get.delete<SearchCabInventoryController>(force: true);
+            Get.delete<BookingRideController>(force: true);
+            Get.put(PlaceSearchController());
+            Get.put(DropPlaceSearchController());
+            Get.put(SourceLocationController());
+            Get.put(DestinationLocationController());
+            Get.put(SearchCabInventoryController());
+            Get.put(BookingRideController());
+            if (isIndia && indiaData == null) {
+              bookingRideController.prefilled.value =
+                  indiaData?.result?.tripType?.source?.address ?? '';
+              bookingRideController.prefilledDrop.value =
+                  indiaData?.result?.tripType?.destination?.address ?? '';
+            } else if (!isIndia && globalData == null) {
+              bookingRideController.prefilled.value = globalData
+                  ?.result.first.iterator.current.tripDetails?.source.title ??
+                  '';
+              bookingRideController.prefilledDrop.value = globalData?.result.first
+                  .iterator.current.tripDetails?.destination.title ??
+                  '';
+            }
 
-          final tabName = bookingRideController.currentTabName;
-          final route = tabName == 'rental'
-              ? '${AppRoutes.bookingRide}?tab=airport'
-              : '${AppRoutes.bookingRide}?tab=airport';
-          GoRouter.of(context).push(route,
-              extra: (context) => Platform.isIOS
-                  ? CupertinoPage(child: const BottomNavScreen())
-                  : MaterialPage(child: const BottomNavScreen()));
+            final tabName = bookingRideController.currentTabName;
+            final route = tabName == 'rental'
+                ? '${AppRoutes.bookingRide}?tab=airport'
+                : '${AppRoutes.bookingRide}?tab=airport';
+            GoRouter.of(context).push(route,
+                extra: (context) => Platform.isIOS
+                    ? CupertinoPage(child: const BottomNavScreen())
+                    : MaterialPage(child: const BottomNavScreen()));
+          });
         },
         child: Scaffold(
           body: Center(child: FullPageShimmer()),
@@ -443,19 +574,38 @@ class _InventoryListState extends State<InventoryList> {
     final globalList = globalData?.result ?? [];
 
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvoked: (didPop) {
-        bookingRideController.selectedIndex.value = 0;
-        final tabName = bookingRideController.currentTabName;
-        final route = tabName == 'rental'
-            ? '${AppRoutes.bookingRide}?tab=airport'
-            : '${AppRoutes.bookingRide}?tab=airport';
-
-        if (widget.fromRecentSearch == false) {
-          GoRouter.of(context).go(AppRoutes.bookingRide);
-        } else if (widget.fromRecentSearch == true) {
-          GoRouter.of(context).go(AppRoutes.bottomNav);
+        if (didPop) return; // Already popped, nothing to do
+        
+        // Close any open popups/dialogs first
+        // Pop Navigator routes (popups are pushed with Navigator.push)
+        final navigator = Navigator.of(context);
+        // Pop up to 3 times to close any open popups/dialogs
+        int popAttempts = 0;
+        while (navigator.canPop() && popAttempts < 3) {
+          navigator.pop();
+          popAttempts++;
         }
+        
+        bookingRideController.selectedIndex.value = 0;
+        bookingRideController.isInventoryPage.value = false;
+        
+        // Navigate back - use microtask for immediate execution
+        Future.microtask(() {
+          if (!mounted) return;
+          
+          final tabName = bookingRideController.currentTabName;
+          final route = tabName == 'rental'
+              ? '${AppRoutes.bookingRide}?tab=airport'
+              : '${AppRoutes.bookingRide}?tab=airport';
+
+          if (widget.fromRecentSearch == false) {
+            GoRouter.of(context).go(AppRoutes.bookingRide);
+          } else if (widget.fromRecentSearch == true) {
+            GoRouter.of(context).go(AppRoutes.bottomNav);
+          }
+        });
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,

@@ -503,7 +503,7 @@ class _CprRegisterState extends State<CprRegister> {
                               final Map<String, dynamic> params = {
                                 "guestName": nameController.text.trim(),
                                 "corporate_Name": verifyCorporateController.cprName.value,
-                                "CorpID": verifyCorporateController.cprID.value,
+                                "CorpID": int.parse(verifyCorporateController.cprID.value),
                                 "mobile": phoneNoController.text.trim(),
                                 "emailID": emailController.text.trim(),
                                 "password": passwordController.text.trim(),

@@ -81,8 +81,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   void fetchSelfDriveHomeApi() {
     fetchAllCitiesController.fetchAllCities();
   }
-  String address = '';
 
+  String address = '';
 
   Future<void> fetchCurrentLocationAndAddress() async {
     final loc = location.Location();
@@ -131,7 +131,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
         place.country ?? '',
       ];
       final fullAddress =
-      components.where((s) => s.trim().isNotEmpty).join(', ');
+          components.where((s) => s.trim().isNotEmpty).join(', ');
 
       // 2. Show address on UI immediately
       setState(() => address = fullAddress);
@@ -214,67 +214,66 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
       final userId = credential.userIdentifier;
       final email = credential.email;
       final fullName =
-      '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+          '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
 
       // Always returned
       print('User ID: $userId');
 
       if (email != null) {
         // First-time login — store data
-        await StorageServices.instance.save('appleUserId', userId??'');
-        await StorageServices.instance.save('appleEmail', email??'');
-        await StorageServices.instance.save('appleName', fullName??'');
+        await StorageServices.instance.save('appleUserId', userId ?? '');
+        await StorageServices.instance.save('appleEmail', email ?? '');
+        await StorageServices.instance.save('appleName', fullName ?? '');
         Navigator.of(context).push(
           Platform.isIOS
               ? CupertinoPageRoute(
-            builder: (_) => UserFillDetails(
-              name: fullName??'',
-              email: email ?? '',
-              phone: '',
-            ),
-          )
+                  builder: (_) => UserFillDetails(
+                    name: fullName ?? '',
+                    email: email ?? '',
+                    phone: '',
+                  ),
+                )
               : MaterialPageRoute(
-            builder: (_) => UserFillDetails(
-              name: fullName??'',
-              email: email ?? '',
-              phone: '',
-            ),
-          ),
+                  builder: (_) => UserFillDetails(
+                    name: fullName ?? '',
+                    email: email ?? '',
+                    phone: '',
+                  ),
+                ),
         );
-
-
       } else {
         // Returning user — load data from local storage
-        String userId = await StorageServices.instance.read('appleUserId')??'';
-        String userEmail = await StorageServices.instance.read('appleEmail')??'';
-        String userName =  await StorageServices.instance.read('appleName') ?? '';
+        String userId =
+            await StorageServices.instance.read('appleUserId') ?? '';
+        String userEmail =
+            await StorageServices.instance.read('appleEmail') ?? '';
+        String userName =
+            await StorageServices.instance.read('appleName') ?? '';
 
         Navigator.of(context).push(
           Platform.isIOS
               ? CupertinoPageRoute(
-            builder: (_) => UserFillDetails(
-              name: userName,
-              email: userEmail,
-              phone: '',
-            ),
-          )
+                  builder: (_) => UserFillDetails(
+                    name: userName,
+                    email: userEmail,
+                    phone: '',
+                  ),
+                )
               : MaterialPageRoute(
-            builder: (_) => UserFillDetails(
-              name: userName,
-              email: userEmail,
-              phone: '',
-            ),
-          ),
+                  builder: (_) => UserFillDetails(
+                    name: userName,
+                    email: userEmail,
+                    phone: '',
+                  ),
+                ),
         );
       }
 
       // (Optional) Use userId + email for backend auth here
-
     } catch (e) {
       print('❌ Apple Sign-In Error: $e');
     }
   }
-
 
   void _showAuthBottomSheet() {
     final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -667,14 +666,23 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                                           await profileController
                                                               .fetchData();
 
-                                                          Navigator.of(context).push(
+                                                          Navigator.of(context)
+                                                              .push(
                                                             Platform.isIOS
                                                                 ? CupertinoPageRoute(
-                                                              builder: (_) =>  Profile(fromSelfDrive: true,),
-                                                            )
+                                                                    builder: (_) =>
+                                                                        Profile(
+                                                                      fromSelfDrive:
+                                                                          true,
+                                                                    ),
+                                                                  )
                                                                 : MaterialPageRoute(
-                                                              builder: (_) =>  Profile(fromSelfDrive: true,),
-                                                            ),
+                                                                    builder: (_) =>
+                                                                        Profile(
+                                                                      fromSelfDrive:
+                                                                          true,
+                                                                    ),
+                                                                  ),
                                                           );
 
                                                           // Navigate
@@ -782,13 +790,14 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                       // Google Login
                                       if (!showOtpField)
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
                                             GestureDetector(
                                               onTap: isGoogleLoading
                                                   ? null
                                                   : () => _handleGoogleLogin(
-                                                  setModalState),
+                                                      setModalState),
                                               child: Center(
                                                 child: Column(
                                                   children: [
@@ -796,33 +805,33 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                                       width: 48,
                                                       height: 48,
                                                       padding:
-                                                      const EdgeInsets.all(
-                                                          1),
+                                                          const EdgeInsets.all(
+                                                              1),
                                                       decoration:
-                                                      const BoxDecoration(
-                                                          color:
-                                                          Colors.grey,
-                                                          shape: BoxShape
-                                                              .circle),
+                                                          const BoxDecoration(
+                                                              color:
+                                                                  Colors.grey,
+                                                              shape: BoxShape
+                                                                  .circle),
                                                       child: CircleAvatar(
                                                         radius: 20,
                                                         backgroundColor:
-                                                        Colors.white,
+                                                            Colors.white,
                                                         child: isGoogleLoading
                                                             ? const SizedBox(
-                                                          width: 20,
-                                                          height: 20,
-                                                          child: CircularProgressIndicator(
-                                                              strokeWidth:
-                                                              2),
-                                                        )
+                                                                width: 20,
+                                                                height: 20,
+                                                                child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2),
+                                                              )
                                                             : Image.asset(
-                                                          'assets/images/google_icon.png',
-                                                          fit: BoxFit
-                                                              .contain,
-                                                          width: 29,
-                                                          height: 29,
-                                                        ),
+                                                                'assets/images/google_icon.png',
+                                                                fit: BoxFit
+                                                                    .contain,
+                                                                width: 29,
+                                                                height: 29,
+                                                              ),
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
@@ -836,35 +845,43 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                             SizedBox(
                                               width: 24,
                                             ),
-                                            Platform.isIOS ? Column(
-                                              children: [
-                                                GestureDetector(
-                                                  onTap: signInWithApple,
-                                                  child: Container(
-                                                    height: 45,
-                                                    width: 45,
-                                                    decoration: const BoxDecoration(
-                                                      color: Colors.black,
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Center(
-                                                      child: Image.asset(
-                                                        'assets/images/apple.png',
-                                                        height: 48,
-                                                        color: Colors.white,
+                                            Platform.isIOS
+                                                ? Column(
+                                                    children: [
+                                                      GestureDetector(
+                                                        onTap: signInWithApple,
+                                                        child: Container(
+                                                          height: 45,
+                                                          width: 45,
+                                                          decoration:
+                                                              const BoxDecoration(
+                                                            color: Colors.black,
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                          child: Center(
+                                                            child: Image.asset(
+                                                              'assets/images/apple.png',
+                                                              height: 48,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                          ),
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Platform.isIOS ? const SizedBox(height: 4) : SizedBox(),
-                                                Platform.isIOS ?
-                                                const Text("Apple",
-                                                    style: TextStyle(
-                                                        fontSize: 13)) : SizedBox()
-                                              ],
-                                            ) : SizedBox()
-
+                                                      const SizedBox(height: 4),
+                                                      Platform.isIOS
+                                                          ? const SizedBox(
+                                                              height: 4)
+                                                          : SizedBox(),
+                                                      Platform.isIOS
+                                                          ? const Text("Apple",
+                                                              style: TextStyle(
+                                                                  fontSize: 13))
+                                                          : SizedBox()
+                                                    ],
+                                                  )
+                                                : SizedBox()
                                           ],
                                         ),
                                       const SizedBox(height: 20),
@@ -922,7 +939,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: true,
-      onPopInvoked: (didPop) async{
+      onPopInvoked: (didPop) async {
         // This will be called for hardware back and gesture
         await currencyController.resetCurrencyAfterSelfDrive();
         bookingRideController.selectedIndex.value = 0;
@@ -932,7 +949,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFE9E9ED),
         body: SafeArea(
-          child: SingleChildScrollView( // 🔑 makes whole page scrollable
+          child: SingleChildScrollView(
+            // 🔑 makes whole page scrollable
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -953,7 +971,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                               children: [
                                 Expanded(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
                                       // const CircleAvatar(
@@ -967,17 +986,18 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                             context: context,
                                             barrierDismissible: true,
                                             barrierLabel: "Drawer",
-                                            barrierColor:
-                                            Colors.black54, // transparent black background
-                                            transitionDuration:
-                                            const Duration(milliseconds: 300),
+                                            barrierColor: Colors
+                                                .black54, // transparent black background
+                                            transitionDuration: const Duration(
+                                                milliseconds: 300),
                                             pageBuilder: (_, __, ___) =>
-                                            const CustomDrawerSheet(),
-                                            transitionBuilder: (_, anim, __, child) {
+                                                const CustomDrawerSheet(),
+                                            transitionBuilder:
+                                                (_, anim, __, child) {
                                               return SlideTransition(
                                                 position: Tween<Offset>(
-                                                  begin:
-                                                  const Offset(-1, 0), // slide in from left
+                                                  begin: const Offset(-1,
+                                                      0), // slide in from left
                                                   end: Offset.zero,
                                                 ).animate(CurvedAnimation(
                                                   parent: anim,
@@ -991,17 +1011,20 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                         child: Transform.translate(
                                           offset: Offset(0.0, -4.0),
                                           child: Container(
-                                            width: 28, // same as 24dp with padding
+                                            width:
+                                                28, // same as 24dp with padding
                                             height: 28,
                                             decoration: BoxDecoration(
-                                              color:
-                                              Color.fromRGBO(0, 44, 192, 0.1), // deep blue
+                                              color: Color.fromRGBO(
+                                                  0, 44, 192, 0.1), // deep blue
                                               borderRadius:
-                                              BorderRadius.circular(4), // rounded square
+                                                  BorderRadius.circular(
+                                                      4), // rounded square
                                             ),
                                             child: const Icon(
                                               Icons.density_medium_outlined,
-                                              color: Color.fromRGBO(0, 17, 73, 1),
+                                              color:
+                                                  Color.fromRGBO(0, 17, 73, 1),
                                               size: 16,
                                             ),
                                           ),
@@ -1012,7 +1035,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                         offset: Offset(0.0, -4.0),
                                         child: SizedBox(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               SizedBox(
                                                 height: 4,
@@ -1070,60 +1094,73 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                       SizedBox(
                                         width: 12,
                                       ),
-                                      upcomingBookingController.isLoggedIn.value == true
+                                      upcomingBookingController
+                                                  .isLoggedIn.value ==
+                                              true
                                           ? InkWell(
-                                        splashColor: Colors.transparent,
-                                        onTap: () async {
-                                          print(
-                                              'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                          if (await StorageServices.instance
-                                              .read('token') ==
-                                              null) {
-                                            _showAuthBottomSheet();
-                                          }
-                                          if (await StorageServices.instance
-                                              .read('token') !=
-                                              null) {
-                                            GoRouter.of(context).push(AppRoutes.profile);
-                                          }
-                                        },
-                                        child: SizedBox(
-                                          width: 30,
-                                          height: 30,
-                                          child: NameInitialHomeCircle(
-                                              name: profileController.profileResponse
-                                                  .value?.result?.firstName ??
-                                                  ''),
-                                        ),
-                                      )
+                                              splashColor: Colors.transparent,
+                                              onTap: () async {
+                                                print(
+                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') ==
+                                                    null) {
+                                                  _showAuthBottomSheet();
+                                                }
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') !=
+                                                    null) {
+                                                  GoRouter.of(context)
+                                                      .push(AppRoutes.profile);
+                                                }
+                                              },
+                                              child: SizedBox(
+                                                width: 30,
+                                                height: 30,
+                                                child: NameInitialHomeCircle(
+                                                    name: profileController
+                                                            .profileResponse
+                                                            .value
+                                                            ?.result
+                                                            ?.firstName ??
+                                                        ''),
+                                              ),
+                                            )
                                           : InkWell(
-                                        splashColor: Colors.transparent,
-                                        onTap: () async {
-                                          print(
-                                              'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                          if (await StorageServices.instance
-                                              .read('token') ==
-                                              null) {
-                                            _showAuthBottomSheet();
-                                          }
-                                          if (await StorageServices.instance
-                                              .read('token') !=
-                                              null) {
-                                            GoRouter.of(context).push(AppRoutes.profile);
-                                          }
-                                        },
-                                        child: Transform.translate(
-                                          offset: Offset(0.0, -4.0),
-                                          child: const CircleAvatar(
-                                            foregroundColor: Colors.transparent,
-                                            backgroundColor: Colors.transparent,
-                                            radius: 14,
-                                            backgroundImage: AssetImage(
-                                              'assets/images/user.png',
+                                              splashColor: Colors.transparent,
+                                              onTap: () async {
+                                                print(
+                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') ==
+                                                    null) {
+                                                  _showAuthBottomSheet();
+                                                }
+                                                if (await StorageServices
+                                                        .instance
+                                                        .read('token') !=
+                                                    null) {
+                                                  GoRouter.of(context)
+                                                      .push(AppRoutes.profile);
+                                                }
+                                              },
+                                              child: Transform.translate(
+                                                offset: Offset(0.0, -4.0),
+                                                child: const CircleAvatar(
+                                                  foregroundColor:
+                                                      Colors.transparent,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  radius: 14,
+                                                  backgroundImage: AssetImage(
+                                                    'assets/images/user.png',
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   );
                                 })
@@ -1132,14 +1169,14 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                           ),
                           SizedBox(
                             height: 28,
-                          ),                      ],
+                          ),
+                        ],
                       ),
                     ),
                     // Container(
                     //     padding: EdgeInsets.symmetric(horizontal: 8),
                     //     height: 170,
                     //     child: BorderedListView()),
-
                   ],
                 ),
 
@@ -1209,10 +1246,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                            padding: const EdgeInsets.only(
+                                top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1222,18 +1259,25 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                 ),
                                 Text('Self Drive',
                                     style: CommonFonts.blueText1),
-                                SizedBox(height: 8,),
-                                (bookingRideController.selectedIndex.value == 3 )?  Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                                  child: Container(
-                                    height: 3,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF888888), // background line
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ) : SizedBox()
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                (bookingRideController.selectedIndex.value == 3)
+                                    ? Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24.0),
+                                        child: Container(
+                                          height: 3,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color: Color(
+                                                0xFF888888), // background line
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                      )
+                                    : SizedBox()
                               ],
                             ),
                           ),
@@ -1249,14 +1293,12 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
 
                           // Navigate immediately
                           if (Platform.isAndroid) {
-                            GoRouter.of(context)
-                                .push(AppRoutes.bookingRide);
+                            GoRouter.of(context).push(AppRoutes.bookingRide);
                           } else {
                             navigatorKey.currentContext
                                 ?.push(AppRoutes.bookingRide);
                           }
                           currencyController.resetCurrencyAfterSelfDrive();
-
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -1271,10 +1313,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                            padding: const EdgeInsets.only(
+                                top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1282,21 +1324,26 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                Text('Airport',
-                                    style: CommonFonts.blueText1),
-                                SizedBox(height: 8,),
-                                bookingRideController.selectedIndex.value == 0 ?  Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                                  child: Container(
-                                    height: 3,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF888888), // background line
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ) : SizedBox()
-
+                                Text('Airport', style: CommonFonts.blueText1),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                bookingRideController.selectedIndex.value == 0
+                                    ? Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24.0),
+                                        child: Container(
+                                          height: 3,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color: Color(
+                                                0xFF888888), // background line
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                      )
+                                    : SizedBox()
                               ],
                             ),
                           ),
@@ -1305,19 +1352,16 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                       InkWell(
                         splashColor: Colors.transparent,
                         onTap: () {
-                          bookingRideController
-                              .selectedIndex.value = 1;
+                          bookingRideController.selectedIndex.value = 1;
                           fetchCurrentLocationAndAddress();
                           // Navigate immediately
                           if (Platform.isAndroid) {
-                            GoRouter.of(context)
-                                .push(AppRoutes.bookingRide);
+                            GoRouter.of(context).push(AppRoutes.bookingRide);
                           } else {
                             navigatorKey.currentContext
                                 ?.push(AppRoutes.bookingRide);
                           }
                           currencyController.resetCurrencyAfterSelfDrive();
-
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -1332,7 +1376,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                            padding: const EdgeInsets.only(
+                                top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Stack(
                               clipBehavior: Clip.none,
                               alignment: Alignment.topCenter,
@@ -1363,12 +1408,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     ),
                                   ),
                                 ),
-
                                 Column(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-
                                     Expanded(
                                       child: Image.asset(
                                         'assets/images/outstation.png',
@@ -1377,18 +1420,27 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     ),
                                     Text('Outstation',
                                         style: CommonFonts.blueText1),
-                                    SizedBox(height: 8,),
-                                    (bookingRideController.selectedIndex.value == 1)?  Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                                      child: Container(
-                                        height: 3,
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFF888888), // background line
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                      ),
-                                    ) : SizedBox()
+                                    SizedBox(
+                                      height: 8,
+                                    ),
+                                    (bookingRideController
+                                                .selectedIndex.value ==
+                                            1)
+                                        ? Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 24.0),
+                                            child: Container(
+                                              height: 3,
+                                              width: double.infinity,
+                                              decoration: BoxDecoration(
+                                                color: Color(
+                                                    0xFF888888), // background line
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                          )
+                                        : SizedBox()
                                   ],
                                 ),
                               ],
@@ -1404,14 +1456,12 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
 
                           // Navigate immediately
                           if (Platform.isAndroid) {
-                            GoRouter.of(context)
-                                .push(AppRoutes.bookingRide);
+                            GoRouter.of(context).push(AppRoutes.bookingRide);
                           } else {
                             navigatorKey.currentContext
                                 ?.push(AppRoutes.bookingRide);
                           }
                           currencyController.resetCurrencyAfterSelfDrive();
-
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -1426,10 +1476,10 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
+                            padding: const EdgeInsets.only(
+                                top: 8.0, left: 8.0, right: 8.0, bottom: 6.0),
                             child: Column(
-                              mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Image.asset(
@@ -1437,26 +1487,31 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                Text('Rental',
-                                    style: CommonFonts.blueText1),
-                                SizedBox(height: 8,),
-                                (bookingRideController.selectedIndex.value == 2)?  Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                                  child: Container(
-                                    height: 3,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF888888), // background line
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ) : SizedBox()
+                                Text('Rental', style: CommonFonts.blueText1),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                (bookingRideController.selectedIndex.value == 2)
+                                    ? Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24.0),
+                                        child: Container(
+                                          height: 3,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color: Color(
+                                                0xFF888888), // background line
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                      )
+                                    : SizedBox()
                               ],
                             ),
                           ),
                         ),
                       ),
-
                     ],
                   ),
                 ),
@@ -1475,7 +1530,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                           itemCount: 3, // dummy placeholders
                           itemBuilder: (context, index) {
                             return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               width: MediaQuery.of(context).size.width -
                                   32, // full width
                               height: 124,
@@ -1506,7 +1562,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                       ),
                       itemBuilder: (context, index, realIdx) {
                         final baseUrl = bannerController
-                            .homepageImageResponse.value?.result?.baseUrl ??
+                                .homepageImageResponse.value?.result?.baseUrl ??
                             '';
                         final imageUrl = images[index].url ?? '';
 
@@ -1535,7 +1591,8 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                 );
                               },
                               errorBuilder: (context, error, stackTrace) {
-                                return const Center(child: Icon(Icons.broken_image));
+                                return const Center(
+                                    child: Icon(Icons.broken_image));
                               },
                             ),
                           ),
@@ -1545,6 +1602,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                   }),
                 ),
                 const SizedBox(height: 24),
+
                 /// 🔹 FLEET GRID
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1563,10 +1621,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        height: 400,
-                          child: CarGridScreen()),
-
+                      SizedBox(height: 400, child: CarGridScreen()),
                       CarCard()
                     ],
                   ),
@@ -1586,8 +1641,10 @@ class PillTabBarWithChild extends StatefulWidget {
 }
 
 class _PillTabBarWithChildState extends State<PillTabBarWithChild> {
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
-  final FetchTopRatedRidesController fetchTopRatedRidesController = Get.put(FetchTopRatedRidesController());
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
+  final FetchTopRatedRidesController fetchTopRatedRidesController =
+      Get.put(FetchTopRatedRidesController());
 
   final tabs = ["Daily Rentals", "Monthly Rentals"];
   final children = [
@@ -1599,60 +1656,65 @@ class _PillTabBarWithChildState extends State<PillTabBarWithChild> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(()=>Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            color: Colors.white,
-            border: Border.all(color: Colors.grey!, width: 1),
-          ),
-          child: Row(
-            children: List.generate(tabs.length, (index) {
-              final isSelected = searchInventorySdController.selectedIndex.value == index;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () async{
-                    setState(() {
-                      searchInventorySdController.selectedIndex.value = index;
-                    });
-                   await fetchTopRatedRidesController.fetchAllRides();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFE8262B) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      tabs[index],
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.w600,
+    return Obx(() => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(32),
+                color: Colors.white,
+                border: Border.all(color: Colors.grey!, width: 1),
+              ),
+              child: Row(
+                children: List.generate(tabs.length, (index) {
+                  final isSelected =
+                      searchInventorySdController.selectedIndex.value == index;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        setState(() {
+                          searchInventorySdController.selectedIndex.value =
+                              index;
+                        });
+                        await fetchTopRatedRidesController.fetchAllRides();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFE8262B)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          tabs[index],
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(height: 16),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: children[searchInventorySdController.selectedIndex.value],
-        ),
-      ],
-    ));
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: children[searchInventorySdController.selectedIndex.value],
+            ),
+          ],
+        ));
   }
 }
+
 //Daily Rental Search Card
 class DailyRentalSearchCard extends StatefulWidget {
-  final bool ? fromSelfDriveInventoryPage;
+  final bool? fromSelfDriveInventoryPage;
 
   const DailyRentalSearchCard({super.key, this.fromSelfDriveInventoryPage});
   @override
@@ -1660,15 +1722,14 @@ class DailyRentalSearchCard extends StatefulWidget {
 }
 
 class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now().add(Duration(days: 3));
   TimeOfDay fromTime = TimeOfDay(hour: 10, minute: 0);
   TimeOfDay toTime = TimeOfDay(hour: 10, minute: 0);
   final FetchAllCitiesController fetchAllCitiesController =
       Get.put(FetchAllCitiesController());
-
-
 
   void _openCityBottomSheet() {
     showModalBottomSheet(
@@ -1716,7 +1777,8 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
 
                   // Cities List
                   Obx(() {
-                    final result = fetchAllCitiesController.getAllCitiesResponse.value?.result;
+                    final result = fetchAllCitiesController
+                        .getAllCitiesResponse.value?.result;
                     final data = result?.data ?? [];
 
                     // Group cities by countryCode
@@ -1744,19 +1806,24 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                     return Expanded(
                       child: ListView(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 0,), // Subtle vertical spacing
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 0,
+                        ), // Subtle vertical spacing
                         children: groupedByCountry.entries.map((entry) {
                           final countryCode = entry.key;
                           final cities = entry.value;
 
                           // Find the label for the country, fallback to countryCode if not found
                           final countryLabel = result?.availableInCountries
-                              ?.firstWhere(
-                                (c) => c.value == countryCode,
-                            orElse: () => AvailableCountry(
-                              label: countryCode, value: countryCode,
-                            ),
-                          ).label ?? countryCode;
+                                  ?.firstWhere(
+                                    (c) => c.value == countryCode,
+                                    orElse: () => AvailableCountry(
+                                      label: countryCode,
+                                      value: countryCode,
+                                    ),
+                                  )
+                                  .label ??
+                              countryCode;
 
                           return Card(
                             shape: RoundedRectangleBorder(
@@ -1764,9 +1831,11 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                             ),
                             elevation: 2,
                             shadowColor: Colors.black12,
-                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: 2),
                             child: Theme(
-                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              data: Theme.of(context)
+                                  .copyWith(dividerColor: Colors.transparent),
                               child: ExpansionTile(
                                 initiallyExpanded: true,
                                 collapsedBackgroundColor: Colors.grey.shade50,
@@ -1790,7 +1859,8 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                                 children: cities.map((cityData) {
                                   return ListTile(
                                     dense: true,
-                                    leading: const Icon(Icons.location_city, color: Colors.grey),
+                                    leading: const Icon(Icons.location_city,
+                                        color: Colors.grey),
                                     title: Text(
                                       cityData.cityName ?? '',
                                       style: const TextStyle(
@@ -1804,16 +1874,19 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                                     ),
                                     onTap: () {
                                       setState(() {
-                                        searchInventorySdController.countryCode.value = cityData.countryCode??'';
-                                        searchInventorySdController.city.value = cityData.cityName??'';
-                                        searchInventorySdController.countryId.value = cityData.id??'';
+                                        searchInventorySdController.countryCode
+                                            .value = cityData.countryCode ?? '';
+                                        searchInventorySdController.city.value =
+                                            cityData.cityName ?? '';
+                                        searchInventorySdController.countryId
+                                            .value = cityData.id ?? '';
                                       });
-
 
                                       Navigator.pop(context);
                                     },
                                     hoverColor: Colors.blue.shade50,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 4),
                                     minLeadingWidth: 28,
                                   );
                                 }).toList(),
@@ -1823,7 +1896,6 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                         }).toList(),
                       ),
                     );
-
                   }),
                 ]));
           },
@@ -1836,12 +1908,12 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
   Widget build(BuildContext context) {
     final controller = DateTimeController(
       fromDate: DateTime.now().add(Duration(days: 1)).copyWith(
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-        microsecond: 0,
-      ),
+            hour: 0,
+            minute: 0,
+            second: 0,
+            millisecond: 0,
+            microsecond: 0,
+          ),
       fromTime: TimeOfDay(hour: 0, minute: 0),
     );
 
@@ -1867,13 +1939,13 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Obx(()=> Text(
-                    searchInventorySdController.city.value,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black),
-                  )),
+                  Obx(() => Text(
+                        searchInventorySdController.city.value,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
+                      )),
                   const Icon(Icons.keyboard_arrow_down),
                 ],
               ),
@@ -1941,10 +2013,11 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
               //   ),
               // ),
               // DateTimeRangePicker(),
-
             ],
           ),
-          DateTimeRangePicker(isMonthlyRental: false,),
+          DateTimeRangePicker(
+            isMonthlyRental: false,
+          ),
 
           SizedBox(height: 20),
           // Search Button
@@ -1956,8 +2029,9 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
                   borderRadius: BorderRadius.circular(8)),
               elevation: 0,
             ),
-            onPressed: () async{
-              await searchInventorySdController.fetchAllInventory(context: context);
+            onPressed: () async {
+              await searchInventorySdController.fetchAllInventory(
+                  context: context);
             },
             child: Text("Search",
                 style: TextStyle(
@@ -1992,7 +2066,8 @@ class _DailyRentalSearchCardState extends State<DailyRentalSearchCard> {
 // Monthly Rental Search Card
 class MonthlyRentalSearchCard extends StatefulWidget {
   @override
-  State<MonthlyRentalSearchCard> createState() => _MonthlyRentalSearchCardState();
+  State<MonthlyRentalSearchCard> createState() =>
+      _MonthlyRentalSearchCardState();
 }
 
 class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
@@ -2001,10 +2076,10 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
   TimeOfDay fromTime = TimeOfDay(hour: 10, minute: 0);
   TimeOfDay toTime = TimeOfDay(hour: 10, minute: 0);
   final FetchAllCitiesController fetchAllCitiesController =
-  Get.put(FetchAllCitiesController());
+      Get.put(FetchAllCitiesController());
 
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
-
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
 
   void _openCityBottomSheet() {
     showModalBottomSheet(
@@ -2023,7 +2098,7 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
           builder: (context, scrollController) {
             return Container(
                 padding:
-                const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 child: Column(children: [
                   // Header Row
                   Row(
@@ -2052,7 +2127,8 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
 
                   // Cities List
                   Obx(() {
-                    final result = fetchAllCitiesController.getAllCitiesResponse.value?.result;
+                    final result = fetchAllCitiesController
+                        .getAllCitiesResponse.value?.result;
                     final data = result?.data ?? [];
 
                     // Group cities by countryCode
@@ -2080,19 +2156,24 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                     return Expanded(
                       child: ListView(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 0,), // Subtle vertical spacing
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 0,
+                        ), // Subtle vertical spacing
                         children: groupedByCountry.entries.map((entry) {
                           final countryCode = entry.key;
                           final cities = entry.value;
 
                           // Find the label for the country, fallback to countryCode if not found
                           final countryLabel = result?.availableInCountries
-                              ?.firstWhere(
-                                (c) => c.value == countryCode,
-                            orElse: () => AvailableCountry(
-                              label: countryCode, value: countryCode,
-                            ),
-                          ).label ?? countryCode;
+                                  ?.firstWhere(
+                                    (c) => c.value == countryCode,
+                                    orElse: () => AvailableCountry(
+                                      label: countryCode,
+                                      value: countryCode,
+                                    ),
+                                  )
+                                  .label ??
+                              countryCode;
 
                           return Card(
                             shape: RoundedRectangleBorder(
@@ -2100,9 +2181,11 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                             ),
                             elevation: 2,
                             shadowColor: Colors.black12,
-                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: 2),
                             child: Theme(
-                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              data: Theme.of(context)
+                                  .copyWith(dividerColor: Colors.transparent),
                               child: ExpansionTile(
                                 initiallyExpanded: true,
                                 collapsedBackgroundColor: Colors.grey.shade50,
@@ -2126,7 +2209,8 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                                 children: cities.map((cityData) {
                                   return ListTile(
                                     dense: true,
-                                    leading: const Icon(Icons.location_city, color: Colors.grey),
+                                    leading: const Icon(Icons.location_city,
+                                        color: Colors.grey),
                                     title: Text(
                                       cityData.cityName ?? '',
                                       style: const TextStyle(
@@ -2140,16 +2224,19 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                                     ),
                                     onTap: () {
                                       setState(() {
-                                        searchInventorySdController.countryCode.value = cityData.countryCode??'';
-                                        searchInventorySdController.city.value = cityData.cityName??'';
-                                        searchInventorySdController.countryId.value = cityData.id??'';
+                                        searchInventorySdController.countryCode
+                                            .value = cityData.countryCode ?? '';
+                                        searchInventorySdController.city.value =
+                                            cityData.cityName ?? '';
+                                        searchInventorySdController.countryId
+                                            .value = cityData.id ?? '';
                                       });
-
 
                                       Navigator.pop(context);
                                     },
                                     hoverColor: Colors.blue.shade50,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 4),
                                     minLeadingWidth: 28,
                                   );
                                 }).toList(),
@@ -2159,7 +2246,6 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
                         }).toList(),
                       ),
                     );
-
                   }),
                 ]));
           },
@@ -2172,12 +2258,12 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
   Widget build(BuildContext context) {
     final controller = DateTimeController(
       fromDate: DateTime.now().add(Duration(days: 1)).copyWith(
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-        microsecond: 0,
-      ),
+            hour: 0,
+            minute: 0,
+            second: 0,
+            millisecond: 0,
+            microsecond: 0,
+          ),
       fromTime: TimeOfDay(hour: 0, minute: 0),
     );
 
@@ -2203,13 +2289,13 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Obx(()=>Text(
-                    searchInventorySdController.city.value,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black),
-                  )),
+                  Obx(() => Text(
+                        searchInventorySdController.city.value,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black),
+                      )),
                   const Icon(Icons.keyboard_arrow_down),
                 ],
               ),
@@ -2277,10 +2363,11 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
               //   ),
               // ),
               // DateTimeRangePicker(),
-
             ],
           ),
-          DateTimeRangePicker(isMonthlyRental: true,),
+          DateTimeRangePicker(
+            isMonthlyRental: true,
+          ),
 
           SizedBox(height: 20),
           // Search Button
@@ -2296,7 +2383,8 @@ class _MonthlyRentalSearchCardState extends State<MonthlyRentalSearchCard> {
               // Show shimmer overlay screen
 
               // Fetch your data
-              await searchInventorySdController.fetchAllInventory(context: context);
+              await searchInventorySdController.fetchAllInventory(
+                  context: context);
             },
             child: Text("Search",
                 style: TextStyle(
@@ -2337,7 +2425,8 @@ class CarGridScreen extends StatefulWidget {
 }
 
 class _CarGridScreenState extends State<CarGridScreen> {
-  final FetchAllFleetsController fetchAllFleetsController = Get.put(FetchAllFleetsController());
+  final FetchAllFleetsController fetchAllFleetsController =
+      Get.put(FetchAllFleetsController());
   final CurrencyController currencyController = Get.put(CurrencyController());
   @override
   void initState() {
@@ -2345,61 +2434,67 @@ class _CarGridScreenState extends State<CarGridScreen> {
     super.initState();
     fetchFleets();
   }
-  void fetchFleets() async{
+
+  void fetchFleets() async {
     await fetchAllFleetsController.fetchAllFleets();
   }
+
   @override
   Widget build(BuildContext context) {
-    return Obx(()=>      GridView.builder(
-      shrinkWrap: true, // ✅ let GridView take only needed height
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: fetchAllFleetsController.getAllFleetResponse.value?.result?.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 columns
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9,
-      ),
-      itemBuilder: (context, index) {
-        return Card(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Obx(() => GridView.builder(
+          shrinkWrap: true, // ✅ let GridView take only needed height
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: fetchAllFleetsController
+              .getAllFleetResponse.value?.result?.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // 2 columns
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.9,
           ),
-          elevation: 0.3,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Image.network(
-                      fetchAllFleetsController.getAllFleetResponse.value?.result?[index].imageUrl??'',
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.broken_image, size: 40, color: Colors.grey);
-                      },
-                    )
-                ),
+          itemBuilder: (context, index) {
+            return Card(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-
-              Text(
-                fetchAllFleetsController.getAllFleetResponse.value?.result?[index].className??'',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF333333)),
+              elevation: 0.3,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.network(
+                          fetchAllFleetsController.getAllFleetResponse.value
+                                  ?.result?[index].imageUrl ??
+                              '',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.broken_image,
+                                size: 40, color: Colors.grey);
+                          },
+                        )),
+                  ),
+                  Text(
+                    fetchAllFleetsController.getAllFleetResponse.value
+                            ?.result?[index].className ??
+                        '',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Color(0xFF333333)),
+                  ),
+                  SizedBox(
+                    height: 24,
+                  )
+                ],
               ),
-              SizedBox(height: 24,)
-            ],
-          ),
-        );
-      },
-    )
-    );
+            );
+          },
+        ));
   }
 }
-
-
-
 
 class CarCard extends StatefulWidget {
   const CarCard({super.key});
@@ -2409,9 +2504,12 @@ class CarCard extends StatefulWidget {
 }
 
 class _CarCardState extends State<CarCard> {
-  final FetchTopRatedRidesController fetchTopRatedRidesController = Get.put(FetchTopRatedRidesController());
-  final SearchInventorySdController searchInventorySdController = Get.put(SearchInventorySdController());
-  final FetchSdBookingDetailsController fetchSdBookingDetailsController = Get.put(FetchSdBookingDetailsController());
+  final FetchTopRatedRidesController fetchTopRatedRidesController =
+      Get.put(FetchTopRatedRidesController());
+  final SearchInventorySdController searchInventorySdController =
+      Get.put(SearchInventorySdController());
+  final FetchSdBookingDetailsController fetchSdBookingDetailsController =
+      Get.put(FetchSdBookingDetailsController());
   final CurrencyController currencyController = Get.put(CurrencyController());
   int _currentIndex = 0;
 
@@ -2426,13 +2524,16 @@ class _CarCardState extends State<CarCard> {
     fetchTopRatedRides();
   }
 
-  void fetchTopRatedRides() async{
+  void fetchTopRatedRides() async {
     await fetchTopRatedRidesController.fetchAllRides();
   }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final rides = fetchTopRatedRidesController.getAllTopRidesResponse.value?.result ?? [];
+      final rides =
+          fetchTopRatedRidesController.getAllTopRidesResponse.value?.result ??
+              [];
 
       if (rides.isEmpty) {
         return const Center(child: Text("No rides available"));
@@ -2441,12 +2542,14 @@ class _CarCardState extends State<CarCard> {
       return ListView.builder(
         itemCount: rides.length,
         shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(), // ✅ safe in nested scroll
+        physics:
+            const NeverScrollableScrollPhysics(), // ✅ safe in nested scroll
         itemBuilder: (context, index) {
           final vehicle = rides[index].vehicleId;
           return Card(
             color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0.3,
             margin: const EdgeInsets.all(8),
             child: Column(
@@ -2455,7 +2558,8 @@ class _CarCardState extends State<CarCard> {
                 // Top Carousel
 
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
                   child: Stack(
                     children: [
                       CarouselSlider(
@@ -2489,20 +2593,29 @@ class _CarCardState extends State<CarCard> {
                             offset: const Offset(0.0, 0.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: rides[index].vehicleId!.images!.asMap().entries.map((entry) {
+                              children: rides[index]
+                                  .vehicleId!
+                                  .images!
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
                                 final isActive = _currentIndex == entry.key;
                                 return Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 2),
                                   width: 40,
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: isActive ? Colors.white : Colors.grey,
+                                    color:
+                                        isActive ? Colors.white : Colors.grey,
                                     borderRadius: BorderRadius.circular(2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.2), // soft shadow
+                                        color: Colors.black
+                                            .withOpacity(0.2), // soft shadow
                                         blurRadius: 4, // spread of shadow
-                                        offset: const Offset(0, 2), // vertical shadow
+                                        offset: const Offset(
+                                            0, 2), // vertical shadow
                                       ),
                                     ],
                                   ),
@@ -2512,58 +2625,90 @@ class _CarCardState extends State<CarCard> {
                           ),
                         ),
                       ),
-                     rides[index].vehicleId?.vehiclePromotionTag != null ? Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.25), // shadow color
-                                blurRadius: 6, // softening
-                                offset: Offset(2, 4), // X,Y offset
+                      rides[index].vehicleId?.vehiclePromotionTag != null
+                          ? Positioned(
+                              top: 12,
+                              left: 12,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black
+                                          .withOpacity(0.25), // shadow color
+                                      blurRadius: 6, // softening
+                                      offset: Offset(2, 4), // X,Y offset
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  rides[index]
+                                              .vehicleId
+                                              ?.vehiclePromotionTag
+                                              ?.toLowerCase() ==
+                                          'popular'
+                                      ? 'assets/images/popular.png'
+                                      : 'assets/images/trending.png',
+                                  width: 106,
+                                  height: 28,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Image.asset(
-                            rides[index].vehicleId?.vehiclePromotionTag?.toLowerCase()=='popular'?'assets/images/popular.png' : 'assets/images/trending.png',
-                            width: 106,
-                            height: 28,
-                          ),
-                        ),
-                      ) : SizedBox(),
+                            )
+                          : SizedBox(),
                     ],
                   ),
                 ),
 
                 // Car Info
                 Padding(
-                  padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0,bottom: 8),
+                  padding: const EdgeInsets.only(
+                      top: 16.0, left: 16.0, right: 16.0, bottom: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(vehicle?.modelName ?? "",
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: Color(0xFF000000))),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              color: Color(0xFF000000))),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Text("${vehicle?.vehicleRating ?? "-"}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF373737))),
+                          Text("${vehicle?.vehicleRating ?? "-"}",
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF373737))),
                           const SizedBox(width: 4),
-                          const Icon(Icons.star, color: Color(0xFFFEC200), size: 16),
-                          const SizedBox(width: 4,),
-                          Text("450 Reviews", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF373737))),
-
+                          const Icon(Icons.star,
+                              color: Color(0xFFFEC200), size: 16),
+                          const SizedBox(
+                            width: 4,
+                          ),
+                          Text("450 Reviews",
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF373737))),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 12,
                         children: [
-                          _InfoIcon(icon: Icons.airline_seat_recline_extra, text: "${vehicle?.specs?.seats ?? "--"} Seat"),
-                          _InfoIcon(icon: Icons.work, text: "${vehicle?.specs?.luggageCapacity ?? "--"} luggage bag"),
+                          _InfoIcon(
+                              icon: Icons.airline_seat_recline_extra,
+                              text: "${vehicle?.specs?.seats ?? "--"} Seat"),
+                          _InfoIcon(
+                              icon: Icons.work,
+                              text:
+                                  "${vehicle?.specs?.luggageCapacity ?? "--"} luggage bag"),
                           // _InfoIcon(icon: Icons.speed, text: "${vehicle?.specs?.mileageLimit ?? "--"} km/rental"),
-                          _InfoIcon(icon: Icons.settings, text: "${vehicle?.specs?.transmission ?? "--"}"),
-                          const _InfoIcon(icon: Icons.calendar_today, text: "Min. 2 days rental"),
+                          _InfoIcon(
+                              icon: Icons.settings,
+                              text: "${vehicle?.specs?.transmission ?? "--"}"),
+                          const _InfoIcon(
+                              icon: Icons.calendar_today,
+                              text: "Min. 2 days rental"),
                         ],
                       ),
                     ],
@@ -2572,7 +2717,9 @@ class _CarCardState extends State<CarCard> {
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: const Divider(color: Color(0xFFDCDCDC),),
+                  child: const Divider(
+                    color: Color(0xFFDCDCDC),
+                  ),
                 ),
 
                 // Price + Button
@@ -2582,50 +2729,74 @@ class _CarCardState extends State<CarCard> {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children:  [
-
+                        children: [
                           Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                            children: [
-                              FutureBuilder<double>(
-                                future: currencyController.convertPrice(
-                                  getFakePriceWithPercent(searchInventorySdController.selectedIndex.value == 0
-                                      ? (rides[index].tariffDaily?.base ?? 0)
-                                      : (rides[index].tariffMonthly?.base ?? 0), 20).toDouble(),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                FutureBuilder<double>(
+                                  future: currencyController.convertPrice(
+                                    getFakePriceWithPercent(
+                                            searchInventorySdController
+                                                        .selectedIndex.value ==
+                                                    0
+                                                ? (rides[index]
+                                                        .tariffDaily
+                                                        ?.base ??
+                                                    0)
+                                                : (rides[index]
+                                                        .tariffMonthly
+                                                        ?.base ??
+                                                    0),
+                                            20)
+                                        .toDouble(),
+                                  ),
+                                  builder: (context, snapshot) {
+                                    final convertedValue = snapshot.data ??
+                                        getFakePriceWithPercent(
+                                                searchInventorySdController
+                                                            .selectedIndex
+                                                            .value ==
+                                                        0
+                                                    ? (rides[index]
+                                                            .tariffDaily
+                                                            ?.base ??
+                                                        0)
+                                                    : (rides[index]
+                                                            .tariffMonthly
+                                                            ?.base ??
+                                                        0),
+                                                20)
+                                            .toDouble();
+                                    return Text(
+                                      '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: Colors
+                                            .grey, // lighter color for cut-off price
+                                        decoration: TextDecoration
+                                            .lineThrough, // 👈 adds cutoff
+                                      ),
+                                    );
+                                  },
                                 ),
-                                builder: (context, snapshot) {
-                                  final convertedValue = snapshot.data ??
-                                      getFakePriceWithPercent(searchInventorySdController.selectedIndex.value == 0
-                                          ? (rides[index].tariffDaily?.base ?? 0)
-                                          : (rides[index].tariffMonthly?.base ?? 0), 20).toDouble();
-                                  return Text(
-                                    '${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: Colors.grey, // lighter color for cut-off price
-                                      decoration: TextDecoration.lineThrough, // 👈 adds cutoff
-                                    ),
-                                  );
-                                },
-                              ),
-          ]
-                          ),
-
+                              ]),
                           SizedBox(height: 4),
                           FutureBuilder<double>(
                             future: currencyController.convertPrice(
-                              (searchInventorySdController.selectedIndex.value == 0
-                                  ? (rides[index].tariffDaily?.base ?? 0)
-                                  : (rides[index].tariffMonthly?.base?? 0))
+                              (searchInventorySdController
+                                              .selectedIndex.value ==
+                                          0
+                                      ? (rides[index].tariffDaily?.base ?? 0)
+                                      : (rides[index].tariffMonthly?.base ?? 0))
                                   .toDouble(),
                             ),
                             builder: (context, snapshot) {
                               if (snapshot.hasError) {
                                 return const Text(
                                   "Error in conversion",
-                                  style: TextStyle(color: Colors.red, fontSize: 11),
+                                  style: TextStyle(
+                                      color: Colors.red, fontSize: 11),
                                 );
                               }
 
@@ -2633,7 +2804,9 @@ class _CarCardState extends State<CarCard> {
                               final convertedPrice = snapshot.data ?? 0;
 
                               return Text(
-                                searchInventorySdController.selectedIndex.value == 0
+                                searchInventorySdController
+                                            .selectedIndex.value ==
+                                        0
                                     ? "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/day"
                                     : "${currencyController.selectedCurrency.value.symbol} ${convertedPrice.toStringAsFixed(2)}/Month",
                                 style: const TextStyle(
@@ -2644,48 +2817,64 @@ class _CarCardState extends State<CarCard> {
                               );
                             },
                           )
-
                         ],
                       ),
                       const Spacer(),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFFE8262B),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 10),
                         ),
-                        onPressed: () async{
-          // Step 2: Show the transition loader (Chauffeur → Self Drive)
-          Navigator.of(context).push(
-          PageRouteBuilder(
-          opaque: false,
-          pageBuilder: (_, __, ___) => const SelfDriveInventoryShimmer(
-          ),
-          ),
-          );
+                        onPressed: () async {
+                          // Step 2: Show the transition loader (Chauffeur → Self Drive)
+                          Navigator.of(context).push(
+                            PageRouteBuilder(
+                              opaque: false,
+                              pageBuilder: (_, __, ___) =>
+                                  const SelfDriveInventoryShimmer(),
+                            ),
+                          );
 
+                          // Step 3: Wait for animation to complete
+                          await Future.delayed(const Duration(seconds: 2));
 
-          // Step 3: Wait for animation to complete
-          await Future.delayed(const Duration(seconds: 2));
-
-          // Step 4: Close the loader and navigate via GoRouter
-          if (context.mounted) {
-            // Close loader overlay
-            Navigator.of(context).pop();
-          }
-                         await fetchSdBookingDetailsController.fetchBookingDetails(vehicle?.id??"", false).then((value){
+                          // Step 4: Close the loader and navigate via GoRouter
+                          if (context.mounted) {
+                            // Close loader overlay
+                            Navigator.of(context).pop();
+                          }
+                          await fetchSdBookingDetailsController
+                              .fetchBookingDetails(vehicle?.id ?? "", false)
+                              .then((value) {
                             Navigator.of(context).push(
                               Platform.isIOS
                                   ? CupertinoPageRoute(
-                                builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false, isNavigateFromHome: true,),
-                              )
+                                      builder: (_) => SelfDriveFinalPageS1(
+                                        vehicleId: vehicle?.id ?? "",
+                                        isHomePage: false,
+                                        isNavigateFromHome: true,
+                                      ),
+                                    )
                                   : MaterialPageRoute(
-                                builder: (_) =>  SelfDriveFinalPageS1(vehicleId: vehicle?.id??"", isHomePage: false, isNavigateFromHome: true,),
-                              ),
+                                      builder: (_) => SelfDriveFinalPageS1(
+                                        vehicleId: vehicle?.id ?? "",
+                                        isHomePage: false,
+                                        isNavigateFromHome: true,
+                                      ),
+                                    ),
                             );
                           });
-                                               },
-                        child: const Text("Book Now", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),),
+                        },
+                        child: const Text(
+                          "Book Now",
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -2697,7 +2886,6 @@ class _CarCardState extends State<CarCard> {
       );
     });
   }
-
 }
 
 class _InfoIcon extends StatelessWidget {
@@ -2713,10 +2901,12 @@ class _InfoIcon extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: Color(0xFF979797)),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF333333))),
+        Text(text,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333))),
       ],
     );
   }
 }
-
-

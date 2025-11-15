@@ -220,6 +220,7 @@ class IndiaPaymentController extends GetxController {
       "razorpay_signature": response.signature
     };
     await StorageServices.instance.save('reservationId', response.orderId??'');
+    print('reservationID yash: ${await StorageServices.instance.read('reservationId')}');
 
     await verifyPaymentStatus(verifyPayload).then((value){
       WidgetsBinding.instance.addPostFrameCallback((_) {

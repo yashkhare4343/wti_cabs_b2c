@@ -25,7 +25,6 @@ class CabBookingController extends GetxController {
 
   // Assume country is stored separately
   String? country;
-
               double get baseFare {
                 final value = isIndia
                     ? (indiaData.value?.inventory?.carTypes?.fareDetails?.baseFare?.toDouble() ?? 0.0)

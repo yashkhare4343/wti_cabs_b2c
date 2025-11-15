@@ -47,6 +47,7 @@ class _CprTextFormFieldState extends State<CprTextFormField> {
         labelStyle: const TextStyle(fontSize:14,fontWeight:FontWeight.w400,color: Color(0xFF333333)),
         hintStyle: const TextStyle(fontSize:14,fontWeight:FontWeight.w400,color: Color(0xFF333333)),
         contentPadding: widget.contentPadding,
+        counterText: '',
         border: OutlineInputBorder(
           borderSide: const BorderSide(color: Color(0x1A000000), width: 1),
           borderRadius: BorderRadius.circular(10),

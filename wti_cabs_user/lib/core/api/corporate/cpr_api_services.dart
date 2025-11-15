@@ -21,8 +21,8 @@ class CprApiService {
   static final CprApiService _instance = CprApiService._internal();
   factory CprApiService() => _instance;
 
-  // final String baseUrl = 'http://13.200.168.251:3002/global/app/v1';
   final String baseUrl = 'http://103.208.202.180:120/api/Info';
+  // final String baseUrl = 'http://192.168.1.60:120/api/Info';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
@@ -190,6 +190,8 @@ class CprApiService {
     // 🧩 Build the full URL
     final uri = Uri.parse('$baseUrl/$endpoint')
         .replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
+
+    print('yash crp url is : ${'$baseUrl/$endpoint'}');
 
     final token = await _getToken();
 
