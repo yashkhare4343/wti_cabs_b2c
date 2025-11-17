@@ -13,8 +13,12 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.wti.cabbooking"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+
+    // ✅ Required by Play Console minimum API requirement
+    compileSdk = 35
+
+    // ✅ Required for 16KB page-size support (fixes Play Console warning)
+    ndkVersion = "28.0.12433566"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -28,7 +32,10 @@ android {
     defaultConfig {
         applicationId = "com.wti.cabbooking"
         minSdk = 23
-        targetSdk = 34
+
+        // ✅ Required by Google Play (must be >= 35)
+        targetSdk = 35
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -58,7 +65,7 @@ android {
         }
 
         debug {
-            signingConfig signingConfigs.debug // ✅ Correct place to assign
+            signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
         }

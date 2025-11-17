@@ -360,13 +360,14 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
   /// Load the country and check trip code change dialog after UI is rendered
   Future<void> loadInitialData() async {
-    _country = await StorageServices.instance.read('country');
+    _country = dropPlaceSearchController.dropLatLng.value?.country.toLowerCase();
     setState(() {
       isLoading = false;
     });
     // Show dialog after data is loaded and UI is rendered
+    // Always check for trip code changes, even when coming back from booking details
     if (mounted) {
-      widget.fromFinalBookingPage == true ? null : await loadTripCode(context);
+      await loadTripCode(context);
     }
   }
 
@@ -774,7 +775,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
         final SelectedTripController selectedTripController = Get.put(SelectedTripController());
 
-        final country = await StorageServices.instance.read('country');
+        final country = dropPlaceSearchController.dropLatLng.value?.country.toLowerCase();
         final Map<String, dynamic> requestData = {
           "isGlobal": false,
           "country": country,
@@ -1163,7 +1164,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     return InkWell(
       splashColor: Colors.transparent,
       onTap: () async {
-        final country = await StorageServices.instance.read('country');
+        final country = dropPlaceSearchController.dropLatLng.value?.country.toLowerCase();
         final CabBookingController cabBookingController =
         Get.put(CabBookingController());
         final Map<String, dynamic> requestData = {
@@ -1833,7 +1834,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
               child: Obx(() {
                 print('Obx rebuild triggered at ${DateTime.now()}');
                 // Capture the current tripCode value to avoid direct reactive access
-                final tripCode = searchCabInventoryController.tripCode.value;
+                final tripCode = searchCabInventoryController.newCurrent.value;
                 return Column(
                   children: [
                     Row(

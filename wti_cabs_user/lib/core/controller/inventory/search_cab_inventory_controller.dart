@@ -12,6 +12,8 @@ class SearchCabInventoryController extends GetxController {
   Rx<GlobalResponse?> globalData = Rx<GlobalResponse?>(null);
   RxBool isLoading = false.obs;
   final CurrencyController currencyController = Get.put(CurrencyController());
+  RxString newCurrent = ''.obs;
+  RxString newPrevious = ''.obs;
 
   @override
   void onInit() {
@@ -102,8 +104,7 @@ class SearchCabInventoryController extends GetxController {
       final oldCurrent = await StorageServices.instance.read('currentTripCode') ?? '';
       final oldPrevious = await StorageServices.instance.read('previousTripCode') ?? '';
 
-      String newCurrent = '';
-      String newPrevious = '';
+
 
       if (country.toLowerCase() == 'india') {
         final response = await ApiService().postRequestNew<IndiaResponse>(
@@ -115,8 +116,8 @@ class SearchCabInventoryController extends GetxController {
         indiaData.value = response;
         globalData.value = null;
 
-        newCurrent = response.result?.tripType?.currentTripCode ?? '';
-        newPrevious = response.result?.tripType?.previousTripCode ?? '';
+        newCurrent.value = response.result?.tripType?.currentTripCode ?? '';
+        newPrevious.value = response.result?.tripType?.previousTripCode ?? '';
 
       } else {
         final response = await ApiService().postRequestNew<GlobalResponse>(
@@ -134,8 +135,8 @@ class SearchCabInventoryController extends GetxController {
           for (var outer in resultList) {
             for (var item in outer) {
               if (item.tripDetails != null) {
-                newCurrent = item.tripDetails?.currentTripCode.toString() ?? '';
-                newPrevious = item.tripDetails?.previousTripCode ?? '';
+                newCurrent.value = item.tripDetails?.currentTripCode.toString() ?? '';
+                newPrevious.value = item.tripDetails?.previousTripCode ?? '';
                 break outerLoop;
               }
             }
@@ -149,11 +150,11 @@ class SearchCabInventoryController extends GetxController {
       }
 
       // Save updated codes
-      await StorageServices.instance.save('currentTripCode', newCurrent);
-      await StorageServices.instance.save('previousTripCode', newPrevious);
+      await StorageServices.instance.save('currentTripCode', newCurrent.value);
+      await StorageServices.instance.save('previousTripCode', newPrevious.value);
 
-      tripCode.value = newCurrent;
-      previousTripCode.value = newPrevious;
+      tripCode.value = newCurrent.value;
+      previousTripCode.value = newPrevious.value;
 
       // ✅ Detect location once
 

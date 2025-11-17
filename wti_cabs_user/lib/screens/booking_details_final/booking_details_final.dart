@@ -13,6 +13,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/cab_booking/cab_booking_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/controller/coupons/fetch_coupons_controller.dart';
@@ -67,6 +68,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   final FetchPackageController fetchPackageController =
       Get.put(FetchPackageController());
   final CouponController fetchCouponController = Get.put(CouponController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   bool _isLoading = true;
 
 
@@ -123,7 +125,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
 
 
   Future<void> loadInitialData() async {
-    _country = await StorageServices.instance.read('country');
+    _country = dropPlaceSearchController.dropLatLng.value?.country;
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
@@ -1356,13 +1358,11 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
   List<SelectableExtra> globalExtras = [];
   bool isLoading = true;
   String? _country;
+  String? _errorMessage;
 
-
-  final CabBookingController cabBookingController =
-      Get.put(CabBookingController());
-
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
+  final CabBookingController cabBookingController = Get.find<CabBookingController>();
   final CurrencyController currencyController = Get.find<CurrencyController>();
-
 
   @override
   void initState() {
@@ -1371,41 +1371,77 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
   }
 
   Future<void> loadInitialData() async {
-    _country = await StorageServices.instance.read('country');
+    try {
+      _country = dropPlaceSearchController.dropLatLng.value?.country;
 
-    final rawIndiaExtras = cabBookingController
-            .indiaData.value?.inventory?.carTypes?.extrasIdArray ??
-        [];
-    final rawGlobalExtras =
-        cabBookingController.globalData.value?.vehicleDetails?.extraArray ?? [];
+      final rawIndiaExtras = cabBookingController
+              .indiaData.value?.inventory?.carTypes?.extrasIdArray ??
+          [];
+      final rawGlobalExtras =
+          cabBookingController.globalData.value?.vehicleDetails?.extraArray ?? [];
 
-    setState(() {
-      indiaExtras = rawIndiaExtras.map((e) {
-        return SelectableExtra(
-          id: e.id ?? '',
-          label: e.name ?? '',
-          price: e.price?.daily ?? 0,
-        );
-      }).toList();
+      if (mounted) {
+        setState(() {
+          indiaExtras = rawIndiaExtras.map((e) {
+            return SelectableExtra(
+              id: e.id ?? '',
+              label: e.name ?? '',
+              price: e.price?.daily ?? 0,
+            );
+          }).toList();
 
-      globalExtras = rawGlobalExtras.map((e) {
-        return SelectableExtra(
-          id: e.id ?? '',
-          label: e.name ?? '',
-          price: e.price?.daily ?? 0,
-        );
-      }).toList();
+          globalExtras = rawGlobalExtras.map((e) {
+            return SelectableExtra(
+              id: e.id ?? '',
+              label: e.name ?? '',
+              price: e.price?.daily ?? 0,
+            );
+          }).toList();
 
-      isLoading = false;
-    });
+          isLoading = false;
+          _errorMessage = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _errorMessage = 'Failed to load extras: ${e.toString()}';
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading || _country == null ) {
+    if (isLoading) {
       return Center(child: buildShimmer());
     }
 
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (_country == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Country information not available',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ),
+      );
+    }
 
     final isIndia = _country!.toLowerCase() == 'india';
     final extras = isIndia ? indiaExtras : globalExtras;
@@ -1418,7 +1454,6 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
     required String title,
     required List<SelectableExtra> extras,
   }) {
-    final currencyController = Get.find<CurrencyController>();
     return SizedBox(
       width: double.infinity,
       child: Card(
@@ -1504,13 +1539,8 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
                                 ),
                               ),
 
-                              // 🔹 Wrap price in FutureBuilder
-      // 🔹 Wrap price in FutureBuilder
                               FutureBuilder<double>(
-                                future: Future.delayed(
-                                  const Duration(milliseconds: 500), // 0.5s fake loader
-                                      () => currencyController.convertPrice(item.price.toDouble()),
-                                ),
+                                future: currencyController.convertPrice(item.price.toDouble()),
                                 builder: (context, snapshot) {
                                   if (snapshot.connectionState == ConnectionState.waiting) {
                                     return SizedBox(
@@ -1530,14 +1560,17 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
                                   }
 
                                   if (snapshot.hasError) {
-                                    return const Text(
-                                      "--",
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                    return Text(
+                                      "${currencyController.selectedCurrency.value.symbol}${item.price.toStringAsFixed(0)}",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
                                     );
                                   }
 
-                                  final convertedValue =
-                                      snapshot.data ?? item.price.toDouble();
+                                  final convertedValue = snapshot.data ?? item.price.toDouble();
 
                                   return Text(
                                     "${currencyController.selectedCurrency.value.symbol}${convertedValue.toStringAsFixed(0)}",
@@ -2419,8 +2452,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
       Get.put(GlobalPaymentController());
   final SearchCabInventoryController searchCabInventoryController =
       Get.put(SearchCabInventoryController());
+  final DropPlaceSearchController dropPlaceSearchController = Get.put(DropPlaceSearchController());
   final countryController = Get.put(CountryController());
   final currencyController = Get.find<CurrencyController>();
+
 
   String? token,
       firstName,
@@ -2438,7 +2473,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
   }
 
   Future<void> loadInitialData() async {
-    _country = await StorageServices.instance.read('country');
+    _country = dropPlaceSearchController.dropLatLng.value?.country;
     cabBookingController.country = _country;
     token = await StorageServices.instance.read('token');
     firstName = await StorageServices.instance.read('firstName');

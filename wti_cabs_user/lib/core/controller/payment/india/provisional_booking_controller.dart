@@ -202,7 +202,7 @@ class IndiaPaymentController extends GetxController {
       };
 
       _razorpay.open(options);
-      // logAddToCart();
+      logAddToCart();
     } catch (e) {
       print('❌ Razorpay open error: $e');
     }

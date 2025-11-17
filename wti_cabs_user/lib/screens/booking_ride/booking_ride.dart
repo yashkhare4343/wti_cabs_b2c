@@ -85,17 +85,17 @@ class _BookingRideState extends State<BookingRide> {
   Future<void> fetchCurrentLocationAndAddress() async {
     final loc = location.Location();
 
-    // ✅ Ensure service is enabled0
+    //  Ensure service is enabled0
     if (!(await loc.serviceEnabled()) && !(await loc.requestService())) return;
 
-    // ✅ Ensure permission
+    //  Ensure permission
     var permission = await loc.hasPermission();
     if (permission == location.PermissionStatus.denied) {
       permission = await loc.requestPermission();
       if (permission != location.PermissionStatus.granted) return;
     }
 
-    // ✅ Fetch current location
+    //  Fetch current location
     final locData = await loc.getLocation();
     if (locData.latitude == null || locData.longitude == null) return;
 
@@ -139,6 +139,7 @@ class _BookingRideState extends State<BookingRide> {
 
       if (placeSearchController.suggestions.isEmpty) {
         print("No search suggestions found for $fullAddress");
+        setState(() => address = 'Address not found');
         return; // stop here – do not prefill controllers/storage
       }
 
@@ -148,67 +149,70 @@ class _BookingRideState extends State<BookingRide> {
       bookingRideController.prefilled.value = fullAddress;
       placeSearchController.placeId.value = suggestion.placeId;
 
-      // 5. Fire-and-forget details/storage update
-      Future.microtask(() async {
-        try {
-          await placeSearchController.getLatLngDetails(
-              suggestion.placeId, context);
+      // 5. Get lat/lng details - MUST be awaited
+      await placeSearchController.getLatLngDetails(
+          suggestion.placeId, context);
 
-          StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
-          StorageServices.instance.save('sourceTitle', suggestion.primaryText);
-          StorageServices.instance.save('sourceCity', suggestion.city);
-          StorageServices.instance.save('sourceState', suggestion.state);
-          StorageServices.instance.save('sourceCountry', suggestion.country);
+      // 6. Save all data to storage - MUST be awaited
+      await StorageServices.instance.save('sourcePlaceId', suggestion.placeId);
+      await StorageServices.instance.save('sourceTitle', suggestion.primaryText);
+      await StorageServices.instance.save('sourceCity', suggestion.city);
+      await StorageServices.instance.save('sourceState', suggestion.state);
+      await StorageServices.instance.save('sourceCountry', suggestion.country);
 
-          if (suggestion.types.isNotEmpty) {
-            StorageServices.instance.save(
-              'sourceTypes',
-              jsonEncode(suggestion.types),
-            );
-          }
+      if (suggestion.types.isNotEmpty) {
+        await StorageServices.instance.save(
+          'sourceTypes',
+          jsonEncode(suggestion.types),
+        );
+      }
 
-          if (suggestion.terms.isNotEmpty) {
-            StorageServices.instance.save(
-              'sourceTerms',
-              jsonEncode(suggestion.terms),
-            );
-          }
+      if (suggestion.terms.isNotEmpty) {
+        await StorageServices.instance.save(
+          'sourceTerms',
+          jsonEncode(suggestion.terms),
+        );
+      }
 
-          sourceController.setPlace(
-            placeId: suggestion.placeId,
-            title: suggestion.primaryText,
-            city: suggestion.city,
-            state: suggestion.state,
-            country: suggestion.country,
-            types: suggestion.types,
-            terms: suggestion.terms,
-          );
+      // 7. Update source controller - MUST be done after all data is ready
+      sourceController.setPlace(
+        placeId: suggestion.placeId,
+        title: suggestion.primaryText,
+        city: suggestion.city,
+        state: suggestion.state,
+        country: suggestion.country,
+        types: suggestion.types,
+        terms: suggestion.terms,
+      );
 
-          print('akash country: ${suggestion.country}');
-          print('Current location address saved: $fullAddress');
-        } catch (err) {
-          print('Background save failed: $err');
-        }
-      });
+      print('akash country: ${suggestion.country}');
+      print('Current location address saved: $fullAddress');
     } catch (e) {
       print('Error fetching location/address: $e');
       setState(() => address = 'Error fetching address');
+      rethrow; // Re-throw to let caller handle the error
     }
   }
+
+  void setPickup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isFirstTime = prefs.getBool("isFirstTime") ?? true;
+      if (isFirstTime) {
+        await fetchCurrentLocationAndAddress();
+      }
+    } catch (e) {
+      print('Error in setPickup: $e');
+      // Don't set address to error state here as it might not be the first time
+    }
+  }
+
 
   void loadSeletedPackage() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       bookingRideController.selectedPackage.value =
           await StorageServices.instance.read('selectedPackage') ?? '';
     });
-  }
-
-  void setPickup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isFirstTime = prefs.getBool("isFirstTime") ?? true;
-    if (isFirstTime) {
-      await fetchCurrentLocationAndAddress();
-    }
   }
 
   @override
@@ -963,7 +967,7 @@ class _OutStationState extends State<OutStation> {
     final pickupId = placeSearchController.placeId.value.trim();
     final dropId = dropPlaceSearchController.dropPlaceId.value.trim();
 
-    // ✅ Fix: Only show error if both text and placeId are empty
+    //  Fix: Only show error if both text and placeId are empty
     if (pickupController.text.trim().isEmpty && pickupId.isEmpty) {
       return "Please enter pickup location";
     }
@@ -1085,7 +1089,7 @@ class _OutStationState extends State<OutStation> {
 
     // search Analytics GA4 event tracking
     final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
-    // ✅ Send to Firebase Analytics
+    //  Send to Firebase Analytics
     await _analytics.logSearch(
       searchTerm: '${data['sourceTitle']} to ${data['destinationTitle']}',
       numberOfPassengers: 1,
@@ -1245,7 +1249,7 @@ class _RidesState extends State<Rides> {
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    // ✅ Debounce: ignore if already switching
+    //  Debounce: ignore if already switching
     if (bookingRideController.isSwitching.value) return;
 
     bookingRideController.isSwitching.value = true;
@@ -1497,7 +1501,7 @@ class _RidesState extends State<Rides> {
                               .dropPlaceId.value
                               .trim();
 
-                          // ✅ Fix: only show error if controller text is empty AND placeId is empty
+                          //  Fix: only show error if controller text is empty AND placeId is empty
                           if (ridePickupController.text.trim().isEmpty &&
                               pickupId.isEmpty) {
                             return "Please enter pickup location";
@@ -1810,7 +1814,7 @@ class _RidesState extends State<Rides> {
                             extra: requestData,
                           );
                         }
-                            : () {}, // ✅ null = properly disabled
+                            : () {}, //  null = properly disabled
                       ),
                     ),
                   );
@@ -2381,7 +2385,7 @@ class _RentalState extends State<Rental> {
                                           .updateSelectedPackage(item);
                                       Navigator.pop(context);
 
-                                      print('✅ Selected package is: $item');
+                                      print(' Selected package is: $item');
 
                                       // Extract hours & kms
                                       final packageRegex = RegExp(
@@ -2507,7 +2511,7 @@ class _RentalState extends State<Rental> {
                   final forceDisable = hasSourceError ||
                       bookingRideController.isInvalidTime.value;
 
-                  // ✅ final flag
+                  //  final flag
                   final isEnabled = canProceed && !forceDisable;
 
                   return Opacity(
@@ -2548,7 +2552,7 @@ class _RentalState extends State<Rental> {
                         setState(() => _isLoading = false);
                         GoRouter.of(context).pop();
                       }
-                          : () {}, // ✅ null disables the button properly
+                          : () {}, //  null disables the button properly
                     ),
                   );
                 }),

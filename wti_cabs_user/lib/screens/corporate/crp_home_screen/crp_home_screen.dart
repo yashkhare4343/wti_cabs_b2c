@@ -3,11 +3,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
-import 'package:wti_cabs_user/core/route_management/app_routes.dart';
-import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../../common_widget/textformfield/read_only_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
@@ -24,11 +21,9 @@ class CprHomeScreen extends StatefulWidget {
 class _CprHomeScreenState extends State<CprHomeScreen> {
 
   final params = {
-    'CorpID' : StorageServices.instance.read('crpId'),
-    'BranchID' : StorageServices.instance.read('branchId')
+    'CorpID' : '1',
+    'BranchID' : '1'
   };
-
-  // String get
 
   @override
   void initState() {
@@ -94,7 +89,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
               // Calculate crossAxisCount based on number of services
               // Each service should take equal width
               final crossAxisCount = list.length > 3 ? 3 : list.length;
-              final fixedHeight = 120.0;
+              final fixedHeight = 110.0;
               final screenWidth = MediaQuery.of(context).size.width;
               final horizontalPadding = 24.0; // 12 on each side
               final crossAxisSpacing = 12.0;
@@ -117,9 +112,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
 
                   return InkWell(
                     splashColor: Colors.transparent,
-                    onTap: () {
-                      GoRouter.of(context).push(AppRoutes.cprBookingEngine);
-                    },
+                    onTap: () {},
                     child: Container(
                       height: fixedHeight,
                       padding: const EdgeInsets.all(10),

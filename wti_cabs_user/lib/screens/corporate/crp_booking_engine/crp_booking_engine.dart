@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../common_widget/textformfield/booking_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
-import '../../../common_widget/textformfield/booking_textformfield.dart';
 
 class CprBookingEngine extends StatefulWidget {
   const CprBookingEngine({super.key});
@@ -13,10 +13,10 @@ class CprBookingEngine extends StatefulWidget {
 class _CprBookingEngineState extends State<CprBookingEngine> {
   int selectedTabIndex = 0;
   final List<String> tabs = ['Local', 'Airport', 'OutStation'];
-  
+
   final TextEditingController pickupController = TextEditingController(text: 'D-21, Dwarka, New Delhi...');
   final TextEditingController dropController = TextEditingController();
-  
+
   bool isBookingForExpanded = false;
   bool isPaymentMethodsExpanded = false;
   bool isAdditionalOptionsExpanded = false;
@@ -58,15 +58,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               // Tabs Section
               _buildTabsSection(),
               const SizedBox(height: 24),
-              
+
               // Location Input Section
               _buildLocationSection(),
               const SizedBox(height: 24),
-              
+
               // Pick Up Date and Pick Up Type Buttons
               _buildDateAndTypeButtons(),
               const SizedBox(height: 20),
-              
+
               // Booking For
               _buildExpandableTile(
                 icon: Icons.person_outline,
@@ -80,7 +80,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 },
               ),
               const SizedBox(height: 12),
-              
+
               // Payment Methods
               _buildExpandableTile(
                 icon: Icons.wallet_outlined,
@@ -94,7 +94,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 },
               ),
               const SizedBox(height: 12),
-              
+
               // Additional Options
               _buildExpandableTile(
                 icon: Icons.add_circle_outline,
@@ -108,7 +108,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 },
               ),
               const SizedBox(height: 32),
-              
+
               // View Cabs Button
               _buildViewCabsButton(),
             ],
@@ -208,7 +208,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Text fields
           Expanded(
             child: Column(
@@ -232,7 +232,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             ),
           ),
           const SizedBox(width: 8),
-          
+
           // Plus icon button
           Padding(
             padding: const EdgeInsets.only(top: 4),

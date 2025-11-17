@@ -1787,55 +1787,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     SizedBox(
                                       width: 12,
                                     ),
-                                    Container(
-                                      height: 35,
-                                      decoration: BoxDecoration(
-                                        /*gradient: const LinearGradient(
-                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),*/
-                                        color: AppColors.mainButtonBg,
-                                        borderRadius: BorderRadius.circular(24),
-                                      ),
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.transparent, // transparent to show gradient
-                                          shadowColor: Colors.transparent, // remove default shadow
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                        ),
-                                        onPressed:  _isCorporateLoading ? null :  () async{
-                                          // handle tap
-                                          setState(() => _isCorporateLoading = true);
-
-                                          // Simulate a network delay or loading operation
-                                          await Future.delayed(const Duration(milliseconds: 1200));
-
-
-
-                                          // Now navigate with flip animation
-                                          Navigator.of(context).push(
-                                            PlatformFlipPageRoute(
-                                              builder: (context) => const CorporateLandingPage(),
-                                            ),
-                                          );
-                                          setState(() => _isCorporateLoading = false);
-
-                                        },
-                                        child: const Text(
-                                          "Go Corporate",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-
+                                    // Go Corporate
+                                    // Container(
+                                    //   height: 35,
+                                    //   decoration: BoxDecoration(
+                                    //     /*gradient: const LinearGradient(
+                                    //       colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                    //       begin: Alignment.centerLeft,
+                                    //       end: Alignment.centerRight,
+                                    //     ),*/
+                                    //     color: AppColors.mainButtonBg,
+                                    //     borderRadius: BorderRadius.circular(24),
+                                    //   ),
+                                    //   child: ElevatedButton(
+                                    //     style: ElevatedButton.styleFrom(
+                                    //       backgroundColor: Colors.transparent, // transparent to show gradient
+                                    //       shadowColor: Colors.transparent, // remove default shadow
+                                    //       shape: RoundedRectangleBorder(
+                                    //         borderRadius: BorderRadius.circular(16),
+                                    //       ),
+                                    //       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    //     ),
+                                    //     onPressed:  _isCorporateLoading ? null :  () async{
+                                    //       // handle tap
+                                    //       setState(() => _isCorporateLoading = true);
+                                    //
+                                    //       // Simulate a network delay or loading operation
+                                    //       await Future.delayed(const Duration(milliseconds: 1200));
+                                    //
+                                    //
+                                    //
+                                    //       // Now navigate with flip animation
+                                    //       Navigator.of(context).push(
+                                    //         PlatformFlipPageRoute(
+                                    //           builder: (context) => const CorporateLandingPage(),
+                                    //         ),
+                                    //       );
+                                    //       setState(() => _isCorporateLoading = false);
+                                    //
+                                    //     },
+                                    //     child: const Text(
+                                    //       "Go Corporate",
+                                    //       style: TextStyle(
+                                    //         color: Colors.white,
+                                    //         fontSize: 12,
+                                    //         fontWeight: FontWeight.w600,
+                                    //       ),
+                                    //     ),
+                                    //   ),
+                                    // )
                                     // upcomingBookingController
                                     //             .isLoggedIn.value ==
                                     //         true
@@ -3299,11 +3299,16 @@ class _RecentTripListState extends State<RecentTripList> {
         await searchController
             .searchPlaces(fullAddress, context)
             .then((value) async {});
+        
+        if (placeSearchController.suggestions.isEmpty) {
+          throw Exception('No suggestions found for current location');
+        }
+        
         bookingRideController.prefilled.value = address;
         placeSearchController.placeId.value =
             placeSearchController.suggestions.first.placeId;
 
-        placeSearchController.getLatLngDetails(
+        await placeSearchController.getLatLngDetails(
             placeSearchController.suggestions.first.placeId, context);
         await StorageServices.instance.save(
             'sourcePlaceId', placeSearchController.suggestions.first.placeId);
@@ -3582,8 +3587,15 @@ class _RecentTripListState extends State<RecentTripList> {
                       // GoRouter.of(context).go(AppRoutes.bottomNav);
                       // resetDropSelection(context);
 
-                      // 🚀 2️⃣ Instant local updates (no await)
-                      fetchCurrentLocationAndAddress();
+                      // 🚀 2️⃣ Fetch current location first (must be awaited)
+                      try {
+                        await fetchCurrentLocationAndAddress();
+                      } catch (e) {
+                        debugPrint("❌ Error fetching current location: $e");
+                        Navigator.pop(context);
+                        return;
+                      }
+                      
                       bookingRideController.prefilledDrop.value = dropTitle;
                       dropPlaceSearchController.dropPlaceId.value = dropPlaceId;
 
@@ -3634,13 +3646,32 @@ class _RecentTripListState extends State<RecentTripList> {
                           terms: dropSuggestion.terms,
                         );
 
-                        // 🚀 4️⃣ Build request data
+                        // 🚀 4️⃣ Verify source location is ready before building request
+                        final sourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                        if (sourcePlaceId == null || sourcePlaceId.isEmpty) {
+                          Navigator.pop(context);
+                          debugPrint("❌ Source location not available");
+                          return;
+                        }
+                        
+                        // Ensure source lat/lng is available
+                        if (placeSearchController.getPlacesLatLng.value == null) {
+                          // Wait a bit for lat/lng to be set
+                          await Future.delayed(Duration(milliseconds: 500));
+                          if (placeSearchController.getPlacesLatLng.value == null) {
+                            Navigator.pop(context);
+                            debugPrint("❌ Source lat/lng not available");
+                            return;
+                          }
+                        }
+
+                        // 🚀 5️⃣ Build request data
                         final requestData = await _buildRequestData(context);
 
                         // Close loader before navigation
                         Navigator.pop(context);
 
-                        // 🚀 5️⃣ Navigate safely with requestData
+                        // 🚀 6️⃣ Navigate safely with requestData
                         // GoRouter.of(context).push(
                         //   AppRoutes.inventoryList,
                         //   extra: requestData,
@@ -3766,8 +3797,15 @@ class _RecentTripListState extends State<RecentTripList> {
                     // GoRouter.of(context).go(AppRoutes.bottomNav);
                     // resetDropSelection(context);
 
-                    // 🚀 2️⃣ Instant local updates (no await)
-                    fetchCurrentLocationAndAddress();
+                    // 🚀 2️⃣ Fetch current location first (must be awaited)
+                    try {
+                      await fetchCurrentLocationAndAddress();
+                    } catch (e) {
+                      debugPrint("❌ Error fetching current location: $e");
+                      Navigator.pop(context);
+                      return;
+                    }
+                    
                     bookingRideController.prefilledDrop.value = popularTitle;
                     dropPlaceSearchController.dropPlaceId.value =
                         popularPlaceId;
@@ -3819,13 +3857,32 @@ class _RecentTripListState extends State<RecentTripList> {
                         terms: dropSuggestion.terms,
                       );
 
-                      // 🚀 4️⃣ Build request data
+                      // 🚀 4️⃣ Verify source location is ready before building request
+                      final sourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (sourcePlaceId == null || sourcePlaceId.isEmpty) {
+                        Navigator.pop(context);
+                        debugPrint("❌ Source location not available");
+                        return;
+                      }
+                      
+                      // Ensure source lat/lng is available
+                      if (placeSearchController.getPlacesLatLng.value == null) {
+                        // Wait a bit for lat/lng to be set
+                        await Future.delayed(Duration(milliseconds: 500));
+                        if (placeSearchController.getPlacesLatLng.value == null) {
+                          Navigator.pop(context);
+                          debugPrint("❌ Source lat/lng not available");
+                          return;
+                        }
+                      }
+
+                      // 🚀 5️⃣ Build request data
                       final requestData = await _buildRequestData(context);
 
                       // Close loader before navigation
                       Navigator.pop(context);
 
-                      // 🚀 5️⃣ Navigate safely with requestData
+                      // 🚀 6️⃣ Navigate safely with requestData
                       // GoRouter.of(context).push(
                       //   AppRoutes.inventoryList,
                       //   extra: requestData,
@@ -3915,8 +3972,15 @@ class _RecentTripListState extends State<RecentTripList> {
                     // GoRouter.of(context).go(AppRoutes.bottomNav);
                     // resetDropSelection(context);
 
-                    // 🚀 2️⃣ Instant local updates (no await)
-                    fetchCurrentLocationAndAddress();
+                    // 🚀 2️⃣ Fetch current location first (must be awaited)
+                    try {
+                      await fetchCurrentLocationAndAddress();
+                    } catch (e) {
+                      debugPrint("❌ Error fetching current location: $e");
+                      Navigator.pop(context);
+                      return;
+                    }
+                    
                     bookingRideController.prefilledDrop.value = popularTitleOutStation;
                     dropPlaceSearchController.dropPlaceId.value =
                         popularplaceIDOutStation;
@@ -3968,13 +4032,32 @@ class _RecentTripListState extends State<RecentTripList> {
                         terms: dropSuggestion.terms,
                       );
 
-                      // 🚀 4️⃣ Build request data
+                      // 🚀 4️⃣ Verify source location is ready before building request
+                      final sourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (sourcePlaceId == null || sourcePlaceId.isEmpty) {
+                        Navigator.pop(context);
+                        debugPrint("❌ Source location not available");
+                        return;
+                      }
+                      
+                      // Ensure source lat/lng is available
+                      if (placeSearchController.getPlacesLatLng.value == null) {
+                        // Wait a bit for lat/lng to be set
+                        await Future.delayed(Duration(milliseconds: 500));
+                        if (placeSearchController.getPlacesLatLng.value == null) {
+                          Navigator.pop(context);
+                          debugPrint("❌ Source lat/lng not available");
+                          return;
+                        }
+                      }
+
+                      // 🚀 5️⃣ Build request data
                       final requestData = await _buildRequestData(context);
 
                       // Close loader before navigation
                       Navigator.pop(context);
 
-                      // 🚀 5️⃣ Navigate safely with requestData
+                      // 🚀 6️⃣ Navigate safely with requestData
                       // GoRouter.of(context).push(
                       //   AppRoutes.inventoryList,
                       //   extra: requestData,

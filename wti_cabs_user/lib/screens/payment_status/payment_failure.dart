@@ -93,7 +93,7 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                     if(reservation['trip_type_details']?['trip_type'] != 'LOCAL_RENTAL') bookingDetailRow('Drop Date',
                         convertUtcToLocal(reservation['end_time'] ?? '', reservation['timezone'] ?? 'UTC')),
                     bookingDetailRow('Amount',
-                        '${CurrencyController().selectedCurrency.value.symbol} ${order['amount']?.toString()}' ?? '0'),
+                        '${CurrencyController().selectedCurrency.value.symbol} ${order['amount']?.toStringAsFixed(2)}' ?? '0'),
 
                     SizedBox(height: 24),
                     SizedBox(
