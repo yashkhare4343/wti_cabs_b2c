@@ -38,6 +38,7 @@ class _CprLoginState extends State<CprLogin> {
       StorageServices.instance.save('crpKey', response?.key??'');
       StorageServices.instance.save('crpId', response?.corpID??'');
       StorageServices.instance.save('branchId', response?.branchID??'');
+      StorageServices.instance.save('guestId', response?.guestID.toString()??'');
 
       GoRouter.of(context).push(AppRoutes.cprHomeScreen);
     }

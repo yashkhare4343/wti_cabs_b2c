@@ -9,7 +9,17 @@ class UspController extends GetxController {
   RxBool isLoading = false.obs;
   RxInt gatewayCode = 0.obs;
 
-  Future<void> fetchUsps() async {
+  Future<void> fetchUsps({bool forceRefresh = false}) async {
+    // 👇 Guard: only fetch if we don't already have data (unless force refresh)
+    if (!forceRefresh && 
+        uspResponse.value?.data != null &&
+        uspResponse.value!.data!.isNotEmpty) {
+      return;
+    }
+
+    // ✅ Prevent multiple simultaneous fetches
+    if (isLoading.value) return;
+
     isLoading.value = true;
     try {
       final result = await ApiService().getRequestNew<UspResponse>(
@@ -17,10 +27,11 @@ class UspController extends GetxController {
         UspResponse.fromJson,
       );
       uspResponse.value = result;
-      print('yash usp response body : ${uspResponse.value}');
+      print('✅ USP data fetched (${uspResponse.value?.data?.length ?? 0} items)');
 
     } catch (e) {
-      print("Failed to fetch packages: $e");
+      print("❌ Failed to fetch USP: $e");
+      // ✅ Don't set to null on error, keep existing data if available
     } finally {
       isLoading.value = false;
     }

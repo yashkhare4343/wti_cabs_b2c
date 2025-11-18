@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:carousel_slider/carousel_options.dart';
@@ -102,10 +103,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final BannerController bannerController = Get.put(BannerController());
 
   final TripHistoryController tripController = Get.put(TripHistoryController());
-  final PlaceSearchController searchController =
-      Get.put(PlaceSearchController());
+  // ✅ Use single instance to avoid conflicts
   final PlaceSearchController placeSearchController =
-      Get.put(PlaceSearchController());
+      Get.put(PlaceSearchController(), permanent: true);
   final SourceLocationController sourceController =
       Get.put(SourceLocationController());
   final DestinationLocationController destinationLocationController =
@@ -210,10 +210,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     profileController.checkLoginStatus();
 
     popularDestinationController.fetchPopularDestinations();
-    // uspController.fetchUsps();
-    bannerController.fetchImages();
+    // ✅ Fetch USP data on first load
+    uspController.fetchUsps().catchError((e) {
+      debugPrint("❌ Error fetching USP: $e");
+      // Retry after delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) uspController.fetchUsps(forceRefresh: true);
+      });
+    });
+    // ✅ Force fetch images on first load
+    bannerController.fetchImages().catchError((e) {
+      debugPrint("❌ Error fetching banners: $e");
+      // Retry after delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) bannerController.fetchImages(forceRefresh: true);
+      });
+    });
 
-    fetchCurrentLocationAndAddress();
+    // ✅ Fetch location in background, don't block UI
+    fetchCurrentLocationAndAddress().catchError((e) {
+      debugPrint("❌ Error fetching location: $e");
+    });
 
     _setStatusBarColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1788,54 +1805,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       width: 12,
                                     ),
                                     // Go Corporate
-                                    // Container(
-                                    //   height: 35,
-                                    //   decoration: BoxDecoration(
-                                    //     /*gradient: const LinearGradient(
-                                    //       colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                    //       begin: Alignment.centerLeft,
-                                    //       end: Alignment.centerRight,
-                                    //     ),*/
-                                    //     color: AppColors.mainButtonBg,
-                                    //     borderRadius: BorderRadius.circular(24),
-                                    //   ),
-                                    //   child: ElevatedButton(
-                                    //     style: ElevatedButton.styleFrom(
-                                    //       backgroundColor: Colors.transparent, // transparent to show gradient
-                                    //       shadowColor: Colors.transparent, // remove default shadow
-                                    //       shape: RoundedRectangleBorder(
-                                    //         borderRadius: BorderRadius.circular(16),
-                                    //       ),
-                                    //       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                    //     ),
-                                    //     onPressed:  _isCorporateLoading ? null :  () async{
-                                    //       // handle tap
-                                    //       setState(() => _isCorporateLoading = true);
-                                    //
-                                    //       // Simulate a network delay or loading operation
-                                    //       await Future.delayed(const Duration(milliseconds: 1200));
-                                    //
-                                    //
-                                    //
-                                    //       // Now navigate with flip animation
-                                    //       Navigator.of(context).push(
-                                    //         PlatformFlipPageRoute(
-                                    //           builder: (context) => const CorporateLandingPage(),
-                                    //         ),
-                                    //       );
-                                    //       setState(() => _isCorporateLoading = false);
-                                    //
-                                    //     },
-                                    //     child: const Text(
-                                    //       "Go Corporate",
-                                    //       style: TextStyle(
-                                    //         color: Colors.white,
-                                    //         fontSize: 12,
-                                    //         fontWeight: FontWeight.w600,
-                                    //       ),
-                                    //     ),
-                                    //   ),
-                                    // )
+                                    Container(
+                                      height: 35,
+                                      decoration: BoxDecoration(
+                                        /*gradient: const LinearGradient(
+                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),*/
+                                        color: AppColors.mainButtonBg,
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent, // transparent to show gradient
+                                          shadowColor: Colors.transparent, // remove default shadow
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                        ),
+                                        onPressed:  _isCorporateLoading ? null :  () async{
+                                          // handle tap
+                                          setState(() => _isCorporateLoading = true);
+
+                                          // Simulate a network delay or loading operation
+                                          await Future.delayed(const Duration(milliseconds: 1200));
+
+
+
+                                          // Now navigate with flip animation
+                                          Navigator.of(context).push(
+                                            PlatformFlipPageRoute(
+                                              builder: (context) => const CorporateLandingPage(),
+                                            ),
+                                          );
+                                          setState(() => _isCorporateLoading = false);
+
+                                        },
+                                        child: const Text(
+                                          "Go Corporate",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                     // upcomingBookingController
                                     //             .isLoggedIn.value ==
                                     //         true
@@ -2397,34 +2414,71 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 .homepageImageResponse.value?.result?.baseUrl ??
                             '';
                         final imageUrl = images[index].url ?? '';
+                        final fullImageUrl = "$baseUrl$imageUrl".trim();
+                        
+                        // ✅ Validate URL before loading
+                        if (fullImageUrl.isEmpty || !fullImageUrl.startsWith('http')) {
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12.0),
+                              child: Container(
+                                width: double.infinity,
+                                height: 124,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: Icon(Icons.image_not_supported, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
 
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 16),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12.0),
-                            child: Image.network(
-                              "$baseUrl$imageUrl",
+                            child: CachedNetworkImage(
+                              imageUrl: fullImageUrl,
                               fit: BoxFit.fill,
                               width: double.infinity,
                               height: 124,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return Shimmer.fromColors(
-                                  baseColor: Colors.grey.shade300,
-                                  highlightColor: Colors.grey.shade100,
+                              useOldImageOnUrlChange: true,
+                              fadeInDuration: const Duration(milliseconds: 300),
+                              fadeOutDuration: const Duration(milliseconds: 200),
+                              memCacheWidth: 1500, // ✅ Optimize memory usage
+                              httpHeaders: const {
+                                'Cache-Control': 'max-age=31536000', // Cache for 1 year
+                              },
+                              cacheKey: fullImageUrl, // ✅ Unique cache key
+                              placeholder: (context, url) => Shimmer.fromColors(
+                                baseColor: Colors.grey.shade300,
+                                highlightColor: Colors.grey.shade100,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 124,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) {
+                                // ✅ Retry on error - show placeholder that can be tapped to retry
+                                return GestureDetector(
+                                  onTap: () {
+                                    // Force rebuild to retry loading
+                                    bannerController.fetchImages(forceRefresh: true);
+                                  },
                                   child: Container(
                                     width: double.infinity,
                                     height: 124,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(Icons.refresh, color: Colors.grey),
                                     ),
                                   ),
                                 );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                    child: Icon(Icons.broken_image));
                               },
                             ),
                           ),
@@ -2532,7 +2586,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         autoPlay: true,
                       ),
                       itemBuilder: (context, index, realIdx) {
-                        final imageUrl = "$baseUrl${images[index].url ?? ''}";
+                        final imageUrl = "$baseUrl${images[index].url ?? ''}".trim();
+                        
+                        // ✅ Validate URL before loading
+                        if (imageUrl.isEmpty || !imageUrl.startsWith('http')) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12.0),
+                              child: Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: Icon(Icons.image_not_supported, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -2546,6 +2616,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               fadeOutDuration:
                                   const Duration(milliseconds: 200),
                               memCacheWidth: 1500, // ✅ sharp banners
+                              httpHeaders: const {
+                                'Cache-Control': 'max-age=31536000', // Cache for 1 year
+                              },
+                              cacheKey: imageUrl, // ✅ Unique cache key
                               placeholder: (context, url) => Shimmer.fromColors(
                                 baseColor: Colors.grey.shade300,
                                 highlightColor: Colors.grey.shade100,
@@ -2558,13 +2632,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   ),
                                 ),
                               ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: Icon(Icons.broken_image,
-                                      color: Colors.grey),
-                                ),
-                              ),
+                              errorWidget: (context, url, error) {
+                                // ✅ Retry on error
+                                return GestureDetector(
+                                  onTap: () {
+                                    bannerController.fetchImages(forceRefresh: true);
+                                  },
+                                  child: Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(Icons.refresh, color: Colors.grey),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         );
@@ -2599,9 +2680,14 @@ class _CustomCarouselState extends State<CustomCarousel>
   @override
   void initState() {
     super.initState();
-    if (uspController.uspResponse.value == null) {
-      uspController.fetchUsps(); // fetch only once
-    }
+    // ✅ Force fetch on first load with error handling
+    uspController.fetchUsps().catchError((e) {
+      debugPrint("❌ Error fetching USP: $e");
+      // Retry after delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) uspController.fetchUsps(forceRefresh: true);
+      });
+    });
   }
 
   @override
@@ -2627,6 +2713,8 @@ class _CustomCarouselState extends State<CustomCarousel>
           enlargeCenterPage: false,
         ),
         items: uspData.map((item) {
+          final imgUrl = (item.imgUrl ?? '').trim();
+          
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2649,28 +2737,49 @@ class _CustomCarouselState extends State<CustomCarousel>
                 child: ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(8)),
-                  child: CachedNetworkImage(
-                    imageUrl: item.imgUrl ?? '',
-                    fit: BoxFit.fill,
-                    useOldImageOnUrlChange: true,
-                    memCacheHeight: 300,
-                    memCacheWidth: 550,
-                    placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey.shade300,
-                      highlightColor: Colors.grey.shade100,
-                      child: Container(
-                        color: Colors.grey,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.shade200,
-                      child: const Center(
-                        child: Icon(Icons.broken_image, color: Colors.grey),
-                      ),
-                    ),
-                  ),
+                  child: imgUrl.isEmpty || !imgUrl.startsWith('http')
+                      ? Container(
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: imgUrl,
+                          fit: BoxFit.fill,
+                          useOldImageOnUrlChange: true,
+                          memCacheHeight: 300,
+                          memCacheWidth: 550,
+                          httpHeaders: const {
+                            'Cache-Control': 'max-age=31536000', // Cache for 1 year
+                          },
+                          cacheKey: imgUrl, // ✅ Unique cache key
+                          fadeInDuration: const Duration(milliseconds: 300),
+                          fadeOutDuration: const Duration(milliseconds: 200),
+                          placeholder: (context, url) => Shimmer.fromColors(
+                            baseColor: Colors.grey.shade300,
+                            highlightColor: Colors.grey.shade100,
+                            child: Container(
+                              color: Colors.grey,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) {
+                            // ✅ Retry on error
+                            return GestureDetector(
+                              onTap: () {
+                                uspController.fetchUsps(forceRefresh: true);
+                              },
+                              child: Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: Icon(Icons.refresh, color: Colors.grey),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
 
@@ -2851,6 +2960,14 @@ class _UspCardState extends State<UspCard> with AutomaticKeepAliveClientMixin {
               imageUrl: item.imgUrl ?? '',
               fit: BoxFit.cover,
               useOldImageOnUrlChange: true,
+              memCacheHeight: 300,
+              memCacheWidth: 550,
+              httpHeaders: const {
+                'Cache-Control': 'max-age=31536000', // Cache for 1 year
+              },
+              cacheKey: item.imgUrl ?? '', // ✅ Unique cache key
+              fadeInDuration: const Duration(milliseconds: 300),
+              fadeOutDuration: const Duration(milliseconds: 200),
               placeholder: (context, url) => Shimmer.fromColors(
                 baseColor: Colors.grey.shade300,
                 highlightColor: Colors.grey.shade100,
@@ -2860,12 +2977,20 @@ class _UspCardState extends State<UspCard> with AutomaticKeepAliveClientMixin {
                   height: double.infinity,
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey.shade200,
-                child: const Center(
-                  child: Icon(Icons.broken_image, color: Colors.grey),
-                ),
-              ),
+              errorWidget: (context, url, error) {
+                // ✅ Retry on error
+                return GestureDetector(
+                  onTap: () {
+                    Get.find<UspController>().fetchUsps(forceRefresh: true);
+                  },
+                  child: Container(
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: Icon(Icons.refresh, color: Colors.grey),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -3072,6 +3197,17 @@ class TravelOfferCard extends StatelessWidget {
                 width: double.infinity,
                 height: 132,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // ✅ Handle missing asset images gracefully
+                  return Container(
+                    width: double.infinity,
+                    height: 132,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -3236,8 +3372,7 @@ class _RecentTripListState extends State<RecentTripList> {
   List<Map<String, dynamic>> recentTrips = [];
   final UspController uspController = Get.put(UspController());
 
-  final PlaceSearchController searchController =
-      Get.put(PlaceSearchController());
+  // ✅ Use the same controller instance from parent to avoid conflicts
   final SourceLocationController sourceController =
       Get.put(SourceLocationController());
   final TripHistoryController tripHistoryController =
@@ -3296,9 +3431,8 @@ class _RecentTripListState extends State<RecentTripList> {
           address = fullAddress;
         });
 
-        await searchController
-            .searchPlaces(fullAddress, context)
-            .then((value) async {});
+        // ✅ Fix: Use placeSearchController consistently
+        await placeSearchController.searchPlaces(fullAddress, context);
         
         if (placeSearchController.suggestions.isEmpty) {
           throw Exception('No suggestions found for current location');
@@ -3308,8 +3442,21 @@ class _RecentTripListState extends State<RecentTripList> {
         placeSearchController.placeId.value =
             placeSearchController.suggestions.first.placeId;
 
+        // ✅ Ensure getLatLngDetails completes before proceeding
         await placeSearchController.getLatLngDetails(
             placeSearchController.suggestions.first.placeId, context);
+        
+        // ✅ Wait a bit to ensure lat/lng is set in controller
+        int retryCount = 0;
+        while (placeSearchController.getPlacesLatLng.value == null && retryCount < 5) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          retryCount++;
+        }
+        
+        if (placeSearchController.getPlacesLatLng.value == null) {
+          throw Exception('Failed to get source location coordinates');
+        }
+        
         await StorageServices.instance.save(
             'sourcePlaceId', placeSearchController.suggestions.first.placeId);
         await StorageServices.instance.save(
@@ -3320,6 +3467,9 @@ class _RecentTripListState extends State<RecentTripList> {
             .save('sourceState', placeSearchController.suggestions.first.state);
         await StorageServices.instance.save(
             'sourceCountry', placeSearchController.suggestions.first.country);
+        // ✅ Ensure country is saved (required for request data)
+        await StorageServices.instance.save(
+            'country', placeSearchController.suggestions.first.country);
         sourceController.setPlace(
           placeId: placeSearchController.suggestions.first.placeId,
           title: placeSearchController.suggestions.first.primaryText,
@@ -3342,11 +3492,13 @@ class _RecentTripListState extends State<RecentTripList> {
         }
       } else {
         address = 'Address not found';
+        throw Exception('Address not found');
       }
 
       print('Current location address: $address');
     } catch (e) {
       print('Error fetching location/address: $e');
+      rethrow; // ✅ Re-throw to handle in calling function
     }
   }
 
@@ -3589,11 +3741,32 @@ class _RecentTripListState extends State<RecentTripList> {
 
                       // 🚀 2️⃣ Fetch current location first (must be awaited)
                       try {
-                        await fetchCurrentLocationAndAddress();
+                        // ✅ Check if source location already exists
+                        final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                        if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                          // Only fetch if not already available
+                          await fetchCurrentLocationAndAddress();
+                        } else {
+                          // ✅ Verify lat/lng is available
+                          if (placeSearchController.getPlacesLatLng.value == null) {
+                            // Try to get lat/lng from existing placeId
+                            await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+                            // Wait for lat/lng to be set
+                            int retryCount = 0;
+                            while (placeSearchController.getPlacesLatLng.value == null && retryCount < 5) {
+                              await Future.delayed(const Duration(milliseconds: 300));
+                              retryCount++;
+                            }
+                          }
+                        }
                       } catch (e) {
                         debugPrint("❌ Error fetching current location: $e");
-                        Navigator.pop(context);
-                        return;
+                        // Don't return - try to continue with existing data
+                        final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                        if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                          Navigator.pop(context);
+                          return;
+                        }
                       }
                       
                       bookingRideController.prefilledDrop.value = dropTitle;
@@ -3655,23 +3828,54 @@ class _RecentTripListState extends State<RecentTripList> {
                         }
                         
                         // Ensure source lat/lng is available
+                        int sourceRetryCount = 0;
+                        while (placeSearchController.getPlacesLatLng.value == null && sourceRetryCount < 10) {
+                          await Future.delayed(const Duration(milliseconds: 300));
+                          sourceRetryCount++;
+                        }
+                        
                         if (placeSearchController.getPlacesLatLng.value == null) {
-                          // Wait a bit for lat/lng to be set
-                          await Future.delayed(Duration(milliseconds: 500));
-                          if (placeSearchController.getPlacesLatLng.value == null) {
+                          Navigator.pop(context);
+                          debugPrint("❌ Source lat/lng not available after retries");
+                          return;
+                        }
+                        
+                        // 🚀 5️⃣ Verify drop location lat/lng is available
+                        int dropRetryCount = 0;
+                        while (dropPlaceSearchController.dropLatLng.value == null && dropRetryCount < 10) {
+                          await Future.delayed(const Duration(milliseconds: 300));
+                          dropRetryCount++;
+                        }
+                        
+                        if (dropPlaceSearchController.dropLatLng.value == null) {
+                          Navigator.pop(context);
+                          debugPrint("❌ Drop lat/lng not available after retries");
+                          return;
+                        }
+                        
+                        // 🚀 6️⃣ Build request data
+                        final requestData = await _buildRequestData(context);
+                        
+                        // 🚀 7️⃣ Validate request data before navigation
+                        if (requestData['source'] == null || 
+                            requestData['destination'] == null ||
+                            requestData['source']['sourceLat'] == null ||
+                            requestData['source']['sourceLng'] == null ||
+                            requestData['destination']['destinationLat'] == null ||
+                            requestData['destination']['destinationLng'] == null) {
+                          if (Navigator.canPop(context)) {
                             Navigator.pop(context);
-                            debugPrint("❌ Source lat/lng not available");
-                            return;
                           }
+                          debugPrint("❌ Request data incomplete: $requestData");
+                          return;
                         }
 
-                        // 🚀 5️⃣ Build request data
-                        final requestData = await _buildRequestData(context);
-
                         // Close loader before navigation
-                        Navigator.pop(context);
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
 
-                        // 🚀 6️⃣ Navigate safely with requestData
+                        // 🚀 8️⃣ Navigate safely with requestData
                         // GoRouter.of(context).push(
                         //   AppRoutes.inventoryList,
                         //   extra: requestData,
@@ -3799,11 +4003,32 @@ class _RecentTripListState extends State<RecentTripList> {
 
                     // 🚀 2️⃣ Fetch current location first (must be awaited)
                     try {
-                      await fetchCurrentLocationAndAddress();
+                      // ✅ Check if source location already exists
+                      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                        // Only fetch if not already available
+                        await fetchCurrentLocationAndAddress();
+                      } else {
+                        // ✅ Verify lat/lng is available
+                        if (placeSearchController.getPlacesLatLng.value == null) {
+                          // Try to get lat/lng from existing placeId
+                          await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+                          // Wait for lat/lng to be set
+                          int retryCount = 0;
+                          while (placeSearchController.getPlacesLatLng.value == null && retryCount < 5) {
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            retryCount++;
+                          }
+                        }
+                      }
                     } catch (e) {
                       debugPrint("❌ Error fetching current location: $e");
-                      Navigator.pop(context);
-                      return;
+                      // Don't return - try to continue with existing data
+                      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                        Navigator.pop(context);
+                        return;
+                      }
                     }
                     
                     bookingRideController.prefilledDrop.value = popularTitle;
@@ -3866,28 +4091,54 @@ class _RecentTripListState extends State<RecentTripList> {
                       }
                       
                       // Ensure source lat/lng is available
+                      int sourceRetryCount = 0;
+                      while (placeSearchController.getPlacesLatLng.value == null && sourceRetryCount < 10) {
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        sourceRetryCount++;
+                      }
+                      
                       if (placeSearchController.getPlacesLatLng.value == null) {
-                        // Wait a bit for lat/lng to be set
-                        await Future.delayed(Duration(milliseconds: 500));
-                        if (placeSearchController.getPlacesLatLng.value == null) {
-                          Navigator.pop(context);
-                          debugPrint("❌ Source lat/lng not available");
-                          return;
-                        }
+                        Navigator.pop(context);
+                        debugPrint("❌ Source lat/lng not available after retries");
+                        return;
+                      }
+                      
+                      // 🚀 5️⃣ Verify drop location lat/lng is available
+                      int dropRetryCount = 0;
+                      while (dropPlaceSearchController.dropLatLng.value == null && dropRetryCount < 10) {
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        dropRetryCount++;
+                      }
+                      
+                      if (dropPlaceSearchController.dropLatLng.value == null) {
+                        Navigator.pop(context);
+                        debugPrint("❌ Drop lat/lng not available after retries");
+                        return;
                       }
 
-                      // 🚀 5️⃣ Build request data
+                      // 🚀 6️⃣ Build request data
                       final requestData = await _buildRequestData(context);
+                      
+                      // 🚀 7️⃣ Validate request data before navigation
+                      if (requestData['source'] == null || 
+                          requestData['destination'] == null ||
+                          requestData['source']['sourceLat'] == null ||
+                          requestData['source']['sourceLng'] == null ||
+                          requestData['destination']['destinationLat'] == null ||
+                          requestData['destination']['destinationLng'] == null) {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                        debugPrint("❌ Request data incomplete: $requestData");
+                        return;
+                      }
 
                       // Close loader before navigation
-                      Navigator.pop(context);
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
 
-                      // 🚀 6️⃣ Navigate safely with requestData
-                      // GoRouter.of(context).push(
-                      //   AppRoutes.inventoryList,
-                      //   extra: requestData,
-                      // );
-
+                      // 🚀 8️⃣ Navigate safely with requestData
                       Navigator.of(context).push(
                         Platform.isIOS
                             ? CupertinoPageRoute(
@@ -3904,7 +4155,9 @@ class _RecentTripListState extends State<RecentTripList> {
                               ),
                       );
                     } catch (e) {
-                      Navigator.pop(context);
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
                       debugPrint("❌ Error during drop setup: $e");
                     }
                   },
@@ -3974,11 +4227,32 @@ class _RecentTripListState extends State<RecentTripList> {
 
                     // 🚀 2️⃣ Fetch current location first (must be awaited)
                     try {
-                      await fetchCurrentLocationAndAddress();
+                      // ✅ Check if source location already exists
+                      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                        // Only fetch if not already available
+                        await fetchCurrentLocationAndAddress();
+                      } else {
+                        // ✅ Verify lat/lng is available
+                        if (placeSearchController.getPlacesLatLng.value == null) {
+                          // Try to get lat/lng from existing placeId
+                          await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+                          // Wait for lat/lng to be set
+                          int retryCount = 0;
+                          while (placeSearchController.getPlacesLatLng.value == null && retryCount < 5) {
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            retryCount++;
+                          }
+                        }
+                      }
                     } catch (e) {
                       debugPrint("❌ Error fetching current location: $e");
-                      Navigator.pop(context);
-                      return;
+                      // Don't return - try to continue with existing data
+                      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+                      if (existingSourcePlaceId == null || existingSourcePlaceId.isEmpty) {
+                        Navigator.pop(context);
+                        return;
+                      }
                     }
                     
                     bookingRideController.prefilledDrop.value = popularTitleOutStation;
@@ -4041,28 +4315,54 @@ class _RecentTripListState extends State<RecentTripList> {
                       }
                       
                       // Ensure source lat/lng is available
+                      int sourceRetryCount = 0;
+                      while (placeSearchController.getPlacesLatLng.value == null && sourceRetryCount < 10) {
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        sourceRetryCount++;
+                      }
+                      
                       if (placeSearchController.getPlacesLatLng.value == null) {
-                        // Wait a bit for lat/lng to be set
-                        await Future.delayed(Duration(milliseconds: 500));
-                        if (placeSearchController.getPlacesLatLng.value == null) {
-                          Navigator.pop(context);
-                          debugPrint("❌ Source lat/lng not available");
-                          return;
-                        }
+                        Navigator.pop(context);
+                        debugPrint("❌ Source lat/lng not available after retries");
+                        return;
+                      }
+                      
+                      // 🚀 5️⃣ Verify drop location lat/lng is available
+                      int dropRetryCount = 0;
+                      while (dropPlaceSearchController.dropLatLng.value == null && dropRetryCount < 10) {
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        dropRetryCount++;
+                      }
+                      
+                      if (dropPlaceSearchController.dropLatLng.value == null) {
+                        Navigator.pop(context);
+                        debugPrint("❌ Drop lat/lng not available after retries");
+                        return;
                       }
 
-                      // 🚀 5️⃣ Build request data
+                      // 🚀 6️⃣ Build request data
                       final requestData = await _buildRequestData(context);
+                      
+                      // 🚀 7️⃣ Validate request data before navigation
+                      if (requestData['source'] == null || 
+                          requestData['destination'] == null ||
+                          requestData['source']['sourceLat'] == null ||
+                          requestData['source']['sourceLng'] == null ||
+                          requestData['destination']['destinationLat'] == null ||
+                          requestData['destination']['destinationLng'] == null) {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                        debugPrint("❌ Request data incomplete: $requestData");
+                        return;
+                      }
 
                       // Close loader before navigation
-                      Navigator.pop(context);
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
 
-                      // 🚀 6️⃣ Navigate safely with requestData
-                      // GoRouter.of(context).push(
-                      //   AppRoutes.inventoryList,
-                      //   extra: requestData,
-                      // );
-
+                      // 🚀 8️⃣ Navigate safely with requestData
                       Navigator.of(context).push(
                         Platform.isIOS
                             ? CupertinoPageRoute(
@@ -4079,7 +4379,9 @@ class _RecentTripListState extends State<RecentTripList> {
                               ),
                       );
                     } catch (e) {
-                      Navigator.pop(context);
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
                       debugPrint("❌ Error during drop setup: $e");
                     }
                   },

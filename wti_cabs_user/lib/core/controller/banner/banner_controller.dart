@@ -9,12 +9,18 @@ class BannerController extends GetxController {
   Rx<HomePageImageResponse?> homepageImageResponse = Rx<HomePageImageResponse?>(null);
   RxBool isLoading = false.obs;
 
-  Future<void> fetchImages() async {
-    // 👇 Guard: only fetch if we don’t already have data
-    if (homepageImageResponse.value?.result?.bottomBanner?.images != null &&
+  Future<void> fetchImages({bool forceRefresh = false}) async {
+    // 👇 Guard: only fetch if we don't already have data (unless force refresh)
+    if (!forceRefresh && 
+        homepageImageResponse.value?.result?.topBanner?.images != null &&
+        homepageImageResponse.value!.result!.topBanner!.images!.isNotEmpty &&
+        homepageImageResponse.value?.result?.bottomBanner?.images != null &&
         homepageImageResponse.value!.result!.bottomBanner!.images!.isNotEmpty) {
       return;
     }
+
+    // ✅ Prevent multiple simultaneous fetches
+    if (isLoading.value) return;
 
     isLoading.value = true;
     try {
@@ -24,9 +30,10 @@ class BannerController extends GetxController {
       );
       homepageImageResponse.value = result;
 
-      print('✅ Banner images fetched (${homepageImageResponse.value?.result?.bottomBanner?.images?.length ?? 0})');
+      print('✅ Banner images fetched (Top: ${homepageImageResponse.value?.result?.topBanner?.images?.length ?? 0}, Bottom: ${homepageImageResponse.value?.result?.bottomBanner?.images?.length ?? 0})');
     } catch (e) {
       print("❌ Failed to fetch banners: $e");
+      // ✅ Don't set to null on error, keep existing data if available
     } finally {
       isLoading.value = false;
     }

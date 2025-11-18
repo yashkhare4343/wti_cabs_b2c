@@ -24,7 +24,8 @@ class CrpServicesController extends GetxController {
 
       final response = await apiService.getRequestCrp<RunTypeResponse>(
         "GetRunType",
-        params,                                   // no params
+        params,
+        // {},
             (json) => RunTypeResponse.fromJson(json),
         context!,                              // required
       );

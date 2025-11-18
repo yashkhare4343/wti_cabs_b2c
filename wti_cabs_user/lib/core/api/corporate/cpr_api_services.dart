@@ -255,8 +255,6 @@ class CprApiService {
     throw Exception(errorMessage);
   }
 
-
-
   Future<Map<String, dynamic>> getRequestCurrency(String endpoint) async {
     final url = Uri.parse('$baseUrl/$endpoint');
 
@@ -313,7 +311,6 @@ class CprApiService {
       throw Exception("Error: $e");
     }
   }
-
 
   // ===================== 🔵 POST (Generic Model Parser) =====================
   Future<T> postRequestNew<T>(
