@@ -33,6 +33,8 @@ import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
 import '../../screens/corporate/crp_booking_engine/crp_booking_engine.dart';
 import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
+import '../../screens/corporate/select_drop/crp_select_drop.dart';
+import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 
 class AppPages {
@@ -180,6 +182,14 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBookingEngine,
       pageBuilder: (context, state) => _platformPage(CprBookingEngine()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprSelectPickup,
+      pageBuilder: (context, state) => _platformPage(CrpSelectPickupScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprSelectDrop,
+      pageBuilder: (context, state) => _platformPage(CrpSelectDropScreen()),
     ),
   ];
 

@@ -188,80 +188,56 @@ class _CprLoginState extends State<CprLogin> {
                       const SizedBox(height: 6),
 
                       // Sign-in button with rounded top corners and no overlay
-                      GestureDetector(
-                        onTap: () {
-                          // your sign in action
-                          final Map<String, dynamic> params = {
-                            "password": passwordController.text.trim(),
-                            "android_gcm": "", // replace with actual GCM token if available
-                            "ios_token": "",   // replace with actual iOS token if available
-                            "email": emailController.text.trim(), // decoded %40 → @
-                          };
-                          _validateAndSubmit(params);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Container(
-                            height: 48,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              // subtle gradient similar to screenshot
-                              color: Color(0xFF01ACF2),
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(10),
-                                bottom: Radius.circular(10),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x2203A9F4),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
-                                )
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'SIGN IN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+
+                     Obx(()=>GestureDetector(
+                       onTap: () {
+                         // your sign in action
+                         final Map<String, dynamic> params = {
+                           "password": passwordController.text.trim(),
+                           "android_gcm": "", // replace with actual GCM token if available
+                           "ios_token": "",   // replace with actual iOS token if available
+                           "email": emailController.text.trim(), // decoded %40 → @
+                         };
+                         _validateAndSubmit(params);
+                       },
+                       child: Padding(
+                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                         child: Container(
+                           height: 48,
+                           width: double.infinity,
+                           decoration: const BoxDecoration(
+                             // subtle gradient similar to screenshot
+                             color: Color(0xFF01ACF2),
+                             borderRadius: BorderRadius.vertical(
+                               top: Radius.circular(10),
+                               bottom: Radius.circular(10),
+                             ),
+                             boxShadow: [
+                               BoxShadow(
+                                 color: Color(0x2203A9F4),
+                                 blurRadius: 8,
+                                 offset: Offset(0, 4),
+                               )
+                             ],
+                           ),
+                           alignment: Alignment.center,
+                           child: loginInfoController.isLoading.value? SizedBox(
+                               width: 10,
+                               height: 10,
+                               child: CircularProgressIndicator(color: Colors.white,)) : const Text(
+                             'SIGN IN',
+                             style: TextStyle(
+                               color: Colors.white,
+                               fontSize: 14,
+                               fontWeight: FontWeight.w700,
+                               letterSpacing: 1.0,
+                             ),
+                           ),
+                         ),
+                       ),
+                     )),
                       SizedBox(height: 8,),
-                      InkWell(
-                        splashColor: Colors.transparent,
-                        onTap: (){
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            GoRouter.of(context).push(AppRoutes.cprRegister);
-                          });
-                        },
-                        child: RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: Colors.black,
-                            ),
-                            children: [
-                              const TextSpan(text: "Don’t have an account? "),
-                              TextSpan(
-                                text: "Register",
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.black,
-                                    decoration: TextDecoration.underline
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
+
 
                     ],
                   ),        ),

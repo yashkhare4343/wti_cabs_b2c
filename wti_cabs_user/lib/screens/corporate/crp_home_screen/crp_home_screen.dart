@@ -814,6 +814,7 @@ class TopBanner extends StatelessWidget {
               // Search field
               GestureDetector(
                 onTap: () async {
+                  GoRouter.of(context).push(AppRoutes.cprSelectPickup);
                 },
                 child: Padding(
                   padding:
@@ -824,6 +825,7 @@ class TopBanner extends StatelessWidget {
                     icon: Icons.search,
                     prefixText: '',
                     onTap: () {
+                      GoRouter.of(context).push(AppRoutes.cprSelectPickup);
                     },
                     // onTap: () {
                     //   if (placeSearchController

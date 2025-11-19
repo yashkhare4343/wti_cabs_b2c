@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import '../../../../common_widget/textformfield/booking_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
@@ -24,6 +29,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     runTypeController.fetchRunTypes(params, context);
   }
   final CrpServicesController runTypeController = Get.put(CrpServicesController());
+  final CrpSelectPickupController crpSelectPickupController = Get.put(CrpSelectPickupController());
+  final CrpSelectDropController crpSelectDropController = Get.put(CrpSelectDropController());
 
   int selectedTabIndex = 0;
   String? selectedPickupType;
@@ -35,11 +42,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     'BranchID' : '1'
   };
 
-
-
-  final TextEditingController pickupController = TextEditingController(text: 'D-21, Dwarka, New Delhi...');
-  final TextEditingController dropController = TextEditingController();
-
   DateTime? selectedPickupDateTime;
 
   bool isBookingForExpanded = false;
@@ -47,17 +49,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   bool isAdditionalOptionsExpanded = false;
 
   final List<String> bookingForList = ['Myself', 'Corporate'];
-  
+  // final TextEditingController pickupController = TextEditingController();
+  // final TextEditingController dropController = TextEditingController();
 
   @override
   void dispose() {
-    pickupController.dispose();
-    dropController.dispose();
+    crpSelectPickupController.searchController.dispose();
+    crpSelectPickupController.searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    crpSelectPickupController.searchController.text = crpSelectPickupController.selectedPlace.value?.primaryText ?? 'Please Select Pickup';
+    crpSelectDropController.searchController.text = crpSelectDropController.selectedPlace.value?.primaryText ?? '';
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -86,15 +91,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               // Tabs Section
               Obx(() => _buildTabsSection()),
               const SizedBox(height: 24),
-
               // Location Input Section
               _buildLocationSection(),
               const SizedBox(height: 24),
-
               // Pick Up Date and Pick Up Type Buttons
               _buildDateAndTypeButtons(),
               const SizedBox(height: 20),
-
               // Booking For
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -321,19 +323,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           Expanded(
             child: Column(
               children: [
-                BookingTextFormField(
+                 BookingTextFormField(
                   hintText: '',
-                  controller: pickupController,
+                  controller: crpSelectPickupController.searchController,
                   onTap: () {
-                    // Handle pickup location tap
+                    GoRouter.of(context).push(AppRoutes.cprSelectPickup);
                   },
                 ),
                 const SizedBox(height: 12),
                 BookingTextFormField(
                   hintText: 'Enter drop location',
-                  controller: dropController,
+                  controller: crpSelectDropController.searchController,
                   onTap: () {
-                    // Handle drop location tap
+                    GoRouter.of(context).push(AppRoutes.cprSelectDrop);
                   },
                 ),
               ],

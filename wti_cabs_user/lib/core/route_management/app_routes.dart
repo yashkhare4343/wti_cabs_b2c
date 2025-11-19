@@ -32,4 +32,6 @@ class AppRoutes{
   static const String cprRegister = '/cprRegister';
   static const String cprHomeScreen = '/cprHomeScreen';
   static const String cprBookingEngine = '/cprBookingEngine';
+  static const String cprSelectPickup = '/cprSelectPickup';
+  static const String cprSelectDrop = '/cprSelectDrop';
 }

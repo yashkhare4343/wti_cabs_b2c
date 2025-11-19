@@ -8,6 +8,9 @@ class SuggestionPlacesResponse {
   final String state;
   final String country;
   final bool isAirport;
+  final double? latitude;
+  final double? longitude;
+  final String placeName;
 
   SuggestionPlacesResponse({
     required this.primaryText,
@@ -19,6 +22,9 @@ class SuggestionPlacesResponse {
     required this.state,
     required this.country,
     required this.isAirport,
+    this.latitude,
+    this.longitude,
+    this.placeName = '',
   });
 
   factory SuggestionPlacesResponse.fromJson(Map<String, dynamic> json) {
@@ -35,6 +41,9 @@ class SuggestionPlacesResponse {
       state: json['state'] as String? ?? '',
       country: json['country'] as String? ?? '',
       isAirport: json['isAirport'] as bool? ?? false,
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      placeName: json['place_name'] as String? ?? '',
     );
   }
 
@@ -49,6 +58,9 @@ class SuggestionPlacesResponse {
       'state': state,
       'country': country,
       'isAirport': isAirport,
+      'latitude': latitude,
+      'longitude': longitude,
+      'place_name': placeName,
     };
   }
 }
