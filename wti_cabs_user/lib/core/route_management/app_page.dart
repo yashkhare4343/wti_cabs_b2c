@@ -7,6 +7,7 @@ import 'package:wti_cabs_user/screens/booking_details_final/booking_details_fina
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/corporate/corporate_login/cpr_login.dart';
+import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_register/crp_register.dart';
 import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
@@ -190,6 +191,10 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprSelectDrop,
       pageBuilder: (context, state) => _platformPage(CrpSelectDropScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprInventory,
+      pageBuilder: (context, state) => _platformPage(CrpInventory()),
     ),
   ];
 

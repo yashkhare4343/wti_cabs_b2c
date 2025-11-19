@@ -13,6 +13,7 @@ class CrpSelectPickupScreen extends StatefulWidget {
 }
 
 class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
+
   final CrpSelectPickupController controller =
   Get.put(CrpSelectPickupController());
 

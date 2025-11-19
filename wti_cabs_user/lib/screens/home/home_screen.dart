@@ -1792,136 +1792,136 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ],
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    // Transform.translate(
-                                    //     offset: Offset(0.0, -4.0),
-                                    //     child: Image.asset(
-                                    //       'assets/images/wallet.png',
-                                    //       height: 31,
-                                    //       width: 28,
-                                    //     )),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    // Go Corporate
-                                    Container(
-                                      height: 35,
-                                      decoration: BoxDecoration(
-                                        /*gradient: const LinearGradient(
-                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),*/
-                                        color: AppColors.mainButtonBg,
-                                        borderRadius: BorderRadius.circular(24),
-                                      ),
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.transparent, // transparent to show gradient
-                                          shadowColor: Colors.transparent, // remove default shadow
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                        ),
-                                        onPressed:  _isCorporateLoading ? null :  () async{
-                                          // handle tap
-                                          setState(() => _isCorporateLoading = true);
-
-                                          // Simulate a network delay or loading operation
-                                          await Future.delayed(const Duration(milliseconds: 1200));
-
-
-
-                                          // Now navigate with flip animation
-                                          Navigator.of(context).push(
-                                            PlatformFlipPageRoute(
-                                              builder: (context) => const CorporateLandingPage(),
-                                            ),
-                                          );
-                                          setState(() => _isCorporateLoading = false);
-
-                                        },
-                                        child: const Text(
-                                          "Go Corporate",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // upcomingBookingController
-                                    //             .isLoggedIn.value ==
-                                    //         true
-                                    //     ? InkWell(
-                                    //         splashColor: Colors.transparent,
-                                    //         onTap: () async {
-                                    //           print(
-                                    //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                    //           if (await StorageServices
-                                    //                   .instance
-                                    //                   .read('token') ==
-                                    //               null) {
-                                    //             _showAuthBottomSheet();
-                                    //           }
-                                    //           if (await StorageServices
-                                    //                   .instance
-                                    //                   .read('token') !=
-                                    //               null) {
-                                    //             GoRouter.of(context)
-                                    //                 .push(AppRoutes.profile);
-                                    //           }
-                                    //         },
-                                    //         child: SizedBox(
-                                    //           width: 30,
-                                    //           height: 30,
-                                    //           child: NameInitialHomeCircle(
-                                    //               name: profileController
-                                    //                       .profileResponse
-                                    //                       .value
-                                    //                       ?.result
-                                    //                       ?.firstName ??
-                                    //                   ''),
-                                    //         ),
-                                    //       )
-                                    //     : InkWell(
-                                    //         splashColor: Colors.transparent,
-                                    //         onTap: () async {
-                                    //           print(
-                                    //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                    //           if (await StorageServices
-                                    //                   .instance
-                                    //                   .read('token') ==
-                                    //               null) {
-                                    //             _showAuthBottomSheet();
-                                    //           }
-                                    //           if (await StorageServices
-                                    //                   .instance
-                                    //                   .read('token') !=
-                                    //               null) {
-                                    //             GoRouter.of(context)
-                                    //                 .push(AppRoutes.profile);
-                                    //           }
-                                    //         },
-                                    //         child: Transform.translate(
-                                    //           offset: Offset(0.0, -4.0),
-                                    //           child: const CircleAvatar(
-                                    //             foregroundColor:
-                                    //                 Colors.transparent,
-                                    //             backgroundColor:
-                                    //                 Colors.transparent,
-                                    //             radius: 14,
-                                    //             backgroundImage: AssetImage(
-                                    //               'assets/images/user.png',
-                                    //             ),
-                                    //           ),
-                                    //         ),
-                                    //       ),
-                                  ],
-                                )
+                                // Row(
+                                //   children: [
+                                //     // Transform.translate(
+                                //     //     offset: Offset(0.0, -4.0),
+                                //     //     child: Image.asset(
+                                //     //       'assets/images/wallet.png',
+                                //     //       height: 31,
+                                //     //       width: 28,
+                                //     //     )),
+                                //     SizedBox(
+                                //       width: 12,
+                                //     ),
+                                //     // Go Corporate
+                                //     Container(
+                                //       height: 35,
+                                //       decoration: BoxDecoration(
+                                //         /*gradient: const LinearGradient(
+                                //           colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                //           begin: Alignment.centerLeft,
+                                //           end: Alignment.centerRight,
+                                //         ),*/
+                                //         color: AppColors.mainButtonBg,
+                                //         borderRadius: BorderRadius.circular(24),
+                                //       ),
+                                //       child: ElevatedButton(
+                                //         style: ElevatedButton.styleFrom(
+                                //           backgroundColor: Colors.transparent, // transparent to show gradient
+                                //           shadowColor: Colors.transparent, // remove default shadow
+                                //           shape: RoundedRectangleBorder(
+                                //             borderRadius: BorderRadius.circular(16),
+                                //           ),
+                                //           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                //         ),
+                                //         onPressed:  _isCorporateLoading ? null :  () async{
+                                //           // handle tap
+                                //           setState(() => _isCorporateLoading = true);
+                                //
+                                //           // Simulate a network delay or loading operation
+                                //           await Future.delayed(const Duration(milliseconds: 1200));
+                                //
+                                //
+                                //
+                                //           // Now navigate with flip animation
+                                //           Navigator.of(context).push(
+                                //             PlatformFlipPageRoute(
+                                //               builder: (context) => const CorporateLandingPage(),
+                                //             ),
+                                //           );
+                                //           setState(() => _isCorporateLoading = false);
+                                //
+                                //         },
+                                //         child: const Text(
+                                //           "Go Corporate",
+                                //           style: TextStyle(
+                                //             color: Colors.white,
+                                //             fontSize: 12,
+                                //             fontWeight: FontWeight.w600,
+                                //           ),
+                                //         ),
+                                //       ),
+                                //     ),
+                                //     // upcomingBookingController
+                                //     //             .isLoggedIn.value ==
+                                //     //         true
+                                //     //     ? InkWell(
+                                //     //         splashColor: Colors.transparent,
+                                //     //         onTap: () async {
+                                //     //           print(
+                                //     //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                //     //           if (await StorageServices
+                                //     //                   .instance
+                                //     //                   .read('token') ==
+                                //     //               null) {
+                                //     //             _showAuthBottomSheet();
+                                //     //           }
+                                //     //           if (await StorageServices
+                                //     //                   .instance
+                                //     //                   .read('token') !=
+                                //     //               null) {
+                                //     //             GoRouter.of(context)
+                                //     //                 .push(AppRoutes.profile);
+                                //     //           }
+                                //     //         },
+                                //     //         child: SizedBox(
+                                //     //           width: 30,
+                                //     //           height: 30,
+                                //     //           child: NameInitialHomeCircle(
+                                //     //               name: profileController
+                                //     //                       .profileResponse
+                                //     //                       .value
+                                //     //                       ?.result
+                                //     //                       ?.firstName ??
+                                //     //                   ''),
+                                //     //         ),
+                                //     //       )
+                                //     //     : InkWell(
+                                //     //         splashColor: Colors.transparent,
+                                //     //         onTap: () async {
+                                //     //           print(
+                                //     //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
+                                //     //           if (await StorageServices
+                                //     //                   .instance
+                                //     //                   .read('token') ==
+                                //     //               null) {
+                                //     //             _showAuthBottomSheet();
+                                //     //           }
+                                //     //           if (await StorageServices
+                                //     //                   .instance
+                                //     //                   .read('token') !=
+                                //     //               null) {
+                                //     //             GoRouter.of(context)
+                                //     //                 .push(AppRoutes.profile);
+                                //     //           }
+                                //     //         },
+                                //     //         child: Transform.translate(
+                                //     //           offset: Offset(0.0, -4.0),
+                                //     //           child: const CircleAvatar(
+                                //     //             foregroundColor:
+                                //     //                 Colors.transparent,
+                                //     //             backgroundColor:
+                                //     //                 Colors.transparent,
+                                //     //             radius: 14,
+                                //     //             backgroundImage: AssetImage(
+                                //     //               'assets/images/user.png',
+                                //     //             ),
+                                //     //           ),
+                                //     //         ),
+                                //     //       ),
+                                //   ],
+                                // )
                               ],
                             ),
                           ),

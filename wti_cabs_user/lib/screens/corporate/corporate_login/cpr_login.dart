@@ -190,7 +190,7 @@ class _CprLoginState extends State<CprLogin> {
                       // Sign-in button with rounded top corners and no overlay
 
                      Obx(()=>GestureDetector(
-                       onTap: () {
+                       onTap: () async{
                          // your sign in action
                          final Map<String, dynamic> params = {
                            "password": passwordController.text.trim(),
@@ -198,6 +198,7 @@ class _CprLoginState extends State<CprLogin> {
                            "ios_token": "",   // replace with actual iOS token if available
                            "email": emailController.text.trim(), // decoded %40 → @
                          };
+                         await StorageServices.instance.save('email', emailController.text.trim());
                          _validateAndSubmit(params);
                        },
                        child: Padding(
