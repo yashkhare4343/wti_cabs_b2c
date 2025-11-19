@@ -32,7 +32,7 @@ class SelfDriveApiService {
   // final String baseUrl = '${EnvironmentConfig.baseUrl}/global/app/v1';
   // final String baseUrl = 'https://test.wticabs.com:5001/global/app/v1';
   // final String baseUrl = 'http://13.200.168.251:3005/selfdrive/v1';
-  final String baseUrl = 'https://selfdrive.wticabs.com:3005/selfdrive/v1';
+  final String baseUrl = 'https://www.wticarrental.com:3005/selfdrive/v1';
   // final String baseUrl = 'https://sw316g81-3001.inc1.devtunnels.ms/selfdrive/v1';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
