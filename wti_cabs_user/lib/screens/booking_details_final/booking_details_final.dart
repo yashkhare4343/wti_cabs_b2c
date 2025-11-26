@@ -2870,8 +2870,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   },
                                   "source": {
                                     "address": sourceController.title.value,
-                                    "latitude": sourceLat,
-                                    "longitude": sourceLng,
+                                    "latitude": placeSearchController.getPlacesLatLng.value?.latLong.lat,
+                                    "longitude": placeSearchController.getPlacesLatLng.value?.latLong.lng,
                                     "city": sourceController.city.value,
                                     "place_id": sourceController.placeId.value,
                                     "types": sourceController.types.toList(),
@@ -2886,8 +2886,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                             .title.value.isEmpty
                                         ? destinationData['destinationTitle']
                                         : destinationController.title.value,
-                                    "latitude": destinationLat,
-                                    "longitude": destinationLng,
+                                    "latitude": dropPlaceSearchController.dropLatLng.value?.latLong.lat,
+                                    "longitude": dropPlaceSearchController.dropLatLng.value?.latLong.lng,
                                     "city":
                                         destinationController.city.value.isEmpty
                                             ? destinationData['destinationCity']
@@ -2953,8 +2953,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   "couponCodeUsed": null,
                                   "offerUsed": null,
                                   "userType": "CUSTOMER",
-                                  "timezone": await StorageServices.instance
-                                      .read('timeZone'),
+                                  "timezone": "Asia/Kolkata",
                                   "guest_id": null
                                 },
                                 "order": {
@@ -3224,8 +3223,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   },
                                   "source": {
                                     "address": sourceController.title.value,
-                                    "latitude": sourceLat,
-                                    "longitude": sourceLng,
+                                    "latitude": placeSearchController.getPlacesLatLng.value?.latLong.lat,
+                                    "longitude": placeSearchController.getPlacesLatLng.value?.latLong.lng,
                                     "city": sourceController.city.value,
                                     "place_id": sourceController.placeId.value,
                                     "types": sourceController.types.toList(),
@@ -3235,8 +3234,8 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   "destination": {
                                     "address":
                                         destinationController.title.value,
-                                    "latitude": destinationLat,
-                                    "longitude": destinationLng,
+                                    "latitude": dropPlaceSearchController.dropLatLng.value?.latLong.lat,
+                                    "longitude": dropPlaceSearchController.dropLatLng.value?.latLong.lng,
                                     "city": destinationController.city.value,
                                     "place_id":
                                         destinationController.placeId.value,

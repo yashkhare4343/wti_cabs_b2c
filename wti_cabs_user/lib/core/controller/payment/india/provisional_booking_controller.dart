@@ -84,7 +84,6 @@ class IndiaPaymentController extends GetxController {
     print('📦 Parameters sent: $updatedParams');
   }
 
-
   Future<void> verifySignup({
     required Map<String, dynamic> requestData,
     required Map<String, dynamic> provisionalRequestData,
@@ -185,7 +184,7 @@ class IndiaPaymentController extends GetxController {
       orderId?.value = order['id'];
       final options = {
         // test key
-        // 'key': 'rzp_test_Ymyq5LXpYAetuR',
+        // 'key': 'rzp_test_RiIBKSoVh36jSP',
         //live key
         'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed

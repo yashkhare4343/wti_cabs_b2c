@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:wti_cabs_user/core/api/self_drive_api_services.dart';
 
 class FileUploadValidController extends GetxController {
 
@@ -62,7 +63,7 @@ class FileUploadValidController extends GetxController {
     try {
       // --- Upload ---
       final uri = Uri.parse(
-          'https://selfdrive.wticabs.com:3005/selfdrive/v1/files/upload?folder=bookingDocuments&acl=public-read&inline=1&key=userDocuments');
+          '${SelfDriveApiService().baseUrl}/files/upload?folder=bookingDocuments&acl=public-read&inline=1&key=userDocuments');
       print("Uploading $field to $uri");
 
       final request = http.MultipartRequest("POST", uri)
