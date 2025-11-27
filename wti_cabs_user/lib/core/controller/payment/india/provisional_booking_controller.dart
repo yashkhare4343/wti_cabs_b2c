@@ -184,9 +184,9 @@ class IndiaPaymentController extends GetxController {
       orderId?.value = order['id'];
       final options = {
         // test key
-        // 'key': 'rzp_test_RiIBKSoVh36jSP',
+        'key': 'rzp_test_RiIBKSoVh36jSP',
         //live key
-        'key': 'rzp_live_swV8qRrgmiVPpJ',
+        // 'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
         'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.
@@ -215,8 +215,8 @@ class IndiaPaymentController extends GetxController {
 
     final verifyPayload = {
       "razorpay_order_id": response.orderId,
-      "razorpay_payment_id": response.paymentId,
-      "razorpay_signature": response.signature
+      // "razorpay_payment_id": response.paymentId,
+      // "razorpay_signature": response.signature
     };
     await StorageServices.instance.save('reservationId', response.orderId??'');
     print('reservationID yash: ${await StorageServices.instance.read('reservationId')}');
@@ -259,7 +259,7 @@ class IndiaPaymentController extends GetxController {
       print("📤 Verifying payment with: $requestData");
 
       final res = await http.post(
-        Uri.parse('${ApiService().baseUrl}/razorpay/chauffer/verify-payment'),
+        Uri.parse('${ApiService().baseUrl}/razorpay/chauffer/checkRazorpayPaymentStatus'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',

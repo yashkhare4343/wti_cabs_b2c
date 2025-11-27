@@ -1,0 +1,46 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../../../api/corporate/cpr_api_services.dart';
+import '../../../model/corporate/crp_car_models/crp_car_models_response.dart';
+
+class CrpInventoryListController extends GetxController {
+  final CprApiService apiService = CprApiService();
+
+  var isLoading = false.obs;
+  var models = <CrpCarModel>[].obs;
+  var selectedModel = Rx<CrpCarModel?>(null);
+
+  Future<void> fetchCarModels(
+    Map<String, dynamic> params,
+    BuildContext? context,
+  ) async {
+    try {
+      isLoading.value = true;
+
+      final result =
+          await apiService.getRequestCrp<CrpCarModelsResponse>(
+        'GetAllCarModels',
+        params,
+        (json) => CrpCarModelsResponse.fromJson(json),
+        context!,
+      );
+
+      models.assignAll(result.models ?? []);
+
+      if (models.isNotEmpty) {
+        selectedModel.value = models.first;
+      }
+    } catch (e) {
+      debugPrint('CRP Car Models Fetch Error: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void updateSelected(CrpCarModel? item) {
+    selectedModel.value = item;
+  }
+}
+
+

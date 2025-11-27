@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_inventory_list_controller/crp_inventory_list_controller.dart';
+
+import '../../../core/model/corporate/crp_car_models/crp_car_models_response.dart';
+import '../../../core/services/storage_services.dart';
 
 class CrpInventory extends StatefulWidget {
   const CrpInventory({super.key});
@@ -13,423 +19,403 @@ class CrpInventory extends StatefulWidget {
 }
 
 class _CrpInventoryState extends State<CrpInventory> {
+  final CrpInventoryListController crpInventoryListController = Get.put(CrpInventoryListController());
   bool isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // TODO: Initialize inventory data
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBgPrimary1,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Available Cabs',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
+        child: _BookingBody(),
+      ),
+    );
+  }
+}
+
+
+class _BookingBody extends StatefulWidget {
+  const _BookingBody({super.key});
+
+  @override
+  State<_BookingBody> createState() => _BookingBodyState();
+}
+
+class _BookingBodyState extends State<_BookingBody> {
+  final CameraPosition _initialCameraPosition = const CameraPosition(
+    target: LatLng(28.5562, 77.1000), // IGI example
+    zoom: 13,
+  );
+
+  GoogleMapController? _mapController;
+
+  final CrpInventoryListController _inventoryController =
+      Get.put(CrpInventoryListController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch corporate inventory car models after first frame
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Full-screen Google Map
+        Column(
+          children: [
+            SizedBox(
+              height: 300,
+              child: GoogleMap(
+                initialCameraPosition: _initialCameraPosition,
+                onMapCreated: (c) => _mapController = c,
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                compassEnabled: false,
+              ),
+            ),
+            Expanded(child: const _VehicleSection())
+          ],
+        ),
+        SizedBox(
+          height: 83,
+            child: const _RouteCard()),
+
+      ],
+    );
+  }
+}
+class _RouteCard extends StatelessWidget {
+  const _RouteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16, left: 14, right: 14),
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.only(top: 14, right: 14, left:14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Location Summary Card
-              _buildLocationSummaryCard(),
-              const SizedBox(height: 16),
-              // Inventory List
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildInventoryList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLocationSummaryCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: AppColors.mainButtonBg,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.location_on,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Pickup Location',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 32),
-            child: Text(
-              'Please Select Pickup',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: AppColors.mainButtonBg,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Icon(
-                  Icons.place,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Drop Location',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 32),
-            child: Text(
-              'Enter drop location',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInventoryList() {
-    // TODO: Replace with actual inventory data from controller
-    final List<Map<String, dynamic>> dummyInventory = [
-      {
-        'carImageUrl': 'https://via.placeholder.com/60x50',
-        'type': 'Sedan',
-        'carTagLine': 'Swift Dzire',
-        'seats': '4 Seater',
-        'price': '₹1,200',
-        'originalPrice': '₹1,500',
-        'discount': '20% OFF',
-      },
-      {
-        'carImageUrl': 'https://via.placeholder.com/60x50',
-        'type': 'SUV',
-        'carTagLine': 'Innova Crysta',
-        'seats': '7 Seater',
-        'price': '₹2,500',
-        'originalPrice': '₹3,000',
-        'discount': '17% OFF',
-      },
-      {
-        'carImageUrl': 'https://via.placeholder.com/60x50',
-        'type': 'Hatchback',
-        'carTagLine': 'Swift',
-        'seats': '4 Seater',
-        'price': '₹1,000',
-        'originalPrice': '₹1,200',
-        'discount': '17% OFF',
-      },
-    ];
-
-    if (dummyInventory.isEmpty) {
-      return const Center(
-        child: Text(
-          "No cabs available on this route",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: dummyInventory.length,
-      itemBuilder: (context, index) {
-        final item = dummyInventory[index];
-        return _buildInventoryCard(item);
-      },
-    );
-  }
-
-  Widget _buildInventoryCard(Map<String, dynamic> item) {
-    return Card(
-      color: Colors.white,
-      elevation: 0.3,
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
+              // From -> To row
+              Row(
+                children: [
+                  const Icon(Icons.arrow_back, size: 16, color: Colors.black87),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Terminal 1 C Indira Gan.. to Honda Chowk, Sector',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: item['carImageUrl'] != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                item['carImageUrl'],
-                                width: 60,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.directions_car,
-                                    color: Colors.grey.shade400,
-                                    size: 30,
-                                  );
-                                },
-                              ),
-                            )
-                          : Icon(
-                              Icons.directions_car,
-                              color: Colors.grey.shade400,
-                              size: 30,
-                            ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE3F2FD),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        side: const BorderSide(
-                            color: Colors.transparent, width: 1),
-                        foregroundColor: const Color(0xFF1565C0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 24.0),
+                child: Row(
+                  children: [
+                    Text(
+                      '05 June, 2025, 11:00 hrs',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(width: 8,),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE3F2FD),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Outstation Round Trip',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1E88E5),
                         ),
                       ),
-                      onPressed: () {},
-                      child: Text(
-                        item['type'] ?? '',
-                        style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w600),
-                      ),
-                    )
+                    ),
+
                   ],
                 ),
-                const SizedBox(width: 5),
-                Expanded(
-                  flex: 0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 55,
-                            child: Text(
-                              item['carTagLine'] ?? '',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16),
-                              overflow: TextOverflow.clip,
-                              maxLines: 1,
-                            ),
-                          ),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE8F5E9),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              minimumSize: Size.zero,
-                              side: const BorderSide(
-                                  color: Colors.transparent, width: 1),
-                              foregroundColor: const Color(0xFF2E7D32),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            onPressed: () {},
-                            child: Text(
-                              item['seats'] ?? '',
-                              style: const TextStyle(
-                                  fontSize: 9, fontWeight: FontWeight.w600),
-                            ),
-                          )
-                        ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+class _VehicleSection extends StatefulWidget {
+  const _VehicleSection();
+
+  @override
+  State<_VehicleSection> createState() => _VehicleSectionState();
+}
+
+class _VehicleSectionState extends State<_VehicleSection> {
+  final controller = Get.put(CrpInventoryListController());
+
+  String? guestId, token, user, corpId, branchId;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCardModel();    // TODO: Initialize inventory data
+  }
+
+  Future<void> fetchParameter() async {
+    guestId = await StorageServices.instance.read('branchId');
+    token = await StorageServices.instance.read('crpKey');
+    user = await StorageServices.instance.read('email');
+    corpId = await StorageServices.instance.read('crpId');
+    branchId = await StorageServices.instance.read('branchId');
+  }
+
+  void fetchCardModel()async{
+    await fetchParameter();
+    final Map<String, dynamic> params = {
+      'token' : token,
+      'user' : user,
+      'CorpID': corpId,
+      'BranchID': branchId,
+      'RunTypeID': 1
+    };
+     controller.fetchCarModels(params, context);
+
+
+  }
+  @override
+  Widget build(BuildContext context) {
+
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const _InventoryShimmer();
+      }
+
+      return Container(
+        color: Colors.white,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            _VehicleFilterChips(),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            Expanded(
+              child: controller.models.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No vehicles available',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            item['price'] ?? '',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 18,
-                                color: Color(0xFF1565C0)),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item['originalPrice'] ?? '',
-                            style: TextStyle(
-                                decoration: TextDecoration.lineThrough,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                                color: Colors.grey.shade600),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFE0B2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              item['discount'] ?? '',
-                              style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFE65100)),
-                            ),
-                          )
-                        ],
-                      ),
-                    ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      itemCount: controller.models.length,
+                      itemBuilder: (_, index) =>
+                          _VehicleCard(model: controller.models[index]),
+                    ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _VehicleFilterChips extends StatefulWidget {
+  @override
+  State<_VehicleFilterChips> createState() => _VehicleFilterChipsState();
+}
+
+class _VehicleFilterChipsState extends State<_VehicleFilterChips> {
+  String selected = 'Sedan';
+  final options = ['All', 'Sedan', 'Hatchback', 'SUV'];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemCount: options.length,
+        itemBuilder: (_, i) {
+          final isSelected = options[i] == selected;
+          return GestureDetector(
+            onTap: () => setState(() => selected = options[i]),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF424242) : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isSelected ? Colors.transparent : Colors.grey.shade300,
+                ),
+              ),
+              child: Text(
+                options[i],
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _VehicleCard extends StatelessWidget {
+  final CrpCarModel model;
+
+  const _VehicleCard({required this.model});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Car image
+          Container(
+            width: 72,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Image.asset(
+              'assets/car_sedan.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Text details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  model.carType ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text('4', style: TextStyle(fontSize: 11)),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.luggage_outlined, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text('2', style: TextStyle(fontSize: 11)),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text('2 hrs', style: TextStyle(fontSize: 11)),
+                  ],
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryShimmer extends StatelessWidget {
+  const _InventoryShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Column(
+          children: [
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.mainButtonBg, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () {
-                      // TODO: Handle view details
-                    },
-                    child: Text(
-                      'View Details',
-                      style: TextStyle(
-                        color: AppColors.mainButtonBg,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            // Fake filter chips row
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemCount: 4,
+                itemBuilder: (_, __) => Container(
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.mainButtonBg,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      // TODO: Handle book now
-                    },
-                    child: const Text(
-                      'Book Now',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                itemCount: 5,
+                itemBuilder: (_, __) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),

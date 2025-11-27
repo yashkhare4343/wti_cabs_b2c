@@ -67,8 +67,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String? selectedPaymentMethod;
 
   final params = {
-    'CorpID' : '1',
-    'BranchID' : '1'
+    'CorpID' : StorageServices.instance.read('crpId'),
+    'BranchID' : StorageServices.instance.read('branchId')
   };
 
   DateTime? selectedPickupDateTime;
@@ -77,6 +77,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   bool isBookingForExpanded = false;
   bool isPaymentMethodsExpanded = false;
   bool isAdditionalOptionsExpanded = false;
+
+  // Error states for validation
+  String? pickupLocationError;
+  String? dropLocationError;
+  String? pickupDateError;
+  String? dropDateError;
+  String? pickupTypeError;
+  String? bookingTypeError;
+  String? paymentModeError;
 
   final TextEditingController referenceNumberController = TextEditingController();
   final TextEditingController specialInstructionController = TextEditingController();
@@ -142,86 +151,116 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 ],
               ),
               SizedBox(height: 8,),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedBookingFor,
-                    isExpanded: true,
-                    hint: Row(
-                      children: [
-                        Icon(Icons.person_outline_outlined, color: AppColors.greyText3, size: 20),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Booking Type',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: bookingTypeError != null ? Colors.red : const Color(0xFFE0E0E0),
+                        width: bookingTypeError != null ? 1.5 : 1,
+                      ),
                     ),
-                    selectedItemBuilder: (BuildContext context) {
-                      return bookingForList.map((bookingFor) {
-                        return Row(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedBookingFor,
+                        isExpanded: true,
+                        hint: Row(
                           children: [
-                            Icon(Icons.description_outlined, color: AppColors.greyText3, size: 20),
+                            Icon(
+                              Icons.person_outline_outlined,
+                              color: bookingTypeError != null ? Colors.red : AppColors.greyText3,
+                              size: 20,
+                            ),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                bookingFor,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black87,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
+                            Text(
+                              'Booking Type',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: bookingTypeError != null ? Colors.red : Colors.black87,
                               ),
                             ),
                           ],
-                        );
-                      }).toList();
-                    },
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
-                    dropdownColor: Colors.white,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                    items: bookingForList.map((bookingFor) {
-                      return DropdownMenuItem<String>(
-                        value: bookingFor,
-                        child: Text(
-                          bookingFor,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        selectedBookingFor = value;
-                      });
-                    },
+                        selectedItemBuilder: (BuildContext context) {
+                          return bookingForList.map((bookingFor) {
+                            return Row(
+                              children: [
+                                Icon(
+                                  Icons.description_outlined,
+                                  color: bookingTypeError != null ? Colors.red : AppColors.greyText3,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    bookingFor,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: bookingTypeError != null ? Colors.red : Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList();
+                        },
+                        icon: Icon(
+                          Icons.keyboard_arrow_down,
+                          color: bookingTypeError != null ? Colors.red : Colors.grey,
+                          size: 20,
+                        ),
+                        dropdownColor: Colors.white,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: bookingTypeError != null ? Colors.red : Colors.black87,
+                        ),
+                        items: bookingForList.map((bookingFor) {
+                          return DropdownMenuItem<String>(
+                            value: bookingFor,
+                            child: Text(
+                              bookingFor,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          setState(() {
+                            selectedBookingFor = value;
+                            bookingTypeError = null;
+                          });
+                        },
+                      ),
+                    ),
                   ),
-                ),
+                  if (bookingTypeError != null) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(
+                        bookingTypeError!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 12),
               // Payment Controller
@@ -236,7 +275,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   return const Text("No Payment Modes Found");
                 }
 
+                final hasError = paymentModeError != null && paymentModeError!.isNotEmpty;
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -248,13 +289,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade400),
+                        border: Border.all(
+                          color: hasError ? Colors.red : Colors.grey.shade400,
+                          width: hasError ? 1.5 : 1,
+                        ),
                         color: Colors.white,
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<PaymentModeItem>(
                           value: paymentModeController.selectedMode.value,
                           isExpanded: true,
+                          style: TextStyle(
+                            color: hasError ? Colors.red : Colors.black87,
+                          ),
                           items: list.map((item) {
                             return DropdownMenuItem(
                               value: item,
@@ -262,11 +309,27 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                             );
                           }).toList(),
                           onChanged: (value) {
+                            setState(() {
+                              paymentModeError = null;
+                            });
                             paymentModeController.updateSelected(value);
                           },
                         ),
                       ),
                     ),
+                    if (paymentModeError != null) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          paymentModeError!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 );
               }),
@@ -321,6 +384,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     onTap: () {
                       setState(() {
                         selectedTabIndex = index;
+                        pickupTypeError = null;
                       });
                     },
                     child: Container(
@@ -408,7 +472,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                  BookingTextFormField(
                   hintText: '',
                   controller: crpSelectPickupController.searchController,
+                  errorText: pickupLocationError,
                   onTap: () {
+                    setState(() {
+                      pickupLocationError = null;
+                    });
                     GoRouter.of(context).push(AppRoutes.cprSelectPickup);
                   },
                 ),
@@ -416,7 +484,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 BookingTextFormField(
                   hintText: 'Enter drop location',
                   controller: crpSelectDropController.searchController,
+                  errorText: dropLocationError,
                   onTap: () {
+                    setState(() {
+                      dropLocationError = null;
+                    });
                     GoRouter.of(context).push(AppRoutes.cprSelectDrop);
                   },
                 ),
@@ -454,7 +526,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   Widget _buildDateButtons() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Pickup Date Section
         Row(
           children: [
             Text('Pickup Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
@@ -466,11 +540,29 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           label: selectedPickupDateTime != null
               ? _formatDateTime(selectedPickupDateTime!)
               : 'Pick Up Date',
+          errorText: pickupDateError,
           onTap: () {
+            setState(() {
+              pickupDateError = null;
+            });
             _showCupertinoDateTimePicker(context, isPickup: true);
           },
         ),
-        const SizedBox(width: 12),
+        if (pickupDateError != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              pickupDateError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        // Drop Date Section
         Row(
           children: [
             Text('Drop Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
@@ -482,10 +574,27 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           label: selectedDropDateTime != null
               ? _formatDateTime(selectedDropDateTime!)
               : 'Drop Date',
+          errorText: dropDateError,
           onTap: () {
+            setState(() {
+              dropDateError = null;
+            });
             _showCupertinoDateTimePicker(context, isPickup: false);
           },
         ),
+        if (dropDateError != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              dropDateError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -504,36 +613,48 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   Widget _buildPickUpTypeButton() {
     final List<RunTypeItem> allRunTypes = runTypeController.runTypes.value?.runTypes ?? [];
     final List<String> allPickupTypes = allRunTypes.map((val) => val.run ?? '').toList();
+    final hasError = pickupTypeError != null && pickupTypeError!.isNotEmpty;
     
     if (allPickupTypes.isEmpty) {
       return _buildActionButton(
         icon: Icons.description_outlined,
         label: 'Pick Up Type',
+        errorText: pickupTypeError,
         onTap: () {},
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasError ? Colors.red : const Color(0xFFE0E0E0),
+              width: hasError ? 1.5 : 1,
+            ),
+          ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedPickupType,
           isExpanded: true,
           hint: Row(
             children: [
-              Icon(Icons.description_outlined, color: AppColors.greyText3, size: 20),
+              Icon(
+                Icons.description_outlined,
+                color: hasError ? Colors.red : AppColors.greyText3,
+                size: 20,
+              ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Pick Up Type',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: hasError ? Colors.red : Colors.black87,
                 ),
               ),
             ],
@@ -542,7 +663,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             return allPickupTypes.map((pickupType) {
               return Row(
                 children: [
-                  Icon(Icons.description_outlined, color: AppColors.greyText3, size: 20),
+                  Icon(
+                    Icons.description_outlined,
+                    color: hasError ? Colors.red : AppColors.greyText3,
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -550,7 +675,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       style: TextStyle(
                         fontSize: pickupType.length > 15 ? 10 : 12,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
+                        color: hasError ? Colors.red : Colors.black87,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -560,16 +685,16 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               );
             }).toList();
           },
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
-            color: Colors.grey,
+            color: hasError ? Colors.red : Colors.grey,
             size: 20,
           ),
           dropdownColor: Colors.white,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            color: hasError ? Colors.red : Colors.black87,
           ),
           items: allPickupTypes.map((pickupType) {
             return DropdownMenuItem<String>(
@@ -589,10 +714,25 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           onChanged: (String? value) {
             setState(() {
               selectedPickupType = value;
+              pickupTypeError = null;
             });
           },
         ),
-      ),
+        )),
+        if (pickupTypeError != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              pickupTypeError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -652,8 +792,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           setState(() {
                             if (isPickup) {
                               selectedPickupDateTime = tempDateTime;
+                              pickupDateError = null;
                             } else {
                               selectedDropDateTime = tempDateTime;
+                              dropDateError = null;
                             }
                           });
                           Navigator.pop(context);
@@ -688,7 +830,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    String? errorText,
   }) {
+    final hasError = errorText != null && errorText.isNotEmpty;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -697,11 +841,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+          border: Border.all(
+            color: hasError ? Colors.red : const Color(0xFFE0E0E0),
+            width: hasError ? 1.5 : 1,
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.greyText3, size: 20),
+            Icon(icon, color: hasError ? Colors.red : AppColors.greyText3, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -709,15 +856,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: hasError ? Colors.red : Colors.black87,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
             ),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down,
-              color: Colors.grey,
+              color: hasError ? Colors.red : Colors.grey,
               size: 20,
             ),
           ],
@@ -899,74 +1046,154 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     );
   }
 
+  void _clearAllErrors() {
+    setState(() {
+      pickupLocationError = null;
+      dropLocationError = null;
+      pickupDateError = null;
+      dropDateError = null;
+      pickupTypeError = null;
+      bookingTypeError = null;
+      paymentModeError = null;
+    });
+  }
+
   void _validateAndProceed() {
+    // Clear previous errors
+    setState(() {
+      pickupLocationError = null;
+      dropLocationError = null;
+      pickupDateError = null;
+      dropDateError = null;
+      pickupTypeError = null;
+      bookingTypeError = null;
+      paymentModeError = null;
+    });
+
     // Collect all validation errors
     List<String> errors = [];
+    bool hasValidationError = false;
 
-    // 1. Validate Pickup Location
-    if (crpSelectPickupController.selectedPlace.value == null ||
-        crpSelectPickupController.selectedPlace.value?.primaryText == null ||
-        crpSelectPickupController.selectedPlace.value?.primaryText?.isEmpty == true ||
-        crpSelectPickupController.searchController.text.trim() == 'Please Select Pickup') {
-      errors.add('Please select a pickup location');
-    }
-
-    // 2. Validate Drop Location
-    if (crpSelectDropController.selectedPlace.value == null ||
-        crpSelectDropController.selectedPlace.value?.primaryText == null ||
-        crpSelectDropController.selectedPlace.value?.primaryText?.isEmpty == true ||
-        crpSelectDropController.searchController.text.trim().isEmpty) {
-      errors.add('Please select a drop location');
-    }
-
-    // 3. Validate Pickup and Drop are not the same
+    // 1. Validate Pickup Location (Required)
     final pickupPlace = crpSelectPickupController.selectedPlace.value;
+    final pickupText = crpSelectPickupController.searchController.text.trim();
+    if (pickupPlace == null ||
+        pickupPlace.primaryText == null ||
+        pickupPlace.primaryText?.isEmpty == true ||
+        pickupText.isEmpty ||
+        pickupText == 'Please Select Pickup') {
+      pickupLocationError = 'Please select a pickup location';
+      errors.add(pickupLocationError!);
+      hasValidationError = true;
+    }
+
+    // 2. Validate Drop Location (Required)
     final dropPlace = crpSelectDropController.selectedPlace.value;
+    final dropText = crpSelectDropController.searchController.text.trim();
+    if (dropPlace == null ||
+        dropPlace.primaryText == null ||
+        dropPlace.primaryText?.isEmpty == true ||
+        dropText.isEmpty) {
+      dropLocationError = 'Please select a drop location';
+      errors.add(dropLocationError!);
+      hasValidationError = true;
+    }
+
+    // 3. Validate Pickup and Drop are not the same (Required)
     if (pickupPlace != null && dropPlace != null) {
       if (pickupPlace.placeId == dropPlace.placeId) {
-        errors.add('Pickup and drop locations cannot be the same');
+        pickupLocationError = 'Pickup and drop locations cannot be the same';
+        dropLocationError = 'Pickup and drop locations cannot be the same';
+        errors.add(pickupLocationError!);
+        hasValidationError = true;
       }
     }
 
-    // 4. Validate Pickup Date
+    // 4. Validate Pickup Date (Required)
     if (selectedPickupDateTime == null) {
-      errors.add('Please select a pickup date and time');
+      pickupDateError = 'Please select a pickup date and time';
+      errors.add(pickupDateError!);
+      hasValidationError = true;
+    } else {
+      // Validate pickup date is not in the past
+      if (selectedPickupDateTime!.isBefore(DateTime.now())) {
+        pickupDateError = 'Pickup date and time cannot be in the past';
+        errors.add(pickupDateError!);
+        hasValidationError = true;
+      }
     }
 
-    // 5. Validate Drop Date
+    // 5. Validate Drop Date (Required)
     if (selectedDropDateTime == null) {
-      errors.add('Please select a drop date and time');
+      dropDateError = 'Please select a drop date and time';
+      errors.add(dropDateError!);
+      hasValidationError = true;
     }
 
-    // 6. Validate Drop Date is after Pickup Date
+    // 6. Validate Drop Date is after Pickup Date (Required)
     if (selectedPickupDateTime != null && selectedDropDateTime != null) {
       if (selectedDropDateTime!.isBefore(selectedPickupDateTime!) ||
           selectedDropDateTime!.isAtSameMomentAs(selectedPickupDateTime!)) {
-        errors.add('Drop date and time must be after pickup date and time');
+        dropDateError = 'Drop date and time must be after pickup date and time';
+        errors.add(dropDateError!);
+        hasValidationError = true;
       }
     }
 
-    // 7. Validate Pickup Type (only if runTypeList > 3)
+    // 7. Validate Pickup Type (Required - conditional based on run types count)
     final List<RunTypeItem> allRunTypes = runTypeController.runTypes.value?.runTypes ?? [];
     if (allRunTypes.length > 3) {
+      // If more than 3 run types, pickup type dropdown is shown and required
       if (selectedPickupType == null || selectedPickupType!.isEmpty) {
-        errors.add('Please select a pickup type');
+        pickupTypeError = 'Please select a pickup type';
+        errors.add(pickupTypeError!);
+        hasValidationError = true;
+      } else {
+        // Validate that selected pickup type exists in the run types list
+        final pickupTypeExists = allRunTypes.any((runType) => runType.run == selectedPickupType);
+        if (!pickupTypeExists) {
+          pickupTypeError = 'Selected pickup type is invalid';
+          errors.add(pickupTypeError!);
+          hasValidationError = true;
+        }
+      }
+    } else {
+      // If 3 or fewer run types, validate that selectedTabIndex is valid
+      if (selectedTabIndex < 0 || selectedTabIndex >= allRunTypes.length) {
+        pickupTypeError = 'Please select a valid run type';
+        errors.add(pickupTypeError!);
+        hasValidationError = true;
       }
     }
 
-    // 8. Validate Booking Type
+    // 8. Validate Booking Type (Required)
     if (selectedBookingFor == null || selectedBookingFor!.isEmpty) {
-      errors.add('Please select a booking type');
+      bookingTypeError = 'Please select a booking type';
+      errors.add(bookingTypeError!);
+      hasValidationError = true;
+    } else {
+      // Validate that selected booking type is in the allowed list
+      if (!bookingForList.contains(selectedBookingFor)) {
+        bookingTypeError = 'Selected booking type is invalid';
+        errors.add(bookingTypeError!);
+        hasValidationError = true;
+      }
     }
 
-    // 9. Validate Payment Mode
+    // 9. Validate Payment Mode (Required)
     if (paymentModeController.selectedMode.value == null) {
-      errors.add('Please select a payment mode');
+      paymentModeError = 'Please select a payment mode';
+      errors.add(paymentModeError!);
+      hasValidationError = true;
     }
+
+    // Note: Reference Number and Special Instruction are optional fields
+    // No validation needed for them
 
     // Show errors or proceed
-    if (errors.isNotEmpty) {
-      // Show first error or all errors in a snackbar
+    if (hasValidationError) {
+      // Scroll to first error field
+      // Show first error in a snackbar as well
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errors.first),
@@ -985,6 +1212,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // TODO: Implement the actual view cabs functionality
     // This is where you would navigate to the next screen or make API calls
     // with the validated data
+    GoRouter.of(context).push(AppRoutes.cprInventory);
     print('All validations passed. Proceeding to view cabs...');
     // Example: GoRouter.of(context).push(AppRoutes.viewCabs);
   }
