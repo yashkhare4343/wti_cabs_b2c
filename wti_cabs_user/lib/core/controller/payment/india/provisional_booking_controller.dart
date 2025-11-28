@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -22,15 +23,15 @@ class IndiaPaymentController extends GetxController {
   late BuildContext _currentContext;
   final currencyController = Get.find<CurrencyController>();
   Map<String, dynamic>? lastProvisionalRequest;
-  RxString ? orderId;
+  RxString? orderId;
   final cabBookingController = Get.put(CabBookingController());
-
 
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
   Map<String, dynamic>? paymentVerification;
   RxString passengerId = ''.obs;
-  final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
+  final FetchReservationBookingData fetchReservationBookingData =
+      Get.put(FetchReservationBookingData());
 
   @override
   void onInit() {
@@ -50,8 +51,10 @@ class IndiaPaymentController extends GetxController {
   Future<void> logAddToCart() async {
     final selectedTripController = Get.find<SelectedTripController>();
     final currencyController = Get.find<CurrencyController>();
-    final convertedPartialAmount = await currencyController.convertPrice(cabBookingController.partFare.toDouble());
-    final convertFullAmount = await currencyController.convertPrice(cabBookingController.totalFare.toDouble());
+    final convertedPartialAmount = await currencyController
+        .convertPrice(cabBookingController.partFare.toDouble());
+    final convertFullAmount = await currencyController
+        .convertPrice(cabBookingController.totalFare.toDouble());
     // 🧩 Add or merge custom keys (including converted amount)
     // 🧾 Get stored values
     final storedItem = selectedTripController.selectedItem.value;
@@ -66,13 +69,15 @@ class IndiaPaymentController extends GetxController {
     selectedTripController.addCustomParameters({
       'event': 'add_to_cart',
       'screen_name': 'Booking Details Screen',
-      'partial_amount':convertedPartialAmount,
-      'payment_option': cabBookingController.selectedOption.value == 1 ? "FULL" : "PART",
-      'total_amount' : convertFullAmount
+      'partial_amount': convertedPartialAmount,
+      'payment_option':
+          cabBookingController.selectedOption.value == 1 ? "FULL" : "PART",
+      'total_amount': convertFullAmount
     });
 
     // ✅ Prepare final parameters to send
-    final updatedParams = Map<String, Object>.from(selectedTripController.parameters);
+    final updatedParams =
+        Map<String, Object>.from(selectedTripController.parameters);
 
     // ✅ Log to Firebase Analytics
     await FirebaseAnalytics.instance.logAddToCart(
@@ -106,7 +111,8 @@ class IndiaPaymentController extends GetxController {
 
       if (res.statusCode == 200) {
         registeredUser = jsonDecode(res.body);
-        await StorageServices.instance.save('userObjId', registeredUser?['user_obj_id']);
+        await StorageServices.instance
+            .save('userObjId', registeredUser?['user_obj_id']);
         print("✅ Signup success: $registeredUser");
 
         await Future.delayed(Duration(milliseconds: 1000));
@@ -137,7 +143,8 @@ class IndiaPaymentController extends GetxController {
       lastProvisionalRequest = requestData;
       print('provision request data : ${requestData}');
       final res = await http.post(
-        Uri.parse('${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
+        Uri.parse(
+            '${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -147,7 +154,6 @@ class IndiaPaymentController extends GetxController {
       );
 
       print("📤 provision request: $requestData");
-
 
       if (res.statusCode == 201) {
         provisionalBooking = jsonDecode(res.body);
@@ -163,7 +169,6 @@ class IndiaPaymentController extends GetxController {
             ),
           );
           _openRazorpayCheckout(order);
-
         } else {
           print("⚠️ Missing Razorpay order ID or amount");
         }
@@ -184,15 +189,22 @@ class IndiaPaymentController extends GetxController {
       orderId?.value = order['id'];
       final options = {
         // test key
-        'key': 'rzp_test_RiIBKSoVh36jSP',
+        // 'key': 'rzp_test_RiIBKSoVh36jSP',
         //live key
-        // 'key': 'rzp_live_swV8qRrgmiVPpJ',
+        'key': 'rzp_live_swV8qRrgmiVPpJ',
         // Razorpay expects amount in paise for INR, multiply by 100 if needed
         'amount': (rawAmount * 100),
-        'currency': currencyController.selectedCurrency.value.code, // "INR", "USD", etc.
+        'currency': currencyController
+            .selectedCurrency.value.code, // "INR", "USD", etc.
         'name': 'WTI',
         'description': 'Cab Booking Payment',
         'order_id': order['id'],
+        'notes': {
+          'project': "WTICABS",
+          'platform_using': "APP",
+          'OS': Platform.isAndroid ? "ANDROID" : "IOS", // ANDROID / IOS
+          'comingFrom': "INITIAL_FLOW",
+        },
         'prefill': {
           'contact': registeredUser?['number']?.toString() ?? '',
           'email': registeredUser?['email'] ?? '',
@@ -218,22 +230,23 @@ class IndiaPaymentController extends GetxController {
       // "razorpay_payment_id": response.paymentId,
       // "razorpay_signature": response.signature
     };
-    await StorageServices.instance.save('reservationId', response.orderId??'');
-    print('reservationID yash: ${await StorageServices.instance.read('reservationId')}');
+    await StorageServices.instance
+        .save('reservationId', response.orderId ?? '');
+    print(
+        'reservationID yash: ${await StorageServices.instance.read('reservationId')}');
 
-    await verifyPaymentStatus(verifyPayload).then((value){
+    await verifyPaymentStatus(verifyPayload).then((value) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         GoRouter.of(_currentContext).push(AppRoutes.paymentSuccess);
       });
       GoRouter.of(_currentContext).pop();
-    }).then((value){
+    }).then((value) {
       fetchReservationBookingData.fetchReservationData();
-
     });
   }
 
   // ✅ FIXED: No context in method signature, using stored _currentContext
-  void _handlePaymentError(PaymentFailureResponse response) async{
+  void _handlePaymentError(PaymentFailureResponse response) async {
     print("❌ Payment Error: ${response.code} - ${response.message}");
     fetchReservationBookingData.fetchReservationData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -259,7 +272,8 @@ class IndiaPaymentController extends GetxController {
       print("📤 Verifying payment with: $requestData");
 
       final res = await http.post(
-        Uri.parse('${ApiService().baseUrl}/razorpay/chauffer/checkRazorpayPaymentStatus'),
+        Uri.parse(
+            '${ApiService().baseUrl}/razorpay/chauffer/checkRazorpayPaymentStatus'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
@@ -278,7 +292,6 @@ class IndiaPaymentController extends GetxController {
         GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
       });
       GoRouter.of(_currentContext).pop();
-
     } finally {
       isLoading.value = false;
     }

@@ -823,7 +823,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String _formatDateTime(DateTime dateTime) {
     // Format: 2016-05-16 15:39:05.277
     // return DateFormat('yyyy MM dd HH:mm:ss.SSS').format(dateTime);
-    return DateFormat('dd MMM yyyy, HH:MM ZZ').format(dateTime);
+    return DateFormat('dd MMM yyyy, hh:mm a zz').format(dateTime);
   }
 
   Widget _buildActionButton({

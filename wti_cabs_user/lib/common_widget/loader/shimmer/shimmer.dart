@@ -18,6 +18,15 @@ class FullPageShimmer extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).pop();
+          },
+        ),
+      ),
       body: SafeArea(
         child: Shimmer.fromColors(
           baseColor: baseColor,

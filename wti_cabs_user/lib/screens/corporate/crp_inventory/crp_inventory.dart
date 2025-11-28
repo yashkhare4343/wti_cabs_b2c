@@ -21,6 +21,37 @@ class CrpInventory extends StatefulWidget {
 class _CrpInventoryState extends State<CrpInventory> {
   final CrpInventoryListController crpInventoryListController = Get.put(CrpInventoryListController());
   bool isLoading = false;
+  final controller = Get.put(CrpInventoryListController());
+
+  String? guestId, token, user, corpId, branchId;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCardModel();    // TODO: Initialize inventory data
+  }
+
+  Future<void> fetchParameter() async {
+    guestId = await StorageServices.instance.read('branchId');
+    token = await StorageServices.instance.read('crpKey');
+    user = await StorageServices.instance.read('email');
+    corpId = await StorageServices.instance.read('crpId');
+    branchId = await StorageServices.instance.read('branchId');
+  }
+
+  void fetchCardModel()async{
+    await fetchParameter();
+    final Map<String, dynamic> params = {
+      'token' : token,
+      'user' : user,
+      'CorpID': corpId,
+      'BranchID': branchId,
+      'RunTypeID': 1
+    };
+   await controller.fetchCarModels(params, context);
+
+
+  }
 
 
   @override
@@ -174,35 +205,6 @@ class _VehicleSection extends StatefulWidget {
 class _VehicleSectionState extends State<_VehicleSection> {
   final controller = Get.put(CrpInventoryListController());
 
-  String? guestId, token, user, corpId, branchId;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchCardModel();    // TODO: Initialize inventory data
-  }
-
-  Future<void> fetchParameter() async {
-    guestId = await StorageServices.instance.read('branchId');
-    token = await StorageServices.instance.read('crpKey');
-    user = await StorageServices.instance.read('email');
-    corpId = await StorageServices.instance.read('crpId');
-    branchId = await StorageServices.instance.read('branchId');
-  }
-
-  void fetchCardModel()async{
-    await fetchParameter();
-    final Map<String, dynamic> params = {
-      'token' : token,
-      'user' : user,
-      'CorpID': corpId,
-      'BranchID': branchId,
-      'RunTypeID': 1
-    };
-     controller.fetchCarModels(params, context);
-
-
-  }
   @override
   Widget build(BuildContext context) {
 
