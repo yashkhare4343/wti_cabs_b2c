@@ -1805,54 +1805,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 //       width: 12,
                                 //     ),
                                 //     // Go Corporate
-                                //     Container(
-                                //       height: 35,
-                                //       decoration: BoxDecoration(
-                                //         /*gradient: const LinearGradient(
-                                //           colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                //           begin: Alignment.centerLeft,
-                                //           end: Alignment.centerRight,
-                                //         ),*/
-                                //         color: AppColors.mainButtonBg,
-                                //         borderRadius: BorderRadius.circular(24),
-                                //       ),
-                                //       child: ElevatedButton(
-                                //         style: ElevatedButton.styleFrom(
-                                //           backgroundColor: Colors.transparent, // transparent to show gradient
-                                //           shadowColor: Colors.transparent, // remove default shadow
-                                //           shape: RoundedRectangleBorder(
-                                //             borderRadius: BorderRadius.circular(16),
-                                //           ),
-                                //           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                //         ),
-                                //         onPressed:  _isCorporateLoading ? null :  () async{
-                                //           // handle tap
-                                //           setState(() => _isCorporateLoading = true);
-                                //
-                                //           // Simulate a network delay or loading operation
-                                //           await Future.delayed(const Duration(milliseconds: 1200));
-                                //
-                                //
-                                //
-                                //           // Now navigate with flip animation
-                                //           Navigator.of(context).push(
-                                //             PlatformFlipPageRoute(
-                                //               builder: (context) => const CorporateLandingPage(),
-                                //             ),
-                                //           );
-                                //           setState(() => _isCorporateLoading = false);
-                                //
-                                //         },
-                                //         child: const Text(
-                                //           "Go Corporate",
-                                //           style: TextStyle(
-                                //             color: Colors.white,
-                                //             fontSize: 12,
-                                //             fontWeight: FontWeight.w600,
-                                //           ),
-                                //         ),
-                                //       ),
-                                //     ),
+                                    Container(
+                                      height: 35,
+                                      decoration: BoxDecoration(
+                                        /*gradient: const LinearGradient(
+                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),*/
+                                        color: AppColors.mainButtonBg,
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent, // transparent to show gradient
+                                          shadowColor: Colors.transparent, // remove default shadow
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                        ),
+                                        onPressed:  _isCorporateLoading ? null :  () async{
+                                          // handle tap
+                                          setState(() => _isCorporateLoading = true);
+
+                                          // Simulate a network delay or loading operation
+                                          await Future.delayed(const Duration(milliseconds: 1200));
+
+
+
+                                          // Now navigate with flip animation
+                                          Navigator.of(context).push(
+                                            PlatformFlipPageRoute(
+                                              builder: (context) => const CorporateLandingPage(),
+                                            ),
+                                          );
+                                          setState(() => _isCorporateLoading = false);
+
+                                        },
+                                        child: const Text(
+                                          "Go Corporate",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 //     // upcomingBookingController
                                 //     //             .isLoggedIn.value ==
                                 //     //         true
