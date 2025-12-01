@@ -404,8 +404,23 @@ class CprApiService {
     throw Exception(errorMessage);
   }
 
-
-
+  // ===================== 📝 POST Make Booking =====================
+  Future<Map<String, dynamic>> postMakeBooking(
+    Map<String, dynamic> params,
+    BuildContext context,
+  ) async {
+    return await postRequestParamsNew<Map<String, dynamic>>(
+      "PostMakeBooking",
+      params,
+      (body) {
+        if (body is Map) {
+          return Map<String, dynamic>.from(body);
+        }
+        return {"response": body};
+      },
+      context,
+    );
+  }
 
   Future<Map<String, dynamic>> postRequestWithStatus({
     required String endpoint,

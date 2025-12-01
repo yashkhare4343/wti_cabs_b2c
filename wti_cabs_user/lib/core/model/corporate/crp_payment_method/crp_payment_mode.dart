@@ -35,4 +35,9 @@ class PaymentModeItem {
         id: json["PaymodeId"] as int?,
         mode: json["PMode"] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        "PaymodeId": id,
+        "PMode": mode,
+      };
 }

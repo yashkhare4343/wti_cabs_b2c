@@ -11,10 +11,15 @@ import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import '../../../../common_widget/textformfield/booking_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
+import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
+import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
 import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
+import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
 import '../../../core/model/corporate/crp_payment_method/crp_payment_mode.dart';
 import '../../../core/model/corporate/crp_services/crp_services_response.dart';
+import '../../../core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import '../../../core/services/storage_services.dart';
 
 class CprBookingEngine extends StatefulWidget {
@@ -25,6 +30,9 @@ class CprBookingEngine extends StatefulWidget {
 }
 
 class _CprBookingEngineState extends State<CprBookingEngine> {
+  final GenderController controller = Get.put(GenderController());
+  final CarProviderController carProviderController = Get.put(CarProviderController());
+
   String? guestId, token, user;
   Future<void> fetchParameter() async {
     guestId = await StorageServices.instance.read('branchId');
@@ -53,6 +61,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     };
 
     paymentModeController.fetchPaymentModes(paymentParams, context);
+    controller.fetchGender(context);
+    carProviderController.fetchCarProviders(context);
+
   }
 
   final CrpServicesController runTypeController = Get.put(CrpServicesController());
@@ -86,15 +97,39 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String? pickupTypeError;
   String? bookingTypeError;
   String? paymentModeError;
+  String? genderError;
+  String? carProviderError;
 
   final TextEditingController referenceNumberController = TextEditingController();
   final TextEditingController specialInstructionController = TextEditingController();
+  final TextEditingController costCodeController = TextEditingController();
+  final TextEditingController flightDetailsController = TextEditingController();
 
   final List<String> bookingForList = ['Myself', 'Corporate'];
   // final TextEditingController pickupController = TextEditingController();
   // final TextEditingController dropController = TextEditingController();
 
+  CarProviderModel? _getValidCarProviderValue(
+    CarProviderModel? selectedValue,
+    List<CarProviderModel> list,
+  ) {
+    if (selectedValue == null) return null;
+    
+    // Check if the selected value exists in the list
+    final exists = list.any((item) => item == selectedValue);
+    return exists ? selectedValue : null;
+  }
 
+  GenderModel? _getValidGenderValue(
+    GenderModel? selectedValue,
+    List<GenderModel> list,
+  ) {
+    if (selectedValue == null) return null;
+    
+    // Check if the selected value exists in the list
+    final exists = list.any((item) => item == selectedValue);
+    return exists ? selectedValue : null;
+  }
 
   @override
   void dispose() {
@@ -102,6 +137,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // are managed by their respective GetX controllers and will be disposed in onClose()
     referenceNumberController.dispose();
     specialInstructionController.dispose();
+    costCodeController.dispose();
+    flightDetailsController.dispose();
     super.dispose();
   }
 
@@ -323,6 +360,161 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
                           paymentModeError!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              }),
+              const SizedBox(height: 12),
+
+              // Gender
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Gender', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
+                    ],
+                  ),
+                  SizedBox(height: 8,),
+                  Obx(() {
+                    final hasError = genderError != null && genderError!.isNotEmpty;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: hasError ? Colors.red : Colors.grey.shade400,
+                          width: hasError ? 1.5 : 1,
+                        ),
+                        color: Colors.white,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<GenderModel>(
+                          value: _getValidGenderValue(
+                            controller.selectedGender.value,
+                            controller.genderList,
+                          ),
+                          isExpanded: true,
+                          style: TextStyle(
+                            color: hasError ? Colors.red : Colors.black87,
+                          ),
+                          hint: Text(
+                            'Select Gender',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: hasError ? Colors.red : Colors.grey.shade600,
+                            ),
+                          ),
+                          items: controller.genderList.map((item) {
+                            return DropdownMenuItem<GenderModel>(
+                              value: item,
+                              child: Text(item.gender ?? ""),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              genderError = null;
+                            });
+                            controller.selectGender(value);
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+                  if (genderError != null) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(
+                        genderError!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Car Provider
+              Obx(() {
+                if (carProviderController.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final list = carProviderController.carProviderList;
+
+                if (list.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final hasError = carProviderError != null && carProviderError!.isNotEmpty;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Car Provider', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
+                      ],
+                    ),
+                    SizedBox(height: 8,),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: hasError ? Colors.red : Colors.grey.shade400,
+                          width: hasError ? 1.5 : 1,
+                        ),
+                        color: Colors.white,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<CarProviderModel>(
+                          value: _getValidCarProviderValue(
+                            carProviderController.selectedCarProvider.value,
+                            list,
+                          ),
+                          isExpanded: true,
+                          style: TextStyle(
+                            color: hasError ? Colors.red : Colors.black87,
+                          ),
+                          hint: Text(
+                            'Select Car Provider',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: hasError ? Colors.red : Colors.grey.shade600,
+                            ),
+                          ),
+                          items: list.map((item) {
+                            return DropdownMenuItem<CarProviderModel>(
+                              value: item,
+                              child: Text(item.providerName ?? ""),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              carProviderError = null;
+                            });
+                            carProviderController.selectCarProvider(value);
+                          },
+                        ),
+                      ),
+                    ),
+                    if (carProviderError != null) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          carProviderError!,
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.red,
@@ -946,6 +1138,54 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // Cost Code Field
+                  TextFormField(
+                    controller: costCodeController,
+                    decoration: InputDecoration(
+                      hintText: 'Cost Code',
+                      hintStyle: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.greyText3,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      filled: true,
+                      fillColor: Colors.white,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Flight Details Field
+                  TextFormField(
+                    controller: flightDetailsController,
+                    decoration: InputDecoration(
+                      hintText: 'Flight Details',
+                      hintStyle: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.greyText3,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      filled: true,
+                      fillColor: Colors.white,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   // Special Instruction Field
                   TextFormField(
                     controller: specialInstructionController,
@@ -1055,6 +1295,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       pickupTypeError = null;
       bookingTypeError = null;
       paymentModeError = null;
+      genderError = null;
+      carProviderError = null;
     });
   }
 
@@ -1068,6 +1310,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       pickupTypeError = null;
       bookingTypeError = null;
       paymentModeError = null;
+      genderError = null;
+      carProviderError = null;
     });
 
     // Collect all validation errors
@@ -1187,7 +1431,23 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       hasValidationError = true;
     }
 
-    // Note: Reference Number and Special Instruction are optional fields
+    // 10. Validate Gender (Required)
+    if (controller.selectedGender.value == null) {
+      genderError = 'Please select a gender';
+      errors.add(genderError!);
+      hasValidationError = true;
+    }
+
+    // 11. Validate Car Provider (Required)
+    if (carProviderController.carProviderList.isNotEmpty) {
+      if (carProviderController.selectedCarProvider.value == null) {
+        carProviderError = 'Please select a car provider';
+        errors.add(carProviderError!);
+        hasValidationError = true;
+      }
+    }
+
+    // Note: Reference Number, Cost Code, Flight Details, and Special Instruction are optional fields
     // No validation needed for them
 
     // Show errors or proceed
@@ -1209,12 +1469,52 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   }
 
   void _handleViewCabs() {
-    // TODO: Implement the actual view cabs functionality
-    // This is where you would navigate to the next screen or make API calls
-    // with the validated data
-    GoRouter.of(context).push(AppRoutes.cprInventory);
+    // Get the selected pickup type based on whether it's from dropdown or tabs
+    final List<RunTypeItem> allRunTypes = runTypeController.runTypes.value?.runTypes ?? [];
+    String? finalPickupType;
+    
+    if (allRunTypes.length > 3) {
+      // If more than 3 run types, use selectedPickupType from dropdown
+      finalPickupType = selectedPickupType;
+    } else {
+      // If 3 or fewer, use the selected tab index
+      if (selectedTabIndex >= 0 && selectedTabIndex < allRunTypes.length) {
+        finalPickupType = allRunTypes[selectedTabIndex].run;
+      }
+    }
+
+    // Create booking data object
+    final bookingData = CrpBookingData(
+      pickupPlace: crpSelectPickupController.selectedPlace.value,
+      dropPlace: crpSelectDropController.selectedPlace.value,
+      pickupDateTime: selectedPickupDateTime,
+      dropDateTime: selectedDropDateTime,
+      pickupType: finalPickupType,
+      bookingType: selectedBookingFor,
+      paymentMode: paymentModeController.selectedMode.value,
+      referenceNumber: referenceNumberController.text.trim().isEmpty 
+          ? null 
+          : referenceNumberController.text.trim(),
+      specialInstruction: specialInstructionController.text.trim().isEmpty 
+          ? null 
+          : specialInstructionController.text.trim(),
+      costCode: costCodeController.text.trim().isEmpty 
+          ? null 
+          : costCodeController.text.trim(),
+      flightDetails: flightDetailsController.text.trim().isEmpty 
+          ? null 
+          : flightDetailsController.text.trim(),
+      gender: controller.selectedGender.value,
+      carProvider: carProviderController.selectedCarProvider.value,
+      selectedTabIndex: allRunTypes.length <= 3 ? selectedTabIndex : null,
+    );
+
+    // Navigate to inventory screen with booking data
+    GoRouter.of(context).push(
+      AppRoutes.cprInventory,
+      extra: bookingData.toJson(),
+    );
     print('All validations passed. Proceeding to view cabs...');
-    // Example: GoRouter.of(context).push(AppRoutes.viewCabs);
   }
 }
 

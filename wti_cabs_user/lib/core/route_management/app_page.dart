@@ -9,6 +9,7 @@ import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/corporate/corporate_login/cpr_login.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_register/crp_register.dart';
+import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
@@ -36,7 +37,9 @@ import '../../screens/corporate/crp_booking_engine/crp_booking_engine.dart';
 import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/corporate/select_drop/crp_select_drop.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
+import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
+import '../model/corporate/crp_booking_data/crp_booking_data.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -194,7 +197,24 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprInventory,
-      pageBuilder: (context, state) => _platformPage(CrpInventory()),
+      pageBuilder: (context, state) {
+        final bookingData = state.extra as Map<String, dynamic>?;
+        return _platformPage(CrpInventory(bookingData: bookingData));
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.cprBookingConfirmation,
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final carModelJson = extra?['carModel'] as Map<String, dynamic>?;
+        final bookingData = extra?['bookingData'] as Map<String, dynamic>?;
+        return _platformPage(
+          CrpBookingConfirmation(
+            selectedCar: carModelJson != null ? CrpCarModel.fromJson(carModelJson) : null,
+            bookingData: bookingData != null ? CrpBookingData.fromJson(bookingData) : null,
+          ),
+        );
+      },
     ),
   ];
 
