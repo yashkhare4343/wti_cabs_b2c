@@ -14,6 +14,7 @@ import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
+import 'package:wti_cabs_user/screens/corporate/crp_booking_confirmation/crp_booking_result.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 class CrpBookingConfirmation extends StatefulWidget {
@@ -902,6 +903,103 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
     
     return null;
   }
+  // show snackbar based on success / failure
+  void showApiSnackBar(BuildContext context, dynamic response) {
+    debugPrint("Parsed Response: $response");
+
+    String codeStr = '';
+    String message = '';
+
+    // Case 1: API returned a single string like: "1, Your Booking has been successfully created..."
+    if (response is String) {
+      final cleaned = response.replaceAll('"', '').trim();
+      final parts = cleaned.split(',');
+      if (parts.isNotEmpty) {
+        codeStr = parts.first.trim();
+        if (parts.length > 1) {
+          message = parts.sublist(1).join(',').trim();
+        }
+      }
+    }
+
+    // Case 2: Map response (existing behavior + support for "1, message" in a field)
+    if (response is Map && (codeStr.isEmpty && message.isEmpty)) {
+      final codeRaw = response['response'];
+      codeStr = codeRaw?.toString().trim() ?? "";
+
+      // If 'response' itself is a "1, message" style string, parse it
+      if (codeRaw is String && codeRaw.contains(',')) {
+        final cleaned = codeRaw.replaceAll('"', '').trim();
+        final parts = cleaned.split(',');
+        if (parts.isNotEmpty) {
+          codeStr = parts.first.trim();
+          if (parts.length > 1) {
+            message = parts.sublist(1).join(',').trim();
+          }
+        }
+      }
+
+      // If message still empty, try common message keys
+      if (message.isEmpty) {
+        for (final key in ['message', 'Message', 'msg', 'Msg']) {
+          if (response.containsKey(key) && response[key] != null) {
+            final val = response[key].toString().trim();
+            if (val.isNotEmpty) {
+              message = val;
+              break;
+            }
+          }
+        }
+      }
+
+      // If still empty, try to infer from structure shown earlier:
+      // {response: 1, Your Booking has been successfully created ...: ""}
+      if (message.isEmpty) {
+        for (final key in response.keys) {
+          if (key is String &&
+              key.trim().isNotEmpty &&
+              key.toLowerCase() != 'response') {
+            message = key.trim();
+            break;
+          }
+        }
+      }
+    }
+
+    // Final fallbacks
+    message = message.isNotEmpty
+        ? message
+        : "Booking completed successfully";
+
+    // Determine success:
+    //  - response code is 1 or 2 (string or int), OR
+    //  - message text clearly indicates success
+    final lowerMsg = message.toLowerCase();
+    final bool isSuccessByCode =
+        (codeStr == '1' || codeStr == '2' || codeStr == '01' || codeStr == '02');
+    final bool isSuccessByMessage =
+        lowerMsg.contains('successfully') || lowerMsg.contains('success');
+
+    final bool isSuccess = isSuccessByCode || isSuccessByMessage;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+      ),
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CrpBookingResultPage(
+          isSuccess: isSuccess,
+          message: message,
+          bookingData: widget.bookingData,
+          selectedCar: widget.selectedCar,
+        ),
+      ),
+    );
+  }
+
 
   Future<void> _makeBooking() async {
     if (widget.formKey.currentState?.validate() ?? false) {
@@ -954,7 +1052,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final specialInstructions = bookingData?.specialInstruction ?? '';
         final costCode = bookingData?.costCode ?? '';
         final remarks = bookingData?.referenceNumber ?? '';
-        final transNo = _generateTransactionNumber();
+        final transNo = '';
         
         // Build params
         final params = <String, dynamic>{
@@ -973,14 +1071,14 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           'dropAddress': dropAddress,
           'specialInstructions': specialInstructions,
           'payMode': payMode.toString(),
-          'bookingPassedBy': '',
+          'bookingPassedBy': "",
           'branchID': branchID,
           'remarks': remarks,
           'uID': uID,
           'runTypeID': runTypeID?.toString() ?? '2',
           // 'costCode': costCode,
-          'costCode': 'Test',
-          'packageID': '',
+          'costCode': null,
+          'packageID': "",
           'transNo': transNo,
           'providerID': providerID.toString(),
           'BookingType': bookingType,
@@ -1001,19 +1099,8 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         debugPrint('✅ Booking response: $response');
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['sMessage'] ?? 'Booking submitted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          
-          // Navigate back or to success screen
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              GoRouter.of(context).go(AppRoutes.cprHomeScreen);
-            }
-          });
+          // Show snackbar
+          showApiSnackBar(context, response);
         }
       } catch (e) {
         debugPrint('❌ Booking error: $e');
@@ -1066,4 +1153,5 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
     );
   }
 }
+
 

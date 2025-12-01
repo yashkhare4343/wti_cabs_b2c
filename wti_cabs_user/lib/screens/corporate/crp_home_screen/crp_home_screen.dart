@@ -7,12 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 
 import '../../../../common_widget/textformfield/read_only_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
+import '../../home/home_screen.dart';
 
 class CprHomeScreen extends StatefulWidget {
   const CprHomeScreen({super.key});
@@ -726,7 +728,11 @@ class TopBanner extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                             ),
                             onPressed:   () async{
-                            },
+                              Navigator.of(context).push(
+                                PlatformFlipPageRoute(
+                                  builder: (context) => const BottomNavScreen(),
+                                ),
+                              );                            },
                             child: const Text(
                               "Personal Cab",
                               style: TextStyle(

@@ -147,33 +147,42 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     crpSelectPickupController.searchController.text = crpSelectPickupController.selectedPlace.value?.primaryText ?? 'Please Select Pickup';
     crpSelectDropController.searchController.text = crpSelectDropController.selectedPlace.value?.primaryText ?? '';
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        shadowColor: Colors.black.withOpacity(0.05),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Book a Cab',
           style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Tabs Section
               Obx(() => _buildTabsSection()),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               // Location Input Section
               _buildLocationSection(),
               const SizedBox(height: 24),
@@ -181,25 +190,39 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               _buildDateButtons(),
               // Pick Up Type Button (only if runTypeList > 3)
               Obx(() => _buildConditionalPickUpTypeButton()),
+              const SizedBox(height: 20),
               // Booking For
-              Row(
-                children: [
-                  Text('Booking Type', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-                ],
-              ),
-              SizedBox(height: 8,),
+              _buildSectionLabel('Booking Type'),
+              const SizedBox(height: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: bookingTypeError != null ? Colors.red : const Color(0xFFE0E0E0),
-                        width: bookingTypeError != null ? 1.5 : 1,
+                        color: bookingTypeError != null
+                            ? Colors.red.shade400
+                            : Colors.grey.shade300,
+                        width: bookingTypeError != null ? 2 : 1.5,
                       ),
+                      boxShadow: bookingTypeError != null
+                          ? [
+                              BoxShadow(
+                                color: Colors.red.shade50,
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -207,18 +230,29 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         isExpanded: true,
                         hint: Row(
                           children: [
-                            Icon(
-                              Icons.person_outline_outlined,
-                              color: bookingTypeError != null ? Colors.red : AppColors.greyText3,
-                              size: 20,
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.mainButtonBg.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.person_outline_rounded,
+                                color: bookingTypeError != null
+                                    ? Colors.red.shade600
+                                    : AppColors.mainButtonBg,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              'Booking Type',
+                              'Select Booking Type',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: bookingTypeError != null ? Colors.red : Colors.black87,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                color: bookingTypeError != null
+                                    ? Colors.red.shade400
+                                    : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -227,19 +261,30 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           return bookingForList.map((bookingFor) {
                             return Row(
                               children: [
-                                Icon(
-                                  Icons.description_outlined,
-                                  color: bookingTypeError != null ? Colors.red : AppColors.greyText3,
-                                  size: 20,
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.mainButtonBg.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.person_outline_rounded,
+                                    color: bookingTypeError != null
+                                        ? Colors.red.shade600
+                                        : AppColors.mainButtonBg,
+                                    size: 18,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     bookingFor,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w500,
-                                      color: bookingTypeError != null ? Colors.red : Colors.black87,
+                                      color: bookingTypeError != null
+                                          ? Colors.red.shade700
+                                          : const Color(0xFF1A1A1A),
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
@@ -250,28 +295,35 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           }).toList();
                         },
                         icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: bookingTypeError != null ? Colors.red : Colors.grey,
-                          size: 20,
+                          Icons.keyboard_arrow_down_rounded,
+                          color: bookingTypeError != null
+                              ? Colors.red.shade400
+                              : Colors.grey.shade600,
+                          size: 24,
                         ),
                         dropdownColor: Colors.white,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: bookingTypeError != null ? Colors.red : Colors.black87,
+                          color: bookingTypeError != null
+                              ? Colors.red.shade700
+                              : const Color(0xFF1A1A1A),
                         ),
                         items: bookingForList.map((bookingFor) {
                           return DropdownMenuItem<String>(
                             value: bookingFor,
-                            child: Text(
-                              bookingFor,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                bookingFor,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
                             ),
                           );
                         }).toList(),
@@ -285,66 +337,139 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     ),
                   ),
                   if (bookingTypeError != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Padding(
                       padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        bookingTypeError!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                        ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              bookingTypeError!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               // Payment Controller
               Obx(() {
                 if (paymentModeController.isLoading.value) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.mainButtonBg),
+                      ),
+                    ),
+                  );
                 }
 
                 final list = paymentModeController.modes;
 
                 if (list.isEmpty) {
-                  return const Text("No Payment Modes Found");
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "No Payment Modes Found",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 final hasError = paymentModeError != null && paymentModeError!.isNotEmpty;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text('Payment Mode', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-                      ],
-                    ),
-                    SizedBox(height: 8,),
+                    _buildSectionLabel('Payment Mode'),
+                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: hasError ? Colors.red : Colors.grey.shade400,
-                          width: hasError ? 1.5 : 1,
+                          color: hasError ? Colors.red.shade400 : Colors.grey.shade300,
+                          width: hasError ? 2 : 1.5,
                         ),
                         color: Colors.white,
+                        boxShadow: hasError
+                            ? [
+                                BoxShadow(
+                                  color: Colors.red.shade50,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<PaymentModeItem>(
                           value: paymentModeController.selectedMode.value,
                           isExpanded: true,
                           style: TextStyle(
-                            color: hasError ? Colors.red : Colors.black87,
+                            color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          hint: Text(
+                            'Select Payment Mode',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                           items: list.map((item) {
                             return DropdownMenuItem(
                               value: item,
-                              child: Text(item.mode ?? ""),
+                              child: Text(
+                                item.mode ?? "",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
                             );
                           }).toList(),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                            size: 24,
+                          ),
                           onChanged: (value) {
                             setState(() {
                               paymentModeError = null;
@@ -355,44 +480,64 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       ),
                     ),
                     if (paymentModeError != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          paymentModeError!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.red,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                paymentModeError!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ],
                 );
               }),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
               // Gender
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text('Gender', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-                    ],
-                  ),
-                  SizedBox(height: 8,),
+                  _buildSectionLabel('Gender'),
+                  const SizedBox(height: 10),
                   Obx(() {
                     final hasError = genderError != null && genderError!.isNotEmpty;
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: hasError ? Colors.red : Colors.grey.shade400,
-                          width: hasError ? 1.5 : 1,
+                          color: hasError ? Colors.red.shade400 : Colors.grey.shade300,
+                          width: hasError ? 2 : 1.5,
                         ),
                         color: Colors.white,
+                        boxShadow: hasError
+                            ? [
+                                BoxShadow(
+                                  color: Colors.red.shade50,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<GenderModel>(
@@ -402,21 +547,36 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           ),
                           isExpanded: true,
                           style: TextStyle(
-                            color: hasError ? Colors.red : Colors.black87,
+                            color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
                           hint: Text(
                             'Select Gender',
                             style: TextStyle(
-                              fontSize: 14,
-                              color: hasError ? Colors.red : Colors.grey.shade600,
+                              fontSize: 15,
+                              color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                           items: controller.genderList.map((item) {
                             return DropdownMenuItem<GenderModel>(
                               value: item,
-                              child: Text(item.gender ?? ""),
+                              child: Text(
+                                item.gender ?? "",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
                             );
                           }).toList(),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                            size: 24,
+                          ),
                           onChanged: (value) {
                             setState(() {
                               genderError = null;
@@ -428,27 +588,44 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     );
                   }),
                   if (genderError != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Padding(
                       padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        genderError!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                        ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              genderError!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
               // Car Provider
               Obx(() {
                 if (carProviderController.isLoading.value) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.mainButtonBg),
+                      ),
+                    ),
+                  );
                 }
 
                 final list = carProviderController.carProviderList;
@@ -461,21 +638,32 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text('Car Provider', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-                      ],
-                    ),
-                    SizedBox(height: 8,),
+                    _buildSectionLabel('Car Provider'),
+                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: hasError ? Colors.red : Colors.grey.shade400,
-                          width: hasError ? 1.5 : 1,
+                          color: hasError ? Colors.red.shade400 : Colors.grey.shade300,
+                          width: hasError ? 2 : 1.5,
                         ),
                         color: Colors.white,
+                        boxShadow: hasError
+                            ? [
+                                BoxShadow(
+                                  color: Colors.red.shade50,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<CarProviderModel>(
@@ -485,21 +673,36 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           ),
                           isExpanded: true,
                           style: TextStyle(
-                            color: hasError ? Colors.red : Colors.black87,
+                            color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
                           hint: Text(
                             'Select Car Provider',
                             style: TextStyle(
-                              fontSize: 14,
-                              color: hasError ? Colors.red : Colors.grey.shade600,
+                              fontSize: 15,
+                              color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                           items: list.map((item) {
                             return DropdownMenuItem<CarProviderModel>(
                               value: item,
-                              child: Text(item.providerName ?? ""),
+                              child: Text(
+                                item.providerName ?? "",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
                             );
                           }).toList(),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                            size: 24,
+                          ),
                           onChanged: (value) {
                             setState(() {
                               carProviderError = null;
@@ -510,15 +713,24 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       ),
                     ),
                     if (carProviderError != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          carProviderError!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.red,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                carProviderError!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -548,9 +760,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // Show loading or empty state if no tabs
     if (runTypeController.isLoading.value) {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: const Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.mainButtonBg),
+          ),
         ),
       );
     }
@@ -559,103 +774,150 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       return const SizedBox.shrink();
     }
     
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(8),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Row(
-            children: [
-              // All tabs
-              ...List.generate(allTabs.length > 3 ? 3 : allTabs.length, (index) {
-                final isSelected = selectedTabIndex == index;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedTabIndex = index;
-                        pickupTypeError = null;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.mainButtonBg : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        allTabs[index],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : Colors.black87,
-                        ),
+        ],
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          // All tabs
+          ...List.generate(allTabs.length > 3 ? 3 : allTabs.length, (index) {
+            final isSelected = selectedTabIndex == index;
+            return Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedTabIndex = index;
+                      pickupTypeError = null;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.mainButtonBg : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.mainButtonBg.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      allTabs[index],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
   Widget _buildLocationSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: pickupLocationError != null || dropLocationError != null
+              ? Colors.red.shade300
+              : Colors.grey.shade200,
+          width: pickupLocationError != null || dropLocationError != null ? 2 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Vertical line with icons
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Column(
               children: [
                 Container(
-                  width: 20,
-                  height: 20,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: AppColors.mainButtonBg,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.mainButtonBg.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Icon(
-                    Icons.location_on,
+                    Icons.location_on_rounded,
                     color: Colors.white,
-                    size: 14,
+                    size: 16,
                   ),
                 ),
                 Container(
-                  width: 3,
-                  height: 60,
-                  color: AppColors.mainButtonBg,
+                  width: 4,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.mainButtonBg.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 Container(
-                  width: 20,
-                  height: 20,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: AppColors.mainButtonBg,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.mainButtonBg.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Icon(
-                    Icons.place,
+                    Icons.place_rounded,
                     color: Colors.white,
-                    size: 14,
+                    size: 16,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
 
           // Text fields
           Expanded(
@@ -721,17 +983,13 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Pickup Date Section
-        Row(
-          children: [
-            Text('Pickup Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-          ],
-        ),
-        SizedBox(height: 8,),
+        _buildSectionLabel('Pickup Date'),
+        const SizedBox(height: 10),
         _buildActionButton(
-          icon: Icons.access_time,
+          icon: Icons.calendar_today_rounded,
           label: selectedPickupDateTime != null
               ? _formatDateTime(selectedPickupDateTime!)
-              : 'Pick Up Date',
+              : 'Select Pickup Date & Time',
           errorText: pickupDateError,
           onTap: () {
             setState(() {
@@ -741,31 +999,36 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           },
         ),
         if (pickupDateError != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              pickupDateError!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.red,
-              ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    pickupDateError!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         // Drop Date Section
-        Row(
-          children: [
-            Text('Drop Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),),
-          ],
-        ),
-        SizedBox(height: 8,),
+        _buildSectionLabel('Drop Date'),
+        const SizedBox(height: 10),
         _buildActionButton(
-          icon: Icons.access_time,
+          icon: Icons.calendar_today_rounded,
           label: selectedDropDateTime != null
               ? _formatDateTime(selectedDropDateTime!)
-              : 'Drop Date',
+              : 'Select Drop Date & Time',
           errorText: dropDateError,
           onTap: () {
             setState(() {
@@ -775,19 +1038,40 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           },
         ),
         if (dropDateError != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              dropDateError!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.red,
-              ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    dropDateError!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF1A1A1A),
+        letterSpacing: -0.3,
+      ),
     );
   }
 
@@ -799,7 +1083,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       return const SizedBox.shrink();
     }
     
-    return _buildPickUpTypeButton();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        _buildSectionLabel('Pick Up Type'),
+        const SizedBox(height: 10),
+        _buildPickUpTypeButton(),
+      ],
+    );
   }
 
   Widget _buildPickUpTypeButton() {
@@ -820,107 +1112,149 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: hasError ? Colors.red : const Color(0xFFE0E0E0),
-              width: hasError ? 1.5 : 1,
+              color: hasError ? Colors.red.shade400 : Colors.grey.shade300,
+              width: hasError ? 2 : 1.5,
             ),
+            boxShadow: hasError
+                ? [
+                    BoxShadow(
+                      color: Colors.red.shade50,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedPickupType,
-          isExpanded: true,
-          hint: Row(
-            children: [
-              Icon(
-                Icons.description_outlined,
-                color: hasError ? Colors.red : AppColors.greyText3,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Pick Up Type',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: hasError ? Colors.red : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          selectedItemBuilder: (BuildContext context) {
-            return allPickupTypes.map((pickupType) {
-              return Row(
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedPickupType,
+              isExpanded: true,
+              hint: Row(
                 children: [
-                  Icon(
-                    Icons.description_outlined,
-                    color: hasError ? Colors.red : AppColors.greyText3,
-                    size: 20,
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.mainButtonBg.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.description_outlined,
+                      color: hasError ? Colors.red.shade600 : AppColors.mainButtonBg,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
+                  Text(
+                    'Select Pick Up Type',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+              selectedItemBuilder: (BuildContext context) {
+                return allPickupTypes.map((pickupType) {
+                  return Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.mainButtonBg.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.description_outlined,
+                          color: hasError ? Colors.red.shade600 : AppColors.mainButtonBg,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          pickupType,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList();
+              },
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+                size: 24,
+              ),
+              dropdownColor: Colors.white,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+              ),
+              items: allPickupTypes.map((pickupType) {
+                return DropdownMenuItem<String>(
+                  value: pickupType,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
                       pickupType,
-                      style: TextStyle(
-                        fontSize: pickupType.length > 15 ? 10 : 12,
+                      style: const TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: hasError ? Colors.red : Colors.black87,
+                        color: Color(0xFF1A1A1A),
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ),
-                ],
-              );
-            }).toList();
-          },
-          icon: Icon(
-            Icons.keyboard_arrow_down,
-            color: hasError ? Colors.red : Colors.grey,
-            size: 20,
+                );
+              }).toList(),
+              onChanged: (String? value) {
+                setState(() {
+                  selectedPickupType = value;
+                  pickupTypeError = null;
+                });
+              },
+            ),
           ),
-          dropdownColor: Colors.white,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: hasError ? Colors.red : Colors.black87,
-          ),
-          items: allPickupTypes.map((pickupType) {
-            return DropdownMenuItem<String>(
-              value: pickupType,
-              child: Text(
-                pickupType,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            );
-          }).toList(),
-          onChanged: (String? value) {
-            setState(() {
-              selectedPickupType = value;
-              pickupTypeError = null;
-            });
-          },
         ),
-        )),
         if (pickupTypeError != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              pickupTypeError!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.red,
-              ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    pickupTypeError!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -944,10 +1278,44 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       context: context,
       builder: (BuildContext context) {
         return Container(
-          height: 300,
-          color: Colors.white,
+          height: 350,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
           child: Column(
             children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Text(
+                        isPickup ? 'Select Pickup Date & Time' : 'Select Drop Date & Time',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, color: Colors.grey.shade600),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.dateAndTime,
@@ -958,8 +1326,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border(
+                    top: BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -968,13 +1342,22 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.black87,
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF1A1A1A),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: const Text('Cancel'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -995,11 +1378,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.mainButtonBg,
                           foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        child: const Text('Done'),
                       ),
                     ),
                   ],
@@ -1028,36 +1419,64 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: hasError ? Colors.red : const Color(0xFFE0E0E0),
-            width: hasError ? 1.5 : 1,
+            color: hasError ? Colors.red.shade400 : Colors.grey.shade300,
+            width: hasError ? 2 : 1.5,
           ),
+          boxShadow: hasError
+              ? [
+                  BoxShadow(
+                    color: Colors.red.shade50,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: hasError ? Colors.red : AppColors.greyText3, size: 20),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: hasError
+                    ? Colors.red.shade50
+                    : AppColors.mainButtonBg.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: hasError ? Colors.red.shade600 : AppColors.mainButtonBg,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: hasError ? Colors.red : Colors.black87,
+                  color: hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.2,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
             ),
             Icon(
-              Icons.keyboard_arrow_down,
-              color: hasError ? Colors.red : Colors.grey,
-              size: 20,
+              Icons.keyboard_arrow_down_rounded,
+              color: hasError ? Colors.red.shade400 : Colors.grey.shade600,
+              size: 24,
             ),
           ],
         ),
@@ -1069,8 +1488,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1082,25 +1508,41 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               child: Row(
                 children: [
-                  Icon(Icons.add_circle_outline, color: AppColors.greyText3, size: 24),
-                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.mainButtonBg.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: AppColors.mainButtonBg,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   const Expanded(
                     child: Text(
                       'Additional Options',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
-                  Icon(
-                    isAdditionalOptionsExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: Colors.grey,
-                    size: 24,
+                  AnimatedRotation(
+                    turns: isAdditionalOptionsExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.grey.shade600,
+                      size: 28,
+                    ),
                   ),
                 ],
               ),
@@ -1108,84 +1550,100 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           ),
           // Expanded Content
           if (isAdditionalOptionsExpanded)
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   // Reference Number Field
                   TextFormField(
                     controller: referenceNumberController,
                     decoration: InputDecoration(
                       hintText: 'Reference Number',
                       hintStyle: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.greyText3,
+                        color: Colors.grey.shade500,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Colors.grey.shade50,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.mainButtonBg, width: 2),
                       ),
                     ),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   // Cost Code Field
                   TextFormField(
                     controller: costCodeController,
                     decoration: InputDecoration(
                       hintText: 'Cost Code',
                       hintStyle: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.greyText3,
+                        color: Colors.grey.shade500,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Colors.grey.shade50,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.mainButtonBg, width: 2),
                       ),
                     ),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   // Flight Details Field
                   TextFormField(
                     controller: flightDetailsController,
                     decoration: InputDecoration(
                       hintText: 'Flight Details',
                       hintStyle: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.greyText3,
+                        color: Colors.grey.shade500,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Colors.grey.shade50,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.mainButtonBg, width: 2),
                       ),
                     ),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   // Special Instruction Field
                   TextFormField(
                     controller: specialInstructionController,
@@ -1193,21 +1651,26 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     decoration: InputDecoration(
                       hintText: 'Special Instruction',
                       hintStyle: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.greyText3,
+                        color: Colors.grey.shade500,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Colors.grey.shade50,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.mainButtonBg, width: 2),
                       ),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                 ],
@@ -1260,27 +1723,56 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   }
 
   Widget _buildViewCabsButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.mainButtonBg.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         onPressed: () {
           _validateAndProceed();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.mainButtonBg,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),
-        child: const Text(
-          'View Cabs',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'View Cabs',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1367,12 +1859,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       }
     }
 
-    // 5. Validate Drop Date (Required)
-    if (selectedDropDateTime == null) {
-      dropDateError = 'Please select a drop date and time';
-      errors.add(dropDateError!);
-      hasValidationError = true;
-    }
+    // // 5. Validate Drop Date (Required)
+    // if (selectedDropDateTime == null) {
+    //   dropDateError = 'Please select a drop date and time';
+    //   errors.add(dropDateError!);
+    //   hasValidationError = true;
+    // }
 
     // 6. Validate Drop Date is after Pickup Date (Required)
     if (selectedPickupDateTime != null && selectedDropDateTime != null) {
@@ -1517,4 +2009,5 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     print('All validations passed. Proceeding to view cabs...');
   }
 }
+
 

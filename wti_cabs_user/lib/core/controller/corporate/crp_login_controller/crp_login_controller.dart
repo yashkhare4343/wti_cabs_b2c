@@ -47,15 +47,16 @@ class LoginInfoController extends GetxController {
 
       crpLoginInfo.value = result;
 
-      // Show SnackBar based on status
-      if (crpLoginInfo.value?.bStatus == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully Login!' ?? ''),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (crpLoginInfo.value?.bStatus == false) {
+      // // Show SnackBar based on status
+      // if (crpLoginInfo.value?.bStatus == true) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(
+      //       content: Text('Successfully Login!' ?? ''),
+      //       backgroundColor: Colors.green,
+      //     ),
+      //   );
+      // } else
+        if (crpLoginInfo.value?.bStatus == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Oops Login Failed!' ?? ''),
