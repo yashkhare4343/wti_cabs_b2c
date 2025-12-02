@@ -1002,6 +1002,8 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
 
 
   Future<void> _makeBooking() async {
+    FocusScope.of(context).unfocus();
+
     if (widget.formKey.currentState?.validate() ?? false) {
       setState(() {
         isLoading = true;

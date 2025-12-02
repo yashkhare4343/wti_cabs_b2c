@@ -191,6 +191,7 @@ class _CprLoginState extends State<CprLogin> {
 
                      Obx(()=>GestureDetector(
                        onTap: () async{
+                         FocusScope.of(context).unfocus();
                          // your sign in action
                          final Map<String, dynamic> params = {
                            "password": passwordController.text.trim(),
