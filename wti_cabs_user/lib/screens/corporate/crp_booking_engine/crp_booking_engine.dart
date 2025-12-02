@@ -34,6 +34,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   final CarProviderController carProviderController = Get.put(CarProviderController());
 
   String? guestId, token, user;
+  int? selectedTabIndex;
+  int? _preselectedRunTypeId;
+  bool _hasAppliedPreselection = false;
+
   Future<void> fetchParameter() async {
     guestId = await StorageServices.instance.read('branchId');
     token = await StorageServices.instance.read('crpKey');
@@ -43,6 +47,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    _loadPreselectedRunType();
+    _loadSelectedTabIndex();
     runTypesAndPaymentModes();
   }
 
@@ -66,13 +72,26 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   }
 
+  Future<void> _loadPreselectedRunType() async {
+    final idStr = await StorageServices.instance.read('cprSelectedRunTypeId');
+    if (idStr != null) {
+      final parsed = int.tryParse(idStr);
+      if (parsed != null) {
+        setState(() {
+          _preselectedRunTypeId = parsed;
+        });
+      }
+      // Clear it so it doesn't affect future navigations without selection
+      await StorageServices.instance.delete('cprSelectedRunTypeId');
+    }
+  }
+
   final CrpServicesController runTypeController = Get.put(CrpServicesController());
   final CrpSelectPickupController crpSelectPickupController = Get.put(CrpSelectPickupController());
   final CrpSelectDropController crpSelectDropController = Get.put(CrpSelectDropController());
   final paymentModeController = Get.put(PaymentModeController());
 
 
-  int selectedTabIndex = 0;
   String? selectedPickupType;
   String? selectedBookingFor;
   String? selectedPaymentMethod;
@@ -81,6 +100,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     'CorpID' : StorageServices.instance.read('crpId'),
     'BranchID' : StorageServices.instance.read('branchId')
   };
+
+  Future<void> _loadSelectedTabIndex() async {
+    final tabIndexStr = await StorageServices.instance.read('tabIndex');
+    if (tabIndexStr == null) return;
+
+    final idx = int.tryParse(tabIndexStr);
+    if (idx == null) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedTabIndex = idx;
+    });
+  }
 
   DateTime? selectedPickupDateTime;
   DateTime? selectedDropDateTime;
@@ -144,7 +177,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   @override
   Widget build(BuildContext context) {
-    crpSelectPickupController.searchController.text = crpSelectPickupController.selectedPlace.value?.primaryText ?? 'Please Select Pickup';
+    crpSelectPickupController.searchController.text = crpSelectPickupController.selectedPlace.value?.primaryText ?? '';
     crpSelectDropController.searchController.text = crpSelectDropController.selectedPlace.value?.primaryText ?? '';
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -756,6 +789,22 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   Widget _buildTabsSection() {
     final List<RunTypeItem> allRunTypes = runTypeController.runTypes.value?.runTypes ?? [];
     final List<String> allTabs = allRunTypes.map((val) => val.run ?? '').toList();
+    // Apply preselected run type (from home screen tap) once when data is available
+    if (!_hasAppliedPreselection &&
+        _preselectedRunTypeId != null &&
+        allRunTypes.isNotEmpty) {
+      final index = allRunTypes.indexWhere((rt) => rt.runTypeID == _preselectedRunTypeId);
+      if (index != -1 && allTabs.isNotEmpty) {
+        // If 3 or fewer run types, we highlight the corresponding tab by index
+        if (allRunTypes.length <= 3) {
+          selectedTabIndex = index.clamp(0, allTabs.length - 1);
+        } else {
+          // For more than 3, we will highlight via pickup type dropdown instead
+          selectedPickupType = allRunTypes[index].run;
+        }
+      }
+      _hasAppliedPreselection = true;
+    }
     
     // Show loading or empty state if no tabs
     if (runTypeController.isLoading.value) {
@@ -924,7 +973,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             child: Column(
               children: [
                  BookingTextFormField(
-                  hintText: '',
+                  hintText: 'Enter Pickup Location',
                   controller: crpSelectPickupController.searchController,
                   errorText: pickupLocationError,
                   onTap: () {
@@ -1895,7 +1944,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       }
     } else {
       // If 3 or fewer run types, validate that selectedTabIndex is valid
-      if (selectedTabIndex < 0 || selectedTabIndex >= allRunTypes.length) {
+      if (selectedTabIndex! < 0 || selectedTabIndex! >= allRunTypes.length) {
         pickupTypeError = 'Please select a valid run type';
         errors.add(pickupTypeError!);
         hasValidationError = true;
@@ -1970,8 +2019,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       finalPickupType = selectedPickupType;
     } else {
       // If 3 or fewer, use the selected tab index
-      if (selectedTabIndex >= 0 && selectedTabIndex < allRunTypes.length) {
-        finalPickupType = allRunTypes[selectedTabIndex].run;
+      if (selectedTabIndex! >= 0 && selectedTabIndex! < allRunTypes.length) {
+        finalPickupType = allRunTypes[selectedTabIndex??0].run;
       }
     }
 

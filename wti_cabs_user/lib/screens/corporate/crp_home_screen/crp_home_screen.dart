@@ -505,7 +505,15 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
 
                   return InkWell(
                     splashColor: Colors.transparent,
-                    onTap: () {
+                    onTap: () async {
+                      // Save the selected service so Booking Engine can highlight the correct tab
+                      if (item.runTypeID != null) {
+                        await StorageServices.instance
+                            .save('cprSelectedRunTypeId', item.runTypeID!.toString());
+                        await StorageServices.instance
+                            .save('tabIndex', index.toString());
+
+                      }
                       GoRouter.of(context).push(AppRoutes.cprBookingEngine);
                     },
                     child: Container(
