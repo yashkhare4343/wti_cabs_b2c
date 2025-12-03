@@ -24,10 +24,9 @@ class CprHomeScreen extends StatefulWidget {
 }
 
 class _CprHomeScreenState extends State<CprHomeScreen> {
-
   final params = {
-    'CorpID' : StorageServices.instance.read('crpId'),
-    'BranchID' : StorageServices.instance.read('branchId')
+    'CorpID': StorageServices.instance.read('crpId'),
+    'BranchID': StorageServices.instance.read('branchId')
   };
 
   @override
@@ -37,19 +36,17 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     // runTypeController.fetchRunTypes(verifyCorporateController.cprID.value, crpGetBranchListController.selectedBranchId.value??'', context);
     runTypeController.fetchRunTypes(params, context);
 
-
     // Fetch branches and show bottom sheet when screen appears
     _fetchBranchesAndShowBottomSheet();
   }
 
-
   Future<void> _fetchBranchesAndShowBottomSheet() async {
     // Get corporate ID - use from verifyCorporateController or fallback to params
     final corpId = await StorageServices.instance.read('crpId');
-    
+
     // Fetch branches
     await crpGetBranchListController.fetchBranches(corpId ?? '');
-    
+
     // Show bottom sheet after a short delay to ensure screen is fully built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -68,7 +65,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
       final corpId = await StorageServices.instance.read('crpId');
       await crpGetBranchListController.fetchBranches(corpId ?? '');
     }
-    
+
     final items = crpGetBranchListController.branchNames;
     final selected = crpGetBranchListController.selectedBranchName.value ?? '';
 
@@ -106,9 +103,11 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                     children: [
                       // Top Illustration/Banner
                       Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 20, top: 25),
+                        padding:
+                            const EdgeInsets.only(left: 20, right: 20, top: 25),
                         child: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(10)),
                           child: Container(
                             height: 228,
                             width: double.infinity,
@@ -144,7 +143,8 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: items.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final name = items[index];
                             final isSelected = name == tempSelected;
@@ -172,7 +172,8 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(0xFFE3F2FD) // Light blue background
+                                        ? const Color(
+                                            0xFFE3F2FD) // Light blue background
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -182,8 +183,10 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                                       fontSize: 14,
                                       fontWeight: FontWeight.w400,
                                       color: isSelected
-                                          ? const Color(0xFF333333) // Blue text when selected
-                                          : const Color(0xFF333333), // Gray text when not selected
+                                          ? const Color(
+                                              0xFF333333) // Blue text when selected
+                                          : const Color(
+                                              0xFF333333), // Gray text when not selected
                                     ),
                                   ),
                                 ),
@@ -192,7 +195,6 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                           },
                         ),
                       ),
-
 
                       const SizedBox(height: 20),
                       Container(
@@ -206,16 +208,19 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4082F1), // #4082F1
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(39),
-                              side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+                              side: const BorderSide(
+                                  color: Color(0xFFD9D9D9), width: 1),
                             ),
                             elevation: 0, // Remove default shadow
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: [   // gap: 12px
+                            children: [
+                              // gap: 12px
                               const Text(
                                 "Confirm",
                                 style: TextStyle(
@@ -240,89 +245,100 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     );
   }
 
-  final CrpServicesController runTypeController = Get.put(CrpServicesController());
-  final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
+  final CrpServicesController runTypeController =
+      Get.put(CrpServicesController());
+  final VerifyCorporateController verifyCorporateController =
+      Get.put(VerifyCorporateController());
   final CrpBranchListController crpGetBranchListController =
-  Get.put(CrpBranchListController());
-
-
+      Get.put(CrpBranchListController());
 
   // getImageForService
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(child: Column(
+      body: SafeArea(
+          child: Column(
         children: [
-          SizedBox(
-            height: 300,
-              child: TopBanner()),
+          SizedBox(height: 290, child: TopBanner()),
           // services dynamic
           SizedBox(height: 20),
-         // selected location
-         //  Padding(
-         //    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-         //    child: Row(
-         //      children: [
-         //        Text('Selected Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),),
-         //      ],
-         //    ),
-         //  ),
-         //  SizedBox(height: 10,),
-         // Obx(()=> Material(
-         //   color: Colors.transparent,
-         //   child: InkWell(
-         //     onTap: () async {
-         //       // await _showBranchSelectorBottomSheet();
-         //     },
-         //     borderRadius: BorderRadius.circular(8),
-         //     child: Padding(
-         //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-         //       child: Container(
-         //         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-         //         decoration: BoxDecoration(
-         //           color: Colors.white,
-         //           borderRadius: BorderRadius.circular(8),
-         //           border: Border.all(color: Colors.grey.shade300),
-         //         ),
-         //         child: Row(
-         //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         //           children: [
-         //             Text(
-         //               crpGetBranchListController.selectedBranchName.value??'Select Location',
-         //               style: TextStyle(
-         //                 fontSize: 15,
-         //                 color: Colors.black87,
-         //               ),
-         //             ),
-         //             Icon(
-         //               Icons.arrow_forward_ios,
-         //               size: 16,
-         //               color: Colors.grey.shade600,
-         //             ),
-         //           ],
-         //         ),
-         //       ),
-         //     ),
-         //   ),
-         // )),
-          OfficeBranchTile(onTap: () async{
-            await _showBranchSelectorBottomSheet();
-          },),
-          SizedBox(height: 16,),
-
+          // selected location
+          //  Padding(
+          //    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          //    child: Row(
+          //      children: [
+          //        Text('Selected Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),),
+          //      ],
+          //    ),
+          //  ),
+          //  SizedBox(height: 10,),
+          // Obx(()=> Material(
+          //   color: Colors.transparent,
+          //   child: InkWell(
+          //     onTap: () async {
+          //       // await _showBranchSelectorBottomSheet();
+          //     },
+          //     borderRadius: BorderRadius.circular(8),
+          //     child: Padding(
+          //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          //       child: Container(
+          //         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          //         decoration: BoxDecoration(
+          //           color: Colors.white,
+          //           borderRadius: BorderRadius.circular(8),
+          //           border: Border.all(color: Colors.grey.shade300),
+          //         ),
+          //         child: Row(
+          //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //           children: [
+          //             Text(
+          //               crpGetBranchListController.selectedBranchName.value??'Select Location',
+          //               style: TextStyle(
+          //                 fontSize: 15,
+          //                 color: Colors.black87,
+          //               ),
+          //             ),
+          //             Icon(
+          //               Icons.arrow_forward_ios,
+          //               size: 16,
+          //               color: Colors.grey.shade600,
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // )),
+          OfficeBranchTile(
+            onTap: () async {
+              await _showBranchSelectorBottomSheet();
+            },
+          ),
+          SizedBox(
+            height: 16,
+          ),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               children: [
-                Text('Services', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),),
+                Text(
+                  'Services',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
               ],
             ),
           ),
-          SizedBox(height: 10,),
+          SizedBox(
+            height: 10,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Obx(() {
@@ -334,7 +350,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
 
               const maxPerRow = 3;
               const spacing = 12.0;
-              const double tileHeight = 120;
+              const double tileHeight = 110;
               const horizontalPadding = 40.0;
 
               final screenWidth = MediaQuery.of(context).size.width;
@@ -361,7 +377,8 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
               // Aspect ratio calculator
               double calcAspect(int count) {
                 final availableWidth = screenWidth - horizontalPadding;
-                final itemWidth = (availableWidth - (count - 1) * spacing) / count;
+                final itemWidth =
+                    (availableWidth - (count - 1) * spacing) / count;
                 return itemWidth / tileHeight;
               }
 
@@ -400,9 +417,6 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
               return Column(children: children);
             }),
           )
-
-
-
         ],
       )),
     );
@@ -410,17 +424,17 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
 }
 
 Widget buildTile(BuildContext context, dynamic item, int index) {
-  const fixedHeight = 120.0;
+  const fixedHeight = 110.0;
   String getImageForService(int id) {
     switch (id) {
       case 1:
-        return 'assets/images/rental.png';         // Local / Disposal
+        return 'assets/images/rental.png'; // Local / Disposal
       case 2:
-        return 'assets/images/airport.png';        // Airport
+        return 'assets/images/airport.png'; // Airport
       case 3:
-        return 'assets/images/outstation.png';     // One Way Outstation
+        return 'assets/images/outstation.png'; // One Way Outstation
       case 4:
-        return 'assets/images/self_drive.png';     // Self Drive
+        return 'assets/images/self_drive.png'; // Self Drive
       default:
         return 'assets/images/rental.png';
     }
@@ -462,7 +476,9 @@ Widget buildTile(BuildContext context, dynamic item, int index) {
           ),
           Text(
             item.run ?? "",
-            style: CommonFonts.blueText1,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF192653),fontFamily: 'Montserrat',
+            ),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -473,7 +489,6 @@ Widget buildTile(BuildContext context, dynamic item, int index) {
   );
 }
 
-
 class TopBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -483,7 +498,8 @@ class TopBanner extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/images/crp_home_banner.png'), // Use your image path here
+              image: AssetImage(
+                  'assets/images/crp_home_banner.png'), // Use your image path here
               fit: BoxFit.cover, // Choose fit as per your layout
             ),
           ),
@@ -503,8 +519,7 @@ class TopBanner extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Row(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           // const CircleAvatar(
@@ -564,19 +579,18 @@ class TopBanner extends StatelessWidget {
                           // ),
                           // const SizedBox(width: 12),
                           Transform.translate(
-                            offset: Offset(0.0, -4.0),
+                            offset: Offset(0.0, -2.0),
                             child: SizedBox(
                               child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   SizedBox(
                                     height: 4,
                                   ),
-                                  SvgPicture.asset(
-                                    'assets/images/wti_logo.svg',
-                                    height: 17,
-                                    width: 15,
+                                  Image.asset(
+                                    'assets/images/wti_crp.png',
+                                    height: 50,
+                                    width: 180,
                                   )
                                   // Text(
                                   //   "Good Morning! Yash",
@@ -638,25 +652,30 @@ class TopBanner extends StatelessWidget {
                           ),
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent, // transparent to show gradient
-                              shadowColor: Colors.transparent, // remove default shadow
+                              backgroundColor: Colors
+                                  .transparent, // transparent to show gradient
+                              shadowColor:
+                                  Colors.transparent, // remove default shadow
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 8),
                             ),
-                            onPressed:   () async{
+                            onPressed: () async {
                               Navigator.of(context).push(
                                 PlatformFlipPageRoute(
                                   builder: (context) => const BottomNavScreen(),
                                 ),
-                              );                            },
+                              );
+                            },
                             child: const Text(
-                              "Personal Cab",
+                              "Home",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
+                                fontFamily: 'Montserrat',
                               ),
                             ),
                           ),
@@ -734,68 +753,53 @@ class TopBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 40),
+              SizedBox(height: 16),
               // Search field
               GestureDetector(
-                onTap: () async {
-                  GoRouter.of(context).push(AppRoutes.cprSelectPickup);
+                onTap: () {
+                  GoRouter.of(context).push(AppRoutes.cprSelectDrop);
                 },
-                child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-                  child: ReadOnlyTextFormField(
-                    controller:
-                    TextEditingController(text: 'Where to?'),
-                    icon: Icons.search,
-                    prefixText: '',
-                    onTap: () {
-                      GoRouter.of(context).push(AppRoutes.cprSelectPickup);
-                    },
-                    // onTap: () {
-                    //   if (placeSearchController
-                    //       .suggestions.isEmpty) {
-                    //     showDialog(
-                    //       context: context,
-                    //       barrierDismissible: false,
-                    //       builder: (_) => const PopupLoader(
-                    //         message: "Go to Search Booking",
-                    //       ),
-                    //     );
-                    //     fetchCurrentLocationAndAddress();
-                    //     GoRouter.of(context)
-                    //         .push(AppRoutes.choosePickup);
-                    //     GoRouter.of(context).pop();
-                    //   } else if (placeSearchController
-                    //       .suggestions.isNotEmpty) {
-                    //     showDialog(
-                    //       context: context,
-                    //       barrierDismissible: false,
-                    //       builder: (_) => const PopupLoader(
-                    //         message: "Go to Search Booking",
-                    //       ),
-                    //     );
-                    //     fetchCurrentLocationAndAddress();
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (context) => const SelectDrop(fromInventoryScreen: false),
-                    //       ),
-                    //     );
-                    //     GoRouter.of(context).pop();
-                    //   } else {
-                    //     showDialog(
-                    //       context: context,
-                    //       barrierDismissible: false,
-                    //       builder: (_) => const PopupLoader(
-                    //         message: "Go to Search Booking",
-                    //       ),
-                    //     );
-                    //     fetchCurrentLocationAndAddress();
-                    //     GoRouter.of(context)
-                    //         .push(AppRoutes.bookingRide);
-                    //     GoRouter.of(context).pop();
-                    //   }
-                    // },
+                child: Container(
+                  width: double.infinity,
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // background #FFFFFF
+                    borderRadius: BorderRadius.circular(35),
+                    // border: Border.all(
+                    //   color: Color(0xFFD9D9D9), // border #D9D9D9
+                    //   width: 1,
+                    // ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFF333333),
+                        size: 20,
+                      ),
+
+                      const SizedBox(width: 8), // gap: 12px
+
+                      Expanded(
+                        child: Text(
+                          "Where to?",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF333333),
+                            fontWeight: FontWeight.w400,
+                            fontFamily: 'Montserrat',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -811,10 +815,9 @@ class TopBanner extends StatelessWidget {
   }
 }
 
-
 class OfficeBranchTile extends StatefulWidget {
- final void Function()? onTap;
-   OfficeBranchTile({super.key, this.onTap});
+  final void Function()? onTap;
+  OfficeBranchTile({super.key, this.onTap});
 
   @override
   State<OfficeBranchTile> createState() => _OfficeBranchTileState();
@@ -822,66 +825,72 @@ class OfficeBranchTile extends StatefulWidget {
 
 class _OfficeBranchTileState extends State<OfficeBranchTile> {
   final CrpBranchListController crpGetBranchListController =
-  Get.put(CrpBranchListController());
+      Get.put(CrpBranchListController());
   @override
   Widget build(BuildContext context) {
-    return Obx(()=> InkWell(
-      splashColor: Colors.white,
-      onTap: crpGetBranchListController.selectedBranchName.value == null ? (){} : widget.onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF), // light bluish background
-          borderRadius: BorderRadius.circular(30), // pill shape [web:8][web:14]
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Left circular icon background
-            Image.asset(
-              'assets/images/city.png',
-              height: 30,
-              width: 30,
+    return Obx(() => InkWell(
+          splashColor: Colors.white,
+          onTap: crpGetBranchListController.selectedBranchName.value == null
+              ? () {}
+              : widget.onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF), // light bluish background
+              borderRadius:
+                  BorderRadius.circular(30), // pill shape [web:8][web:14]
             ),
-            const SizedBox(width: 12),
-            // Texts
-             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Choose Branch',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF373737),
-                    letterSpacing: 0,
-                    fontFamily: 'Montserrat',
-
-                  ),
+                // Left circular icon background
+                Image.asset(
+                  'assets/images/city.png',
+                  height: 30,
+                  width: 30,
                 ),
-                SizedBox(height: 2),
-                Text(crpGetBranchListController.selectedBranchName.value??'Select Location',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF7B7B7B),
-                    letterSpacing: 0,
-                    fontFamily: 'Montserrat',
-
-                  ),
+                const SizedBox(width: 12),
+                // Texts
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Choose Branch',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF373737),
+                        letterSpacing: 0,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      crpGetBranchListController.selectedBranchName.value ??
+                          'Select Location',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7B7B7B),
+                        letterSpacing: 0,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
                 ),
+                Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Color(0xFF1D1B20),
+                  size: 16,
+                  weight: 2.0,
+                )
               ],
             ),
-            Spacer(),
-            Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF1D1B20), size: 16, weight: 2.0,)
-          ],
-        ),
-      ),
-    ));
-
-
+          ),
+        ));
   }
 }

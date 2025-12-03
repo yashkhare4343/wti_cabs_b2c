@@ -20,6 +20,7 @@ import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider
 import '../../../core/model/corporate/crp_payment_method/crp_payment_mode.dart';
 import '../../../core/model/corporate/crp_services/crp_services_response.dart';
 import '../../../core/model/corporate/crp_booking_data/crp_booking_data.dart';
+import '../../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../../core/services/storage_services.dart';
 
 class CprBookingEngine extends StatefulWidget {
@@ -50,6 +51,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     _loadPreselectedRunType();
     _loadSelectedTabIndex();
     runTypesAndPaymentModes();
+    _prefillPickupFromCurrentLocation();
   }
 
   void runTypesAndPaymentModes() async {
@@ -100,6 +102,51 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     'CorpID' : StorageServices.instance.read('crpId'),
     'BranchID' : StorageServices.instance.read('branchId')
   };
+
+  /// Prefill pickup with current location (name + lat/lng) if available.
+  /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
+  Future<void> _prefillPickupFromCurrentLocation() async {
+    try {
+      // If user has already selected a pickup in corporate flow, don't override it.
+      if (crpSelectPickupController.selectedPlace.value != null) return;
+
+      final storage = StorageServices.instance;
+      final sourceTitle = await storage.read('sourceTitle');
+      final sourceLatStr = await storage.read('sourceLat');
+      final sourceLngStr = await storage.read('sourceLng');
+      final sourcePlaceId = await storage.read('sourcePlaceId') ?? '';
+
+      if (sourceTitle == null || sourceLatStr == null || sourceLngStr == null) {
+        return;
+      }
+
+      final lat = double.tryParse(sourceLatStr);
+      final lng = double.tryParse(sourceLngStr);
+      if (lat == null || lng == null) {
+        return;
+      }
+
+      final prefilledPlace = SuggestionPlacesResponse(
+        primaryText: sourceTitle,
+        secondaryText: '',
+        placeId: sourcePlaceId,
+        types: const [],
+        terms: const [],
+        city: '',
+        state: '',
+        country: '',
+        isAirport: false,
+        latitude: lat,
+        longitude: lng,
+        placeName: sourceTitle,
+      );
+
+      crpSelectPickupController.selectedPlace.value = prefilledPlace;
+      crpSelectPickupController.searchController.text = sourceTitle;
+    } catch (_) {
+      // Silently ignore any errors – prefill is best-effort only.
+    }
+  }
 
   Future<void> _loadSelectedTabIndex() async {
     final tabIndexStr = await StorageServices.instance.read('tabIndex');
