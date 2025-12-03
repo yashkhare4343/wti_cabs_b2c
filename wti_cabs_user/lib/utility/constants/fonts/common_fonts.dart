@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../colors/app_colors.dart';
 // Common Fonts Class with Rubik Font
 class CommonFonts {
-  static const String fontFamily = 'Inter';
+  static const String fontFamily = 'Montserrat';
 
   // Base font style
   static TextStyle base({
