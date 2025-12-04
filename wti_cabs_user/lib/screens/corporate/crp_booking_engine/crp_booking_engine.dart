@@ -902,141 +902,139 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   Widget _buildLocationSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFFEFF6FF), // Background light blue as image
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: pickupLocationError != null || dropLocationError != null
               ? Colors.red.shade300
-              : Colors.grey.shade200,
-          width: pickupLocationError != null || dropLocationError != null
-              ? 2
-              : 1.5,
+              : const Color(0xFFD3E3FD),
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Vertical line with icons
+          // Left: vertical blue icon line
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Column(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.mainButtonBg,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.mainButtonBg.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+            padding: const EdgeInsets.only(top: 2),
+            child: SizedBox(
+              width: 28,
+              child: Column(
+                children: [
+                  // Circle with dot (pickup icon)
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2563EB),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.location_on_rounded,
-                    color: Colors.white,
-                    size: 16,
+                  // Vertical line
+                  Container(
+                    width: 3,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB),
+                    ),
                   ),
-                ),
-                Container(
-                  width: 4,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.mainButtonBg.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.mainButtonBg,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.mainButtonBg.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                  // Square end (drop icon)
+                  Container(
+                    width: 15,
+                    height: 15,
+                    padding: EdgeInsets.all(4.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(0.5),
                       ),
-                    ],
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.place_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 16),
-
-          // Text fields
+          // Center: locations fields/text, expanded
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                BookingTextFormField(
-                  hintText: 'Enter Pickup Location',
-                  controller: crpSelectPickupController.searchController,
-                  errorText: pickupLocationError,
+                // Pickup location (filled text style)
+                GestureDetector(
                   onTap: () {
                     setState(() {
                       pickupLocationError = null;
                     });
                     GoRouter.of(context).push(AppRoutes.cprSelectPickup);
                   },
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      crpSelectPickupController.searchController.text.isNotEmpty
+                          ? crpSelectPickupController.searchController.text
+                          : 'Enter Pickup Location',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: crpSelectPickupController.searchController.text.isNotEmpty
+                            ? const Color(0xFF4F4F4F)
+                            : const Color(0xFF4F4F4F),
+                        fontSize: 14,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                BookingTextFormField(
-                  hintText: 'Enter drop location',
-                  controller: crpSelectDropController.searchController,
-                  errorText: dropLocationError,
+                SizedBox(height: 16,),
+                // Drop location (placeholder style unless selected)
+                GestureDetector(
                   onTap: () {
                     setState(() {
                       dropLocationError = null;
                     });
                     GoRouter.of(context).push(AppRoutes.cprSelectDrop);
                   },
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    margin: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      crpSelectDropController.searchController.text.isNotEmpty
+                          ? crpSelectDropController.searchController.text
+                          : 'Enter drop  location',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: crpSelectPickupController.searchController.text.isNotEmpty
+                            ? const Color(0xFF4F4F4F)
+                            : const Color(0xFF4F4F4F),
+                        fontSize: 14,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Plus icon button
-          // Padding(
-          //   padding: const EdgeInsets.only(top: 4),
-          //   child: GestureDetector(
-          //     onTap: () {
-          //       // Handle add location
-          //     },
-          //     child: Container(
-          //       width: 36,
-          //       height: 36,
-          //       decoration: BoxDecoration(
-          //         color: AppColors.mainButtonBg,
-          //         shape: BoxShape.circle,
-          //       ),
-          //       child: const Icon(
-          //         Icons.add,
-          //         color: Colors.white,
-          //         size: 20,
-          //       ),
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
