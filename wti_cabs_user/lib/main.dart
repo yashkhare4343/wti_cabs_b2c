@@ -486,6 +486,9 @@ class _MyAppState extends State<MyApp> {
           title: "WTI Cabs",
           debugShowCheckedModeBanner: false,
           navigatorObservers: [_observer],
+          theme: ThemeData(
+          fontFamily: "Montserrat",
+        ),
         );
       },
     );

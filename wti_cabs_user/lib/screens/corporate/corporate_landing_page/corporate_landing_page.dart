@@ -144,7 +144,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: Container(
-                          height: 48,
+                          height: 40,
                           width: double.infinity,
                           decoration: const BoxDecoration(
                             // subtle gradient similar to screenshot
