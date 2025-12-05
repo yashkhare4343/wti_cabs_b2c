@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
@@ -223,7 +224,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         backgroundColor: Colors.white,
         elevation: 0,
         shadowColor: Colors.black.withOpacity(0.05),
-        leading: IconButton(
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -258,176 +260,89 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               // Booking For
               _buildSectionLabel('Booking Type'),
               const SizedBox(height: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() => bookingTypeError = null);
+                    _showBookingTypeBottomSheet();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(37),
                       border: Border.all(
                         color: bookingTypeError != null
                             ? Colors.red.shade400
-                            : Colors.grey.shade300,
-                        width: bookingTypeError != null ? 2 : 1.5,
+                            : const Color(0xFFE2E2E2),
+                        width: bookingTypeError != null ? 1.5 : 1,
                       ),
-                      boxShadow: bookingTypeError != null
-                          ? [
-                              BoxShadow(
-                                color: Colors.red.shade50,
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedBookingFor,
-                        isExpanded: true,
-                        hint: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.mainButtonBg.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.person_outline_rounded,
-                                color: bookingTypeError != null
-                                    ? Colors.red.shade600
-                                    : AppColors.mainButtonBg,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Select Booking Type',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w400,
-                                color: bookingTypeError != null
-                                    ? Colors.red.shade400
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        selectedItemBuilder: (BuildContext context) {
-                          return bookingForList.map((bookingFor) {
-                            return Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        AppColors.mainButtonBg.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.person_outline_rounded,
-                                    color: bookingTypeError != null
-                                        ? Colors.red.shade600
-                                        : AppColors.mainButtonBg,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    bookingFor,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                      color: bookingTypeError != null
-                                          ? Colors.red.shade700
-                                          : const Color(0xFF1A1A1A),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList();
-                        },
-                        icon: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: bookingTypeError != null
-                              ? Colors.red.shade400
-                              : Colors.grey.shade600,
-                          size: 24,
-                        ),
-                        dropdownColor: Colors.white,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: bookingTypeError != null
-                              ? Colors.red.shade700
-                              : const Color(0xFF1A1A1A),
-                        ),
-                        items: bookingForList.map((bookingFor) {
-                          return DropdownMenuItem<String>(
-                            value: bookingFor,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text(
-                                bookingFor,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? value) {
-                          setState(() {
-                            selectedBookingFor = value;
-                            bookingTypeError = null;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  if (bookingTypeError != null) ...[
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline,
-                              size: 16, color: Colors.red.shade600),
-                          const SizedBox(width: 6),
+                          Container(
+                            height: 24,
+                            width: 24,
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: BoxDecoration(
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/images/booking_type.svg',
+                              width: 20,
+                              height: 20,
+                              color: const Color(0xFF52A6F9),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              bookingTypeError!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade600,
-                                fontWeight: FontWeight.w500,
+                              selectedBookingFor ?? 'Select Booking Type',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF333333),
                               ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
+                          ),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF111111),
+                            size: 20,
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 20),
+                  ),
+                ),
+                if (bookingTypeError != null) ...[
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 16, color: Colors.red.shade600),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            bookingTypeError!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              ]),
+
+              const SizedBox(height: 12),
               // Payment Controller
               Obx(() {
                 if (paymentModeController.isLoading.value) {
@@ -480,81 +395,64 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   children: [
                     _buildSectionLabel('Payment Mode'),
                     const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: hasError
-                              ? Colors.red.shade400
-                              : Colors.grey.shade300,
-                          width: hasError ? 2 : 1.5,
-                        ),
-                        color: Colors.white,
-                        boxShadow: hasError
-                            ? [
-                                BoxShadow(
-                                  color: Colors.red.shade50,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<PaymentModeItem>(
-                          value: paymentModeController.selectedMode.value,
-                          isExpanded: true,
-                          style: TextStyle(
-                            color: hasError
-                                ? Colors.red.shade700
-                                : const Color(0xFF1A1A1A),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          hint: Text(
-                            'Select Payment Mode',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: hasError
-                                  ? Colors.red.shade400
-                                  : Colors.grey.shade600,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          items: list.map((item) {
-                            return DropdownMenuItem(
-                              value: item,
-                              child: Text(
-                                item.mode ?? "",
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          icon: Icon(
-                            Icons.keyboard_arrow_down_rounded,
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => paymentModeError = null);
+                        _showPaymentModeBottomSheet();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(37),
+                          border: Border.all(
                             color: hasError
                                 ? Colors.red.shade400
-                                : Colors.grey.shade600,
-                            size: 24,
+                                : const Color(0xFFE2E2E2),
+                            width: hasError ? 1.5 : 1,
                           ),
-                          onChanged: (value) {
-                            setState(() {
-                              paymentModeError = null;
-                            });
-                            paymentModeController.updateSelected(value);
-                          },
+                          color: Colors.white,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              height: 24,
+                              width: 24,
+                              padding: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                              ),
+                              child: SvgPicture.asset(
+                                'assets/images/payment_mode.svg',
+                                width: 20,
+                                height: 20,
+                                // color: const Color(0xFF52A6F9),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                paymentModeController
+                                        .selectedMode.value?.mode ??
+                                    'Select Payment Mode',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: hasError
+                                      ? Colors.red.shade700
+                                      : const Color(0xFF333333),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFF6B7280),
+                              size: 22,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -584,7 +482,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   ],
                 );
               }),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
               // Gender
               Column(
@@ -595,84 +493,58 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   Obx(() {
                     final hasError =
                         genderError != null && genderError!.isNotEmpty;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: hasError
-                              ? Colors.red.shade400
-                              : Colors.grey.shade300,
-                          width: hasError ? 2 : 1.5,
-                        ),
-                        color: Colors.white,
-                        boxShadow: hasError
-                            ? [
-                                BoxShadow(
-                                  color: Colors.red.shade50,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<GenderModel>(
-                          value: _getValidGenderValue(
-                            controller.selectedGender.value,
-                            controller.genderList,
-                          ),
-                          isExpanded: true,
-                          style: TextStyle(
-                            color: hasError
-                                ? Colors.red.shade700
-                                : const Color(0xFF1A1A1A),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          hint: Text(
-                            'Select Gender',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: hasError
-                                  ? Colors.red.shade400
-                                  : Colors.grey.shade600,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          items: controller.genderList.map((item) {
-                            return DropdownMenuItem<GenderModel>(
-                              value: item,
-                              child: Text(
-                                item.gender ?? "",
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          icon: Icon(
-                            Icons.keyboard_arrow_down_rounded,
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => genderError = null);
+                        _showGenderBottomSheet();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
                             color: hasError
                                 ? Colors.red.shade400
-                                : Colors.grey.shade600,
-                            size: 24,
+                                : const Color(0xFFE2E2E2),
+                            width: hasError ? 1.5 : 1,
                           ),
-                          onChanged: (value) {
-                            setState(() {
-                              genderError = null;
-                            });
-                            controller.selectGender(value);
-                          },
+                          color: Colors.white,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              height: 24,
+                              width: 24,
+                              padding: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                              ),
+                              child: Icon(Icons.person_outline_outlined, size: 20, color: Color(0xFF96C4FA),),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                controller.selectedGender.value?.gender ??
+                                    'Select Gender',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: hasError
+                                      ? Colors.red.shade700
+                                      : const Color(0xFF333333),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFF6B7280),
+                              size: 22,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -703,7 +575,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
               // Car Provider
               Obx(() {
@@ -733,84 +605,63 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   children: [
                     _buildSectionLabel('Car Provider'),
                     const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: hasError
-                              ? Colors.red.shade400
-                              : Colors.grey.shade300,
-                          width: hasError ? 2 : 1.5,
-                        ),
-                        color: Colors.white,
-                        boxShadow: hasError
-                            ? [
-                                BoxShadow(
-                                  color: Colors.red.shade50,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<CarProviderModel>(
-                          value: _getValidCarProviderValue(
-                            carProviderController.selectedCarProvider.value,
-                            list,
-                          ),
-                          isExpanded: true,
-                          style: TextStyle(
-                            color: hasError
-                                ? Colors.red.shade700
-                                : const Color(0xFF1A1A1A),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          hint: Text(
-                            'Select Car Provider',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: hasError
-                                  ? Colors.red.shade400
-                                  : Colors.grey.shade600,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          items: list.map((item) {
-                            return DropdownMenuItem<CarProviderModel>(
-                              value: item,
-                              child: Text(
-                                item.providerName ?? "",
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          icon: Icon(
-                            Icons.keyboard_arrow_down_rounded,
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => carProviderError = null);
+                        _showCarProviderBottomSheet();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
                             color: hasError
                                 ? Colors.red.shade400
-                                : Colors.grey.shade600,
-                            size: 24,
+                                : const Color(0xFFE2E2E2),
+                            width: hasError ? 1.5 : 1,
                           ),
-                          onChanged: (value) {
-                            setState(() {
-                              carProviderError = null;
-                            });
-                            carProviderController.selectCarProvider(value);
-                          },
+                          color: Colors.white,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                              ),
+                              child: Icon(
+                                Icons.directions_car_filled_outlined,
+                                color: hasError
+                                    ? Colors.red.shade600
+                                    : Color(0xFF96C4FA),
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                carProviderController
+                                        .selectedCarProvider.value
+                                        ?.providerName ??
+                                    'Select Car Provider',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: hasError
+                                      ? Colors.red.shade700
+                                      : const Color(0xFF333333),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFF6B7280),
+                              size: 22,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -841,11 +692,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 );
               }),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              Divider(height: 1,color: Color(0xFFE6E6E6),),
+              const SizedBox(height: 20),
+
 
               // Additional Options
               _buildAdditionalOptionsAccordion(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
 
               // View Cabs Button
               _buildViewCabsButton(),
@@ -993,10 +847,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           ? crpSelectPickupController.searchController.text
                           : 'Enter Pickup Location',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: crpSelectPickupController.searchController.text.isNotEmpty
+                        fontWeight: crpSelectPickupController
+                            .searchController.text.isNotEmpty? FontWeight.w600 : FontWeight.w500,
+                        color: crpSelectPickupController
+                            .searchController.text.isNotEmpty
                             ? const Color(0xFF4F4F4F)
-                            : const Color(0xFF4F4F4F),
+                            : Color(0xFFB2B2B2),
                         fontSize: 14,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1004,7 +860,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     ),
                   ),
                 ),
-                SizedBox(height: 16,),
+                SizedBox(
+                  height: 16,
+                ),
                 // Drop location (placeholder style unless selected)
                 GestureDetector(
                   onTap: () {
@@ -1019,12 +877,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     child: Text(
                       crpSelectDropController.searchController.text.isNotEmpty
                           ? crpSelectDropController.searchController.text
-                          : 'Enter drop  location',
+                          : 'Enter drop location',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: crpSelectPickupController.searchController.text.isNotEmpty
+                        fontWeight: crpSelectDropController.searchController.text.isNotEmpty? FontWeight.w600 : FontWeight.w500,
+                        color: crpSelectDropController.searchController.text.isNotEmpty
                             ? const Color(0xFF4F4F4F)
-                            : const Color(0xFF4F4F4F),
+                            : Color(0xFFB2B2B2),
                         fontSize: 14,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1044,24 +902,123 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Pickup Date Section
-        _buildSectionLabel('Pickup Date'),
-        const SizedBox(height: 10),
-        _buildActionButton(
-          icon: Icons.calendar_today_rounded,
-          label: selectedPickupDateTime != null
-              ? _formatDateTime(selectedPickupDateTime!)
-              : 'Select Pickup Date & Time',
-          errorText: pickupDateError,
-          onTap: () {
-            setState(() {
-              pickupDateError = null;
-            });
-            _showCupertinoDateTimePicker(context, isPickup: true);
-          },
+        Row(
+          children: [
+            // Pick Up Date Button
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    pickupDateError = null;
+                  });
+                  _showCupertinoDateTimePicker(context, isPickup: true);
+                },
+                child: Container(
+                  // height: 38,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(36),
+                    border: Border.all(
+                      color: pickupDateError != null
+                          ? Colors.red.shade400
+                          : const Color(0xFF000000),
+                      width: 1.4,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        child: const Icon(Icons.schedule_rounded,
+                            color: Color(0xFF000000), size: 20),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          selectedPickupDateTime != null
+                              ? _formatDateTime(selectedPickupDateTime!)
+                              : 'Pick Up Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: pickupDateError != null
+                                ? Colors.red.shade600
+                                : const Color(0xFF333333),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      const Icon(Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF222222), size: 22)
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Drop Date Button
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    dropDateError = null;
+                  });
+                  _showCupertinoDateTimePicker(context, isPickup: false);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(36),
+                    border: Border.all(
+                      color: pickupDateError != null
+                          ? Colors.red.shade400
+                          : const Color(0xFF000000),
+                      width: 1.4,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        child: const Icon(Icons.schedule_rounded,
+                            color: Color(0xFF000000), size: 20),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          selectedDropDateTime != null
+                              ? _formatDateTime(selectedDropDateTime!)
+                              : 'Drop Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: dropDateError != null
+                                ? Colors.red.shade600
+                                : const Color(0xFF333333),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      const Icon(Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF222222), size: 22)
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+        // Pickup error message
         if (pickupDateError != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Row(
@@ -1082,44 +1039,48 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             ),
           ),
         ],
-        const SizedBox(height: 20),
-        // Drop Date Section
-        _buildSectionLabel('Drop Date'),
-        const SizedBox(height: 10),
-        _buildActionButton(
-          icon: Icons.calendar_today_rounded,
-          label: selectedDropDateTime != null
-              ? _formatDateTime(selectedDropDateTime!)
-              : 'Select Drop Date & Time',
-          errorText: dropDateError,
-          onTap: () {
-            setState(() {
-              dropDateError = null;
-            });
-            _showCupertinoDateTimePicker(context, isPickup: false);
-          },
-        ),
+        // Drop error message
         if (dropDateError != null) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Row(
-              children: [
-                Icon(Icons.error_outline, size: 16, color: Colors.red.shade600),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    dropDateError!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.red.shade600,
-                      fontWeight: FontWeight.w500,
+          const SizedBox(height: 20),
+          // Drop Date Section
+          _buildSectionLabel('Drop Date'),
+          const SizedBox(height: 10),
+          _buildActionButton(
+            icon: Icons.calendar_today_rounded,
+            label: selectedDropDateTime != null
+                ? _formatDateTime(selectedDropDateTime!)
+                : 'Select Drop Date & Time',
+            errorText: dropDateError,
+            onTap: () {
+              setState(() {
+                dropDateError = null;
+              });
+              _showCupertinoDateTimePicker(context, isPickup: false);
+            },
+          ),
+          if (dropDateError != null) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline,
+                      size: 16, color: Colors.red.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      dropDateError!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ],
     );
@@ -1134,6 +1095,225 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         color: Color(0xFF1A1A1A),
         letterSpacing: -0.3,
       ),
+    );
+  }
+
+  void _showBookingTypeBottomSheet() {
+    showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Text(
+                  'Select Booking Type',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ...bookingForList.map(
+                (bookingFor) => ListTile(
+                  title: Text(bookingFor),
+                  trailing: selectedBookingFor == bookingFor
+                      ? const Icon(Icons.check, color: AppColors.mainButtonBg)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      selectedBookingFor = bookingFor;
+                      bookingTypeError = null;
+                    });
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPaymentModeBottomSheet() {
+    final list = paymentModeController.modes;
+    showModalBottomSheet<PaymentModeItem>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Text(
+                  'Select Payment Mode',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    final isSelected =
+                        paymentModeController.selectedMode.value == item;
+                    return ListTile(
+                      title: Text(item.mode ?? ''),
+                      trailing: isSelected
+                          ? const Icon(Icons.check,
+                              color: AppColors.mainButtonBg)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          paymentModeError = null;
+                        });
+                        paymentModeController.updateSelected(item);
+                        Navigator.of(ctx).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showGenderBottomSheet() {
+    final list = controller.genderList;
+    showModalBottomSheet<GenderModel>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Text(
+                  'Select Gender',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    final isSelected =
+                        controller.selectedGender.value == item;
+                    return ListTile(
+                      title: Text(item.gender ?? ''),
+                      trailing: isSelected
+                          ? const Icon(Icons.check,
+                              color: AppColors.mainButtonBg)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          genderError = null;
+                        });
+                        controller.selectGender(item);
+                        Navigator.of(ctx).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCarProviderBottomSheet() {
+    final list = carProviderController.carProviderList;
+    showModalBottomSheet<CarProviderModel>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Text(
+                  'Select Car Provider',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    final isSelected =
+                        carProviderController.selectedCarProvider.value ==
+                            item;
+                    return ListTile(
+                      title: Text(item.providerName ?? ''),
+                      trailing: isSelected
+                          ? const Icon(Icons.check,
+                              color: AppColors.mainButtonBg)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          carProviderError = null;
+                        });
+                        carProviderController.selectCarProvider(item);
+                        Navigator.of(ctx).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1203,9 +1383,13 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         children: [
                           Row(
                             children: [
-                              Text('Pick Up Type', style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w600,color: Color(0xFF7B7B7B)
-                              ),),
+                              Text(
+                                'Pick Up Type',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF7B7B7B)),
+                              ),
                             ],
                           ),
                           // SizedBox(height: 4,),
@@ -1218,7 +1402,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                   fontWeight: FontWeight.w600,
                                   color: hasError
                                       ? Colors.red.shade700
-                                      : const Color(0xFF585858), // Dark gray, bold
+                                      : const Color(
+                                          0xFF585858), // Dark gray, bold
                                 ),
                               ),
                             ],
@@ -1342,20 +1527,26 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text('Pick Up Type', style: TextStyle(
-                                            fontSize: 10, fontWeight: FontWeight.w600,color: Color(0xFF7B7B7B)
-                                        ),),
+                                        Text(
+                                          'Pick Up Type',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF7B7B7B)),
+                                        ),
                                       ],
                                     ),
                                     // SizedBox(height: 4,),
                                     Row(
                                       children: [
                                         Text(
-                                          selectedPickupType ?? 'Select Pick Up Type',
+                                          selectedPickupType ??
+                                              'Select Pick Up Type',
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF585858), // Dark gray, bold
+                                            color: const Color(
+                                                0xFF585858), // Dark gray, bold
                                           ),
                                         ),
                                       ],
@@ -1366,7 +1557,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                             ),
                           ),
                           // Chevron icon
-                          Icon(Icons.keyboard_arrow_up_rounded, color: const Color(0xFF333333), // Dark gray
+                          Icon(
+                            Icons.keyboard_arrow_up_rounded,
+                            color: const Color(0xFF333333), // Dark gray
                             size: 24,
                           ),
                         ],
@@ -1694,15 +1887,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         children: [
@@ -1714,30 +1898,23 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.mainButtonBg.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
                     child: Icon(
-                      Icons.tune_rounded,
-                      color: AppColors.mainButtonBg,
+                      Icons.add,
+                      color: Color(0xFFC1C1C1),
                       size: 22,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 20),
                   const Expanded(
                     child: Text(
                       'Additional Options',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                        letterSpacing: -0.3,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF696972),
                       ),
                     ),
                   ),
@@ -1758,7 +1935,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           if (isAdditionalOptionsExpanded)
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1769,126 +1945,118 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     decoration: InputDecoration(
                       hintText: 'Reference Number',
                       hintStyle: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: Colors.grey.shade500,
+                        color: Color(0xFF333333),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+                          horizontal: 20, vertical: 17),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: AppColors.mainButtonBg, width: 2),
+                        BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF333333),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Cost Code Field
+                  // Cost Code Field (same UI as Reference Number)
                   TextFormField(
                     controller: costCodeController,
                     decoration: InputDecoration(
                       hintText: 'Cost Code',
-                      hintStyle: TextStyle(
-                        fontSize: 15,
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: Colors.grey.shade500,
+                        color: Color(0xFF333333),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+                          horizontal: 20, vertical: 17),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: AppColors.mainButtonBg, width: 2),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF333333),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Flight Details Field
+                  // Flight Details Field (same UI as Reference Number)
                   TextFormField(
                     controller: flightDetailsController,
                     decoration: InputDecoration(
                       hintText: 'Flight Details',
-                      hintStyle: TextStyle(
-                        fontSize: 15,
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: Colors.grey.shade500,
+                        color: Color(0xFF333333),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+                          horizontal: 20, vertical: 17),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: AppColors.mainButtonBg, width: 2),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF333333),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Special Instruction Field
+                  // Special Instruction Field (same UI as Reference Number, multi-line)
                   TextFormField(
                     controller: specialInstructionController,
                     maxLines: 3,
                     decoration: InputDecoration(
                       hintText: 'Special Instruction',
-                      hintStyle: TextStyle(
-                        fontSize: 15,
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: Colors.grey.shade500,
+                        color: Color(0xFF333333),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 18),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+                          horizontal: 20, vertical: 17),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: AppColors.mainButtonBg, width: 2),
+                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF333333),
                     ),
                   ),
                 ],
@@ -1943,25 +2111,16 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   Widget _buildViewCabsButton() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.mainButtonBg.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: ElevatedButton(
         onPressed: () {
           _validateAndProceed();
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.mainButtonBg,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          backgroundColor: const Color(0xFF4082F1),
+          padding: const EdgeInsets.only(top: 14, right: 16, bottom: 14, left: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(39),
+            side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
           ),
           elevation: 0,
         ),
@@ -1975,19 +2134,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                color: Colors.white,
-                size: 20,
               ),
             ),
           ],
