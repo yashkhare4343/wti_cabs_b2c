@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -18,7 +19,7 @@ import '../../../core/services/storage_services.dart';
 
 class CrpInventory extends StatefulWidget {
   final Map<String, dynamic>? bookingData;
-  
+
   const CrpInventory({super.key, this.bookingData});
 
   @override
@@ -26,7 +27,8 @@ class CrpInventory extends StatefulWidget {
 }
 
 class _CrpInventoryState extends State<CrpInventory> {
-  final CrpInventoryListController crpInventoryListController = Get.put(CrpInventoryListController());
+  final CrpInventoryListController crpInventoryListController =
+      Get.put(CrpInventoryListController());
   bool isLoading = false;
   final controller = Get.put(CrpInventoryListController());
 
@@ -35,7 +37,7 @@ class _CrpInventoryState extends State<CrpInventory> {
   @override
   void initState() {
     super.initState();
-    fetchCardModel();    // TODO: Initialize inventory data
+    fetchCardModel(); // TODO: Initialize inventory data
   }
 
   Future<void> fetchParameter() async {
@@ -46,20 +48,17 @@ class _CrpInventoryState extends State<CrpInventory> {
     branchId = await StorageServices.instance.read('branchId');
   }
 
-  void fetchCardModel()async{
+  void fetchCardModel() async {
     await fetchParameter();
     final Map<String, dynamic> params = {
-      'token' : token,
-      'user' : user,
+      'token': token,
+      'user': user,
       'CorpID': corpId,
       'BranchID': branchId,
       'RunTypeID': 1
     };
-   await controller.fetchCarModels(params, context);
-
-
+    await controller.fetchCarModels(params, context);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -73,19 +72,26 @@ class _CrpInventoryState extends State<CrpInventory> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBgPrimary1,
-      body: SafeArea(
-        child: _BookingBody(bookingData: parsedBookingData),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          GoRouter.of(context).go(AppRoutes.cprBookingEngine);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBgPrimary1,
+        body: SafeArea(
+          child: _BookingBody(bookingData: parsedBookingData),
+        ),
       ),
     );
   }
 }
 
-
 class _BookingBody extends StatefulWidget {
   final CrpBookingData? bookingData;
-  
+
   const _BookingBody({super.key, this.bookingData});
 
   @override
@@ -112,20 +118,24 @@ class _BookingBodyState extends State<_BookingBody> {
       final dropLat = widget.bookingData!.dropPlace?.latitude;
       final dropLng = widget.bookingData!.dropPlace?.longitude;
 
-      if (pickupLat != null && pickupLng != null && dropLat != null && dropLng != null) {
+      if (pickupLat != null &&
+          pickupLng != null &&
+          dropLat != null &&
+          dropLng != null) {
         // Calculate center point
         final centerLat = (pickupLat + dropLat) / 2;
         final centerLng = (pickupLng + dropLng) / 2;
-        
+
         // Calculate zoom level based on distance
-        final distance = _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
-        double zoom = 13.0;
+        final distance =
+            _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
+        double zoom = 6.0;
         if (distance > 100) {
-          zoom = 10.0;
+          zoom = 6.0;
         } else if (distance > 50) {
-          zoom = 11.0;
+          zoom = 6.0;
         } else if (distance > 20) {
-          zoom = 12.0;
+          zoom = 6.0;
         }
 
         return CameraPosition(
@@ -134,24 +144,27 @@ class _BookingBodyState extends State<_BookingBody> {
         );
       }
     }
-    
+
     // Default position
     return const CameraPosition(
       target: LatLng(28.5562, 77.1000), // IGI example
-      zoom: 13,
+      zoom: 8,
     );
   }
 
-  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+  double _calculateDistance(
+      double lat1, double lng1, double lat2, double lng2) {
     const double earthRadius = 6371; // km
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
-    
+
     final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
-        math.sin(dLng / 2) * math.sin(dLng / 2);
+        math.cos(_toRadians(lat1)) *
+            math.cos(_toRadians(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
     final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    
+
     return earthRadius * c;
   }
 
@@ -173,12 +186,13 @@ class _BookingBodyState extends State<_BookingBody> {
 
     // Create a control point offset perpendicular to the line
     // This creates an arc above the straight line
-    final bearing = _calculateBearing(start.latitude, start.longitude, end.latitude, end.longitude);
+    final bearing = _calculateBearing(
+        start.latitude, start.longitude, end.latitude, end.longitude);
     final perpendicularBearing = bearing + 90; // 90 degrees perpendicular
-    
+
     // Calculate offset distance (curve height) - adjust based on total distance
     final offsetDistance = distance * 0.1; // 10% of distance as curve height
-    
+
     // Calculate control point using bearing and offset
     final controlPoint = _destinationPoint(
       midLat,
@@ -190,13 +204,13 @@ class _BookingBodyState extends State<_BookingBody> {
     // Generate points along the quadratic bezier curve
     final points = <LatLng>[];
     const numPoints = 50; // Number of points for smooth curve
-    
+
     for (int i = 0; i <= numPoints; i++) {
       final t = i / numPoints;
       final point = _quadraticBezier(start, controlPoint, end, t);
       points.add(point);
     }
-    
+
     return points;
   }
 
@@ -205,11 +219,11 @@ class _BookingBodyState extends State<_BookingBody> {
     final dLng = _toRadians(lng2 - lng1);
     final lat1Rad = _toRadians(lat1);
     final lat2Rad = _toRadians(lat2);
-    
+
     final y = math.sin(dLng) * math.cos(lat2Rad);
     final x = math.cos(lat1Rad) * math.sin(lat2Rad) -
         math.sin(lat1Rad) * math.cos(lat2Rad) * math.cos(dLng);
-    
+
     final bearing = math.atan2(y, x);
     return _toDegrees(bearing);
   }
@@ -217,23 +231,25 @@ class _BookingBodyState extends State<_BookingBody> {
   double _toDegrees(double radians) => radians * (180.0 / math.pi);
 
   /// Calculate destination point given start point, bearing, and distance
-  LatLng _destinationPoint(double lat, double lng, double bearing, double distance) {
+  LatLng _destinationPoint(
+      double lat, double lng, double bearing, double distance) {
     const earthRadius = 6371.0; // km
     final latRad = _toRadians(lat);
     final lngRad = _toRadians(lng);
     final bearingRad = _toRadians(bearing);
     final angularDistance = distance / earthRadius;
-    
+
     final newLat = math.asin(
       math.sin(latRad) * math.cos(angularDistance) +
-      math.cos(latRad) * math.sin(angularDistance) * math.cos(bearingRad),
+          math.cos(latRad) * math.sin(angularDistance) * math.cos(bearingRad),
     );
-    
-    final newLng = lngRad + math.atan2(
-      math.sin(bearingRad) * math.sin(angularDistance) * math.cos(latRad),
-      math.cos(angularDistance) - math.sin(latRad) * math.sin(newLat),
-    );
-    
+
+    final newLng = lngRad +
+        math.atan2(
+          math.sin(bearingRad) * math.sin(angularDistance) * math.cos(latRad),
+          math.cos(angularDistance) - math.sin(latRad) * math.sin(newLat),
+        );
+
     return LatLng(_toDegrees(newLat), _toDegrees(newLng));
   }
 
@@ -272,12 +288,12 @@ class _BookingBodyState extends State<_BookingBody> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
           final route = data['routes'][0];
           final overviewPolyline = route['overview_polyline'];
           final encodedPolyline = overviewPolyline['points'] as String;
-          
+
           // Decode the polyline
           final decodedPoints = _decodePolyline(encodedPolyline);
           return decodedPoints;
@@ -357,7 +373,8 @@ class _BookingBodyState extends State<_BookingBody> {
           Marker(
             markerId: const MarkerId('pickup'),
             position: LatLng(pickupPlace!.latitude!, pickupPlace.longitude!),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueGreen),
             infoWindow: InfoWindow(
               title: 'Pickup',
               snippet: pickupPlace.primaryText,
@@ -372,7 +389,8 @@ class _BookingBodyState extends State<_BookingBody> {
           Marker(
             markerId: const MarkerId('drop'),
             position: LatLng(dropPlace!.latitude!, dropPlace.longitude!),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             infoWindow: InfoWindow(
               title: 'Drop',
               snippet: dropPlace.primaryText,
@@ -402,10 +420,11 @@ class _BookingBodyState extends State<_BookingBody> {
 
       // If we got route points from Directions API, use them
       // Otherwise, fall back to straight line
-      final pointsToUse = routePoints ?? [
-        LatLng(pickupPlace.latitude!, pickupPlace.longitude!),
-        LatLng(dropPlace.latitude!, dropPlace.longitude!),
-      ];
+      final pointsToUse = routePoints ??
+          [
+            LatLng(pickupPlace.latitude!, pickupPlace.longitude!),
+            LatLng(dropPlace.latitude!, dropPlace.longitude!),
+          ];
 
       // Update polyline with the route points
       setState(() {
@@ -415,7 +434,8 @@ class _BookingBodyState extends State<_BookingBody> {
             points: pointsToUse,
             color: Color(0xFF2B64E5), // Bright blue color for visibility
             width: 5, // Increased width for better visibility
-            geodesic: routePoints != null, // Use geodesic for actual route, false for straight line
+            geodesic: routePoints !=
+                null, // Use geodesic for actual route, false for straight line
           ),
         );
       });
@@ -473,7 +493,7 @@ class _BookingBodyState extends State<_BookingBody> {
         Column(
           children: [
             SizedBox(
-              height: 300,
+              height: 350,
               child: GoogleMap(
                 initialCameraPosition: _initialCameraPosition,
                 style: '''[
@@ -670,16 +690,18 @@ class _BookingBodyState extends State<_BookingBody> {
           ],
         ),
         SizedBox(
-          height: 83,
-            child: _RouteCard(bookingData: widget.bookingData)),
-
+            height: 146, child: _RouteCard(bookingData: widget.bookingData)),
+        // SizedBox(
+        //   height: 192,
+        //     child: TripContainer()),
       ],
     );
   }
 }
+
 class _RouteCard extends StatelessWidget {
   final CrpBookingData? bookingData;
-  
+
   const _RouteCard({this.bookingData});
 
   String _formatDateTime(DateTime? dateTime) {
@@ -691,15 +713,43 @@ class _RouteCard extends StatelessWidget {
     if (bookingData == null) {
       return 'Please select pickup and drop locations';
     }
-    
+
     final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
     final drop = bookingData!.dropPlace?.primaryText ?? 'Drop location';
-    
+
     // Truncate if too long
-    String pickupText = pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
+    String pickupText =
+        pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
     String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
-    
+
     return '$pickupText to $dropText';
+  }
+
+  String _getPickupRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+
+    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+
+    // Truncate if too long
+    String pickupText =
+        pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
+
+    return '$pickupText';
+  }
+
+  String _getDropRouteText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+
+    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+
+    // Truncate if too long
+    String dropText = drop.length > 30 ? '${drop.substring(0, 30)}..' : drop;
+
+    return '$dropText';
   }
 
   String _getPickupTypeText() {
@@ -713,80 +763,155 @@ class _RouteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 16, left: 14, right: 14),
-      child: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.only(top: 14, right: 14, left:14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000), // #00000040
+            offset: Offset(0, 0.2), // matches 0px 1px
+            blurRadius: 8, // matches 3px
+            spreadRadius: 0, // matches 0px
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // From -> To row
-              Row(
-                children: [
-                  const Icon(Icons.arrow_back, size: 16, color: Colors.black87),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _getRouteText(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
-                ],
+        ],
+      ),
+
+      // Ensures all child corners are clipped properly
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          children: [
+            /// TOP CARD
+            Container(
+              padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 24.0),
-                child: Row(
-                  children: [
-                    Text(
-                      _formatDateTime(bookingData?.pickupDateTime),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    if (_getPickupTypeText().isNotEmpty) ...[
-                      SizedBox(width: 8,),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE3F2FD),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          _getPickupTypeText(),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1E88E5),
-                          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                InkWell(
+                                    onTap: () {
+                                      GoRouter.of(context).pop();
+                                    },
+                                    child: SvgPicture.asset(
+                                        'assets/images/back.svg',
+                                        width: 18,
+                                        height: 18)),
+                                const SizedBox(width: 16),
+                                SvgPicture.asset('assets/images/pick.svg',
+                                    width: 16, height: 16),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _getPickupRouteText(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 28),
+                              child: const Divider(
+                                height: 1,
+                                color: Color(0xFFE2E2E2),
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 34.0),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset('assets/images/drop.svg',
+                                      width: 20, height: 16),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _getDropRouteText(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ],
+                  ),
+                ],
+              ),
+            ),
+
+            /// WHITE SPACER
+            Container(height: 10, color: Colors.white),
+
+            /// BOTTOM SECTION
+            Container(
+              padding: const EdgeInsets.only(
+                  left: 48, top: 10, bottom: 10, right: 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
                 ),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDateTime(bookingData?.pickupDateTime),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF717171),
+                    ),
+                  ),
+                  if (_getPickupTypeText().isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      child: Text(
+                        _getPickupTypeText(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4082F1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
 class _VehicleSection extends StatefulWidget {
   final CrpBookingData? bookingData;
-  
+
   const _VehicleSection({this.bookingData});
 
   @override
@@ -795,25 +920,91 @@ class _VehicleSection extends StatefulWidget {
 
 class _VehicleSectionState extends State<_VehicleSection> {
   final controller = Get.put(CrpInventoryListController());
+  String? selectedCategory;
+
+  /// Extracts category from carType string like "Tata Indiaca[Economy]" -> "Economy"
+  String? _extractCategory(String? carType) {
+    if (carType == null || carType.isEmpty) return null;
+    final match = RegExp(r'\[([^\]]+)\]').firstMatch(carType);
+    return match?.group(1);
+  }
+
+  /// Gets unique categories from all models
+  List<String> _getCategories() {
+    final categories = <String>{};
+    for (var model in controller.models) {
+      final category = _extractCategory(model.carType);
+      if (category != null && category.isNotEmpty) {
+        categories.add(category);
+      }
+    }
+    final sortedCategories = categories.toList()..sort();
+    return ['All', ...sortedCategories];
+  }
+
+  /// Filters models based on selected category
+  List<CrpCarModel> _getFilteredModels() {
+    if (selectedCategory == null || selectedCategory == 'All') {
+      return controller.models;
+    }
+    return controller.models.where((model) {
+      final category = _extractCategory(model.carType);
+      return category == selectedCategory;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-
     return Obx(() {
       if (controller.isLoading.value) {
         return const _InventoryShimmer();
       }
 
+      final categories = _getCategories();
+
+      // Initialize selected category to 'All' on first load
+      if (selectedCategory == null && categories.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              selectedCategory = 'All';
+            });
+          }
+        });
+      }
+
+      final filteredModels = _getFilteredModels();
+
       return Container(
-        color: Colors.white,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x402B64E5),
+              offset: Offset(0, 1),
+              blurRadius: 3,
+            ),
+          ],
+        ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            _VehicleFilterChips(),
+            const SizedBox(height: 14),
+            _VehicleFilterTabs(
+              categories: categories,
+              selectedCategory: selectedCategory ?? 'All',
+              onCategorySelected: (category) {
+                setState(() {
+                  selectedCategory = category;
+                });
+              },
+            ),
             const SizedBox(height: 8),
-            const Divider(height: 1),
             Expanded(
-              child: controller.models.isEmpty
+              child: filteredModels.isEmpty
                   ? const Center(
                       child: Text(
                         'No vehicles available',
@@ -826,12 +1017,11 @@ class _VehicleSectionState extends State<_VehicleSection> {
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
-                      itemCount: controller.models.length,
-                      itemBuilder: (_, index) =>
-                          _VehicleCard(
-                            model: controller.models[index],
-                            bookingData: widget.bookingData,
-                          ),
+                      itemCount: filteredModels.length,
+                      itemBuilder: (_, index) => _VehicleCard(
+                        model: filteredModels[index],
+                        bookingData: widget.bookingData,
+                      ),
                     ),
             ),
           ],
@@ -841,44 +1031,48 @@ class _VehicleSectionState extends State<_VehicleSection> {
   }
 }
 
-class _VehicleFilterChips extends StatefulWidget {
-  @override
-  State<_VehicleFilterChips> createState() => _VehicleFilterChipsState();
-}
+class _VehicleFilterTabs extends StatelessWidget {
+  final List<String> categories;
+  final String selectedCategory;
+  final Function(String) onCategorySelected;
 
-class _VehicleFilterChipsState extends State<_VehicleFilterChips> {
-  String selected = 'Sedan';
-  final options = ['All', 'Sedan', 'Hatchback', 'SUV'];
+  const _VehicleFilterTabs({
+    required this.categories,
+    required this.selectedCategory,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return SizedBox(
-      height: 40,
+      height: 22,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: options.length,
+        itemCount: categories.length,
         itemBuilder: (_, i) {
-          final isSelected = options[i] == selected;
+          final category = categories[i];
+          final isSelected = category == selectedCategory;
           return GestureDetector(
-            onTap: () => setState(() => selected = options[i]),
+            onTap: () => onCategorySelected(category),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF424242) : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isSelected ? Colors.transparent : Colors.grey.shade300,
-                ),
+                color: isSelected ? const Color(0xFF2B64E5) : Color(0xFFE2E2E2),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                options[i],
+                category,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.black87,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : Colors.black,
                 ),
               ),
             ),
@@ -898,83 +1092,82 @@ class _VehicleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        GoRouter.of(context).push(
-          AppRoutes.cprBookingConfirmation,
-          extra: {
-            'carModel': model.toJson(),
-            'bookingData': bookingData?.toJson(),
-          },
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-        children: [
-          // Car image
-          Container(
-            width: 72,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/outstation.png',
-              fit: BoxFit.contain,
-            ),
+        onTap: () {
+          GoRouter.of(context).push(
+            AppRoutes.cprBookingConfirmation,
+            extra: {
+              'carModel': model.toJson(),
+              'bookingData': bookingData?.toJson(),
+            },
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0x402B64E5), // #2B64E540
+                offset: const Offset(0, 1), // 0px 1px
+                blurRadius: 3, // 3px blur
+                spreadRadius: 0, // 0px spread
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Text details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  model.carType ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+          child: Row(
+            children: [
+              // Car image
+              Container(
+                width: 71,
+                height: 71,
+                child: Image.asset(
+                  'assets/images/outstation.png',
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 4),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              // Text details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    const Text('4', style: TextStyle(fontSize: 11)),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.luggage_outlined, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    const Text('2', style: TextStyle(fontSize: 11)),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    const Text('2 hrs', style: TextStyle(fontSize: 11)),
+                    Text(
+                      model.carType ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF373737)),
+                    ),
+                    const SizedBox(height: 8),
+                    // Row(
+                    //   children: [
+                    //     SvgPicture.asset('assets/images/passenger.svg', width: 16, height: 16,),
+                    //     const SizedBox(width: 4),
+                    //     const Text('4', style: TextStyle(fontSize: 11)),
+                    //     const SizedBox(width: 8),
+                    //     Container(width: 9, height: 9, decoration: BoxDecoration(
+                    //       color: Color(0xFF949494)
+                    //     ),),
+                    //     const SizedBox(width: 8),
+                    //     const Icon(Icons.luggage_outlined, size: 14, color: Colors.grey),
+                    //     const SizedBox(width: 4),
+                    //     const Text('2', style: TextStyle(fontSize: 11)),
+                    //     const SizedBox(width: 10),
+                    //     const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    //     const SizedBox(width: 4),
+                    //     const Text('2 hrs', style: TextStyle(fontSize: 11)),
+                    //   ],
+                    // ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-      )
-    );
+        ));
   }
 }
 
@@ -991,7 +1184,7 @@ class _InventoryShimmer extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 12),
-            // Fake filter chips row
+            // Fake filter tabs row
             SizedBox(
               height: 40,
               child: ListView.separated(
@@ -1032,3 +1225,151 @@ class _InventoryShimmer extends StatelessWidget {
   }
 }
 
+class TripContainer extends StatelessWidget {
+  final CrpBookingData? bookingData;
+  const TripContainer({super.key, this.bookingData});
+
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
+  }
+
+  String _getPickupRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+
+    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+
+    // Truncate if too long
+    String pickupText =
+        pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
+
+    return '$pickupText';
+  }
+
+  String _getDropRouteText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+
+    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+
+    // Truncate if too long
+    String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
+
+    return '$dropText';
+  }
+
+  String _getPickupTypeText() {
+    if (bookingData == null || bookingData!.pickupType == null) {
+      return '';
+    }
+    return bookingData!.pickupType ?? '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ), // rounded + elevation-like shadow [web:12][web:13]
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {},
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.radio_button_checked,
+                  color: Colors.blue, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getPickupRouteText(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              SizedBox(width: 40),
+              Icon(Icons.location_on, color: Colors.blue, size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getDropRouteText(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7FB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _formatDateTime(bookingData?.pickupDateTime),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    foregroundColor: Colors.blue,
+                  ), // rounded pill button [web:5][web:26]
+                  onPressed: () {},
+                  child: Text(
+                    _getPickupTypeText(),
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

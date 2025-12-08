@@ -193,18 +193,18 @@ class _CprLoginState extends State<CprLogin> {
                        onTap: () async{
                          FocusScope.of(context).unfocus();
                          // your sign in action
-                         // final Map<String, dynamic> params = {
-                         //   "password": passwordController.text.trim(),
-                         //   "android_gcm": "", // replace with actual GCM token if available
-                         //   "ios_token": "",   // replace with actual iOS token if available
-                         //   "email": emailController.text.trim(), // decoded %40 → @
-                         // };
                          final Map<String, dynamic> params = {
-                           "password": 'Test@123',
+                           "password": passwordController.text.trim(),
                            "android_gcm": "", // replace with actual GCM token if available
                            "ios_token": "",   // replace with actual iOS token if available
-                           "email": 'developer14@aaveg.co.in', // decoded %40 → @
+                           "email": emailController.text.trim(), // decoded %40 → @
                          };
+                         // final Map<String, dynamic> params = {
+                         //   "password": 'Test@123',
+                         //   "android_gcm": "", // replace with actual GCM token if available
+                         //   "ios_token": "",   // replace with actual iOS token if available
+                         //   "email": 'developer14@aaveg.co.in', // decoded %40 → @
+                         // };
                          await StorageServices.instance.save('email', emailController.text.trim());
                          _validateAndSubmit(params);
                        },

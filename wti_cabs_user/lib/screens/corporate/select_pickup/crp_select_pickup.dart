@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
+import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
+
+import '../../../core/route_management/app_routes.dart';
 
 class CrpSelectPickupScreen extends StatefulWidget {
   const CrpSelectPickupScreen({super.key});
@@ -343,13 +348,33 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
   Future<void> _handlePlaceSelection(
       BuildContext context, SuggestionPlacesResponse place) async {
     // Fetch place details and store lat/lng
+    FocusScope.of(context).unfocus();
+
     await controller.selectPlace(place);
     
     // Get the updated place with lat/lng
     final updatedPlace = controller.selectedPlace.value ?? place;
-
-    // Return to previous screen with data
-    Navigator.pop(context, updatedPlace);
+    
+    // Get drop controller to access drop place (use findOrPut to be safe)
+    CrpSelectDropController? dropController;
+    try {
+      dropController = Get.find<CrpSelectDropController>();
+    } catch (e) {
+      // Controller not found, will use null for drop place
+      dropController = null;
+    }
+    
+    // Build booking data with both places
+    final bookingData = CrpBookingData(
+      pickupPlace: updatedPlace,
+      dropPlace: dropController?.selectedPlace.value,
+      // Other fields will be null, but inventory screen can handle partial data
+    );
+    
+    // Navigate to inventory screen with booking data
+    GoRouter.of(context).push(
+      AppRoutes.cprBookingEngine,
+    );
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -97,7 +98,7 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvoked: (didPop) {
         if (!didPop) {
           Navigator.push(
@@ -117,23 +118,22 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.scaffoldBgPrimary1,
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.only(
-                top: 12.0, left: 12.0, right: 12.0, bottom: 70),
+                top: 12.0, left: 20.0, right: 20.0, bottom: 70),
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _BookingTopBar(
-                    bookingData: widget.bookingData,
-                  ),
+                  SizedBox(
+                      child: RouteCard(bookingData: widget.bookingData)),
                   const SizedBox(height: 16),
                   _CarDetailsCard(
                     carModel: widget.selectedCar,
                   ),
-                  const SizedBox(height: 16),
-                  _InclusionsExclusionsCard(),
+                  // const SizedBox(height: 16),
+                  // _InclusionsExclusionsCard(),
                   const SizedBox(height: 16),
                   _TravelerDetailsForm(
                     formKey: formKey,
@@ -305,68 +305,29 @@ class _BookingTopBar extends StatelessWidget {
 class _CarDetailsCard extends StatelessWidget {
   final CrpCarModel? carModel;
 
-  const _CarDetailsCard({this.carModel});
+  const _CarDetailsCard({super.key, this.carModel});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: AppColors.greyBorder1, width: 1),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 0.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000), // #00000040
+            offset: Offset(0, 1),     // 0px 1px
+            blurRadius: 3,            // 3px
+            spreadRadius: 0,          // 0px
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Car image
-            Transform.translate(
-              offset: const Offset(0, -5),
-              child: Column(
-                children: [
-                  Container(
-                    width: 70,
-                    height: 45,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Image.asset(
-                      'assets/images/inventory_car.png',
-                      width: 70,
-                      height: 45,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE3F2FD),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      minimumSize: Size.zero,
-                      side: const BorderSide(color: Colors.transparent, width: 1),
-                      foregroundColor: const Color(0xFF1565C0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    onPressed: () {},
-                    child: Text(
-                      carModel?.carType ?? 'Sedan',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+            // Left content: title + icons/text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,43 +335,88 @@ class _CarDetailsCard extends StatelessWidget {
                   Text(
                     carModel?.carType ?? 'Suzuki Dzire',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: Color(0xFF373737),
                     ),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      const Text(
-                        '4',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.luggage_outlined, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      const Text(
-                        '2',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      const Text(
-                        '2 hrs',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 10),
+
+                  // Row(
+                  //   children: [
+                  //     _IconText(
+                  //       icon: Icons.people_alt_outlined,
+                  //       value: '4',
+                  //     ),
+                  //     const SizedBox(width: 12),
+                  //
+                  //     _IconText(
+                  //       icon: Icons.luggage_outlined,
+                  //       value: '2',
+                  //     ),
+                  //     const SizedBox(width: 12),
+                  //
+                  //     _IconText(
+                  //       icon: Icons.access_time_rounded,
+                  //       value: '2 hrs',
+                  //     ),
+                  //   ],
+                  // ),
                 ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Right: car image
+            SizedBox(
+              height: 70,
+              width: 120,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Image.asset(
+                  'assets/images/inventory_car.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ],
         ),
-      ),
+      );
+  }
+}
+
+
+class _IconText extends StatelessWidget {
+  final IconData icon;
+  final String value;
+
+  const _IconText({
+    required this.icon,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: const Color(0xFF1E88E5),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF4A5568),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -560,287 +566,306 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
     return Form(
       key: widget.formKey,
       autovalidateMode: AutovalidateMode.disabled,
-      child: Card(
-        color: Colors.white,
-        margin: const EdgeInsets.only(bottom: 20),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: AppColors.greyBorder1, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        children: [
+          Row(
             children: [
-              Text(
-                "Travelers Details",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-
-              /// Title Chips
-              Row(
-                children: widget.titles.map((title) {
-                  final isSelected = widget.selectedTitle == title;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(title),
-                      selected: isSelected,
-                      selectedColor: AppColors.mainButtonBg,
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                        fontSize: 10,
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                        side: BorderSide(color: AppColors.mainButtonBg),
-                      ),
-                      showCheckmark: false,
-                      onSelected: (_) => widget.onTitleChanged(title),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 8),
-
-              /// Full Name
-              _buildTextField(
-                label: 'Full Name',
-                hint: "Enter full name",
-                controller: widget.firstNameController,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return "Full name is required";
-                  }
-                  return null;
-                },
-              ),
-
-              /// Email
-              _buildTextField(
-                label: 'Email',
-                hint: "Enter email id",
-                controller: widget.emailController,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return "Email is required";
-                  }
-                  final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                  return !regex.hasMatch(v.trim()) ? "Enter a valid email" : null;
-                },
-              ),
-
-              /// Phone
-              Text(
-                'Phone',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black38,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: InternationalPhoneNumberInput(
-                          selectorConfig: const SelectorConfig(
-                            selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
-                            useBottomSheetSafeArea: true,
-                            showFlags: true,
-                          ),
-                          selectorTextStyle: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                          initialValue: widget.number,
-                          textFieldController: widget.contactController,
-                          textStyle: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(signed: true),
-                          maxLength: 10,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return "Mobile number is required";
-                            }
-                            if (value.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(value)) {
-                              return "Enter valid 10-digit mobile number";
-                            }
-                            return null;
-                          },
-                          inputDecoration: const InputDecoration(
-                            hintText: "Enter mobile number",
-                            hintStyle: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black54,
-                            ),
-                            counterText: "",
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          formatInput: false,
-                          onInputChanged: (PhoneNumber value) async {
-                            contact = (value.phoneNumber
-                                    ?.replaceAll(' ', '')
-                                    .replaceFirst(value.dialCode ?? '', '')) ??
-                                '';
-                            contactCode = value.dialCode?.replaceAll('+', '');
-                            await StorageServices.instance.save('contactCode', contactCode ?? '');
-                            await StorageServices.instance.save('contact', contact ?? '');
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              /// Pickup Address
-              _buildTextField(
-                label: 'Pickup',
-                hint: "Enter Pickup Address",
-                controller: widget.sourceController,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return "Pickup address is required";
-                  }
-                  return null;
-                },
-                isReadOnly: true,
-              ),
-              if (widget.sourceController.text.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.yellow.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.yellow.shade200, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.yellow.shade800),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          widget.sourceController.text,
-                          style: TextStyle(fontSize: 10, color: Colors.yellow.shade900),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              /// Dropping Address
-              _buildTextField(
-                label: 'Dropping Address',
-                hint: "Enter Dropping Address",
-                controller: widget.destinationController,
-                validator: null,
-                isReadOnly: true,
-              ),
-              if (widget.destinationController.text.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.yellow.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.yellow.shade200, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.yellow.shade800),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          widget.destinationController.text,
-                          style: TextStyle(fontSize: 10, color: Colors.yellow.shade900),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              Text('Travelers Details', style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black
+              ),)
             ],
           ),
-        ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF4082F1).withOpacity(0.18),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4082F1).withOpacity(0.17),
+                  spreadRadius: 0,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title Chips
+                  Row(
+                    children: widget.titles.asMap().entries.map((entry) {
+                      final int i = entry.key;
+                      final String title = entry.value;
+                      final bool isSelected = widget.selectedTitle == title;
+                      return Padding(
+                        padding: EdgeInsets.only(right: i < widget.titles.length - 1 ? 4.0 : 0),
+                        child: ChoiceChip(
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          label: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF64A4F6),
+                          backgroundColor: Colors.white,
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: isSelected ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? Colors.transparent
+                                  : Colors.transparent,
+                            ),
+                          ),
+                          showCheckmark: false,
+                          onSelected: (_) => widget.onTitleChanged(title),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  _customTextField(
+                    label: 'Full Name',
+                    hint: 'Enter full name',
+                    controller: widget.firstNameController,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return "Full name is required";
+                      }
+                      return null;
+                    },
+                  ),
+                  _customTextField(
+                    label: 'Email',
+                    hint: 'Enter email id',
+                    controller: widget.emailController,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return "Email is required";
+                      }
+                      final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                      return !regex.hasMatch(v.trim()) ? "Enter a valid email" : null;
+                    },
+                  ),
+                  // Phone Field
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 11),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Phone',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF535353),
+                              ),
+                            ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  '+91',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF333333),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: SizedBox(
+                          height: 31,
+                          child: TextFormField(
+                            controller: widget.contactController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            maxLength: 10,
+                            decoration: InputDecoration(
+                              hintText: 'Enter  mobile number',
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 2,
+                                horizontal: 0,
+                              ),
+                              border: InputBorder.none,
+                              counterText: '',
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Mobile number is required";
+                              }
+                              if (value.length != 10 ||
+                                  !RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                return "Enter valid 10-digit mobile number";
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(
+                      height: 1,
+                      color: Color(0xFFE8E8E8),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 20),
+                    child: _customTextField(
+                      label: 'Pickup',
+                      hint: 'Enter Pickup Address',
+                      controller: widget.sourceController,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return "Pickup address is required";
+                        }
+                        return null;
+                      },
+                      showBottom: false,
+                      isReadOnly: true,
+                    ),
+                  ),
+                  if (widget.sourceController.text.isNotEmpty)
+                    _addressTag(widget.sourceController.text),
+                  _customTextField(
+                    label: 'Dropping Address',
+                    hint: 'Enter Dropping Address',
+                    controller: widget.destinationController,
+                    validator: null,
+                    showBottom: false,
+                    isReadOnly: true,
+                  ),
+                  if (widget.destinationController.text.isNotEmpty)
+                    _addressTag(widget.destinationController.text),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField({
+  Widget _customTextField({
     required String label,
     required String hint,
     required TextEditingController controller,
     String? Function(String?)? validator,
     bool? isReadOnly,
+    bool showBottom = true,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: EdgeInsets.only(bottom: showBottom ? 20 : 0.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black38),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF535353),
+            ),
           ),
-          const SizedBox(height: 4),
           TextFormField(
             controller: controller,
             readOnly: isReadOnly ?? false,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w400,
               color: Colors.black87,
             ),
             decoration: InputDecoration(
-              hintText: hint.toUpperCase(),
-              hintStyle: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
+              hintText: hint,
+              hintStyle: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.grey.shade400,
               ),
-              filled: true,
-              fillColor: Colors.grey.shade100,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                vertical: 8,
-                horizontal: 10,
+                vertical: 10,
+                horizontal: 0,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+              border: const UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: Color(0xFFE1E8ED),
+                  width: 1,
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: Colors.black54, width: 1.2),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: Color(0xFFE1E8ED),
+                  width: 1,
+                ),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: Color(0xFF4082F1),
+                  width: 1.2,
+                ),
               ),
             ),
             validator: validator,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _addressTag(String text) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18, top: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF2FF),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF535353),
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -1147,13 +1172,252 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
             ? const Center(
                 child: CircularProgressIndicator(),
               )
-            : MainButton(
-                text: 'BOOK NOW',
-                onPressed: _makeBooking,
+            : Container(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              _makeBooking();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4082F1),
+              padding: const EdgeInsets.only(top: 14, right: 16, bottom: 14, left: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(39),
+                side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
               ),
+              elevation: 0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Book Cab',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+class RouteCard extends StatelessWidget {
+  final CrpBookingData? bookingData;
+
+  const RouteCard({this.bookingData});
+
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
+  }
+
+  String _getRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup and drop locations';
+    }
+
+    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+    final drop = bookingData!.dropPlace?.primaryText ?? 'Drop location';
+
+    // Truncate if too long
+    String pickupText = pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
+    String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
+
+    return '$pickupText to $dropText';
+  }
+
+  String _getPickupRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+
+    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+
+    // Truncate if too long
+    String pickupText = pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
+
+    return '$pickupText';
+  }
+
+  String _getDropRouteText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+
+    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+
+    // Truncate if too long
+    String dropText = drop.length > 30 ? '${drop.substring(0, 30)}..' : drop;
+
+    return '$dropText';
+  }
+
+  String _getPickupTypeText() {
+    if (bookingData == null || bookingData!.pickupType == null) {
+      return '';
+    }
+    return bookingData!.pickupType ?? '';
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9999),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000), // #00000040
+            offset: Offset(1, 1),     // 1px 1px (x-axis and y-axis)
+            blurRadius: 3,            // 3px
+            spreadRadius: 0,          // 0px
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+
+        child: Column(
+          children: [
+            /// TOP CARD
+            Container(
+              padding: const EdgeInsets.only(top: 14, right: 0, left: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFCFCFC),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () => GoRouter.of(context).pop(),
+                                  child: SvgPicture.asset(
+                                    'assets/images/back.svg',
+                                    width: 18,
+                                    height: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                SvgPicture.asset(
+                                  'assets/images/pick.svg',
+                                  width: 16,
+                                  height: 16,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _getPickupRouteText(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 28),
+                              child: const Divider(
+                                height: 1,
+                                color: Color(0xFFE2E2E2),
+                              ),
+                            ),
+
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 34),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/images/drop.svg',
+                                    width: 20,
+                                    height: 16,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _getDropRouteText(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            /// WHITE SPACER
+            Container(height: 10, color: Color(0xFFFCFCFC)),
+
+            /// BOTTOM SECTION
+            Container(
+              padding: const EdgeInsets.only(
+                  left: 48, top: 10, bottom: 10, right: 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDateTime(bookingData?.pickupDateTime),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF717171),
+                    ),
+                  ),
+
+                  if (_getPickupTypeText().isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      _getPickupTypeText(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+  }
+}
 

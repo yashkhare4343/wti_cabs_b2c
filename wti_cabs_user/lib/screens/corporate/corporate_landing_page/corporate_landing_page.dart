@@ -244,7 +244,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                       ),
                       onPressed: (){
-                         GoRouter.of(context).push(AppRoutes.cprHomeScreen);
+                         GoRouter.of(context).push(AppRoutes.cprBookingConfirmation);
                       },
                       child: const Text(
                         "Corporate",
