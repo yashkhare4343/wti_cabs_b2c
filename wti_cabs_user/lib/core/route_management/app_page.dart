@@ -39,6 +39,7 @@ import '../../screens/corporate/select_drop/crp_select_drop.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
+import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
 
@@ -78,7 +79,7 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.airportChooseDrop,
-      pageBuilder: (context, state) => _platformPage(AirportSelectPickup()),
+      pageBuilder: (context, state) => _platformPage(AirportSelectDrop()),
     ),
     GoRoute(
       path: AppRoutes.inventoryList,

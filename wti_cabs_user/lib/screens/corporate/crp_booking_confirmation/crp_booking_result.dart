@@ -4,6 +4,7 @@ import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
 class CrpBookingResultPage extends StatelessWidget {
   final bool isSuccess;
@@ -95,8 +96,8 @@ class CrpBookingResultPage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                       ),
                       onPressed: () {
-                        // Same navigation as in crp_booking_confirmation.dart (1096-1097)
-                        GoRouter.of(context).go(AppRoutes.cprHomeScreen);
+                        // Replace entire navigation stack with corporate bottom nav
+                        context.go('/cprBottomNav');
                       },
                       child: const Text(
                         'Go to Home',

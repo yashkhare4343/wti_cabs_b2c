@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
+import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
@@ -16,30 +18,16 @@ class CrpBooking extends StatefulWidget {
 
 class _CrpBookingState extends State<CrpBooking> {
   final TextEditingController _searchController = TextEditingController();
+  final CrpBookingHistoryController _controller =
+      Get.put(CrpBookingHistoryController());
 
-  // Sample data - replace with actual data from your controller
-  final List<Map<String, dynamic>> _bookings = [
-    {
-      'serviceType': 'Airport Drop',
-      'status': 'Confirmed',
-      'carModel': 'Swift Dzire',
-      'pickupLocation': 'D-21, Dwarka, New Delhi...',
-      'dropLocation': 'IGI Terminal 3...',
-      'bookingId': '432411',
-      'bookedDate': '23 Nov 2025',
-      'carImage': 'assets/images/inventory_car.png',
-    },
-    {
-      'serviceType': 'Airport Drop',
-      'status': 'Cancelled',
-      'carModel': 'Swift Dzire',
-      'pickupLocation': 'D-21, Dwarka, New Delhi...',
-      'dropLocation': 'IGI Terminal 3...',
-      'bookingId': '432411',
-      'bookedDate': '23 Nov 2025',
-      'carImage': 'assets/images/inventory_car.png',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchBookingHistory(context);
+    });
+  }
 
   @override
   void dispose() {
@@ -74,78 +62,104 @@ class _CrpBookingState extends State<CrpBooking> {
           centerTitle: false,
         ),
         backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            // Search and Filter Section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Search Bar
-                  Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search Previous destinations',
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                          fontFamily: 'Montserrat',
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: Colors.grey.shade600,
-                          size: 20,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Filters and Sort Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildFilterButton('Filters', Icons.filter_list),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildFilterButton('Sort', Icons.sort),
-                      ),
-                    ],
-                  ),
-                ],
+        body: Obx(() {
+          if (_controller.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (_controller.bookings.isEmpty) {
+            return const Center(
+              child: Text(
+                'No bookings found',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Montserrat',
+                ),
               ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => _controller.fetchBookingHistory(context),
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: _controller.bookings.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        // Search Bar
+                        Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search previous bookings',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                                fontFamily: 'Montserrat',
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Colors.grey.shade600,
+                                size: 20,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Montserrat',
+                            ),
+                            onChanged: (value) {
+                              // Search can be wired up later
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Filters and Sort Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFilterButton('Filters', Icons.filter_list),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildFilterButton('Sort', Icons.sort),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
+                  );
+                }
+
+                final booking = _controller.bookings[index - 1];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildBookingCard(booking),
+                );
+              },
             ),
-            // Booking Cards List
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _bookings.length,
-                itemBuilder: (context, index) {
-                  return _buildBookingCard(_bookings[index]);
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
@@ -190,9 +204,9 @@ class _CrpBookingState extends State<CrpBooking> {
     );
   }
 
-  Widget _buildBookingCard(Map<String, dynamic> booking) {
-    final bool isConfirmed = booking['status'] == 'Confirmed';
-    
+  Widget _buildBookingCard(CrpBookingHistoryItem booking) {
+    final bool isConfirmed = booking.status == 'Confirmed';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -223,7 +237,7 @@ class _CrpBookingState extends State<CrpBooking> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.asset(
-                    booking['carImage'],
+                    'assets/images/inventory_car.png',
                     width: 84,
                     height: 64,
                     fit: BoxFit.cover,
@@ -247,7 +261,7 @@ class _CrpBookingState extends State<CrpBooking> {
                         children: [
                           Expanded(
                             child: Text(
-                              booking['serviceType'],
+                              booking.run ?? 'Service',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -272,7 +286,7 @@ class _CrpBookingState extends State<CrpBooking> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                booking['status'],
+                                booking.status ?? 'Pending',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -288,7 +302,7 @@ class _CrpBookingState extends State<CrpBooking> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        booking['carModel'],
+                        booking.model ?? '-',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -341,7 +355,7 @@ class _CrpBookingState extends State<CrpBooking> {
                     children: [
                       // Pickup Location
                       Text(
-                        booking['pickupLocation'],
+                        'Passenger: ${booking.passenger ?? '-'}',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade700,
@@ -353,7 +367,7 @@ class _CrpBookingState extends State<CrpBooking> {
                       const SizedBox(height: 10),
                       // Drop Location
                       Text(
-                        booking['dropLocation'],
+                        'Cab Required: ${booking.cabRequiredOn ?? '-'}',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade700,
@@ -393,10 +407,10 @@ class _CrpBookingState extends State<CrpBooking> {
             ),
             const SizedBox(height: 16),
             // Booking ID and Date
-            Row(
+            Wrap(
               children: [
                 Text(
-                  'Booking ID ${booking['bookingId']}',
+                  'Booking No ${booking.bookingNo ?? booking.bookingId ?? ''}',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -405,7 +419,7 @@ class _CrpBookingState extends State<CrpBooking> {
                 ),
                 const SizedBox(width: 16),
                 Text(
-                  'Booked on ${booking['bookedDate']}',
+                  'Status: ${booking.status ?? '-'}',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
