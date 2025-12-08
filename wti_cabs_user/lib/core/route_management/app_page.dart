@@ -38,6 +38,7 @@ import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/corporate/select_drop/crp_select_drop.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
+import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
 
@@ -212,6 +213,17 @@ class AppPages {
           CrpBookingConfirmation(
             selectedCar: carModelJson != null ? CrpCarModel.fromJson(carModelJson) : null,
             bookingData: bookingData != null ? CrpBookingData.fromJson(bookingData) : null,
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.cprBottomNav,
+      pageBuilder: (context, state) {
+        final index = state.uri.queryParameters['index'];
+        return _platformPage(
+          CorporateBottomNavScreen(
+            initialIndex: index != null ? int.tryParse(index) : 0,
           ),
         );
       },
