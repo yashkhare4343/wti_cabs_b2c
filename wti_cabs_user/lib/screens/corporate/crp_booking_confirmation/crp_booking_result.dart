@@ -97,7 +97,12 @@ class CrpBookingResultPage extends StatelessWidget {
                       ),
                       onPressed: () {
                         // Replace entire navigation stack with corporate bottom nav
-                        context.go('/cprBottomNav');
+                        // Use rootNavigator to ensure we replace everything including GoRouter routes
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const CorporateBottomNavScreen(initialIndex: 0),
+                          ),
+                        );
                       },
                       child: const Text(
                         'Go to Home',

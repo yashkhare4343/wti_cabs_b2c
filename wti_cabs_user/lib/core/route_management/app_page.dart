@@ -38,10 +38,12 @@ import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/corporate/select_drop/crp_select_drop.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
+import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
+import '../model/corporate/crp_booking_history/crp_booking_history_response.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -219,15 +221,15 @@ class AppPages {
       },
     ),
     GoRoute(
-      path: AppRoutes.cprBottomNav,
+      path: AppRoutes.cprBookingDetails,
       pageBuilder: (context, state) {
-        final index = state.uri.queryParameters['index'];
-        return _platformPage(
-          CorporateBottomNavScreen(
-            initialIndex: index != null ? int.tryParse(index) : 0,
-          ),
-        );
+        final booking = state.extra as CrpBookingHistoryItem;
+        return _platformPage(CrpBookingDetails(booking: booking));
       },
+    ),
+    GoRoute(
+      path: AppRoutes.cprBottomNav,
+      pageBuilder: (context, state) => _platformPage(CorporateBottomNavScreen()),
     ),
   ];
 

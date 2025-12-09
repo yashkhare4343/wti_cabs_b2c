@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
@@ -96,10 +97,10 @@ class _CrpBookingState extends State<CrpBooking> {
                         Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.grey.shade300,
+                              color: Color(0xFFD9D9D9),
                               width: 1,
                             ),
                           ),
@@ -109,22 +110,29 @@ class _CrpBookingState extends State<CrpBooking> {
                               hintText: 'Search previous bookings',
                               hintStyle: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF333333),
                                 fontFamily: 'Montserrat',
                               ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Colors.grey.shade600,
-                                size: 20,
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Image.asset(
+                                  'assets/images/search.png',
+                                  width: 20,
+                                  height: 20,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: 14,
+                                vertical: 16,
                               ),
                             ),
                             style: const TextStyle(
                               fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF333333),
                               fontFamily: 'Montserrat',
                             ),
                             onChanged: (value) {
@@ -436,7 +444,10 @@ class _CrpBookingState extends State<CrpBooking> {
                   child: _buildActionButton(
                     'Edit Booking',
                     () {
-                      // Handle edit booking
+                      context.push(
+                        AppRoutes.cprBookingDetails,
+                        extra: booking,
+                      );
                     },
                   ),
                 ),
