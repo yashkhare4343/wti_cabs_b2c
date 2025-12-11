@@ -129,9 +129,14 @@ class _CrpProfileState extends State<CrpProfile> {
                     height: 48,
                     child: ElevatedButton(
                       onPressed: () async {
-                        await StorageServices.instance.delete('token');
+                        // Clear all corporate session data
+                        await StorageServices.instance.delete('crpKey');
                         await StorageServices.instance.delete('crpId');
                         await StorageServices.instance.delete('branchId');
+                        await StorageServices.instance.delete('guestId');
+                        await StorageServices.instance.delete('email');
+                        await StorageServices.instance.delete('token');
+                        
                         if (context.mounted) {
                           context.go(AppRoutes.cprLogin);
                         }

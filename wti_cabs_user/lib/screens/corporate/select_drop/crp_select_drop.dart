@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
-import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
-import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
-import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
-import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 
 class CrpSelectDropScreen extends StatefulWidget {
   const CrpSelectDropScreen({super.key});
@@ -349,45 +344,10 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
 
     await controller.selectPlace(place);
     
-    // Get the updated place with lat/lng
-    final updatedPlace = controller.selectedPlace.value ?? place;
-    
-    // Get pickup controller to access pickup place (use findOrPut to be safe)
-    CrpSelectPickupController? pickupController;
-    try {
-      pickupController = Get.find<CrpSelectPickupController>();
-    } catch (e) {
-      // Controller not found, will use null for pickup place
-      pickupController = null;
-    }
-    
-    // Build booking data with both places
-    final bookingData = CrpBookingData(
-      pickupPlace: pickupController?.selectedPlace.value,
-      dropPlace: updatedPlace,
-      // Other fields will be null, but inventory screen can handle partial data
-    );
-    
-    // Navigate to inventory screen with booking data
-    // Use push to maintain navigation stack (same as booking engine)
-    if (!context.mounted) return;
-    
-    try {
-      print('Navigating to inventory with booking data');
-      print('Pickup: ${pickupController?.selectedPlace.value?.primaryText}');
-      print('Drop: ${updatedPlace.primaryText}');
-      
-      final bookingDataJson = bookingData.toJson();
-      print('Booking data JSON keys: ${bookingDataJson.keys}');
-
-      GoRouter.of(context).push(
-        AppRoutes.cprBookingEngine,
-      );
-    } catch (e, stackTrace) {
-      print('❌ Error navigating to inventory: $e');
-      print('Stack trace: $stackTrace');
-      // Don't fallback to login - let the error be visible
-      rethrow;
+    // Simply pop back to the previous screen (booking engine or modify booking)
+    // The selected place is already stored in the controller, so the previous screen will show it
+    if (context.mounted) {
+      Navigator.of(context).pop();
     }
   }
 

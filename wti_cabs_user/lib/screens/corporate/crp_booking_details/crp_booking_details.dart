@@ -21,6 +21,12 @@ class CrpBookingDetails extends StatefulWidget {
 
 class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    fetchBookingDetails();
+  }
   void fetchBookingDetails() async{
     final token = await StorageServices.instance.read('crpKey');
     final userEmail = await StorageServices.instance.read('email');
@@ -230,7 +236,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                           children: [
                             // Pickup Location
                             Text(
-                              'D-21, Dwarka, New Delhi...',
+                              crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress??'',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -238,24 +244,12 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                 fontFamily: 'Montserrat',
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Sector 21, Shahabad Mohammadpur, Delhi, 110077, India',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.grey.shade600,
-                                fontFamily: 'Montserrat',
-                              ),
-                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 16),
                             // Drop Location
                             Text(
-                              'IGI Terminal 3...',
+                              crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress??'',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -263,18 +257,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                 fontFamily: 'Montserrat',
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'New Delhi - India, New Delhi. 107,309',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.grey.shade600,
-                                fontFamily: 'Montserrat',
-                              ),
-                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
@@ -331,7 +313,14 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         child: _buildActionButton(
                           'Edit Booking',
                               () {
-                            // Handle edit booking
+                            // Navigate to modify booking screen with booking ID
+                            final orderId = widget.booking.bookingId?.toString() ?? widget.booking.bookingNo ?? '';
+                            if (orderId.isNotEmpty) {
+                              GoRouter.of(context).push(
+                                AppRoutes.cprModifyBooking,
+                                extra: orderId,
+                              );
+                            }
                           },
                         ),
                       ),

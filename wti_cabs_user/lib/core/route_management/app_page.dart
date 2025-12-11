@@ -39,6 +39,7 @@ import '../../screens/corporate/select_drop/crp_select_drop.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
 import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
+import '../../screens/corporate/cpr_modify_booking/cpr_modify_booking.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
@@ -225,6 +226,13 @@ class AppPages {
       pageBuilder: (context, state) {
         final booking = state.extra as CrpBookingHistoryItem;
         return _platformPage(CrpBookingDetails(booking: booking));
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.cprModifyBooking,
+      pageBuilder: (context, state) {
+        final orderId = state.extra as String? ?? state.uri.queryParameters['orderId'] ?? '';
+        return _platformPage(CprModifyBooking(orderId: orderId));
       },
     ),
     GoRoute(

@@ -215,9 +215,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   @override
   Widget build(BuildContext context) {
     crpSelectPickupController.searchController.text =
-        crpSelectPickupController.selectedPlace.value?.primaryText ?? '';
+        '${crpSelectPickupController.selectedPlace.value?.primaryText}, ${crpSelectPickupController.selectedPlace.value?.secondaryText}' ?? '';
     crpSelectDropController.searchController.text =
-        crpSelectDropController.selectedPlace.value?.primaryText ?? '';
+        '${crpSelectDropController.selectedPlace.value?.primaryText}, ${crpSelectDropController.selectedPlace.value?.secondaryText}' ?? '';
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(

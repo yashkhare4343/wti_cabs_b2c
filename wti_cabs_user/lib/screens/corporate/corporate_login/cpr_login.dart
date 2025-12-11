@@ -35,12 +35,17 @@ class _CprLoginState extends State<CprLogin> {
 
     final response = loginInfoController.crpLoginInfo.value;
     if(response?.bStatus == true){
-      StorageServices.instance.save('crpKey', response?.key??'');
-      StorageServices.instance.save('crpId', response?.corpID??'');
-      StorageServices.instance.save('branchId', response?.branchID??'');
-      StorageServices.instance.save('guestId', response?.guestID.toString()??'');
-
-      GoRouter.of(context).push(AppRoutes.cprBottomNav);
+      // Store all corporate session data
+      await StorageServices.instance.save('crpKey', response?.key??'');
+      await StorageServices.instance.save('crpId', response?.corpID?.toString()??'');
+      await StorageServices.instance.save('branchId', response?.branchID?.toString()??'');
+      await StorageServices.instance.save('guestId', response?.guestID?.toString()??'');
+      // Email is already saved above in the onTap handler
+      
+      // Navigate to corporate bottom nav
+      if (context.mounted) {
+        GoRouter.of(context).push(AppRoutes.cprBottomNav);
+      }
     }
 
     // await crpRegisterController.verifyCrpRegister(params, context);
