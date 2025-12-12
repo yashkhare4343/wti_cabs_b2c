@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
+import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 class CrpSelectDropScreen extends StatefulWidget {
-  const CrpSelectDropScreen({super.key});
+  final String? selectedPickupType;
+  
+  const CrpSelectDropScreen({super.key, this.selectedPickupType});
 
   @override
   State<CrpSelectDropScreen> createState() => _CrpSelectDropScreenState();
@@ -344,10 +348,13 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
 
     await controller.selectPlace(place);
     
-    // Simply pop back to the previous screen (booking engine or modify booking)
-    // The selected place is already stored in the controller, so the previous screen will show it
+    // Navigate back to booking engine with the selected pickup type preserved
+    // Pass the selectedPickupType back to booking engine
     if (context.mounted) {
-      Navigator.of(context).pop();
+      GoRouter.of(context).pushReplacement(
+        AppRoutes.cprBookingEngine,
+        extra: widget.selectedPickupType,
+      );
     }
   }
 

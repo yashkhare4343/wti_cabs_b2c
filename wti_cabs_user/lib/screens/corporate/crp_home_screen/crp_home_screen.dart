@@ -465,7 +465,11 @@ Widget buildTile(BuildContext context, dynamic item, int index) {
             .save('cprSelectedRunTypeId', item.runTypeID!.toString());
         await StorageServices.instance.save('tabIndex', index.toString());
       }
-      GoRouter.of(context).push(AppRoutes.cprBookingEngine);
+      // Pass the selected pickup type (run) to booking engine
+      GoRouter.of(context).push(
+        AppRoutes.cprBookingEngine,
+        extra: item.run, // Pass the pickup type name
+      );
     },
     child: Container(
       height: fixedHeight,

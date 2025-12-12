@@ -26,7 +26,9 @@ import '../../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../../core/services/storage_services.dart';
 
 class CprBookingEngine extends StatefulWidget {
-  const CprBookingEngine({super.key});
+  final String? selectedPickupType;
+  
+  const CprBookingEngine({super.key, this.selectedPickupType});
 
   @override
   State<CprBookingEngine> createState() => _CprBookingEngineState();
@@ -51,6 +53,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    // If selectedPickupType is passed from navigation, use it
+    if (widget.selectedPickupType != null) {
+      selectedPickupType = widget.selectedPickupType;
+    }
     _loadPreselectedRunType();
     runTypesAndPaymentModes();
     _prefillPickupFromCurrentLocation();
@@ -77,6 +83,23 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   }
 
   Future<void> _loadPreselectedRunType() async {
+    // Skip if pickup type is already passed from navigation
+    if (widget.selectedPickupType != null) {
+      return;
+    }
+    
+    // Only load preselected run type if we're not coming back from location selection screens
+    // If locations are already selected, we're likely coming back from location screens, so skip preselection
+    final hasPickupLocation = crpSelectPickupController.selectedPlace.value != null;
+    final hasDropLocation = crpSelectDropController.selectedPlace.value != null;
+    
+    if (hasPickupLocation || hasDropLocation) {
+      // User has already selected locations, likely coming back from location screens
+      // Clear any stored preselected run type to prevent applying it
+      await StorageServices.instance.delete('cprSelectedRunTypeId');
+      return;
+    }
+    
     final idStr = await StorageServices.instance.read('cprSelectedRunTypeId');
     if (idStr != null) {
       final parsed = int.tryParse(idStr);
@@ -717,9 +740,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         runTypeController.runTypes.value?.runTypes ?? [];
 
     // Apply preselected run type (from home screen tap) once when data is available
+    // Only apply if:
+    // 1. We haven't applied it yet
+    // 2. There's a preselected ID
+    // 3. Run types are loaded
+    // 4. User hasn't already selected a pickup type (to avoid overriding when coming back from location screens)
     if (!_hasAppliedPreselection &&
         _preselectedRunTypeId != null &&
-        allRunTypes.isNotEmpty) {
+        allRunTypes.isNotEmpty &&
+        selectedPickupType == null) {
       final index =
           allRunTypes.indexWhere((rt) => rt.runTypeID == _preselectedRunTypeId);
       if (index != -1) {
@@ -840,7 +869,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     setState(() {
                       pickupLocationError = null;
                     });
-                    GoRouter.of(context).push(AppRoutes.cprSelectPickup);
+                    GoRouter.of(context).push(
+                      AppRoutes.cprSelectPickup,
+                      extra: selectedPickupType,
+                    );
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
@@ -871,7 +903,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     setState(() {
                       dropLocationError = null;
                     });
-                    GoRouter.of(context).push(AppRoutes.cprSelectDrop);
+                    GoRouter.of(context).push(
+                      AppRoutes.cprSelectDrop,
+                      extra: selectedPickupType,
+                    );
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,

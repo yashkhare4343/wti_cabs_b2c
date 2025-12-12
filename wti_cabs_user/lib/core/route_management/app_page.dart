@@ -198,15 +198,24 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprBookingEngine,
-      pageBuilder: (context, state) => _platformPage(CprBookingEngine()),
+      pageBuilder: (context, state) {
+        final selectedPickupType = state.extra as String?;
+        return _platformPage(CprBookingEngine(selectedPickupType: selectedPickupType));
+      },
     ),
     GoRoute(
       path: AppRoutes.cprSelectPickup,
-      pageBuilder: (context, state) => _platformPage(CrpSelectPickupScreen()),
+      pageBuilder: (context, state) {
+        final selectedPickupType = state.extra as String?;
+        return _platformPage(CrpSelectPickupScreen(selectedPickupType: selectedPickupType));
+      },
     ),
     GoRoute(
       path: AppRoutes.cprSelectDrop,
-      pageBuilder: (context, state) => _platformPage(CrpSelectDropScreen()),
+      pageBuilder: (context, state) {
+        final selectedPickupType = state.extra as String?;
+        return _platformPage(CrpSelectDropScreen(selectedPickupType: selectedPickupType));
+      },
     ),
     GoRoute(
       path: AppRoutes.cprInventory,
