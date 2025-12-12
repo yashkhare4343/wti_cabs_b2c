@@ -468,15 +468,14 @@ class _MyAppState extends State<MyApp> {
     return FutureBuilder<String>(
       future: _getInitialRoute(context),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: Scaffold(body: fetchCountryController.currentCountry.value ==
-                'United Arab Emirates'? SelfDriveBottomNavScreen():BottomNavScreen()),
-          );
-        }
-
-        final initialRoute = snapshot.data!;
+        // Always use GoRouter, even during loading
+        // Use a default route while waiting for the actual initial route
+        final initialRoute = snapshot.hasData 
+            ? snapshot.data! 
+            : (fetchCountryController.currentCountry.value == 'United Arab Emirates'
+                ? AppRoutes.selfDriveBottomSheet
+                : AppRoutes.bottomNav);
+        
         final router = AppPages.routerWithInitial(initialRoute);
 
         return GetMaterialApp.router(
@@ -487,8 +486,8 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           navigatorObservers: [_observer],
           theme: ThemeData(
-          fontFamily: "Montserrat",
-        ),
+            fontFamily: "Montserrat",
+          ),
         );
       },
     );
