@@ -33,6 +33,7 @@ import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
 import '../../screens/contact/contact.dart';
+import '../../screens/corporate/cpr_profile_response/cpr_profile_response.dart';
 import '../../screens/corporate/crp_booking_engine/crp_booking_engine.dart';
 import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/corporate/select_drop/crp_select_drop.dart';
@@ -41,6 +42,8 @@ import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmatio
 import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
 import '../../screens/corporate/cpr_modify_booking/cpr_modify_booking.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
+import '../../screens/corporate/crp_edit_profile/crp_edit_profile.dart';
+import '../../screens/corporate/crp_edit_profile/crp_edit_profile_form.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
@@ -238,6 +241,26 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBottomNav,
       pageBuilder: (context, state) => _platformPage(CorporateBottomNavScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprEditProfile,
+      pageBuilder: (context, state) => _platformPage(const CrpEditProfile()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprEditProfileForm,
+      pageBuilder: (context, state) {
+        final extraData = state.extra as Map<String, dynamic>?;
+        final profile = extraData?['profile'] as CprProfileResponse?;
+        final email = extraData?['email'] as String?;
+        final token = extraData?['token'] as String?;
+        final guestID = extraData?['guestID'] as int?;
+        return _platformPage(CrpEditProfileForm(
+          profile: profile,
+          email: email,
+          token: token,
+          guestID: guestID,
+        ));
+      },
     ),
   ];
 

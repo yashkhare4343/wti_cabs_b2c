@@ -40,6 +40,10 @@ class _CprLoginState extends State<CprLogin> {
       await StorageServices.instance.save('crpId', response?.corpID?.toString()??'');
       await StorageServices.instance.save('branchId', response?.branchID?.toString()??'');
       await StorageServices.instance.save('guestId', response?.guestID?.toString()??'');
+      await StorageServices.instance.save('guestName', response?.guestName??'');
+
+
+
       // Email is already saved above in the onTap handler
       
       // Navigate to corporate bottom nav

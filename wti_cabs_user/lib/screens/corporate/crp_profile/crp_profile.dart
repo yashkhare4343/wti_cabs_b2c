@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
-import 'package:wti_cabs_user/core/controller/profile_controller/profile_controller.dart';
+import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
-import 'package:wti_cabs_user/core/services/storage_services.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
+import 'package:get/get.dart';
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
 class CrpProfile extends StatefulWidget {
   const CrpProfile({super.key});
@@ -14,217 +16,334 @@ class CrpProfile extends StatefulWidget {
 }
 
 class _CrpProfileState extends State<CrpProfile> {
-  final ProfileController profileController = Get.put(ProfileController());
+  final CurrencyController currencyController = Get.find<CurrencyController>();
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      profileController.fetchData();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) {
-          context.go(AppRoutes.cprBottomNav);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text(
-            "Profile",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          centerTitle: true,
-          elevation: 0.5,
-          backgroundColor: Colors.white,
-          automaticallyImplyLeading: false,
-        ),
-        body: Obx(() {
-          final profileData = profileController.profileResponse.value?.result;
-          final firstName = profileData?.firstName ?? '';
-          final email = profileData?.emailID ?? '';
-          final contact = profileData?.contact ?? '';
-
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Profile Picture and Name Section
+            Padding(
+              padding: const EdgeInsets.only(top: 32, bottom: 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 20),
-                  // Profile Avatar
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppColors.blue2.withOpacity(0.1),
-                    child: Text(
-                      firstName.isNotEmpty
-                          ? '${firstName}}'
-                          : 'U',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.blue2,
-                        fontFamily: 'Montserrat',
-                      ),
+                  // Light blue circular profile picture placeholder
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFB3D9F2), // Light blue color matching image
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Color(0xFF7BB3E8), // Slightly darker blue for icon
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   // Name
-                  Text(
-                    '$firstName'.trim().isEmpty ? 'User' : '$firstName',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                  Obx(()=>Text(
+                    loginInfoController.crpLoginInfo.value?.guestName??'Guest',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                       fontFamily: 'Montserrat',
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Email
-                  if (email.isNotEmpty)
-                    Text(
-                      email,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  const SizedBox(height: 30),
-
-                  // Profile Info Cards
-                  _buildInfoCard(
-                    icon: Icons.email_outlined,
-                    title: "Email",
-                    value: email.isEmpty ? 'Not available' : email,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.phone_outlined,
-                    title: "Contact",
-                    value: '9179419377',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.business_outlined,
-                    title: "Corporate Account",
-                    value: "Active",
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Logout Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Clear all corporate session data
-                        await StorageServices.instance.delete('crpKey');
-                        await StorageServices.instance.delete('crpId');
-                        await StorageServices.instance.delete('branchId');
-                        await StorageServices.instance.delete('guestId');
-                        await StorageServices.instance.delete('email');
-                        await StorageServices.instance.delete('token');
-                        
-                        if (context.mounted) {
-                          context.go(AppRoutes.cprLogin);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade50,
-                        foregroundColor: Colors.red,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.red.shade200),
-                        ),
-                      ),
-                      child: const Text(
-                        "Logout",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                    ),
-                  ),
+                  )),
                 ],
               ),
             ),
-          );
-        }),
-      ),
-    );
-  }
 
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.blue2.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: AppColors.blue2,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontFamily: 'Montserrat',
-                  ),
+            // Content Section
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Account & Profile Section
+                    const Text(
+                      'Account & Profile',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Personal Details
+                          InkWell(
+                            onTap: () {
+                              // Navigate to edit profile
+                              GoRouter.of(context).push(AppRoutes.cprEditProfile);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  // Person icon with gear icon overlay (matching image)
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        const Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          child: Icon(
+                                            Icons.person_outline,
+                                            size: 20,
+                                            color: Color(0xFF404040),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          right: -2,
+                                          bottom: -2,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.settings,
+                                              size: 10,
+                                              color: Color(0xFF404040),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Personal Details',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF333333),
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Booking & Activity Section
+                    const Text(
+                      'Booking & Activity',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Divider
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Colors.grey.withOpacity(0.2),
+                          ),
+                          // Manage Booking
+                          InkWell(
+                            onTap: () {
+                              // Navigate to manage booking
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CorporateBottomNavScreen(initialIndex: 1),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_month_outlined,
+                                    size: 20,
+                                    color: Color(0xFF404040),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Manage Booking',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF333333),
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Contact Us
+                    InkWell(
+                      onTap: () {
+                        // Navigate to contact us
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CorporateBottomNavScreen(initialIndex: 2),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.headset_mic_outlined,
+                              size: 20,
+                              color: Color(0xFF1C1B1F),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Contact Us',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF000000),
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Log Out
+                    InkWell(
+                      onTap: () {
+                        // Show logout dialog or perform logout
+                        // showLogoutDialog(context);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.logout,
+                              size: 20,
+                              color: Color(0xFF1C1B1F),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Log Out',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF000000),
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // About Us
+                    InkWell(
+                      onTap: () {
+                        // Navigate to about us
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: Color(0xFF1C1B1F),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'About Us',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF000000),
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
-
