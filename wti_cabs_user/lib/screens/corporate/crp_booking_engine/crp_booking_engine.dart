@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -61,12 +62,13 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
     // 2. Wait for guestId, token, user
     await fetchParameter();
-
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
     // 3. Now call payment modes safely
     final Map<String, dynamic> paymentParams = {
       'GuestID': int.parse(guestId ?? ''),
       'token': token,
-      'user': user
+      'user': user??email
     };
 
     paymentModeController.fetchPaymentModes(paymentParams, context);
@@ -325,7 +327,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       children: [
                         Icon(Icons.error_outline,
                             size: 16, color: Colors.red.shade600),
-                        const SizedBox(width: 6),
+                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             bookingTypeError!,

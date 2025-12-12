@@ -26,11 +26,26 @@ class CprApiService {
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
 
-  Future<String?> _getToken() async => await StorageServices.instance.read('token');
+  // Corporate APIs use the corporate key (`crpKey`) as the auth token.
+  Future<String?> _getToken() async => await StorageServices.instance.read('crpKey');
   Future<String?> _getRefreshToken() async => await StorageServices.instance.read('refreshToken');
 
   Future<void> _saveToken(String token) async =>
-      await StorageServices.instance.save('token', token);
+      await StorageServices.instance.save('crpKey', token);
+  
+  /// Fallback loader for corporate email (used for `user`/`email` query params)
+  Future<String?> _getEmailFallback() async {
+    final storedEmail = await StorageServices.instance.read('email');
+    if (storedEmail != null && storedEmail.isNotEmpty && storedEmail != 'null') {
+      return storedEmail;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final prefsEmail = prefs.getString('email');
+    if (prefsEmail != null && prefsEmail.isNotEmpty && prefsEmail != 'null') {
+      return prefsEmail;
+    }
+    return null;
+  }
 
   // ===================== 🔄 Refresh Token Logic =====================
   Future<bool> _refreshToken() async {
@@ -187,13 +202,58 @@ class CprApiService {
       T Function(dynamic) fromJson,
       BuildContext context,
       ) async {
+    // ✅ Automatically add token and user to params if not already present
+    final token = await _getToken();
+    final userEmail = await _getEmailFallback();
+    
+    // Always ensure email and user are set from storage if available
+    // This handles cases where params might have null values
+    if (userEmail != null && userEmail.isNotEmpty) {
+      final emailParam = params['email']?.toString();
+      final userParam = params['user']?.toString();
+      
+      // Replace email if it's null, empty, or the string "null"
+      if (emailParam == null || emailParam.isEmpty || emailParam == 'null') {
+        params['email'] = userEmail;
+        debugPrint('✅ Auto-populated email from storage: $userEmail');
+      }
+      
+      // Replace user if it's null, empty, or the string "null"
+      if (userParam == null || userParam.isEmpty || userParam == 'null') {
+        params['user'] = userEmail;
+        debugPrint('✅ Auto-populated user from storage: $userEmail');
+      }
+    } else {
+      // Remove null/empty email and user to avoid sending them
+      if (params['email'] == null || params['email'].toString() == 'null' || params['email'].toString().isEmpty) {
+        params.remove('email');
+        debugPrint('⚠️ Email not found in storage, removing from params');
+      }
+      if (params['user'] == null || params['user'].toString() == 'null' || params['user'].toString().isEmpty) {
+        params.remove('user');
+        debugPrint('⚠️ User not found in storage, removing from params');
+      }
+    }
+    
+    // Add token to params if not already present and token exists
+    if (!params.containsKey('token') && token != null && token.isNotEmpty) {
+      params['token'] = token;
+      debugPrint('✅ Auto-added token to query params');
+    } else if (params.containsKey('token') && (params['token'] == null || params['token'].toString() == 'null')) {
+      // Replace null token if it exists
+      if (token != null && token.isNotEmpty) {
+        params['token'] = token;
+        debugPrint('✅ Replaced null token with valid token');
+      } else {
+        params.remove('token');
+      }
+    }
+    
     // 🧩 Build the full URL
     final uri = Uri.parse('$baseUrl/$endpoint')
         .replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
 
     print('yash crp url is : ${'$baseUrl/$endpoint'}');
-
-    final token = await _getToken();
 
     final headers = {
       'Content-Type': 'application/json',
@@ -365,10 +425,55 @@ class CprApiService {
       T Function(dynamic) fromJson,
       BuildContext context,
       ) async {
+    // ✅ Automatically add token and user to params if not already present
+    final token = await _getToken();
+    final userEmail = await _getEmailFallback();
+    
+    // Always ensure email and user are set from storage if available
+    // This handles cases where params might have null values
+    if (userEmail != null && userEmail.isNotEmpty) {
+      final emailParam = params['email']?.toString();
+      final userParam = params['user']?.toString();
+      
+      // Replace email if it's null, empty, or the string "null"
+      if (emailParam == null || emailParam.isEmpty || emailParam == 'null') {
+        params['email'] = userEmail;
+        debugPrint('✅ Auto-populated email from storage (POST): $userEmail');
+      }
+      
+      // Replace user if it's null, empty, or the string "null"
+      if (userParam == null || userParam.isEmpty || userParam == 'null') {
+        params['user'] = userEmail;
+        debugPrint('✅ Auto-populated user from storage (POST): $userEmail');
+      }
+    } else {
+      // Remove null/empty email and user to avoid sending them
+      if (params['email'] == null || params['email'].toString() == 'null' || params['email'].toString().isEmpty) {
+        params.remove('email');
+        debugPrint('⚠️ Email not found in storage, removing from params (POST)');
+      }
+      if (params['user'] == null || params['user'].toString() == 'null' || params['user'].toString().isEmpty) {
+        params.remove('user');
+        debugPrint('⚠️ User not found in storage, removing from params (POST)');
+      }
+    }
+    
+    // Add token to params if not already present and token exists
+    if (!params.containsKey('token') && token != null && token.isNotEmpty) {
+      params['token'] = token;
+      debugPrint('✅ Auto-added token to query params (POST)');
+    } else if (params.containsKey('token') && (params['token'] == null || params['token'].toString() == 'null')) {
+      // Replace null token if it exists
+      if (token != null && token.isNotEmpty) {
+        params['token'] = token;
+        debugPrint('✅ Replaced null token with valid token (POST)');
+      } else {
+        params.remove('token');
+      }
+    }
+    
     // Encode params as query string
     final uri = Uri.parse('$baseUrl/$endpoint').replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
-
-    final token = await _getToken();
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': token != null

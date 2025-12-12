@@ -78,187 +78,194 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
   static const _icon3 = 'assets/images/invoice.png';
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Container(
-                width: double.infinity,
-                height: MediaQuery.of(context).size.height*0.66,
-                child: Image.asset(
-                  'assets/images/corporate_landing.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Transform.translate(
-                offset: const Offset(0.0, -20.0),
-                child: Container(
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) {
+        // Custom logic
+        GoRouter.of(context).go(AppRoutes.bottomNav); // example redirect
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Container(
                   width: double.infinity,
-                  height: MediaQuery.of(context).size.height*0.3,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(20),   // 👈 top left corner
-                        topRight: Radius.circular(20),  // 👈 top right corner
-                      ),
-
-                    ) , child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(height: 30,),
-                    // Icons row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _PromoItem(
-                            iconAsset: _icon1,
-                            title: 'Special\nCorporate Fare',
-                            // small tweak to match screenshot line breaks
-                          ),
-                          _PromoItem(
-                            iconAsset: _icon2,
-                            title: 'Zero\nCancelation Fees',
-                          ),
-                          _PromoItem(
-                            iconAsset: _icon3,
-                            title: 'Guaranteed GST\nInvoices',
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // A little spacing between icons and button
-                    const SizedBox(height: 6),
-
-                    // Sign-in button with rounded top corners and no overlay
-                    GestureDetector(
-                      onTap: () {
-                        // your sign in action
-                        GoRouter.of(context).push(AppRoutes.cprLogin);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Container(
-                          height: 40,
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            // subtle gradient similar to screenshot
-                            color: Color(0xFF01ACF2),
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(10),
-                              bottom: Radius.circular(10),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(0x2203A9F4),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              )
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'SIGN IN',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
+                  height: MediaQuery.of(context).size.height*0.66,
+                  child: Image.asset(
+                    'assets/images/corporate_landing.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Transform.translate(
+                  offset: const Offset(0.0, -20.0),
+                  child: Container(
+                    width: double.infinity,
+                    height: MediaQuery.of(context).size.height*0.3,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),   // 👈 top left corner
+                          topRight: Radius.circular(20),  // 👈 top right corner
                         ),
-                      ),
-                    ),
-                    SizedBox(height: 10,),
-                    InkWell(
-                      splashColor: Colors.transparent,
-                      onTap: (){
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          GoRouter.of(context).push(AppRoutes.cprRegister);
-                        });
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black,
-                          ),
+
+                      ) , child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: 30,),
+                      // Icons row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const TextSpan(text: "Don’t have an account? "),
-                            TextSpan(
-                              text: "Register",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.black,
-                                decoration: TextDecoration.underline
-                              ),
+                            _PromoItem(
+                              iconAsset: _icon1,
+                              title: 'Special\nCorporate Fare',
+                              // small tweak to match screenshot line breaks
+                            ),
+                            _PromoItem(
+                              iconAsset: _icon2,
+                              title: 'Zero\nCancelation Fees',
+                            ),
+                            _PromoItem(
+                              iconAsset: _icon3,
+                              title: 'Guaranteed GST\nInvoices',
                             ),
                           ],
                         ),
                       ),
+
+                      // A little spacing between icons and button
+                      const SizedBox(height: 6),
+
+                      // Sign-in button with rounded top corners and no overlay
+                      GestureDetector(
+                        onTap: () {
+                          // your sign in action
+                          GoRouter.of(context).push(AppRoutes.cprLogin);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Container(
+                            height: 40,
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              // subtle gradient similar to screenshot
+                              color: Color(0xFF01ACF2),
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(10),
+                                bottom: Radius.circular(10),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x2203A9F4),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                )
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'SIGN IN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10,),
+                      InkWell(
+                        splashColor: Colors.transparent,
+                        onTap: (){
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            GoRouter.of(context).push(AppRoutes.cprRegister);
+                          });
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black,
+                            ),
+                            children: [
+                              const TextSpan(text: "Don’t have an account? "),
+                              TextSpan(
+                                text: "Register",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.black,
+                                  decoration: TextDecoration.underline
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+
+                    ],
+                  ),        ),
+                )
+              ],
+            ),
+            Positioned(
+                top: 84,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                  SvgPicture.asset(
+                    'assets/images/wti_logo.svg',
+                    height: 17,
+                    width: 15,
+                  ),
+                    SizedBox(width: 8,),
+                    Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        /*gradient: const LinearGradient(
+                                            colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          ),*/
+                        color: AppColors.mainButtonBg,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent, // transparent to show gradient
+                          shadowColor: Colors.transparent, // remove default shadow
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        ),
+                        onPressed: (){
+                           GoRouter.of(context).push(AppRoutes.cprEditProfile);
+                        },
+                        child: const Text(
+                          "Corporate",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
                     )
+                ],))
 
-                  ],
-                ),        ),
-              )
-            ],
-          ),
-          Positioned(
-              top: 84,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                SvgPicture.asset(
-                  'assets/images/wti_logo.svg',
-                  height: 17,
-                  width: 15,
-                ),
-                  SizedBox(width: 8,),
-                  Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      /*gradient: const LinearGradient(
-                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),*/
-                      color: AppColors.mainButtonBg,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent, // transparent to show gradient
-                        shadowColor: Colors.transparent, // remove default shadow
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                      ),
-                      onPressed: (){
-                         GoRouter.of(context).push(AppRoutes.cprEditProfile);
-                      },
-                      child: const Text(
-                        "Corporate",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  )
-              ],))
-
-        ],
+          ],
+        ),
       ),
     );
 

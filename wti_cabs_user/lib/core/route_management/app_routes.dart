@@ -28,6 +28,7 @@ class AppRoutes{
   static const String selfDrivePaymentFailure = '/selfDrivePaymentFailure';
   static const String selfDriveCancelBooking = '/selfDriveCancelBooking';
   // corporate
+  static const String cprRedirect = '/cprRedirect';
   static const String cprLogin = '/cprLogin';
   static const String cprRegister = '/cprRegister';
   static const String cprHomeScreen = '/cprHomeScreen';

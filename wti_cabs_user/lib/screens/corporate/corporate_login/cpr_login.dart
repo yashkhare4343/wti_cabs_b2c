@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
@@ -42,9 +43,15 @@ class _CprLoginState extends State<CprLogin> {
       await StorageServices.instance.save('guestId', response?.guestID?.toString()??'');
       await StorageServices.instance.save('guestName', response?.guestName??'');
 
-
-
-      // Email is already saved above in the onTap handler
+      // ✅ Ensure email is saved again after successful login for persistence
+      // Get email from params (it was saved in onTap, but ensure it's persisted)
+      final email = params['email']?.toString() ?? emailController.text.trim();
+      if (email.isNotEmpty) {
+        await StorageServices.instance.save('email', email);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('email', email);
+        debugPrint('✅ Email saved after successful login: $email');
+      }
       
       // Navigate to corporate bottom nav
       if (context.mounted) {
@@ -215,6 +222,8 @@ class _CprLoginState extends State<CprLogin> {
                          //   "email": 'developer14@aaveg.co.in', // decoded %40 → @
                          // };
                          await StorageServices.instance.save('email', emailController.text.trim());
+                         final prefs = await SharedPreferences.getInstance();
+                         await prefs.setString('email', emailController.text.trim());
                          _validateAndSubmit(params);
                        },
                        child: Padding(

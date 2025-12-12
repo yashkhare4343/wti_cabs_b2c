@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
@@ -1080,7 +1081,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final costCode = bookingData?.costCode ?? '';
         final remarks = bookingData?.referenceNumber ?? '';
         final transNo = '';
-        
+
         // Build params
         final params = <String, dynamic>{
           'corporateID': corporateID,
@@ -1114,7 +1115,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           'tolat': tolat,
           'tolng': tolng,
           'token': token,
-          'user': user,
+          'user': await StorageServices.instance.read('email'),
         };
 
         debugPrint('📤 Making booking with params: $params');

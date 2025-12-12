@@ -24,20 +24,37 @@ class CprHomeScreen extends StatefulWidget {
 }
 
 class _CprHomeScreenState extends State<CprHomeScreen> {
-  final params = {
-    'CorpID': StorageServices.instance.read('crpId'),
-    'BranchID': StorageServices.instance.read('branchId')
-  };
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    // runTypeController.fetchRunTypes(verifyCorporateController.cprID.value, crpGetBranchListController.selectedBranchId.value??'', context);
-    runTypeController.fetchRunTypes(params, context);
-
+    // ✅ Load params asynchronously and then fetch run types
+    _loadParamsAndFetchRunTypes();
+    
     // Fetch branches and show bottom sheet when screen appears
     _fetchBranchesAndShowBottomSheet();
+  }
+
+  /// Load params from storage and fetch run types
+  Future<void> _loadParamsAndFetchRunTypes() async {
+    try {
+      // ✅ Await storage reads to get actual values, not Futures
+      final corpId = await StorageServices.instance.read('crpId') ?? '0';
+      final branchId = await StorageServices.instance.read('branchId') ?? '0';
+      
+      final params = {
+        'CorpID': corpId,
+        'BranchID': branchId,
+      };
+      
+      debugPrint('✅ Loaded params for run types: $params');
+      
+      // Fetch run types with actual values
+      if (mounted) {
+        await runTypeController.fetchRunTypes(params, context);
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading params for run types: $e');
+    }
   }
 
   Future<void> _fetchBranchesAndShowBottomSheet() async {
@@ -583,7 +600,7 @@ class TopBanner extends StatelessWidget {
                             child: SizedBox(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                                 children: [
                                   SizedBox(
                                     height: 4,
                                   ),

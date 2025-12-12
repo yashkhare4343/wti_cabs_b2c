@@ -7,6 +7,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_inventory_list_controller/crp_inventory_list_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
@@ -85,11 +86,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     // 2. Wait for guestId, token, user
     await fetchParameter();
 
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
+
     // 3. Now call payment modes safely
     final Map<String, dynamic> paymentParams = {
       'GuestID': int.parse(guestId ?? ''),
       'token': token,
-      'user': user
+      'user': user ?? email
     };
 
     // Prefer the user-selected run type; fallback to booking-detail RunTypeID
@@ -103,9 +107,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
     }
 
+
     final Map<String, dynamic> inventoryParams = {
       'token': token,
-      'user': user,
+      'user': user??email,
       'CorpID': crpBookingDetailsController
           .crpBookingDetailResponse.value?.corporateID,
       'BranchID':
@@ -1243,7 +1248,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
   }
 
-  void _showPickupTypeBottomSheet(List<String> pickupTypes) {
+  void _showPickupTypeBottomSheet(List<String> pickupTypes) async{
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1394,10 +1401,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                           pickupTypeError = null;
                                           _isPickupTypeExpanded = false;
 
+
+
                                           final Map<String, dynamic>
                                               inventoryParams = {
                                             'token': token,
-                                            'user': user,
+                                            'user': user??email,
                                             'CorpID':
                                                 crpBookingDetailsController
                                                     .crpBookingDetailResponse
@@ -1772,6 +1781,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         ? DateFormat('yyyy-MM-ddTHH:mm:ss').format(cabRequiredOn)
         : '';
 
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
     // Build request parameters
     // Use modified values if available, otherwise use original values from booking details
     final Map<String, dynamic> params = {
@@ -1788,7 +1799,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'specialInstructions': bookingData.specialInstructions ?? '',
       'uID': bookingData.uid?.toString() ?? '',
       'token': token ?? '',
-      'user': user ?? '',
+      'user': user ?? email,
     };
 
     debugPrint('📤 Modify Booking Params: $params');
@@ -1925,7 +1936,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       );
       return;
     }
-
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
     // Build request parameters
     final Map<String, dynamic> params = {
       'OrderID': widget.orderId,
@@ -1933,7 +1945,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'CancelledBy': '0',
       'UID': bookingData.uid?.toString() ?? '',
       'token': token ?? '',
-      'user': user ?? '',
+      'user': user ?? email,
     };
 
     debugPrint('📤 Cancel Booking Params: $params');

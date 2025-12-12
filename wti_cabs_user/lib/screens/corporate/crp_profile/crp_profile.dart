@@ -6,7 +6,9 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import 'package:get/get.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../../core/services/storage_services.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
+import '../corporate_landing_page/corporate_landing_page.dart';
 
 class CrpProfile extends StatefulWidget {
   const CrpProfile({super.key});
@@ -19,6 +21,113 @@ class _CrpProfileState extends State<CrpProfile> {
   final CurrencyController currencyController = Get.find<CurrencyController>();
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
+  /// Show logout confirmation dialog
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Log Out',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to log out?',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF666666),
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: AppColors.mainButtonBg,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  await _performLogout(context);
+                },
+                child: const Text(
+                  'Log Out',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Perform logout: clear corporate data and navigate to landing page
+  Future<void> _performLogout(BuildContext context) async {
+    // Store context reference before async operations
+    final navigatorContext = context;
+
+    final keysToDelete = [
+      'crpKey',
+      'crpId',
+      'branchId',
+      'guestId',
+      'guestName',
+      'email',
+    ];
+
+    // Delete keys in parallel with error handling
+    await Future.wait(
+      keysToDelete.map((key) async {
+        try {
+          await StorageServices.instance.delete(key);
+          debugPrint('✅ Deleted $key');
+        } catch (e) {
+          // Ignore errors if key doesn't exist - this is expected
+          debugPrint('Key $key not found or already deleted: $e');
+        }
+      }),
+      eagerError: false, // Continue even if one fails
+    );
+
+    // Reset LoginInfoController
+    loginInfoController.crpLoginInfo.value = null;
+
+    debugPrint('✅ Corporate logout data cleared');
+
+    // Navigate to corporate landing page (or redirect) and clear navigation stack
+    GoRouter.of(context).push(AppRoutes.bottomNav);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -274,8 +383,7 @@ class _CrpProfileState extends State<CrpProfile> {
                     // Log Out
                     InkWell(
                       onTap: () {
-                        // Show logout dialog or perform logout
-                        // showLogoutDialog(context);
+                        _showLogoutDialog(context);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(

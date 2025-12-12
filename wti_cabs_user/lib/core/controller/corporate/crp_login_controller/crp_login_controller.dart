@@ -2,12 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_login_response/crp_login_response.dart';
 import '../../../api/corporate/cpr_api_services.dart';
+import '../../../services/storage_services.dart';
 
 class LoginInfoController extends GetxController {
   final CprApiService crpApiService = CprApiService();
 
   Rx<CrpLoginResponse?> crpLoginInfo = Rx<CrpLoginResponse?>(null);
   RxBool isLoading = false.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Load saved corporate login info from storage
+    loadFromStorage();
+  }
+
+  /// Load corporate login info from storage
+  Future<void> loadFromStorage() async {
+    try {
+      final crpKey = await StorageServices.instance.read('crpKey');
+      final crpId = await StorageServices.instance.read('crpId');
+      final branchId = await StorageServices.instance.read('branchId');
+      final guestId = await StorageServices.instance.read('guestId');
+      final guestName = await StorageServices.instance.read('guestName');
+
+      // If crpKey exists, reconstruct the response object
+      if (crpKey != null && crpKey.isNotEmpty) {
+        crpLoginInfo.value = CrpLoginResponse(
+          key: crpKey,
+          bStatus: true,
+          sMessage: '',
+          guestID: int.tryParse(guestId ?? '0') ?? 0,
+          guestName: guestName ?? '',
+          branchID: branchId ?? '0',
+          subbranchID: 0,
+          lastRideBookingRatingFlag: false,
+          corpID: crpId ?? '0',
+          payModeID: '0',
+          carProviders: '0',
+          logoPath: '',
+        );
+        debugPrint('✅ Loaded corporate login info from storage');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading corporate login info from storage: $e');
+    }
+  }
 
   Future<void> fetchLoginInfo(
       Map<String, dynamic> params,

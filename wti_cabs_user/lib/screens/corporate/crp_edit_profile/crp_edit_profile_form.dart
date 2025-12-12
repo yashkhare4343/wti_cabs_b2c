@@ -12,6 +12,9 @@ import 'package:wti_cabs_user/core/model/corporate/crp_gender_response/crp_gende
 import 'package:wti_cabs_user/core/model/corporate/get_entity_list/get_entity_list_response.dart';
 import 'package:wti_cabs_user/screens/corporate/cpr_profile_response/cpr_profile_response.dart';
 
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../../core/services/storage_services.dart';
+
 class CrpEditProfileForm extends StatefulWidget {
   final CprProfileResponse? profile;
   final String? email;
@@ -635,6 +638,8 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
   }
 
   Future<void> _handleSave() async {
+    final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+
     if (_isLoading) {
       debugPrint('⏸️ [Edit Profile] Save button tapped but already loading, ignoring');
       return;
@@ -703,8 +708,8 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
         'gender': genderId?.toString() ?? '',
         'approving_auth_emailID': email,
         'corporateID': corporateId,
-        'token': token,
-        'user': email,
+        'token': loginInfoController.crpLoginInfo.value?.key??'',
+        'user': await StorageServices.instance.read('email'),
       };
 
       debugPrint('📤 [Edit Profile] API Request:');

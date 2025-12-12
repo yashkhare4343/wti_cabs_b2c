@@ -42,6 +42,7 @@ import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmatio
 import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
 import '../../screens/corporate/cpr_modify_booking/cpr_modify_booking.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
+import '../../screens/corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile_form.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
@@ -178,6 +179,10 @@ class AppPages {
     GoRoute(
       path: AppRoutes.myAccount,
       pageBuilder: (context, state) => _platformPage(MyAccount()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprRedirect,
+      pageBuilder: (context, state) => _platformPage(const CprRedirectScreen()),
     ),
     GoRoute(
       path: AppRoutes.cprLogin,

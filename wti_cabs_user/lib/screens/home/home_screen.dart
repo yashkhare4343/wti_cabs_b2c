@@ -11,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,6 +26,7 @@ import 'package:wti_cabs_user/common_widget/textformfield/read_only_textformfiel
 import 'package:wti_cabs_user/core/controller/banner/banner_controller.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/controller/manage_booking/upcoming_booking_controller.dart';
 import 'package:wti_cabs_user/core/controller/popular_destination/popular_destination.dart';
 import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
@@ -32,6 +34,7 @@ import 'package:wti_cabs_user/core/controller/usp_controller/usp_controller.dart
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:wti_cabs_user/core/model/home_page_images/home_page_image_response.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
+import 'package:wti_cabs_user/screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import 'package:wti_cabs_user/screens/corporate/corporate_landing_page/corporate_landing_page.dart';
 import 'package:wti_cabs_user/screens/user_fill_details/user_fill_details.dart';
 
@@ -74,6 +77,7 @@ import '../../main.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../bottom_nav/bottom_nav.dart';
+import '../corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
 import '../trip_history_controller/trip_history_controller.dart';
@@ -196,6 +200,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Get.put(FetchAllCitiesController());
   }
 
+  String? crpKey;
+
+  void loaderCrpToken() async{
+    crpKey = await await StorageServices.instance.read('crpKey');
+  }
+
   // corporte page transitiion loader
   bool _isCorporateLoading = false;
 
@@ -241,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       logScreenView();
       // _showBottomSheet();
     });
+    loaderCrpToken();
 
   }
 
@@ -1650,6 +1661,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+
   @override
   Widget build(BuildContext context) {
     final double drawerWidth = MediaQuery.of(context).size.width * 0.8;
@@ -1825,23 +1838,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           ),
                                           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                                         ),
-                                        onPressed:  _isCorporateLoading ? null :  () async{
-                                          // handle tap
+                                        onPressed: _isCorporateLoading ? null : () async {
                                           setState(() => _isCorporateLoading = true);
+
+                                          print("🔍 Checking stored CRP token...");
+                                          
+                                          // Load from storage first to ensure controller is synced
+
+                                          // Read directly from storage as the source of truth
+
 
                                           // Simulate a network delay or loading operation
                                           await Future.delayed(const Duration(milliseconds: 1200));
 
-
-
-                                          // Now navigate with flip animation
                                           Navigator.of(context).push(
                                             PlatformFlipPageRoute(
-                                              builder: (context) => const CorporateLandingPage(),
+                                              builder: (context) => const CprRedirectScreen(),
                                             ),
                                           );
-                                          setState(() => _isCorporateLoading = false);
 
+                                          setState(() => _isCorporateLoading = false);
                                         },
                                         child: const Text(
                                           "Go Corporate",

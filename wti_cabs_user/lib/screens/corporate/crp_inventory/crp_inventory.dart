@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -50,9 +51,11 @@ class _CrpInventoryState extends State<CrpInventory> {
 
   void fetchCardModel() async {
     await fetchParameter();
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
     final Map<String, dynamic> params = {
       'token': token,
-      'user': user,
+      'user': user??email,
       'CorpID': corpId,
       'BranchID': branchId,
       'RunTypeID': 1

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -9,6 +10,8 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../../common_widget/buttons/outline_button.dart';
+import '../../../core/services/storage_services.dart';
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 
 class CrpBooking extends StatefulWidget {
   const CrpBooking({super.key});
@@ -21,13 +24,49 @@ class _CrpBookingState extends State<CrpBooking> {
   final TextEditingController _searchController = TextEditingController();
   final CrpBookingHistoryController _controller =
       Get.put(CrpBookingHistoryController());
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // ✅ Ensure email is persisted before fetching booking history
+      await _ensureEmailPersistence();
       _controller.fetchBookingHistory(context);
     });
+  }
+
+  /// Ensure email is persisted in storage for API calls
+  Future<void> _ensureEmailPersistence() async {
+    try {
+      // Check if email exists in StorageServices
+      String? email = await StorageServices.instance.read('email');
+      
+      // If not found, try SharedPreferences as fallback
+      if (email == null || email.isEmpty || email == 'null') {
+        final prefs = await SharedPreferences.getInstance();
+        email = prefs.getString('email');
+        
+        // If found in SharedPreferences, save to StorageServices
+        if (email != null && email.isNotEmpty && email != 'null') {
+          await StorageServices.instance.save('email', email);
+          debugPrint('✅ Email restored from SharedPreferences: $email');
+        }
+      }
+      
+      // If still not found, ensure it's saved if available
+      if (email != null && email.isNotEmpty && email != 'null') {
+        // Ensure it's in both storage locations
+        await StorageServices.instance.save('email', email);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('email', email);
+        debugPrint('✅ Email persisted in booking screen: $email');
+      } else {
+        debugPrint('⚠️ Email not found in storage for booking screen');
+      }
+    } catch (e) {
+      debugPrint('❌ Error ensuring email persistence: $e');
+    }
   }
 
   @override

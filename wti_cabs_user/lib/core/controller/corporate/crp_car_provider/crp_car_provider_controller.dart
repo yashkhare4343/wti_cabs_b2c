@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import '../../../model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
 import '../../../services/storage_services.dart';
@@ -16,10 +17,13 @@ class CarProviderController extends GetxController {
       // Get token and user from storage
       final token = await StorageServices.instance.read('crpKey');
       final user = await StorageServices.instance.read('email');
+
+      final prefs = await SharedPreferences.getInstance();
+      String? email = prefs.getString('email');
       
       final params = {
         'token': token ?? '',
-        'user': user ?? '',
+        'user': user ?? email,
       };
 
       await CprApiService().getRequestCrp<List<CarProviderModel>>(

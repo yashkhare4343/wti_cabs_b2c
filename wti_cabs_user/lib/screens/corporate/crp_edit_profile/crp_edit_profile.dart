@@ -18,7 +18,6 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   
 
-  
   String? selectedGender;
   bool isCardValidated = false;
   
