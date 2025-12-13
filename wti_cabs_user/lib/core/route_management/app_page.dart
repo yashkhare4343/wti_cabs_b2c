@@ -49,6 +49,7 @@ import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
 import '../model/corporate/crp_booking_history/crp_booking_history_response.dart';
+import '../model/booking_engine/suggestions_places_response.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -199,8 +200,45 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBookingEngine,
       pageBuilder: (context, state) {
-        final selectedPickupType = state.extra as String?;
-        return _platformPage(CprBookingEngine(selectedPickupType: selectedPickupType));
+        // Handle both String (legacy) and Map (with selected place) formats
+        final extra = state.extra;
+        String? selectedPickupType;
+        Map<String, dynamic>? selectedPickupPlaceJson;
+        Map<String, dynamic>? selectedDropPlaceJson;
+        
+        if (extra is Map<String, dynamic>) {
+          selectedPickupType = extra['selectedPickupType'] as String?;
+          selectedPickupPlaceJson = extra['selectedPickupPlace'] as Map<String, dynamic>?;
+          selectedDropPlaceJson = extra['selectedDropPlace'] as Map<String, dynamic>?;
+        } else if (extra is String) {
+          selectedPickupType = extra;
+        }
+        
+        SuggestionPlacesResponse? selectedPickupPlace;
+        if (selectedPickupPlaceJson != null) {
+          try {
+            selectedPickupPlace = SuggestionPlacesResponse.fromJson(selectedPickupPlaceJson);
+          } catch (e) {
+            // If parsing fails, continue without the place
+            print('Error parsing selectedPickupPlace: $e');
+          }
+        }
+        
+        SuggestionPlacesResponse? selectedDropPlace;
+        if (selectedDropPlaceJson != null) {
+          try {
+            selectedDropPlace = SuggestionPlacesResponse.fromJson(selectedDropPlaceJson);
+          } catch (e) {
+            // If parsing fails, continue without the place
+            print('Error parsing selectedDropPlace: $e');
+          }
+        }
+        
+        return _platformPage(CprBookingEngine(
+          selectedPickupType: selectedPickupType,
+          selectedPickupPlace: selectedPickupPlace,
+          selectedDropPlace: selectedDropPlace,
+        ));
       },
     ),
     GoRoute(

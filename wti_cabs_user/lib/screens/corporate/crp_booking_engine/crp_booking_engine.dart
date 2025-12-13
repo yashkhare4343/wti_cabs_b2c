@@ -27,8 +27,15 @@ import '../../../core/services/storage_services.dart';
 
 class CprBookingEngine extends StatefulWidget {
   final String? selectedPickupType;
+  final SuggestionPlacesResponse? selectedPickupPlace;
+  final SuggestionPlacesResponse? selectedDropPlace;
   
-  const CprBookingEngine({super.key, this.selectedPickupType});
+  const CprBookingEngine({
+    super.key, 
+    this.selectedPickupType, 
+    this.selectedPickupPlace,
+    this.selectedDropPlace,
+  });
 
   @override
   State<CprBookingEngine> createState() => _CprBookingEngineState();
@@ -56,7 +63,36 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // If selectedPickupType is passed from navigation, use it
     if (widget.selectedPickupType != null) {
       selectedPickupType = widget.selectedPickupType;
+      // Only clear pickup and drop locations when navigating from corporate bottom nav (home screen)
+      // Don't clear if we're coming back from location selection (selectedPickupPlace or selectedDropPlace is passed)
+      if (widget.selectedPickupPlace == null && widget.selectedDropPlace == null) {
+        // Defer clearing until after build to avoid setState during build error
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _clearPickupAndDropLocations();
+        });
+      }
     }
+    
+    // If selected place is passed from location selection, set it in the controller
+    if (widget.selectedPickupPlace != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        crpSelectPickupController.selectedPlace.value = widget.selectedPickupPlace;
+        if (widget.selectedPickupPlace!.primaryText.isNotEmpty) {
+          crpSelectPickupController.searchController.text = widget.selectedPickupPlace!.primaryText;
+        }
+      });
+    }
+    
+    // If selected drop place is passed from location selection, set it in the controller
+    if (widget.selectedDropPlace != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        crpSelectDropController.selectedPlace.value = widget.selectedDropPlace;
+        if (widget.selectedDropPlace!.primaryText.isNotEmpty) {
+          crpSelectDropController.searchController.text = widget.selectedDropPlace!.primaryText;
+        }
+      });
+    }
+    
     _loadPreselectedRunType();
     runTypesAndPaymentModes();
     _prefillPickupFromCurrentLocation();
@@ -80,6 +116,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     paymentModeController.fetchPaymentModes(paymentParams, context);
     controller.fetchGender(context);
     carProviderController.fetchCarProviders(context);
+  }
+
+  /// Clear pickup and drop locations when navigating from corporate bottom nav
+  void _clearPickupAndDropLocations() {
+    crpSelectPickupController.clearSelection();
+    crpSelectDropController.clearSelection();
   }
 
   Future<void> _loadPreselectedRunType() async {
@@ -132,8 +174,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   /// Prefill pickup with current location (name + lat/lng) if available.
   /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
+  /// Skips prefilling when navigating from corporate bottom nav (when selectedPickupType is passed).
   Future<void> _prefillPickupFromCurrentLocation() async {
     try {
+      // If selectedPickupType is passed, we're coming from corporate bottom nav, so don't prefill
+      if (widget.selectedPickupType != null) return;
+      
       // If user has already selected a pickup in corporate flow, don't override it.
       if (crpSelectPickupController.selectedPlace.value != null) return;
 
@@ -239,10 +285,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   @override
   Widget build(BuildContext context) {
-    crpSelectPickupController.searchController.text =
-        '${crpSelectPickupController.selectedPlace.value?.primaryText}, ${crpSelectPickupController.selectedPlace.value?.secondaryText}' ?? '';
-    crpSelectDropController.searchController.text =
-        '${crpSelectDropController.selectedPlace.value?.primaryText}, ${crpSelectDropController.selectedPlace.value?.secondaryText}' ?? '';
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
@@ -876,22 +918,35 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      crpSelectPickupController.searchController.text.isNotEmpty
-                          ? crpSelectPickupController.searchController.text
-                          : 'Enter Pickup Location',
-                      style: TextStyle(
-                        fontWeight: crpSelectPickupController
-                            .searchController.text.isNotEmpty? FontWeight.w600 : FontWeight.w500,
-                        color: crpSelectPickupController
-                            .searchController.text.isNotEmpty
-                            ? const Color(0xFF4F4F4F)
-                            : Color(0xFFB2B2B2),
-                        fontSize: 14,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
+                    child: Obx(() {
+                      final pickupPlace = crpSelectPickupController.selectedPlace.value;
+                      String displayText;
+                      bool hasText;
+                      
+                      if (pickupPlace != null && pickupPlace.primaryText != null && pickupPlace.primaryText!.isNotEmpty) {
+                        final secondaryText = pickupPlace.secondaryText ?? '';
+                        displayText = secondaryText.isNotEmpty
+                            ? '${pickupPlace.primaryText}, $secondaryText'
+                            : pickupPlace.primaryText!;
+                        hasText = true;
+                      } else {
+                        displayText = 'Enter Pickup Location';
+                        hasText = false;
+                      }
+                      
+                      return Text(
+                        displayText,
+                        style: TextStyle(
+                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          color: hasText
+                              ? const Color(0xFF4F4F4F)
+                              : Color(0xFFB2B2B2),
+                          fontSize: 14,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      );
+                    }),
                   ),
                 ),
                 SizedBox(
@@ -911,20 +966,35 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   child: Container(
                     alignment: Alignment.centerLeft,
                     margin: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      crpSelectDropController.searchController.text.isNotEmpty
-                          ? crpSelectDropController.searchController.text
-                          : 'Enter drop location',
-                      style: TextStyle(
-                        fontWeight: crpSelectDropController.searchController.text.isNotEmpty? FontWeight.w600 : FontWeight.w500,
-                        color: crpSelectDropController.searchController.text.isNotEmpty
-                            ? const Color(0xFF4F4F4F)
-                            : Color(0xFFB2B2B2),
-                        fontSize: 14,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
+                    child: Obx(() {
+                      final dropPlace = crpSelectDropController.selectedPlace.value;
+                      String displayText;
+                      bool hasText;
+                      
+                      if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
+                        final secondaryText = dropPlace.secondaryText ?? '';
+                        displayText = secondaryText.isNotEmpty
+                            ? '${dropPlace.primaryText}, $secondaryText'
+                            : dropPlace.primaryText!;
+                        hasText = true;
+                      } else {
+                        displayText = 'Enter drop location';
+                        hasText = false;
+                      }
+                      
+                      return Text(
+                        displayText,
+                        style: TextStyle(
+                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          color: hasText
+                              ? const Color(0xFF4F4F4F)
+                              : Color(0xFFB2B2B2),
+                          fontSize: 14,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      );
+                    }),
                   ),
                 ),
               ],

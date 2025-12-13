@@ -348,12 +348,15 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
 
     await controller.selectPlace(place);
     
-    // Navigate back to booking engine with the selected pickup type preserved
-    // Pass the selectedPickupType back to booking engine
+    // Navigate back to booking engine and pass the selected place explicitly
+    // This ensures the selected place is displayed correctly
     if (context.mounted) {
       GoRouter.of(context).pushReplacement(
         AppRoutes.cprBookingEngine,
-        extra: widget.selectedPickupType,
+        extra: {
+          'selectedPickupType': widget.selectedPickupType,
+          'selectedDropPlace': place.toJson(),
+        },
       );
     }
   }
