@@ -79,10 +79,11 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
-      onPopInvoked: (didPop) {
-        // Custom logic
-        GoRouter.of(context).go(AppRoutes.bottomNav); // example redirect
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          GoRouter.of(context).go(AppRoutes.bottomNav);
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.white,

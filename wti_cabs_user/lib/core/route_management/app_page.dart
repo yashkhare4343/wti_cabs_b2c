@@ -6,6 +6,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/screens/corporate/corporate_landing_page/corporate_landing_page.dart';
 import 'package:wti_cabs_user/screens/corporate/corporate_login/cpr_login.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_register/crp_register.dart';
@@ -293,6 +294,10 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBottomNav,
       pageBuilder: (context, state) => _platformPage(CorporateBottomNavScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprLandingPage,
+      pageBuilder: (context, state) => _platformPage(CorporateLandingPage()),
     ),
     GoRoute(
       path: AppRoutes.cprEditProfile,

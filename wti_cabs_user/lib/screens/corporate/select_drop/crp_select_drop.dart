@@ -348,14 +348,30 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
 
     await controller.selectPlace(place);
     
+    // Get the updated place with latitude and longitude from controller
+    final updatedPlace = controller.selectedPlace.value;
+    if (updatedPlace == null) {
+      // If for some reason the place is null, use the original
+      if (context.mounted) {
+        GoRouter.of(context).pushReplacement(
+          AppRoutes.cprBookingEngine,
+          extra: {
+            'selectedPickupType': widget.selectedPickupType,
+            'selectedDropPlace': place.toJson(),
+          },
+        );
+      }
+      return;
+    }
+    
     // Navigate back to booking engine and pass the selected place explicitly
-    // This ensures the selected place is displayed correctly
+    // This ensures the selected place with lat/lng is displayed correctly
     if (context.mounted) {
       GoRouter.of(context).pushReplacement(
         AppRoutes.cprBookingEngine,
         extra: {
           'selectedPickupType': widget.selectedPickupType,
-          'selectedDropPlace': place.toJson(),
+          'selectedDropPlace': updatedPlace.toJson(),
         },
       );
     }

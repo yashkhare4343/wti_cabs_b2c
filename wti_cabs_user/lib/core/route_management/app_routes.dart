@@ -30,6 +30,7 @@ class AppRoutes{
   // corporate
   static const String cprRedirect = '/cprRedirect';
   static const String cprLogin = '/cprLogin';
+  static const String cprLandingPage = '/cprLandingPage';
   static const String cprRegister = '/cprRegister';
   static const String cprHomeScreen = '/cprHomeScreen';
   static const String cprBookingEngine = '/cprBookingEngine';

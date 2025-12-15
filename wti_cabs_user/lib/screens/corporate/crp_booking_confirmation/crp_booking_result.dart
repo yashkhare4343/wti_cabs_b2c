@@ -27,93 +27,101 @@ class CrpBookingResultPage extends StatelessWidget {
     final tripType = bookingData?.pickupType ?? '';
     final carType = selectedCar?.carType ?? '';
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    isSuccess ? Icons.check_circle : Icons.cancel,
-                    color: isSuccess ? Colors.green : Colors.red,
-                    size: 50,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    isSuccess ? 'Booking Successful' : 'Booking Failed',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          GoRouter.of(context).go(AppRoutes.cprBottomNav);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isSuccess ? Icons.check_circle : Icons.cancel,
+                      color: isSuccess ? Colors.green : Colors.red,
+                      size: 50,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Booking details card
-                  _buildDetailCard(
-                    title: "Booking Details",
-                    icon: Icons.assignment,
-                    children: [
-                      _detailRow("Trip Type", tripType),
-                      if (pickup.isNotEmpty) _detailRow("Pickup", pickup),
-                      if (drop.isNotEmpty) _detailRow("Drop", drop),
-                      if (carType.isNotEmpty) _detailRow("Car Type", carType),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: AppColors.mainButtonBg,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                    const SizedBox(height: 12),
+                    Text(
+                      isSuccess ? 'Booking Successful' : 'Booking Failed',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      onPressed: () {
-                        // Replace entire navigation stack with corporate bottom nav
-                        // Use rootNavigator to ensure we replace everything including GoRouter routes
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const CorporateBottomNavScreen(initialIndex: 0),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Booking details card
+                    _buildDetailCard(
+                      title: "Booking Details",
+                      icon: Icons.assignment,
+                      children: [
+                        _detailRow("Trip Type", tripType),
+                        if (pickup.isNotEmpty) _detailRow("Pickup", pickup),
+                        if (drop.isNotEmpty) _detailRow("Drop", drop),
+                        if (carType.isNotEmpty) _detailRow("Car Type", carType),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: AppColors.mainButtonBg,
+                            width: 1.5,
                           ),
-                        );
-                      },
-                      child: const Text(
-                        'Go to Home',
-                        style: TextStyle(
-                          color: AppColors.mainButtonBg,
-                          fontWeight: FontWeight.w600,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onPressed: () {
+                          // Replace entire navigation stack with corporate bottom nav
+                          // Use rootNavigator to ensure we replace everything including GoRouter routes
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const CorporateBottomNavScreen(initialIndex: 0),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Go to Home',
+                          style: TextStyle(
+                            color: AppColors.mainButtonBg,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

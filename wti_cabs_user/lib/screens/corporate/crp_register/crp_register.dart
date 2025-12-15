@@ -235,337 +235,345 @@ class _CprRegisterState extends State<CprRegister> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          reverse: true,
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-              key: _formKey,
-              autovalidateMode: _autoValidate
-                  ? AutovalidateMode.always
-                  : AutovalidateMode.disabled,
-              child: Obx(() {
-                // if(crpGetEntityListController.isLoading.value){
-                //   return Center(child: const CupertinoActivityIndicator());
-                // }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          GoRouter.of(context).go(AppRoutes.cprLandingPage);
+        }
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            reverse: true,
+            padding: const EdgeInsets.all(20.0),
+            child: Form(
+                key: _formKey,
+                autovalidateMode: _autoValidate
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                child: Obx(() {
+                  // if(crpGetEntityListController.isLoading.value){
+                  //   return Center(child: const CupertinoActivityIndicator());
+                  // }
 
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ✅ Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SvgPicture.asset(
-                          'assets/images/wti_logo.svg',
-                          height: 17,
-                          width: 15,
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: AppColors.mainButtonBg,
-                            borderRadius: BorderRadius.circular(24),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ✅ Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/images/wti_logo.svg',
+                            height: 17,
+                            width: 15,
                           ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 8),
+                          const SizedBox(width: 8),
+                          Container(
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: AppColors.mainButtonBg,
+                              borderRadius: BorderRadius.circular(24),
                             ),
-                            onPressed: () {},
-                            child: const Text(
-                              "Corporate",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 8),
+                              ),
+                              onPressed: () {},
+                              child: const Text(
+                                "Corporate",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Welcome to the Team',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                          )
+                        ],
                       ),
-                    ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Welcome to the Team',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
 
-                    // ✅ Name
-                    CprTextFormField(
-                      controller: nameController,
-                      hintText: "Enter Name",
-                      labelText: "Name",
-                      validator: (value) => value == null || value.isEmpty
-                          ? "Name is required"
-                          : null,
-                    ),
+                      const SizedBox(height: 20),
 
-                    const SizedBox(height: 14),
+                      // ✅ Name
+                      CprTextFormField(
+                        controller: nameController,
+                        hintText: "Enter Name",
+                        labelText: "Name",
+                        validator: (value) => value == null || value.isEmpty
+                            ? "Name is required"
+                            : null,
+                      ),
 
-                    // ✅ Phone
-                    CprTextFormField(
-                      controller: phoneNoController,
-                      hintText: "Enter Phone Number",
-                      labelText: "Phone Number",
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (_phoneFieldError != null) return _phoneFieldError;
+                      const SizedBox(height: 14),
 
-                        if (value == null || value.isEmpty) {
-                          return "Phone number is required";
-                        }
-                        if (value.length < 10) {
-                          return "Minimum 10 digits required";
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Email with focus + async API validation
-                    CprTextFormField(
-                        fieldKey: _emailFieldKey,
-                        controller: emailController,
-                        focusNode: emailFocusNode,
-                        hintText: "Enter your email",
-                        labelText: "Enter Official Email ID (Used as login ID)",
-                        keyboardType: TextInputType.emailAddress,
+                      // ✅ Phone
+                      CprTextFormField(
+                        controller: phoneNoController,
+                        hintText: "Enter Phone Number",
+                        labelText: "Phone Number",
+                        keyboardType: TextInputType.phone,
                         validator: (value) {
-                          // Check API validation error first (highest priority)
-                          // This will show the error when _emailError is set
-                          if (_emailFieldError != null) return _emailFieldError;
+                          if (_phoneFieldError != null) return _phoneFieldError;
 
-                          if (_emailError != null && _emailError!.isNotEmpty) {
-                            return _emailError;
-                          }
-                          // Basic validation
                           if (value == null || value.isEmpty) {
-                            return "Email is required";
+                            return "Phone number is required";
                           }
-                          final emailRegex = RegExp(
-                              r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                          if (!emailRegex.hasMatch(value)) {
-                            return "Enter a valid email address";
+                          if (value.length < 10) {
+                            return "Minimum 10 digits required";
                           }
-                          // If email format is valid but API validation hasn't run yet, return null
-                          // The API validation will be triggered on field submit or blur
                           return null;
                         },
-                        onFieldSubmitted: (_) async {
-                          // Validate email when user submits the field (presses enter/done)
-                          final email = emailController.text.trim();
+                      ),
 
-                          // First, do basic validation (format check)
-                          _emailFieldKey.currentState?.validate();
+                      const SizedBox(height: 14),
 
-                          if (email.isNotEmpty) {
-                            // Run API validation
-                            await _validateEmail();
-                            // The _validateEmail() method already triggers validation via addPostFrameCallback
-                            // But we also trigger it here to ensure it shows immediately
-                            if (mounted) {
-                              // Small delay to ensure state is updated
-                              await Future.delayed(
-                                  const Duration(milliseconds: 50));
-                              _emailFieldKey.currentState?.validate();
-                              // Remove focus to show the error clearly
-                              emailFocusNode.unfocus();
+                      // Email with focus + async API validation
+                      CprTextFormField(
+                          fieldKey: _emailFieldKey,
+                          controller: emailController,
+                          focusNode: emailFocusNode,
+                          hintText: "Enter your email",
+                          labelText: "Enter Official Email ID (Used as login ID)",
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            // Check API validation error first (highest priority)
+                            // This will show the error when _emailError is set
+                            if (_emailFieldError != null) return _emailFieldError;
+
+                            if (_emailError != null && _emailError!.isNotEmpty) {
+                              return _emailError;
                             }
+                            // Basic validation
+                            if (value == null || value.isEmpty) {
+                              return "Email is required";
+                            }
+                            final emailRegex = RegExp(
+                                r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                            if (!emailRegex.hasMatch(value)) {
+                              return "Enter a valid email address";
+                            }
+                            // If email format is valid but API validation hasn't run yet, return null
+                            // The API validation will be triggered on field submit or blur
+                            return null;
+                          },
+                          onFieldSubmitted: (_) async {
+                            // Validate email when user submits the field (presses enter/done)
+                            final email = emailController.text.trim();
+
+                            // First, do basic validation (format check)
+                            _emailFieldKey.currentState?.validate();
+
+                            if (email.isNotEmpty) {
+                              // Run API validation
+                              await _validateEmail();
+                              // The _validateEmail() method already triggers validation via addPostFrameCallback
+                              // But we also trigger it here to ensure it shows immediately
+                              if (mounted) {
+                                // Small delay to ensure state is updated
+                                await Future.delayed(
+                                    const Duration(milliseconds: 50));
+                                _emailFieldKey.currentState?.validate();
+                                // Remove focus to show the error clearly
+                                emailFocusNode.unfocus();
+                              }
+                            }
+                          },
+                          onChanged: (value) {
+                            // Clear error when user starts typing (for better UX)
+                            if (_emailError != null && value.isNotEmpty) {
+                              setState(() {
+                                _emailError = null;
+                                _isEmailValid = false;
+                              });
+                            }
+
+                            // 🔥 Force revalidation to show/hide error text dynamically
+                            _revalidateFields();
+                          }),
+
+
+                      const SizedBox(height: 14),
+
+                      // ✅ Password
+                      CprTextFormField(
+                        controller: passwordController,
+                        hintText: "Enter Password",
+                        labelText: "Password",
+                        isPassword: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Password is required";
                           }
+                          if (value.length < 8) {
+                            return "At least 8 characters required";
+                          }
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                            return "Include at least one uppercase letter";
+                          }
+                          if (!RegExp(r'[a-z]').hasMatch(value)) {
+                            return "Include at least one lowercase letter";
+                          }
+                          if (!RegExp(r'[0-9]').hasMatch(value)) {
+                            return "Include at least one number";
+                          }
+                          if (!RegExp(r'[!@#\$&*~_]').hasMatch(value)) {
+                            return "Include at least one special character";
+                          }
+                          return null;
                         },
-                        onChanged: (value) {
-                          // Clear error when user starts typing (for better UX)
-                          if (_emailError != null && value.isNotEmpty) {
-                            setState(() {
-                              _emailError = null;
-                              _isEmailValid = false;
-                            });
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ✅ Confirm Password
+                      CprTextFormField(
+                        controller: confirmPasswordController,
+                        hintText: "Enter Confirm Password",
+                        labelText: "Confirm Password",
+                        isPassword: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Confirm password is required";
                           }
+                          if (value != passwordController.text) {
+                            return "Passwords do not match";
+                          }
+                          return null;
+                        },
+                      ),
 
-                          // 🔥 Force revalidation to show/hide error text dynamically
-                          _revalidateFields();
-                        }),
+                      const SizedBox(height: 14),
 
+                      // ✅ Employee ID
+                      CprTextFormField(
+                        controller: empIdController,
+                        hintText: "Enter Employee ID",
+                        labelText: "Employee ID",
+                        validator: (value) => null,
+                      ),
+                      const SizedBox(height: 14),
 
-                    const SizedBox(height: 14),
+                      // City
+                      verifyCorporateController.cprVerifyResponse.value?.code == 0 ? CorporateBranchDropdown(corpId: selectedEntity?.entityId.toString()??''): SizedBox.shrink(),
+                      const SizedBox(height: 14),
+                      // Entity List
+                      CprSelectBox(
+                        labelText: "Choose Corporate",
+                        hintText: "Choose Corporate",
+                        items: crpGetEntityListController
+                            .getAllEntityList.value?.getEntityList
+                            ?.map((val) => val.entityName ?? '')
+                            .toList() ??
+                            ['Choose Entity'],
+                        selectedValue: selectedEntity?.entityName,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedEntity = crpGetEntityListController
+                                .getAllEntityList.value?.getEntityList
+                                ?.firstWhere((e) => e.entityName == value);
+                          });
+                          print(
+                              "Selected Entity ID: ${selectedEntity?.entityId}");
+                          print(
+                              "Selected Entity Name: ${selectedEntity?.entityName}");               },
+                      ),
 
-                    // ✅ Password
-                    CprTextFormField(
-                      controller: passwordController,
-                      hintText: "Enter Password",
-                      labelText: "Password",
-                      isPassword: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Password is required";
-                        }
-                        if (value.length < 8) {
-                          return "At least 8 characters required";
-                        }
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                          return "Include at least one uppercase letter";
-                        }
-                        if (!RegExp(r'[a-z]').hasMatch(value)) {
-                          return "Include at least one lowercase letter";
-                        }
-                        if (!RegExp(r'[0-9]').hasMatch(value)) {
-                          return "Include at least one number";
-                        }
-                        if (!RegExp(r'[!@#\$&*~_]').hasMatch(value)) {
-                          return "Include at least one special character";
-                        }
-                        return null;
-                      },
-                    ),
+                      const SizedBox(height: 20),
 
-                    const SizedBox(height: 14),
-
-                    // ✅ Confirm Password
-                    CprTextFormField(
-                      controller: confirmPasswordController,
-                      hintText: "Enter Confirm Password",
-                      labelText: "Confirm Password",
-                      isPassword: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Confirm password is required";
-                        }
-                        if (value != passwordController.text) {
-                          return "Passwords do not match";
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // ✅ Employee ID
-                    CprTextFormField(
-                      controller: empIdController,
-                      hintText: "Enter Employee ID",
-                      labelText: "Employee ID",
-                      validator: (value) => null,
-                    ),
-                    const SizedBox(height: 14),
-
-                    // City
-                    verifyCorporateController.cprVerifyResponse.value?.code == 0 ? CorporateBranchDropdown(corpId: selectedEntity?.entityId.toString()??''): SizedBox.shrink(),
-                    const SizedBox(height: 14),
-                    // Entity List
-                    CprSelectBox(
-                      labelText: "Choose Corporate",
-                      hintText: "Choose Corporate",
-                      items: crpGetEntityListController
-                          .getAllEntityList.value?.getEntityList
-                          ?.map((val) => val.entityName ?? '')
-                          .toList() ??
-                          ['Choose Entity'],
-                      selectedValue: selectedEntity?.entityName,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedEntity = crpGetEntityListController
-                              .getAllEntityList.value?.getEntityList
-                              ?.firstWhere((e) => e.entityName == value);
-                        });
-                        print(
-                            "Selected Entity ID: ${selectedEntity?.entityId}");
-                        print(
-                            "Selected Entity Name: ${selectedEntity?.entityName}");               },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ✅ Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                             onPressed: crpRegisterController.isLoading.value?(){} : (){
-                              final Map<String, dynamic> params = {
-                                "guestName": nameController.text.trim(),
-                                "corporate_Name": verifyCorporateController.cprName.value,
-                                "CorpID": int.parse(verifyCorporateController.cprID.value),
-                                "mobile": phoneNoController.text.trim(),
-                                "emailID": emailController.text.trim(),
-                                "password": passwordController.text.trim(),
-                                "employeeID": empIdController.text.trim(),
-                                "branchID": crpGetBranchListController.selectedBranchId.value,
-                                "location": crpGetBranchListController.selectedBranchName.value,
-                                "IP": "local",
-                                "android_gcm": "",
-                                "ios_token": "",
-                                "EntityID": selectedEntity?.entityId,
-                                "ManagerEmail": "",
-                                "register_sourceID": "Mobile"
-                              };
-                              _validateAndSubmit(params);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF01ACF2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                      // ✅ Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                               onPressed: crpRegisterController.isLoading.value?(){} : (){
+                                final Map<String, dynamic> params = {
+                                  "guestName": nameController.text.trim(),
+                                  "corporate_Name": verifyCorporateController.cprName.value,
+                                  "CorpID": int.parse(verifyCorporateController.cprID.value),
+                                  "mobile": phoneNoController.text.trim(),
+                                  "emailID": emailController.text.trim(),
+                                  "password": passwordController.text.trim(),
+                                  "employeeID": empIdController.text.trim(),
+                                  "branchID": crpGetBranchListController.selectedBranchId.value,
+                                  "location": crpGetBranchListController.selectedBranchName.value,
+                                  "IP": "local",
+                                  "android_gcm": "",
+                                  "ios_token": "",
+                                  "EntityID": selectedEntity?.entityId,
+                                  "ManagerEmail": "",
+                                  "register_sourceID": "Mobile"
+                                };
+                                _validateAndSubmit(params);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF01ACF2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: crpRegisterController.isLoading.value? SizedBox(
-                              width: 10,
-                                height: 10,
-                                child: CircularProgressIndicator(color: Colors.white,)) : const Text(
-                              "Register Now",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                              child: crpRegisterController.isLoading.value? SizedBox(
+                                width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(color: Colors.white,)) : const Text(
+                                "Register Now",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        // const SizedBox(width: 12),
-                        // Expanded(
-                        //   child: ElevatedButton(
-                        //     onPressed: () {},
-                        //     style: ElevatedButton.styleFrom(
-                        //       backgroundColor: Colors.white,
-                        //       shape: RoundedRectangleBorder(
-                        //         borderRadius: BorderRadius.circular(16),
-                        //         side: const BorderSide(color: Colors.black12),
-                        //       ),
-                        //       padding: const EdgeInsets.symmetric(vertical: 14),
-                        //     ),
-                        //     child: const Text(
-                        //       "Cancel",
-                        //       style: TextStyle(
-                        //         color: Colors.black,
-                        //         fontSize: 15,
-                        //         fontWeight: FontWeight.w600,
-                        //       ),
-                        //     ),
-                        //   ),
-                        // ),
-                      ],
-                    ),
-                  ],
-                );
-              })),
+                          // const SizedBox(width: 12),
+                          // Expanded(
+                          //   child: ElevatedButton(
+                          //     onPressed: () {},
+                          //     style: ElevatedButton.styleFrom(
+                          //       backgroundColor: Colors.white,
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(16),
+                          //         side: const BorderSide(color: Colors.black12),
+                          //       ),
+                          //       padding: const EdgeInsets.symmetric(vertical: 14),
+                          //     ),
+                          //     child: const Text(
+                          //       "Cancel",
+                          //       style: TextStyle(
+                          //         color: Colors.black,
+                          //         fontSize: 15,
+                          //         fontWeight: FontWeight.w600,
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
+                        ],
+                      ),
+                    ],
+                  );
+                })),
+          ),
         ),
       ),
     );

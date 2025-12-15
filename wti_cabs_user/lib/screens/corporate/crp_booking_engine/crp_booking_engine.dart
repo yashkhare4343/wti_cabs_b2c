@@ -285,201 +285,75 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.05),
-          surfaceTintColor: Colors.transparent,
-          leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Booking',
-          style: TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            // letterSpacing: -0.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          context.push(AppRoutes.cprBottomNav);
+
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFFFF),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.black.withOpacity(0.05),
+            surfaceTintColor: Colors.transparent,
+            leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+            onPressed: () => context.push(AppRoutes.cprBottomNav),
           ),
+          title: const Text(
+            'Booking',
+            style: TextStyle(
+              color: Color(0xFF000000),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              // letterSpacing: -0.5,
+            ),
+          ),
+          centerTitle: false,
         ),
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Location Input Section
-              Obx(() => _buildPickUpTypeSection()),
-              const SizedBox(height: 20),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Location Input Section
+                Obx(() => _buildPickUpTypeSection()),
+                const SizedBox(height: 20),
 
-              _buildLocationSection(),
-              const SizedBox(height: 24),
-              // Pick Up Date and Drop Date Buttons
-              _buildDateButtons(),
-              // Pick Up Type Button (always shown, replaces tabs)
-              const SizedBox(height: 20),
-              // Booking For
-              _buildSectionLabel('Booking Type'),
-              const SizedBox(height: 10),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() => bookingTypeError = null);
-                    _showBookingTypeBottomSheet();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(37),
-                      border: Border.all(
-                        color: bookingTypeError != null
-                            ? Colors.red.shade400
-                            : const Color(0xFFE2E2E2),
-                        width: bookingTypeError != null ? 1.5 : 1,
-                      ),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 24,
-                            width: 24,
-                            padding: const EdgeInsets.all(1.5),
-                            decoration: BoxDecoration(
-                            ),
-                            child: SvgPicture.asset(
-                              'assets/images/booking_type.svg',
-                              width: 20,
-                              height: 20,
-                              color: const Color(0xFF52A6F9),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              selectedBookingFor ?? 'Select Booking Type',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF333333),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: Color(0xFF111111),
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                if (bookingTypeError != null) ...[
-                  const SizedBox(height: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 16, color: Colors.red.shade600),
-                         const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            bookingTypeError!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.red.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                _buildLocationSection(),
+                const SizedBox(height: 24),
+                // Pick Up Date and Drop Date Buttons
+                _buildDateButtons(),
+                // Pick Up Type Button (always shown, replaces tabs)
+                const SizedBox(height: 20),
+                // Booking For
+                _buildSectionLabel('Booking Type'),
+                const SizedBox(height: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => bookingTypeError = null);
+                      _showBookingTypeBottomSheet();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(37),
+                        border: Border.all(
+                          color: bookingTypeError != null
+                              ? Colors.red.shade400
+                              : const Color(0xFFE2E2E2),
+                          width: bookingTypeError != null ? 1.5 : 1,
                         ),
-                      ],
-                    ),
-                  ),
-                ]
-              ]),
-
-              const SizedBox(height: 12),
-              // Payment Controller
-              Obx(() {
-                if (paymentModeController.isLoading.value) {
-                  return Container(
-                    padding: const EdgeInsets.all(24),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.mainButtonBg),
                       ),
-                    ),
-                  );
-                }
-
-                final list = paymentModeController.modes;
-
-                if (list.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            color: Colors.orange.shade700, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            "No Payment Modes Found",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.orange.shade700,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final hasError =
-                    paymentModeError != null && paymentModeError!.isNotEmpty;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionLabel('Payment Mode'),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => paymentModeError = null);
-                        _showPaymentModeBottomSheet();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(37),
-                          border: Border.all(
-                            color: hasError
-                                ? Colors.red.shade400
-                                : const Color(0xFFE2E2E2),
-                            width: hasError ? 1.5 : 1,
-                          ),
-                          color: Colors.white,
-                        ),
+                      child: DropdownButtonHideUnderline(
                         child: Row(
                           children: [
                             Container(
@@ -489,134 +363,36 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                               decoration: BoxDecoration(
                               ),
                               child: SvgPicture.asset(
-                                'assets/images/payment_mode.svg',
+                                'assets/images/booking_type.svg',
                                 width: 20,
                                 height: 20,
-                                // color: const Color(0xFF52A6F9),
+                                color: const Color(0xFF52A6F9),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                paymentModeController
-                                        .selectedMode.value?.mode ??
-                                    'Select Payment Mode',
-                                style: TextStyle(
+                                selectedBookingFor ?? 'Select Booking Type',
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
-                                  color: hasError
-                                      ? Colors.red.shade700
-                                      : const Color(0xFF333333),
+                                  color: Color(0xFF333333),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 1,
                               ),
                             ),
-                            Icon(
+                            const Icon(
                               Icons.keyboard_arrow_down_rounded,
-                              color: hasError
-                                  ? Colors.red.shade400
-                                  : const Color(0xFF6B7280),
-                              size: 22,
+                              color: Color(0xFF111111),
+                              size: 20,
                             ),
                           ],
                         ),
                       ),
                     ),
-                    if (paymentModeError != null) ...[
-                      const SizedBox(height: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline,
-                                size: 16, color: Colors.red.shade600),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                paymentModeError!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.red.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              }),
-              const SizedBox(height: 12),
-
-              // Gender
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel('Gender'),
-                  const SizedBox(height: 10),
-                  Obx(() {
-                    final hasError =
-                        genderError != null && genderError!.isNotEmpty;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() => genderError = null);
-                        _showGenderBottomSheet();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: hasError
-                                ? Colors.red.shade400
-                                : const Color(0xFFE2E2E2),
-                            width: hasError ? 1.5 : 1,
-                          ),
-                          color: Colors.white,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              height: 24,
-                              width: 24,
-                              padding: const EdgeInsets.all(1.5),
-                              decoration: BoxDecoration(
-                              ),
-                              child: Icon(Icons.person_outline_outlined, size: 20, color: Color(0xFF96C4FA),),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                controller.selectedGender.value?.gender ??
-                                    'Select Gender',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: hasError
-                                      ? Colors.red.shade700
-                                      : const Color(0xFF333333),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: hasError
-                                  ? Colors.red.shade400
-                                  : const Color(0xFF6B7280),
-                              size: 22,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  if (genderError != null) ...[
+                  ),
+                  if (bookingTypeError != null) ...[
                     const SizedBox(height: 6),
                     Padding(
                       padding: const EdgeInsets.only(left: 4),
@@ -624,10 +400,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         children: [
                           Icon(Icons.error_outline,
                               size: 16, color: Colors.red.shade600),
-                          const SizedBox(width: 6),
+                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              genderError!,
+                              bookingTypeError!,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.red.shade600,
@@ -638,101 +414,217 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         ],
                       ),
                     ),
-                  ],
-                ],
-              ),
+                  ]
+                ]),
 
-              const SizedBox(height: 12),
-
-              // Car Provider
-              Obx(() {
-                if (carProviderController.isLoading.value) {
-                  return Container(
-                    padding: const EdgeInsets.all(24),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.mainButtonBg),
-                      ),
-                    ),
-                  );
-                }
-
-                final list = carProviderController.carProviderList;
-
-                if (list.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                final hasError =
-                    carProviderError != null && carProviderError!.isNotEmpty;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionLabel('Car Provider'),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => carProviderError = null);
-                        _showCarProviderBottomSheet();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: hasError
-                                ? Colors.red.shade400
-                                : const Color(0xFFE2E2E2),
-                            width: hasError ? 1.5 : 1,
-                          ),
-                          color: Colors.white,
+                const SizedBox(height: 12),
+                // Payment Controller
+                Obx(() {
+                  if (paymentModeController.isLoading.value) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.mainButtonBg),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                              ),
-                              child: Icon(
-                                Icons.directions_car_filled_outlined,
-                                color: hasError
-                                    ? Colors.red.shade600
-                                    : Color(0xFF96C4FA),
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                carProviderController
-                                        .selectedCarProvider.value
-                                        ?.providerName ??
-                                    'Select Car Provider',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: hasError
-                                      ? Colors.red.shade700
-                                      : const Color(0xFF333333),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
+                      ),
+                    );
+                  }
+
+                  final list = paymentModeController.modes;
+
+                  if (list.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              color: Colors.orange.shade700, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "No Payment Modes Found",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final hasError =
+                      paymentModeError != null && paymentModeError!.isNotEmpty;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionLabel('Payment Mode'),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => paymentModeError = null);
+                          _showPaymentModeBottomSheet();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(37),
+                            border: Border.all(
                               color: hasError
                                   ? Colors.red.shade400
-                                  : const Color(0xFF6B7280),
-                              size: 22,
+                                  : const Color(0xFFE2E2E2),
+                              width: hasError ? 1.5 : 1,
                             ),
-                          ],
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                height: 24,
+                                width: 24,
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: BoxDecoration(
+                                ),
+                                child: SvgPicture.asset(
+                                  'assets/images/payment_mode.svg',
+                                  width: 20,
+                                  height: 20,
+                                  // color: const Color(0xFF52A6F9),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  paymentModeController
+                                          .selectedMode.value?.mode ??
+                                      'Select Payment Mode',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: hasError
+                                        ? Colors.red.shade700
+                                        : const Color(0xFF333333),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: hasError
+                                    ? Colors.red.shade400
+                                    : const Color(0xFF6B7280),
+                                size: 22,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    if (carProviderError != null) ...[
+                      if (paymentModeError != null) ...[
+                        const SizedBox(height: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 16, color: Colors.red.shade600),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  paymentModeError!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
+                const SizedBox(height: 12),
+
+                // Gender
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel('Gender'),
+                    const SizedBox(height: 10),
+                    Obx(() {
+                      final hasError =
+                          genderError != null && genderError!.isNotEmpty;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => genderError = null);
+                          _showGenderBottomSheet();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFFE2E2E2),
+                              width: hasError ? 1.5 : 1,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                height: 24,
+                                width: 24,
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: BoxDecoration(
+                                ),
+                                child: Icon(Icons.person_outline_outlined, size: 20, color: Color(0xFF96C4FA),),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  controller.selectedGender.value?.gender ??
+                                      'Select Gender',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: hasError
+                                        ? Colors.red.shade700
+                                        : const Color(0xFF333333),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: hasError
+                                    ? Colors.red.shade400
+                                    : const Color(0xFF6B7280),
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    if (genderError != null) ...[
                       const SizedBox(height: 6),
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
@@ -743,7 +635,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                carProviderError!,
+                                genderError!,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.red.shade600,
@@ -756,21 +648,138 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       ),
                     ],
                   ],
-                );
-              }),
+                ),
 
-              const SizedBox(height: 20),
-              Divider(height: 1,color: Color(0xFFE6E6E6),),
-              const SizedBox(height: 20),
+                const SizedBox(height: 12),
+
+                // Car Provider
+                Obx(() {
+                  if (carProviderController.isLoading.value) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.mainButtonBg),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final list = carProviderController.carProviderList;
+
+                  if (list.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final hasError =
+                      carProviderError != null && carProviderError!.isNotEmpty;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionLabel('Car Provider'),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => carProviderError = null);
+                          _showCarProviderBottomSheet();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFFE2E2E2),
+                              width: hasError ? 1.5 : 1,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                ),
+                                child: Icon(
+                                  Icons.directions_car_filled_outlined,
+                                  color: hasError
+                                      ? Colors.red.shade600
+                                      : Color(0xFF96C4FA),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  carProviderController
+                                          .selectedCarProvider.value
+                                          ?.providerName ??
+                                      'Select Car Provider',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: hasError
+                                        ? Colors.red.shade700
+                                        : const Color(0xFF333333),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: hasError
+                                    ? Colors.red.shade400
+                                    : const Color(0xFF6B7280),
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (carProviderError != null) ...[
+                        const SizedBox(height: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 16, color: Colors.red.shade600),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  carProviderError!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
+
+                const SizedBox(height: 20),
+                Divider(height: 1,color: Color(0xFFE6E6E6),),
+                const SizedBox(height: 20),
 
 
-              // Additional Options
-              _buildAdditionalOptionsAccordion(),
-              const SizedBox(height: 40),
+                // Additional Options
+                _buildAdditionalOptionsAccordion(),
+                const SizedBox(height: 40),
 
-              // View Cabs Button
-              _buildViewCabsButton(),
-            ],
+                // View Cabs Button
+                _buildViewCabsButton(),
+              ],
+            ),
           ),
         ),
       ),

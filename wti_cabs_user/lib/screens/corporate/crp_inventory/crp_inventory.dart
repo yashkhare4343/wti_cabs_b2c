@@ -29,7 +29,7 @@ class CrpInventory extends StatefulWidget {
 
 class _CrpInventoryState extends State<CrpInventory> {
   final CrpInventoryListController crpInventoryListController =
-      Get.put(CrpInventoryListController());
+  Get.put(CrpInventoryListController());
   bool isLoading = false;
   final controller = Get.put(CrpInventoryListController());
 
@@ -77,9 +77,9 @@ class _CrpInventoryState extends State<CrpInventory> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          GoRouter.of(context).go(AppRoutes.cprBookingEngine);
+          context.push(AppRoutes.cprBookingEngine);
         }
       },
       child: Scaffold(
@@ -111,7 +111,7 @@ class _BookingBodyState extends State<_BookingBody> {
   final String googleApiKey = "AIzaSyCWbmCiquOta1iF6um7_5_NFh6YM5wPL30";
 
   final CrpInventoryListController _inventoryController =
-      Get.put(CrpInventoryListController());
+  Get.put(CrpInventoryListController());
 
   CameraPosition get _initialCameraPosition {
     // If we have booking data with coordinates, center between pickup and drop
@@ -131,7 +131,7 @@ class _BookingBodyState extends State<_BookingBody> {
 
         // Calculate zoom level based on distance
         final distance =
-            _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
+        _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
         double zoom = 6.0;
         if (distance > 100) {
           zoom = 6.0;
@@ -270,11 +270,11 @@ class _BookingBodyState extends State<_BookingBody> {
 
   /// Fetches route from Google Directions API
   Future<List<LatLng>?> _fetchDirections(
-    double originLat,
-    double originLng,
-    double destLat,
-    double destLng,
-  ) async {
+      double originLat,
+      double originLng,
+      double destLat,
+      double destLng,
+      ) async {
     try {
       setState(() {
         _isLoadingRoute = true;
@@ -282,9 +282,9 @@ class _BookingBodyState extends State<_BookingBody> {
 
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/directions/json'
-        '?origin=$originLat,$originLng'
-        '&destination=$destLat,$destLng'
-        '&key=$googleApiKey',
+            '?origin=$originLat,$originLng'
+            '&destination=$destLat,$destLng'
+            '&key=$googleApiKey',
       );
 
       final response = await http.get(url);
@@ -360,10 +360,29 @@ class _BookingBodyState extends State<_BookingBody> {
   }
 
   Future<void> _updateMapMarkersAndPolyline() async {
-    if (widget.bookingData == null) return;
+    if (widget.bookingData == null) {
+      print('⚠️ Booking data is null, cannot update map');
+      return;
+    }
 
     final pickupPlace = widget.bookingData!.pickupPlace;
     final dropPlace = widget.bookingData!.dropPlace;
+
+    // Validate that we have valid coordinates
+    final hasPickupCoords = pickupPlace?.latitude != null && pickupPlace?.longitude != null;
+    final hasDropCoords = dropPlace?.latitude != null && dropPlace?.longitude != null;
+
+    if (!hasPickupCoords) {
+      print('⚠️ Pickup place missing coordinates: lat=${pickupPlace?.latitude}, lng=${pickupPlace?.longitude}');
+    }
+    if (!hasDropCoords) {
+      print('⚠️ Drop place missing coordinates: lat=${dropPlace?.latitude}, lng=${dropPlace?.longitude}');
+    }
+
+    if (!hasPickupCoords || !hasDropCoords) {
+      print('⚠️ Cannot update map markers/polylines without valid coordinates');
+      return;
+    }
 
     // First, update markers synchronously
     setState(() {
@@ -371,84 +390,95 @@ class _BookingBodyState extends State<_BookingBody> {
       _polylines.clear();
 
       // Add pickup marker
-      if (pickupPlace?.latitude != null && pickupPlace?.longitude != null) {
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('pickup'),
-            position: LatLng(pickupPlace!.latitude!, pickupPlace.longitude!),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueGreen),
-            infoWindow: InfoWindow(
-              title: 'Pickup',
-              snippet: pickupPlace.primaryText,
-            ),
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('pickup'),
+          position: LatLng(pickupPlace!.latitude!, pickupPlace.longitude!),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen),
+          infoWindow: InfoWindow(
+            title: 'Pickup',
+            snippet: pickupPlace.primaryText ?? 'Pickup Location',
           ),
-        );
-      }
+        ),
+      );
 
       // Add drop marker
-      if (dropPlace?.latitude != null && dropPlace?.longitude != null) {
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('drop'),
-            position: LatLng(dropPlace!.latitude!, dropPlace.longitude!),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-            infoWindow: InfoWindow(
-              title: 'Drop',
-              snippet: dropPlace.primaryText,
-            ),
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('drop'),
+          position: LatLng(dropPlace!.latitude!, dropPlace.longitude!),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(
+            title: 'Drop',
+            snippet: dropPlace.primaryText ?? 'Drop Location',
           ),
-        );
-      }
+        ),
+      );
+
+      print('✅ Added ${_markers.length} markers to map');
     });
 
+    // Wait a frame to ensure markers are rendered
+    await Future.delayed(const Duration(milliseconds: 100));
+
     // Update camera to show both markers
-    if (_markers.length == 2 && _mapController != null) {
+    if (_markers.length >= 2 && _mapController != null) {
       _fitBounds();
     }
 
     // Then, fetch route from Google Directions API and add polyline asynchronously
-    if (pickupPlace?.latitude != null &&
-        pickupPlace?.longitude != null &&
-        dropPlace?.latitude != null &&
-        dropPlace?.longitude != null) {
-      // Fetch directions from Google Directions API
-      final routePoints = await _fetchDirections(
-        pickupPlace!.latitude!,
-        pickupPlace.longitude!,
-        dropPlace!.latitude!,
-        dropPlace.longitude!,
+    // Fetch directions from Google Directions API
+    final routePoints = await _fetchDirections(
+      pickupPlace!.latitude!,
+      pickupPlace.longitude!,
+      dropPlace!.latitude!,
+      dropPlace.longitude!,
+    );
+
+    // If we got route points from Directions API, use them
+    // Otherwise, fall back to straight line
+    final pointsToUse = routePoints ??
+        [
+          LatLng(pickupPlace.latitude!, pickupPlace.longitude!),
+          LatLng(dropPlace.latitude!, dropPlace.longitude!),
+        ];
+
+    // Update polyline with the route points
+    setState(() {
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: pointsToUse,
+          color: const Color(0xFF2B64E5), // Bright blue color for visibility
+          width: 5, // Increased width for better visibility
+          geodesic: routePoints != null, // Use geodesic for actual route, false for straight line
+        ),
       );
+      print('✅ Added polyline with ${pointsToUse.length} points');
+    });
 
-      // If we got route points from Directions API, use them
-      // Otherwise, fall back to straight line
-      final pointsToUse = routePoints ??
-          [
-            LatLng(pickupPlace.latitude!, pickupPlace.longitude!),
-            LatLng(dropPlace.latitude!, dropPlace.longitude!),
-          ];
-
-      // Update polyline with the route points
-      setState(() {
-        _polylines.add(
-          Polyline(
-            polylineId: const PolylineId('route'),
-            points: pointsToUse,
-            color: Color(0xFF2B64E5), // Bright blue color for visibility
-            width: 5, // Increased width for better visibility
-            geodesic: routePoints !=
-                null, // Use geodesic for actual route, false for straight line
-          ),
-        );
-      });
+    // Fit bounds again after polyline is added to ensure everything is visible
+    if (_markers.length >= 2 && _mapController != null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      _fitBounds();
     }
   }
 
   void _fitBounds() {
-    if (_markers.length < 2 || _mapController == null) return;
+    if (_markers.isEmpty || _mapController == null) return;
 
+    // Collect all positions from markers
     final positions = _markers.map((m) => m.position).toList();
+    
+    // Also include polyline points if available
+    for (var polyline in _polylines) {
+      positions.addAll(polyline.points);
+    }
+
+    if (positions.isEmpty) return;
+
+    // Calculate bounds
     double minLat = positions[0].latitude;
     double maxLat = positions[0].latitude;
     double minLng = positions[0].longitude;
@@ -722,7 +752,7 @@ class _RouteCard extends StatelessWidget {
 
     // Truncate if too long
     String pickupText =
-        pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
+    pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
     String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
 
     return '$pickupText to $dropText';
@@ -737,7 +767,7 @@ class _RouteCard extends StatelessWidget {
 
     // Truncate if too long
     String pickupText =
-        pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
+    pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
 
     return '$pickupText';
   }
@@ -805,7 +835,7 @@ class _RouteCard extends StatelessWidget {
                               children: [
                                 InkWell(
                                     onTap: () {
-                                      GoRouter.of(context).pop();
+                                      context.push(AppRoutes.cprBookingEngine);
                                     },
                                     child: SvgPicture.asset(
                                         'assets/images/back.svg',
@@ -829,7 +859,7 @@ class _RouteCard extends StatelessWidget {
                             Container(
                               margin: const EdgeInsets.symmetric(vertical: 10),
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 28),
+                              const EdgeInsets.symmetric(horizontal: 28),
                               child: const Divider(
                                 height: 1,
                                 color: Color(0xFFE2E2E2),
@@ -837,7 +867,7 @@ class _RouteCard extends StatelessWidget {
                             ),
                             Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 34.0),
+                              const EdgeInsets.symmetric(horizontal: 34.0),
                               child: Row(
                                 children: [
                                   SvgPicture.asset('assets/images/drop.svg',
@@ -1009,23 +1039,23 @@ class _VehicleSectionState extends State<_VehicleSection> {
             Expanded(
               child: filteredModels.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No vehicles available',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    )
+                child: Text(
+                  'No vehicles available',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      itemCount: filteredModels.length,
-                      itemBuilder: (_, index) => _VehicleCard(
-                        model: filteredModels[index],
-                        bookingData: widget.bookingData,
-                      ),
-                    ),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                itemCount: filteredModels.length,
+                itemBuilder: (_, index) => _VehicleCard(
+                  model: filteredModels[index],
+                  bookingData: widget.bookingData,
+                ),
+              ),
             ),
           ],
         ),
@@ -1209,7 +1239,7 @@ class _InventoryShimmer extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 itemCount: 5,
                 itemBuilder: (_, __) => Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1246,7 +1276,7 @@ class TripContainer extends StatelessWidget {
 
     // Truncate if too long
     String pickupText =
-        pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
+    pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
 
     return '$pickupText';
   }
@@ -1355,7 +1385,7 @@ class TripContainer extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),

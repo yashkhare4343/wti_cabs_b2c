@@ -10,7 +10,9 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -550,15 +552,98 @@ class _TravelerDetailsForm extends StatefulWidget {
 class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
   String? contact;
   String? contactCode;
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final CprProfileController cprProfileController = Get.put(CprProfileController());
 
   @override
   void initState() {
     super.initState();
+    _loadPrefilledData();
+  }
+
+  Future<void> _loadPrefilledData() async {
+    // Load booking data
     if (widget.bookingData != null) {
       widget.sourceController.text =
           widget.bookingData!.pickupPlace?.primaryText ?? '';
       widget.destinationController.text =
           widget.bookingData!.dropPlace?.primaryText ?? '';
+    }
+
+    // Fetch profile data if not already loaded
+    final profile = cprProfileController.crpProfileInfo.value;
+    if (profile == null) {
+      // Fetch profile data
+      final email = await StorageServices.instance.read('email') ?? '';
+      final token = loginInfoController.crpLoginInfo.value?.key ?? '';
+      final guestID = loginInfoController.crpLoginInfo.value?.guestID ?? 0;
+      
+      if (email.isNotEmpty && token.isNotEmpty) {
+        final params = {
+          'email': email,
+          'GuestID': guestID.toString(),
+          'token': token,
+          'user': email,
+        };
+        await cprProfileController.fetchProfileInfo(params, context);
+      }
+    }
+
+    // Get updated profile after fetch
+    final updatedProfile = cprProfileController.crpProfileInfo.value;
+
+    // Load name - priority: profile > login info
+    String? guestName;
+    if (updatedProfile?.guestName != null && updatedProfile!.guestName!.isNotEmpty) {
+      guestName = updatedProfile.guestName;
+    } else {
+      guestName = loginInfoController.crpLoginInfo.value?.guestName ?? '';
+    }
+    if (guestName != null && guestName.isNotEmpty) {
+      widget.firstNameController.text = guestName;
+    }
+
+    // Load email - priority: profile > storage
+    String? email;
+    if (updatedProfile?.emailID != null && updatedProfile!.emailID!.isNotEmpty) {
+      email = updatedProfile.emailID;
+    } else {
+      email = await StorageServices.instance.read('email') ?? '';
+    }
+    if (email != null && email.isNotEmpty) {
+      widget.emailController.text = email;
+    }
+
+    // Load contact - priority: profile > storage
+    String? mobile;
+    if (updatedProfile?.mobile != null && updatedProfile!.mobile!.isNotEmpty) {
+      mobile = updatedProfile.mobile;
+    } else {
+      mobile = await StorageServices.instance.read('contact') ?? '';
+    }
+    if (mobile != null && mobile.isNotEmpty) {
+      // Remove any non-digit characters and ensure it's 10 digits
+      final cleanedMobile = mobile.replaceAll(RegExp(r'[^0-9]'), '');
+      if (cleanedMobile.length == 10) {
+        widget.contactController.text = cleanedMobile;
+      } else if (cleanedMobile.length > 10) {
+        // Take last 10 digits if longer
+        widget.contactController.text = cleanedMobile.substring(cleanedMobile.length - 10);
+      } else {
+        widget.contactController.text = mobile;
+      }
+    }
+
+    // Update title based on gender from profile
+    if (updatedProfile?.gender != null) {
+      // Gender: 1 = Male (Mr.), 2 = Female (Ms./Mrs.), 3 = Other (Mr.)
+      if (updatedProfile!.gender == 2) {
+        // Female - default to Ms.
+        widget.onTitleChanged('Ms.');
+      } else {
+        // Male or Other - default to Mr.
+        widget.onTitleChanged('Mr.');
+      }
     }
   }
 
@@ -598,7 +683,7 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title Chips
+                  // Title Chips (Read-only)
                   Row(
                     children: widget.titles.asMap().entries.map((entry) {
                       final int i = entry.key;
@@ -636,7 +721,7 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                             ),
                           ),
                           showCheckmark: false,
-                          onSelected: (_) => widget.onTitleChanged(title),
+                          onSelected: null, // Disabled - read-only
                         ),
                       );
                     }).toList(),
@@ -646,6 +731,7 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                     label: 'Full Name',
                     hint: 'Enter full name',
                     controller: widget.firstNameController,
+                    isReadOnly: true,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
                         return "Full name is required";
@@ -657,6 +743,7 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                     label: 'Email',
                     hint: 'Enter email id',
                     controller: widget.emailController,
+                    isReadOnly: true,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
                         return "Email is required";
@@ -704,6 +791,7 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                           child: TextFormField(
                             controller: widget.contactController,
                             keyboardType: TextInputType.number,
+                            readOnly: true,
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,

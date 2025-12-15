@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../crp_home_screen/crp_home_screen.dart';
@@ -115,10 +116,9 @@ class _CorporateBottomNavScreenState extends State<CorporateBottomNavScreen>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        _setStatusBarColor();
-        return true;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
       },
       child: Scaffold(
         body: _screens[_selectedIndex],
