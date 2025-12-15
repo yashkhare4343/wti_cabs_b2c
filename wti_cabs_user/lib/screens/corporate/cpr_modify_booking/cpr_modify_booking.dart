@@ -20,6 +20,7 @@ import '../../../../utility/constants/fonts/common_fonts.dart';
 import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
 import '../../../core/controller/corporate/crp_booking_detail/crp_booking_detail_controller.dart';
 import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
@@ -46,6 +47,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       Get.put(CarProviderController());
   final CrpBookingDetailsController crpBookingDetailsController =
       Get.put(CrpBookingDetailsController());
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
   String? guestId, token, user;
   int? _preselectedRunTypeId;
@@ -58,9 +60,27 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   bool _showSkeletonLoader = true;
 
   Future<void> fetchParameter() async {
-    guestId = await StorageServices.instance.read('branchId');
+    // Resolve identifiers from storage; fallback to in-memory login info when returning from other screens
+    guestId = await StorageServices.instance.read('guestId');
     token = await StorageServices.instance.read('crpKey');
     user = await StorageServices.instance.read('email');
+
+    // Fallback to login info controller if storage values are missing/invalid
+    if (token == null || token!.isEmpty || token == 'null') {
+      final loginToken = loginInfoController.crpLoginInfo.value?.key;
+      if (loginToken != null && loginToken.isNotEmpty) {
+        token = loginToken;
+        await StorageServices.instance.save('crpKey', loginToken);
+      }
+    }
+
+    final loginGuestId = loginInfoController.crpLoginInfo.value?.guestID;
+    if (guestId == null || guestId!.isEmpty || guestId == '0' || guestId == 'null') {
+      if (loginGuestId != null && loginGuestId != 0) {
+        guestId = loginGuestId.toString();
+        await StorageServices.instance.save('guestId', guestId??'');
+      }
+    }
   }
 
   @override

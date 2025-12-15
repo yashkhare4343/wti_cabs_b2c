@@ -24,6 +24,7 @@ import '../../../core/model/corporate/crp_services/crp_services_response.dart';
 import '../../../core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import '../../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../../core/services/storage_services.dart';
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 
 class CprBookingEngine extends StatefulWidget {
   final String? selectedPickupType;
@@ -45,15 +46,17 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   final GenderController controller = Get.put(GenderController());
   final CarProviderController carProviderController =
       Get.put(CarProviderController());
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
   String? guestId, token, user;
   int? _preselectedRunTypeId;
   bool _hasAppliedPreselection = false;
 
   Future<void> fetchParameter() async {
-    guestId = await StorageServices.instance.read('branchId');
-    token = await StorageServices.instance.read('crpKey');
-    user = await StorageServices.instance.read('email');
+    final storage = StorageServices.instance;
+    guestId = await storage.read('branchId');
+    token = loginInfoController.crpLoginInfo.value?.key ?? await storage.read('crpKey');
+    user = await storage.read('email');
   }
 
   @override
@@ -107,10 +110,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
     // 3. Now call payment modes safely
+    final resolvedToken = loginInfoController.crpLoginInfo.value?.key ?? token ?? '';
     final Map<String, dynamic> paymentParams = {
-      'GuestID': int.parse(guestId ?? ''),
-      'token': token,
-      'user': user??email
+      'GuestID': int.tryParse(guestId ?? '') ?? 0,
+      'token': resolvedToken,
+      'user': user ?? email
     };
 
     paymentModeController.fetchPaymentModes(paymentParams, context);
@@ -290,7 +294,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
           context.push(AppRoutes.cprBottomNav);
-
         }
       },
       child: Scaffold(

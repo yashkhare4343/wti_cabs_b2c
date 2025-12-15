@@ -5,6 +5,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
@@ -24,6 +25,7 @@ class CprHomeScreen extends StatefulWidget {
 }
 
 class _CprHomeScreenState extends State<CprHomeScreen> {
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   @override
   void initState() {
     super.initState();
@@ -37,9 +39,33 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
   /// Load params from storage and fetch run types
   Future<void> _loadParamsAndFetchRunTypes() async {
     try {
-      // ✅ Await storage reads to get actual values, not Futures
-      final corpId = await StorageServices.instance.read('crpId') ?? '0';
-      final branchId = await StorageServices.instance.read('branchId') ?? '0';
+      // ✅ Ensure corporate/branch ids are available (fallback to last login)
+      var corpId = await StorageServices.instance.read('crpId');
+      var branchId = await StorageServices.instance.read('branchId');
+
+      // Fallback to login response if storage is empty (and persist it)
+      final loginCorpId = loginInfoController.crpLoginInfo.value?.corpID;
+      final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
+
+      if (corpId == null || corpId.isEmpty || corpId == '0') {
+        if (loginCorpId != null && loginCorpId.isNotEmpty) {
+          corpId = loginCorpId;
+          await StorageServices.instance.save('crpId', loginCorpId);
+          debugPrint('✅ Stored corpId from login response: $loginCorpId');
+        }
+      }
+
+      if (branchId == null || branchId.isEmpty || branchId == '0') {
+        if (loginBranchId != null && loginBranchId.isNotEmpty) {
+          branchId = loginBranchId;
+          await StorageServices.instance.save('branchId', loginBranchId);
+          debugPrint('✅ Stored branchId from login response: $loginBranchId');
+        }
+      }
+
+      // Final fallbacks
+      corpId = corpId ?? '0';
+      branchId = branchId ?? '0';
       
       final params = {
         'CorpID': corpId,

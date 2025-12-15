@@ -6,6 +6,7 @@ import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booki
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
 import '../../../core/services/storage_services.dart';
+import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 
 class CrpBookingDetails extends StatefulWidget {
   final CrpBookingHistoryItem booking;
@@ -21,6 +22,7 @@ class CrpBookingDetails extends StatefulWidget {
 
 class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   @override
   void initState() {
     // TODO: implement initState
@@ -28,9 +30,17 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     fetchBookingDetails();
   }
   void fetchBookingDetails() async{
-    final token = await StorageServices.instance.read('crpKey');
-    final userEmail = await StorageServices.instance.read('email');
-    await crpBookingDetailsController.fetchBookingData(widget.booking.bookingId.toString(), token??'', userEmail??'');
+    final storage = StorageServices.instance;
+    final storedToken = await storage.read('crpKey');
+    final token = storedToken?.isNotEmpty == true
+        ? storedToken
+        : loginInfoController.crpLoginInfo.value?.key;
+    final userEmail = await storage.read('email');
+    await crpBookingDetailsController.fetchBookingData(
+      widget.booking.bookingId.toString(),
+      token ?? '',
+      userEmail ?? '',
+    );
   }
 
   @override

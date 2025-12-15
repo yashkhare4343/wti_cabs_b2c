@@ -4,9 +4,11 @@ import 'package:get/get.dart';
 import '../../../api/corporate/cpr_api_services.dart';
 import '../../../model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import '../../../services/storage_services.dart';
+import '../crp_login_controller/crp_login_controller.dart';
 
 class CrpBookingHistoryController extends GetxController {
   final CprApiService apiService = CprApiService();
+  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
   var isLoading = false.obs;
   var bookings = <CrpBookingHistoryItem>[].obs;
@@ -25,8 +27,24 @@ class CrpBookingHistoryController extends GetxController {
       isLoading.value = true;
 
       final branchId = await StorageServices.instance.read('branchId');
-      final userId = await StorageServices.instance.read('guestId');
-      final token = await StorageServices.instance.read('crpKey');
+      // Resolve guest id from storage or in-memory login info to avoid sending 0
+      String? guestId = await StorageServices.instance.read('guestId');
+      final loginGuestId = loginInfoController.crpLoginInfo.value?.guestID;
+      if (guestId == null ||
+          guestId.isEmpty ||
+          guestId == '0' ||
+          guestId == 'null') {
+        if (loginGuestId != null && loginGuestId != 0) {
+          guestId = loginGuestId.toString();
+          await StorageServices.instance.save('guestId', guestId);
+        }
+      }
+
+      final storedToken = await StorageServices.instance.read('crpKey');
+      final loginToken = loginInfoController.crpLoginInfo.value?.key;
+      final token = (storedToken != null && storedToken.isNotEmpty)
+          ? storedToken
+          : loginToken;
       final userEmail = await StorageServices.instance.read('email');
 
       final now = DateTime.now();
@@ -35,7 +53,7 @@ class CrpBookingHistoryController extends GetxController {
 
       final params = {
         'branchID': branchId ?? '0',
-        'uID': userId ?? '0',
+        'uID': guestId ?? '0',
         'monthID': resolvedMonthId,
         'providerID': providerId,
         'status': status,
