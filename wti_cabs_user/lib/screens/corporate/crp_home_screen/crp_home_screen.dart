@@ -91,6 +91,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     await crpGetBranchListController.fetchBranches(corpId ?? '');
 
     // Show bottom sheet after a short delay to ensure screen is fully built
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -118,7 +119,8 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
       return;
     }
 
-    showModalBottomSheet(
+
+    if(crpGetBranchListController.count.value == 0) showModalBottomSheet(
       context: context,
       isDismissible: false,
       enableDrag: true,
@@ -246,6 +248,9 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         child: ElevatedButton(
                           onPressed: () {
+                            setState(() {
+                              crpGetBranchListController.count.value ++;
+                            });
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
@@ -287,6 +292,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
       },
     );
   }
+
 
   final CrpServicesController runTypeController =
       Get.put(CrpServicesController());
@@ -439,10 +445,9 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                     mainAxisSpacing: spacing,
                     childAspectRatio: calcAspect(count),
                   ),
-                  itemBuilder: (context, index) => buildTile(
-                    context,
-                    rowData[index],
-                    startIndex + index,
+                  itemBuilder: (context, index) => CrpServiceTile(
+                    item: rowData[index],
+                    index: startIndex + index,
                   ),
                 );
               }
@@ -466,9 +471,227 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
   }
 }
 
-Widget buildTile(BuildContext context, dynamic item, int index) {
-  const fixedHeight = 110.0;
-  String getImageForService(int id) {
+class CrpServiceTile extends StatefulWidget {
+  final dynamic item;
+  final int index;
+
+  const CrpServiceTile({
+    Key? key,
+    required this.item,
+    required this.index,
+  }) : super(key: key);
+
+  @override
+  State<CrpServiceTile> createState() => _CrpServiceTileState();
+}
+
+class _CrpServiceTileState extends State<CrpServiceTile> {
+  final CrpServicesController runTypeController =
+      Get.put(CrpServicesController());
+  final VerifyCorporateController verifyCorporateController =
+      Get.put(VerifyCorporateController());
+  final CrpBranchListController crpGetBranchListController =
+      Get.put(CrpBranchListController());
+
+  Future<void> _showBranchSelectorBottomSheet() async {
+    // Fetch branches if not already loaded
+    if (crpGetBranchListController.branchNames.isEmpty) {
+      final corpId = await StorageServices.instance.read('crpId');
+      await crpGetBranchListController.fetchBranches(corpId ?? '');
+    }
+
+    final items = crpGetBranchListController.branchNames;
+    final selected = crpGetBranchListController.selectedBranchName.value ?? '';
+
+    if (items.isEmpty) {
+      Get.snackbar(
+        "No Branches",
+        "No branches found for this corporate ID",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    if (crpGetBranchListController.count.value == 0) {
+      showModalBottomSheet(
+        context: context,
+        isDismissible: false,
+        enableDrag: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          // Keep track of the temporary selection so we can highlight instantly
+          String? tempSelected = selected.isNotEmpty ? selected : null;
+
+          return PopScope(
+            canPop: false,
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                return Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(15)),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Top Illustration/Banner
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 20, right: 20, top: 25),
+                          child: ClipRRect(
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(10)),
+                            child: Container(
+                              height: 228,
+                              width: double.infinity,
+                              color: Colors.white, // optional background
+                              child: Image.asset(
+                                'assets/images/select_branch_img.png',
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Heading Section
+                        Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                          child: Row(
+                            children: const [
+                              Text(
+                                "Choose City Branch",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF000000),
+                                  // letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Branch List
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: items.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final name = items[index];
+                              final isSelected = name == tempSelected;
+
+                              return Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  splashColor: Colors.transparent,
+                                  onTap: () {
+                                    // Update controller value
+                                    crpGetBranchListController
+                                        .selectBranch(name);
+                                    // Update local temp selection so UI highlights instantly
+                                    setModalState(() {
+                                      tempSelected = name;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 10,
+                                    ),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(
+                                              0xFFE3F2FD) // Light blue background
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                        color: isSelected
+                                            ? const Color(
+                                                0xFF333333) // Blue text when selected
+                                            : const Color(
+                                                0xFF333333), // Gray text when not selected
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                        Container(
+                          width: double.infinity, // full width
+                          height: 48,
+                          margin:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                crpGetBranchListController.count.value++;
+                              });
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFF4082F1), // #4082F1
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(39),
+                                side: const BorderSide(
+                                    color: Color(0xFFD9D9D9), width: 1),
+                              ),
+                              elevation: 0, // Remove default shadow
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Text(
+                                  "Confirm",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  String _getImageForService(int id) {
     switch (id) {
       case 1:
         return 'assets/images/rental.png'; // Local / Disposal
@@ -483,60 +706,272 @@ Widget buildTile(BuildContext context, dynamic item, int index) {
     }
   }
 
-  return InkWell(
-    splashColor: Colors.transparent,
-    onTap: () async {
-      if (item.runTypeID != null) {
-        await StorageServices.instance
-            .save('cprSelectedRunTypeId', item.runTypeID!.toString());
-        await StorageServices.instance.save('tabIndex', index.toString());
-      }
-      // Pass the selected pickup type (run) to booking engine
-      GoRouter.of(context).push(
-        AppRoutes.cprBookingEngine,
-        extra: item.run, // Pass the pickup type name
-      );
-    },
-    child: Container(
-      height: fixedHeight,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1F192653),
-            offset: Offset(0, 3),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 60,
-            child: Image.asset(
-              getImageForService(item.runTypeID ?? 0),
-              fit: BoxFit.contain,
+  @override
+  Widget build(BuildContext context) {
+    const fixedHeight = 110.0;
+    final item = widget.item;
+    final index = widget.index;
+
+    return InkWell(
+      splashColor: Colors.transparent,
+      onTap: () async {
+        if (item.runTypeID != null) {
+          await StorageServices.instance
+              .save('cprSelectedRunTypeId', item.runTypeID!.toString());
+          await StorageServices.instance
+              .save('tabIndex', index.toString());
+        }
+        // Pass the selected pickup type (run) to booking engine
+        if (crpGetBranchListController.count.value == 0) {
+          await _showBranchSelectorBottomSheet();
+        } else {
+          GoRouter.of(context).push(
+            AppRoutes.cprBookingEngine,
+            extra: item.run, // Pass the pickup type name
+          );
+        }
+      },
+      child: Container(
+        height: fixedHeight,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1F192653),
+              offset: Offset(0, 3),
+              blurRadius: 12,
             ),
-          ),
-          Text(
-            item.run ?? "",
-            style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF192653),fontFamily: 'Montserrat',
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 60,
+              child: Image.asset(
+                _getImageForService(item.runTypeID ?? 0),
+                fit: BoxFit.contain,
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+            Text(
+              item.run ?? "",
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF192653),
+                fontFamily: 'Montserrat',
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class TopBanner extends StatelessWidget {
+class TopBanner extends StatefulWidget {
+  @override
+  State<TopBanner> createState() => _TopBannerState();
+}
+
+class _TopBannerState extends State<TopBanner> {
+  final CrpBranchListController crpGetBranchListController =
+  Get.put(CrpBranchListController());
+  Future<void> _showBranchSelectorBottomSheet() async {
+    // Fetch branches if not already loaded
+    if (crpGetBranchListController.branchNames.isEmpty) {
+      final corpId = await StorageServices.instance.read('crpId');
+      await crpGetBranchListController.fetchBranches(corpId ?? '');
+    }
+
+    final items = crpGetBranchListController.branchNames;
+    final selected = crpGetBranchListController.selectedBranchName.value ?? '';
+
+    if (items.isEmpty) {
+      Get.snackbar("No Branches", "No branches found for this corporate ID",
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+
+    if(crpGetBranchListController.count.value == 0) showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        // Keep track of the temporary selection so we can highlight instantly
+        String? tempSelected = selected.isNotEmpty ? selected : null;
+
+        return PopScope(
+          canPop: false,
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Top Illustration/Banner
+                      Padding(
+                        padding:
+                        const EdgeInsets.only(left: 20, right: 20, top: 25),
+                        child: ClipRRect(
+                          borderRadius:
+                          const BorderRadius.all(Radius.circular(10)),
+                          child: Container(
+                            height: 228,
+                            width: double.infinity,
+                            color: Colors.white, // optional background
+                            child: Image.asset(
+                              'assets/images/select_branch_img.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Heading Section
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                        child: Row(
+                          children: [
+                            const Text(
+                              "Choose City Branch",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF000000),
+                                // letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Branch List
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                          const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final name = items[index];
+                            final isSelected = name == tempSelected;
+
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                splashColor: Colors.transparent,
+                                onTap: () {
+                                  // Update controller value
+                                  crpGetBranchListController.selectBranch(name);
+                                  // Update local temp selection so UI highlights instantly
+                                  setModalState(() {
+                                    tempSelected = name;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(
+                                        0xFFE3F2FD) // Light blue background
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: isSelected
+                                          ? const Color(
+                                          0xFF333333) // Blue text when selected
+                                          : const Color(
+                                          0xFF333333), // Gray text when not selected
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity, // full width
+                        height: 48,
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              crpGetBranchListController.count.value ++;
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4082F1), // #4082F1
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(39),
+                              side: const BorderSide(
+                                  color: Color(0xFFD9D9D9), width: 1),
+                            ),
+                            elevation: 0, // Remove default shadow
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // gap: 12px
+                              const Text(
+                                "Confirm",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -804,7 +1239,12 @@ class TopBanner extends StatelessWidget {
               // Search field
               GestureDetector(
                 onTap: () {
-                  GoRouter.of(context).push(AppRoutes.cprSelectDrop);
+                  if(crpGetBranchListController.count.value == 0){
+                    _showBranchSelectorBottomSheet();
+                  }
+                  else {
+                    GoRouter.of(context).push(AppRoutes.cprSelectDrop);
+                  }
                 },
                 child: Container(
                   width: double.infinity,

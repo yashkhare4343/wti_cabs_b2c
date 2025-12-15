@@ -40,150 +40,103 @@ class CrpContactUs extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 18,
+              color: Colors.black87,
+            ),
+            onPressed: () => context.go(AppRoutes.cprBottomNav),
+          ),
           title: const Text(
             "Contact Us",
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
               fontFamily: 'Montserrat',
             ),
           ),
-          centerTitle: true,
-          elevation: 0.5,
+          centerTitle: false,
+          elevation: 0.3,
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           automaticallyImplyLeading: false,
         ),
-        body: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-          children: [
-            const Text(
-              "Get in Touch",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-                letterSpacing: 0.2,
-                fontFamily: 'Montserrat',
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Our team is here to assist you with any queries related to corporate bookings and services.",
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.3,
-                fontFamily: 'Montserrat',
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-
-            // Contact Options
-            _buildContactCard(
-              context,
-              icon: Icons.phone,
-              title: "Call Us (Landline)",
-              subtitle: "011-45434500",
-              color: Colors.blue,
-              onTap: () => _launchPhone("01145434500"),
-            ),
-            _buildContactCard(
-              context,
-              icon: Icons.phone_android,
-              title: "Call Us (Mobile)",
-              subtitle: "9250057902",
-              color: Colors.teal,
-              onTap: () => _launchPhone("9250057902"),
-            ),
-            _buildContactCard(
-              context,
-              icon: Icons.email_outlined,
-              title: "Email Us",
-              subtitle: "support@wtitravels.com",
-              color: Colors.orange,
-              onTap: () => _launchEmail("support@wtitravels.com"),
-            ),
-            _buildContactCard(
-              context,
-              icon: Icons.language,
-              title: "Visit Our Website",
-              subtitle: "www.wtitravels.com",
-              color: Colors.purple,
-              onTap: () => _launchWebsite("https://www.wtitravels.com"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+              _SectionCard(
+                title: "Address",
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                        fontFamily: 'Montserrat',
-                      ),
+                    _CircleIcon(
+                      icon: Icons.apartment_rounded,
+                      color: Colors.black87,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                        fontFamily: 'Montserrat',
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        "3rd Floor, D21, Corporate Park, Sector-21, Dwarka, New Delhi - 110077",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                          height: 1.4,
+                          fontFamily: 'Montserrat',
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey.shade400,
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: "Support",
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoRow(
+                      icon: Icons.mail_outline_rounded,
+                      label: "bookings@wti.co.in",
+                      onTap: () => _launchEmail("bookings@wti.co.in"),
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      icon: Icons.call,
+                      label: "9250057902",
+                      onTap: () => _launchPhone("9250057902"),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: "Social Links",
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoRow(
+                      icon: Icons.facebook,
+                      label: "Facebook",
+                      onTap: () => _launchWebsite("https://www.facebook.com"),
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      icon: Icons.linked_camera, // closest to LinkedIn
+                      label: "LinkedIn",
+                      onTap: () => _launchWebsite("https://www.linkedin.com"),
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      icon: Icons.alternate_email, // closest to Twitter/X
+                      label: "Twitter",
+                      onTap: () => _launchWebsite("https://twitter.com"),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -193,3 +146,114 @@ class CrpContactUs extends StatelessWidget {
   }
 }
 
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.child,
+  });
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      elevation: 0.8,
+      shadowColor: Colors.black.withOpacity(0.05),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        _CircleIcon(icon: icon, color: const Color(0xFF1C274C)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black87,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (onTap == null) return row;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
+    );
+  }
+}
+
+class _CircleIcon extends StatelessWidget {
+  const _CircleIcon({
+    required this.icon,
+    required this.color,
+  });
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F7),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: color,
+      ),
+    );
+  }
+}
