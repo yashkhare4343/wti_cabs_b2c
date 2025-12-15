@@ -206,6 +206,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     crpKey = await await StorageServices.instance.read('crpKey');
   }
 
+  Future<void> _handleCorporateEntry(BuildContext context) async {
+    setState(() => _isCorporateLoading = true);
+    try {
+      final storedCrpKey = await StorageServices.instance.read('crpKey');
+      // If session exists, go straight to corporate dashboard
+      if (storedCrpKey != null && storedCrpKey.isNotEmpty) {
+        if (context.mounted) {
+          GoRouter.of(context).push(AppRoutes.cprBottomNav);
+        }
+      } else {
+        // No session -> show corporate landing/login funnel
+        if (context.mounted) {
+          GoRouter.of(context).push(AppRoutes.cprLandingPage);
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCorporateLoading = false);
+      }
+    }
+  }
+
   // corporte page transitiion loader
   bool _isCorporateLoading = false;
 
@@ -1839,25 +1861,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                                         ),
                                         onPressed: _isCorporateLoading ? null : () async {
-                                          setState(() => _isCorporateLoading = true);
-
-                                          print("🔍 Checking stored CRP token...");
-                                          
-                                          // Load from storage first to ensure controller is synced
-
-                                          // Read directly from storage as the source of truth
-
-
-                                          // Simulate a network delay or loading operation
-                                          await Future.delayed(const Duration(milliseconds: 1200));
-
-                                          Navigator.of(context).push(
-                                            PlatformFlipPageRoute(
-                                              builder: (context) => const CprRedirectScreen(),
-                                            ),
-                                          );
-
-                                          setState(() => _isCorporateLoading = false);
+                                          await _handleCorporateEntry(context);
                                         },
                                         child: const Text(
                                           "Go Corporate",

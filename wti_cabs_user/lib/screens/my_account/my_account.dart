@@ -766,7 +766,8 @@ class _MyAccountState extends State<MyAccount> {
                                 await googleSignIn.signOut();
                                 await googleSignIn.disconnect();
                               }
-                              StorageServices.instance.clear();
+                              // Clear user data but keep corporate session
+                              StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
                               await CacheHelper.clearAllCache();
 
                               final upcomingBookingController =
@@ -958,7 +959,8 @@ class _MyAccountState extends State<MyAccount> {
                                 await googleSignIn.signOut();
                                 await googleSignIn.disconnect();
                               }
-                              StorageServices.instance.clear();
+                              // Clear user data but keep corporate session
+                              StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
                               await CacheHelper.clearAllCache();
 
                               final upcomingBookingController =

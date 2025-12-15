@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
@@ -23,12 +24,20 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
     // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _redirectIfAlreadyLoggedIn();
       // _showBottomSheet();
     });  }
 
   final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
   final CrpBranchListController crpBranchListController = Get.put(CrpBranchListController());
   final CrpGetEntityListController crpGetEntityListController = Get.put(CrpGetEntityListController());
+
+  Future<void> _redirectIfAlreadyLoggedIn() async {
+    final existingKey = await StorageServices.instance.read('crpKey');
+    if (existingKey != null && existingKey.isNotEmpty && mounted) {
+      GoRouter.of(context).go(AppRoutes.cprBottomNav);
+    }
+  }
 
   void _showBottomSheet() {
     showModalBottomSheet(

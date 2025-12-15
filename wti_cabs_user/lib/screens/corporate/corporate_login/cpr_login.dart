@@ -21,6 +21,23 @@ class CprLogin extends StatefulWidget {
 class _CprLoginState extends State<CprLogin> {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
+  Future<void> _restorePreviousSession() async {
+    // Prefill email so users don't have to re-enter after relaunch
+    final savedEmail = await StorageServices.instance.read('email') ?? '';
+    final prefs = await SharedPreferences.getInstance();
+    final fallbackEmail = prefs.getString('email') ?? '';
+    final emailToPrefill = savedEmail.isNotEmpty ? savedEmail : fallbackEmail;
+    if (emailToPrefill.isNotEmpty) {
+      emailController.text = emailToPrefill;
+    }
+
+    // If a corporate session exists, jump directly to dashboard
+    final existingKey = await StorageServices.instance.read('crpKey');
+    if (existingKey != null && existingKey.isNotEmpty && mounted) {
+      GoRouter.of(context).go(AppRoutes.cprBottomNav);
+    }
+  }
+
   void _validateAndSubmit(Map<String, dynamic> params) async {
     // setState(() => _autoValidate = true);
 
@@ -103,6 +120,7 @@ class _CprLoginState extends State<CprLogin> {
     // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restorePreviousSession();
       // _showBottomSheet();
     });  }
 

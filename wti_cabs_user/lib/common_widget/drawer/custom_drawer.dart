@@ -801,7 +801,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                 await googleSignIn.signOut();
                                 await googleSignIn.disconnect();
                               }
-                              StorageServices.instance.clear();
+                              // Clear user data but keep corporate session
+                              StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
                               await CacheHelper.clearAllCache();
 
                               final upcomingBookingController =
@@ -980,7 +981,8 @@ class _CustomDrawerSheetState extends State<CustomDrawerSheet> {
                                 await googleSignIn.signOut();
                                 await googleSignIn.disconnect();
                               }
-                              StorageServices.instance.clear();
+                              // Clear user data but keep corporate session
+                              StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
                               await CacheHelper.clearAllCache();
 
                               final upcomingBookingController =

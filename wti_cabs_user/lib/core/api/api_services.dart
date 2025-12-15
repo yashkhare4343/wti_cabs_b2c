@@ -58,8 +58,8 @@ class ApiService {
         await googleSignIn.disconnect();
       }
 
-      // Clear storage and cache
-      await StorageServices.instance.clear();
+      // Clear user storage but keep corporate session intact
+      await StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
       await CacheHelper.clearAllCache();
 
       // Reset booking controller if present

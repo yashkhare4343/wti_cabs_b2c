@@ -59,7 +59,7 @@ class SelfDriveApiService {
       }
 
       // Clear storage and cache
-      await StorageServices.instance.clear();
+      await StorageServices.instance.clearPreservingCorporate(preserveCorporate: true);
       await CacheHelper.clearAllCache();
 
       // Reset booking controller if present

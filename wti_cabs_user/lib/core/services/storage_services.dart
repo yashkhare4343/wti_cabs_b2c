@@ -7,6 +7,16 @@ class StorageServices {
   static final StorageServices _instance = StorageServices._();
   static StorageServices get instance => _instance;
 
+  // Corporate session keys that we want to preserve when clearing user data
+  static const Set<String> _corporateKeys = {
+    'crpKey',
+    'crpId',
+    'branchId',
+    'guestId',
+    'guestName',
+    'email',
+  };
+
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -50,11 +60,32 @@ class StorageServices {
   }
 
   Future<void> clear() async {
+    await clearPreservingCorporate(preserveCorporate: false);
+  }
+
+  /// Clear all stored values, optionally keeping corporate session keys.
+  Future<void> clearPreservingCorporate({bool preserveCorporate = true}) async {
     if (Platform.isAndroid) {
-      await _secureStorage.deleteAll();
+      if (preserveCorporate) {
+        final all = await _secureStorage.readAll();
+        for (final entry in all.entries) {
+          if (_corporateKeys.contains(entry.key)) continue;
+          await _secureStorage.delete(key: entry.key);
+        }
+      } else {
+        await _secureStorage.deleteAll();
+      }
     } else if (Platform.isIOS) {
       if (_sharedPreferences == null) await init();
-      await _sharedPreferences?.clear();
+      if (!preserveCorporate) {
+        await _sharedPreferences?.clear();
+      } else {
+        final keys = _sharedPreferences?.getKeys() ?? {};
+        for (final key in keys) {
+          if (_corporateKeys.contains(key)) continue;
+          await _sharedPreferences?.remove(key);
+        }
+      }
     }
   }
 }
