@@ -17,6 +17,7 @@ import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
+import 'package:wti_cabs_user/common_widget/loader/shimmer/corporate_shimmer.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_booking_confirmation/crp_booking_result.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -36,6 +37,7 @@ class CrpBookingConfirmation extends StatefulWidget {
 }
 
 class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
+  bool _showShimmer = true;
   String selectedTitle = 'Mr.';
   final List<String> titles = ['Mr.', 'Ms.', 'Mrs.'];
   final TextEditingController firstNameController = TextEditingController();
@@ -48,6 +50,14 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
 
   @override
   void initState() {
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
     super.initState();
     _loadInitialData();
   }
@@ -100,6 +110,10 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -1330,7 +1344,7 @@ class RouteCard extends StatelessWidget {
     final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
 
     // Truncate if too long
-    String pickupText = pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
+    String pickupText = pickup.length > 30 ? '${pickup.substring(0, 25)}..' : pickup;
 
     return '$pickupText';
   }
@@ -1343,7 +1357,7 @@ class RouteCard extends StatelessWidget {
     final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
 
     // Truncate if too long
-    String dropText = drop.length > 30 ? '${drop.substring(0, 30)}..' : drop;
+    String dropText = drop.length > 30 ? '${drop.substring(0, 25)}..' : drop;
 
     return '$dropText';
   }

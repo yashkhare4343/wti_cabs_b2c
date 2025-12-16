@@ -102,15 +102,26 @@ class _CprRedirectScreenState extends State<CprRedirectScreen> {
               ? const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    SizedBox(
+                      width: 220,
+                      child: LinearProgressIndicator(
+                        minHeight: 5,
+                        backgroundColor: Color(0xFFE0E0E0),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF0066FF),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
                     Text(
-                      'Loading...',
+                      'Switching to Corporate',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                         color: Colors.black87,
                         fontFamily: 'Montserrat',
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],

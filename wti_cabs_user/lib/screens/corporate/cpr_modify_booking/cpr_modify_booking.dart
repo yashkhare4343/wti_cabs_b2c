@@ -14,6 +14,7 @@ import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controll
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
+import '../../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../../common_widget/textformfield/booking_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
@@ -48,6 +49,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   final CrpBookingDetailsController crpBookingDetailsController =
       Get.put(CrpBookingDetailsController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  bool _showShimmer = true;
 
   String? guestId, token, user;
   int? _preselectedRunTypeId;
@@ -85,6 +87,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   @override
   void initState() {
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
     super.initState();
     _initPrefillListeners();
     runTypesAndPaymentModes();
@@ -570,6 +580,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
     // Show skeleton loader for 2 seconds
     if (_showSkeletonLoader) {
       return _buildSkeletonLoader();
@@ -1885,7 +1898,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           // Navigate back after success
           Future.delayed(const Duration(seconds: 1), () {
             if (context.mounted) {
-              GoRouter.of(context).go(AppRoutes.cprBottomNav);
+              context.go(AppRoutes.cprBottomNav);
             }
           });
         } else {

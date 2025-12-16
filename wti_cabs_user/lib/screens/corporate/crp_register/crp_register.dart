@@ -124,7 +124,7 @@ class _CprRegisterState extends State<CprRegister> {
             backgroundColor: Colors.green,
           ),
         );
-        GoRouter.of(context).push(AppRoutes.cprLogin);
+        context.go(AppRoutes.cprLogin);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -239,7 +239,7 @@ class _CprRegisterState extends State<CprRegister> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          GoRouter.of(context).go(AppRoutes.cprLandingPage);
+          context.go(AppRoutes.cprLandingPage);
         }
       },
       child: Scaffold(

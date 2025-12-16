@@ -5,6 +5,7 @@ import 'package:wti_cabs_user/core/controller/corporate/crp_booking_detail/crp_b
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/services/storage_services.dart';
 
 class CrpBookingDetails extends StatefulWidget {
@@ -21,11 +22,21 @@ class CrpBookingDetails extends StatefulWidget {
 
 class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
+  bool _showShimmer = true;
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     fetchBookingDetails();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
   }
   void fetchBookingDetails() async{
     final token = await StorageServices.instance.read('crpKey');
@@ -108,6 +119,33 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return CorporateShimmer(
+        showAppBar: true,
+        isDetailsPage: true,
+        customAppBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.black,
+          surfaceTintColor: Colors.transparent,
+          leading: Icon(
+            Icons.arrow_back,
+            color: Color(0xFF000000),
+          ),
+          title: Text(
+            'Details',
+            style: TextStyle(
+              color: Color(0xFF000000),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          centerTitle: false,
+        ),
+      );
+    }
+
     final statusInfo = _getStatusIconAndColor(widget.booking.status);
 
     return Scaffold(

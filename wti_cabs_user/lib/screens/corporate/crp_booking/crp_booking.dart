@@ -8,6 +8,7 @@ import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_cont
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../../common_widget/buttons/outline_button.dart';
@@ -26,10 +27,19 @@ class _CrpBookingState extends State<CrpBooking> {
   final CrpBookingHistoryController _controller =
       Get.put(CrpBookingHistoryController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  bool _showShimmer = true;
 
   @override
   void initState() {
     super.initState();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ✅ Ensure email is persisted before fetching booking history
       await _ensureEmailPersistence();
@@ -78,6 +88,9 @@ class _CrpBookingState extends State<CrpBooking> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -91,6 +104,7 @@ class _CrpBookingState extends State<CrpBooking> {
           elevation: 0,
           shadowColor: Colors.black.withOpacity(0.05),
           surfaceTintColor: Colors.transparent,
+          automaticallyImplyLeading: false,
           title: const Text(
             'My Booking',
             style: TextStyle(

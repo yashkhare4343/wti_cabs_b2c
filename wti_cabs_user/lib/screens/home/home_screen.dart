@@ -207,20 +207,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _handleCorporateEntry(BuildContext context) async {
+    if (!mounted) return;
+
     setState(() => _isCorporateLoading = true);
     try {
-      final storedCrpKey = await StorageServices.instance.read('crpKey');
-      // If session exists, go straight to corporate dashboard
-      if (storedCrpKey != null && storedCrpKey.isNotEmpty) {
-        if (context.mounted) {
-          GoRouter.of(context).push(AppRoutes.cprBottomNav);
-        }
-      } else {
-        // No session -> show corporate landing/login funnel
-        if (context.mounted) {
-          GoRouter.of(context).push(AppRoutes.cprLandingPage);
-        }
-      }
+      await Navigator.of(context).push(
+        PlatformFlipPageRoute(
+          builder: (_) => const CprRedirectScreen(),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isCorporateLoading = false);
@@ -1694,8 +1689,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _setStatusBarColor();
         return false;
       },
-      child: (_isCorporateLoading) ?
-      const ProgressPage() : Scaffold(
+      child: (_isCorporateLoading)
+          ? Scaffold(
+              backgroundColor: Colors.white,
+              body: SafeArea(
+                child: Stack(
+                  children: [
+                    // Center loader + text
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Switching to corporate...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Bottom helper text
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 32,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            'Please wait while we take you to your corporate dashboard.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : Scaffold(
         backgroundColor: Color(0xFFE9E9ED),
         // backgroundColor: AppColors.homebg,
         body: SafeArea(

@@ -3,9 +3,30 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 
-class CrpContactUs extends StatelessWidget {
+class CrpContactUs extends StatefulWidget {
   const CrpContactUs({super.key});
+
+  @override
+  State<CrpContactUs> createState() => _CrpContactUsState();
+}
+
+class _CrpContactUsState extends State<CrpContactUs> {
+  bool _showShimmer = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
+  }
 
   void _launchPhone(String number) async {
     final Uri uri = Uri(scheme: "tel", path: number);
@@ -30,6 +51,10 @@ class CrpContactUs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -40,14 +65,6 @@ class CrpContactUs extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              size: 18,
-              color: Colors.black87,
-            ),
-            onPressed: () => context.go(AppRoutes.cprBottomNav),
-          ),
           title: const Text(
             "Contact Us",
             style: TextStyle(

@@ -132,10 +132,10 @@ class _CprLoginState extends State<CprLogin> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: true,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          GoRouter.of(context).pop();
+          context.go(AppRoutes.cprLandingPage);
         }
       },
       child: Scaffold(

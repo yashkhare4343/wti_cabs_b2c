@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../core/route_management/app_routes.dart';
@@ -16,7 +17,7 @@ class CrpEditProfile extends StatefulWidget {
 class _CrpEditProfileState extends State<CrpEditProfile> {
   final CprProfileController cprProfileController = Get.put(CprProfileController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
-  
+  bool _showShimmer = true;
 
   String? selectedGender;
   bool isCardValidated = false;
@@ -24,6 +25,14 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
   @override
   void initState() {
     super.initState();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
     _loadProfileData();
   }
   
@@ -47,6 +56,10 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(

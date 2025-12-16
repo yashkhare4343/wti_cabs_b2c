@@ -14,6 +14,7 @@ import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_inventory_list_controller/crp_inventory_list_controller.dart';
 
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import '../../../core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import '../../../core/services/storage_services.dart';
@@ -32,12 +33,21 @@ class _CrpInventoryState extends State<CrpInventory> {
   Get.put(CrpInventoryListController());
   bool isLoading = false;
   final controller = Get.put(CrpInventoryListController());
+  bool _showShimmer = true;
 
   String? guestId, token, user, corpId, branchId;
 
   @override
   void initState() {
     super.initState();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
     fetchCardModel(); // TODO: Initialize inventory data
   }
 
@@ -65,6 +75,10 @@ class _CrpInventoryState extends State<CrpInventory> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
+
     // Parse booking data if provided
     CrpBookingData? parsedBookingData;
     if (widget.bookingData != null) {
@@ -767,7 +781,7 @@ class _RouteCard extends StatelessWidget {
 
     // Truncate if too long
     String pickupText =
-    pickup.length > 30 ? '${pickup.substring(0, 30)}..' : pickup;
+    pickup.length > 30 ? '${pickup.substring(0, 25)}..' : pickup;
 
     return '$pickupText';
   }
@@ -780,7 +794,7 @@ class _RouteCard extends StatelessWidget {
     final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
 
     // Truncate if too long
-    String dropText = drop.length > 30 ? '${drop.substring(0, 30)}..' : drop;
+    String dropText = drop.length > 30 ? '${drop.substring(0, 25)}..' : drop;
 
     return '$dropText';
   }

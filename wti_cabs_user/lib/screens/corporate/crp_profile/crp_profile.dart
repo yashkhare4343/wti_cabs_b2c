@@ -5,6 +5,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import 'package:get/get.dart';
+import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
@@ -20,6 +21,20 @@ class CrpProfile extends StatefulWidget {
 class _CrpProfileState extends State<CrpProfile> {
   final CurrencyController currencyController = Get.find<CurrencyController>();
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  bool _showShimmer = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show shimmer for 0.5 seconds
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _showShimmer = false;
+        });
+      }
+    });
+  }
 
   /// Show logout confirmation dialog
   void _showLogoutDialog(BuildContext context) {
@@ -131,6 +146,10 @@ class _CrpProfileState extends State<CrpProfile> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showShimmer) {
+      return const CorporateShimmer();
+    }
+
     return PopScope(
       canPop: true, // allow router to change route
       onPopInvoked: (didPop) {
