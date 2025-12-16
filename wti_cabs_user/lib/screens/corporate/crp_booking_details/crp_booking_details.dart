@@ -6,7 +6,6 @@ import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booki
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 
 import '../../../core/services/storage_services.dart';
-import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 
 class CrpBookingDetails extends StatefulWidget {
   final CrpBookingHistoryItem booking;
@@ -22,7 +21,6 @@ class CrpBookingDetails extends StatefulWidget {
 
 class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
-  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   @override
   void initState() {
     // TODO: implement initState
@@ -30,22 +28,87 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     fetchBookingDetails();
   }
   void fetchBookingDetails() async{
-    final storage = StorageServices.instance;
-    final storedToken = await storage.read('crpKey');
-    final token = storedToken?.isNotEmpty == true
-        ? storedToken
-        : loginInfoController.crpLoginInfo.value?.key;
-    final userEmail = await storage.read('email');
-    await crpBookingDetailsController.fetchBookingData(
-      widget.booking.bookingId.toString(),
-      token ?? '',
-      userEmail ?? '',
-    );
+    final token = await StorageServices.instance.read('crpKey');
+    final userEmail = await StorageServices.instance.read('email');
+    await crpBookingDetailsController.fetchBookingData(widget.booking.bookingId.toString(), token??'', userEmail??'');
+  }
+
+  // Helper method to get status icon and color based on status
+  Map<String, dynamic> _getStatusIconAndColor(String? status) {
+    if (status == null) {
+      return {
+        'icon': Icons.pending,
+        'color': Colors.orange,
+        'text': 'Pending',
+      };
+    }
+
+    final statusLower = status.toLowerCase().trim();
+    
+    // Handle numeric status codes
+    switch (statusLower) {
+      case '0':
+      case 'pending':
+        return {
+          'icon': Icons.pending,
+          'color': Colors.orange,
+          'text': 'Pending',
+        };
+      case '1':
+      case 'confirmed':
+        return {
+          'icon': Icons.check_circle,
+          'color': Colors.green,
+          'text': 'Confirmed',
+        };
+      case '2':
+      case 'dispatched':
+        return {
+          'icon': Icons.local_shipping,
+          'color': Colors.blue,
+          'text': 'Dispatched',
+        };
+      case '3':
+      case 'missed':
+        return {
+          'icon': Icons.error_outline,
+          'color': Colors.orange,
+          'text': 'Missed',
+        };
+      case '4':
+      case 'cancelled':
+        return {
+          'icon': Icons.cancel,
+          'color': Colors.red,
+          'text': 'Cancelled',
+        };
+      case '5':
+      case 'void':
+        return {
+          'icon': Icons.block,
+          'color': Colors.grey,
+          'text': 'Void',
+        };
+      case '6':
+      case 'allocated':
+        return {
+          'icon': Icons.assignment,
+          'color': Colors.blue.shade700,
+          'text': 'Allocated',
+        };
+      default:
+        // Default case for unknown statuses
+        return {
+          'icon': Icons.help_outline,
+          'color': Colors.grey,
+          'text': status,
+        };
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isCompleted = widget.booking.status?.toLowerCase() == 'completed';
+    final statusInfo = _getStatusIconAndColor(widget.booking.status);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -109,6 +172,22 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // White 3D Car Icon (using a container with icon as placeholder)
+                      Container(
+                        width: 63,
+                        height: 47,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Image.asset(
+                          'assets/images/booking_crp_car.png',
+                          width: 60,
+                          height: 47,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,9 +196,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             Text(
                               widget.booking.run ?? 'Airport Drop',
                               style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF002CC0),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF192653),
                                 fontFamily: 'Montserrat',
                               ),
                             ),
@@ -129,73 +208,50 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                               widget.booking.model ?? 'Swift Dzire',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF939393),
                                 fontFamily: 'Montserrat',
                               ),
                             ),
-                            const SizedBox(height: 8),
                             // Car Details Link
-                            GestureDetector(
-                              onTap: () {
-                                // Handle car details navigation
-                              },
-                              child: Text(
-                                'Car Details',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.grey.shade500,
-                                  fontFamily: 'Montserrat',
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
+                            // GestureDetector(
+                            //   onTap: () {
+                            //     // Handle car details navigation
+                            //   },
+                            //   child: Text(
+                            //     'Car Details',
+                            //     style: TextStyle(
+                            //       fontSize: 14,
+                            //       fontWeight: FontWeight.w400,
+                            //       color: Colors.grey.shade500,
+                            //       fontFamily: 'Montserrat',
+                            //       decoration: TextDecoration.underline,
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
                       // Car Icon and Status
-                      Row(
+                      Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // White 3D Car Icon (using a container with icon as placeholder)
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.shade300,
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.directions_car,
-                              size: 20,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Status with Checkmark
+                          // Status with Icon
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isCompleted ? Icons.check_circle : Icons.cancel,
+                                statusInfo['icon'] as IconData,
                                 size: 16,
-                                color: isCompleted ? Colors.green : Colors.red,
+                                color: statusInfo['color'] as Color,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                widget.booking.status ?? 'Completed',
+                                statusInfo['text'] as String,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: isCompleted ? Colors.green : Colors.red,
+                                  color: statusInfo['color'] as Color,
                                   fontFamily: 'Montserrat',
                                 ),
                               ),
@@ -206,84 +262,87 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  CustomPaint(
+                    painter: DottedLinePainter(),
+                    child: const SizedBox(
+                      width: double.infinity,
+                      height: 1,
+                    ),
+                  ),
+                  SizedBox(height: 16,),
                   // Route Visualization
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Vertical Line with Circle and Square
-                      Column(
-                        children: [
-                          // Circle at top (Pickup)
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF002CC0),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          // Vertical Line
-                          Container(
-                            width: 2,
-                            height: 50,
-                            color: const Color(0xFF002CC0),
-                          ),
-                          // Square at bottom (Drop)
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF002CC0),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      // Pickup and Drop Locations
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Vertical Line with Circle and Square
+                        Column(
                           children: [
-                            // Pickup Location
-                            Text(
-                              crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress??'',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF000000),
-                                fontFamily: 'Montserrat',
+                            // Circle at top (Pickup)
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF002CC0),
+                                shape: BoxShape.circle,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 16),
-                            // Drop Location
-                            Text(
-                              crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress??'',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF000000),
-                                fontFamily: 'Montserrat',
+                            // Vertical Line - expands to fill available space
+                            Expanded(
+                              child: Container(
+                                width: 2,
+                                color: const Color(0xFF002CC0),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            // Duration and Distance
-                            Text(
-                              '2 Hours 35 mins • 3 kms',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.grey.shade600,
-                                fontFamily: 'Montserrat',
+                            // Square at bottom (Drop)
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF002CC0),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        // Pickup and Drop Locations
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Pickup Location
+                              Text(
+                                crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress ?? 
+                                widget.booking.passenger ?? 
+                                'Pickup location',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontFamily: 'Montserrat',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 16),
+                              // Drop Location
+                              Text(
+                                crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress ?? 
+                                'Drop location',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontFamily: 'Montserrat',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   // Dotted Divider
@@ -336,9 +395,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       ),
                       // Vertical Divider
                       Container(
-                        width: 1,
+                        width: 8,
                         height: 36,
-                        color: Colors.grey.shade300,
+                        color: Colors.transparent,
                       ),
                       Expanded(
                         child: _buildActionButton(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
@@ -132,67 +133,67 @@ class _CrpBookingState extends State<CrpBooking> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // Search Bar
-                        Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Color(0xFFD9D9D9),
-                              width: 1,
-                            ),
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: 'Search previous bookings',
-                              hintStyle: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF333333),
-                                fontFamily: 'Montserrat',
-                              ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Image.asset(
-                                  'assets/images/search.png',
-                                  width: 20,
-                                  height: 20,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 16,
-                              ),
-                            ),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xFF333333),
-                              fontFamily: 'Montserrat',
-                            ),
-                            onChanged: (value) {
-                              // Search can be wired up later
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Filters and Sort Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFilterButton('Filters', Icons.filter_list),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildFilterButton('Sort', Icons.sort),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
+                        // // Search Bar
+                        // Container(
+                        //   height: 48,
+                        //   decoration: BoxDecoration(
+                        //     color: Colors.white,
+                        //     borderRadius: BorderRadius.circular(8),
+                        //     border: Border.all(
+                        //       color: Color(0xFFD9D9D9),
+                        //       width: 1,
+                        //     ),
+                        //   ),
+                        //   child: TextField(
+                        //     controller: _searchController,
+                        //     decoration: InputDecoration(
+                        //       hintText: 'Search previous bookings',
+                        //       hintStyle: TextStyle(
+                        //         fontSize: 14,
+                        //         fontWeight: FontWeight.w400,
+                        //         color: Color(0xFF333333),
+                        //         fontFamily: 'Montserrat',
+                        //       ),
+                        //       prefixIcon: Padding(
+                        //         padding: const EdgeInsets.all(12.0),
+                        //         child: Image.asset(
+                        //           'assets/images/search.png',
+                        //           width: 20,
+                        //           height: 20,
+                        //           fit: BoxFit.contain,
+                        //         ),
+                        //       ),
+                        //       border: InputBorder.none,
+                        //       contentPadding: const EdgeInsets.symmetric(
+                        //         horizontal: 14,
+                        //         vertical: 16,
+                        //       ),
+                        //     ),
+                        //     style: const TextStyle(
+                        //       fontSize: 14,
+                        //       fontWeight: FontWeight.w400,
+                        //       color: Color(0xFF333333),
+                        //       fontFamily: 'Montserrat',
+                        //     ),
+                        //     onChanged: (value) {
+                        //       // Search can be wired up later
+                        //     },
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 12),
+                        // // Filters and Sort Buttons
+                        // Row(
+                        //   children: [
+                        //     Expanded(
+                        //       child: _buildFilterButton('Filters', Icons.filter_list),
+                        //     ),
+                        //     const SizedBox(width: 12),
+                        //     Expanded(
+                        //       child: _buildFilterButton('Sort', Icons.sort),
+                        //     ),
+                        //   ],
+                        // ),
+                        // const SizedBox(height: 4),
                       ],
                     ),
                   );
@@ -253,6 +254,30 @@ class _CrpBookingState extends State<CrpBooking> {
 
   Widget _buildBookingCard(CrpBookingHistoryItem booking) {
     final bool isConfirmed = booking.status == 'Confirmed';
+    
+    // Format booking date
+    String formattedDate = 'N/A';
+    if (booking.cabRequiredOn != null && booking.cabRequiredOn!.isNotEmpty) {
+      try {
+        // Try to parse the date string
+        DateTime? parsedDate;
+        // Try different date formats
+        try {
+          parsedDate = DateTime.parse(booking.cabRequiredOn!);
+        } catch (e) {
+          // If parsing fails, try other formats
+          try {
+            parsedDate = DateFormat('dd/MM/yyyy').parse(booking.cabRequiredOn!);
+          } catch (e2) {
+            // If all parsing fails, use current date
+            parsedDate = DateTime.now();
+          }
+        }
+        formattedDate = DateFormat('dd MMM yyyy').format(parsedDate);
+      } catch (e) {
+        formattedDate = booking.cabRequiredOn ?? 'N/A';
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -272,30 +297,27 @@ class _CrpBookingState extends State<CrpBooking> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Car Image and Service Type Row
+            // Top Section: Car Icon and Service Type Row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Car Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                // Car Icon (White car icon)
+                Container(
+                  width: 63,
+                  height: 47,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Image.asset(
-                    'assets/images/inventory_car.png',
-                    width: 84,
-                    height: 64,
+                    'assets/images/booking_crp_car.png',
+                    width: 60,
+                    height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 84,
-                        height: 64,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported),
-                      );
-                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -309,16 +331,17 @@ class _CrpBookingState extends State<CrpBooking> {
                           Expanded(
                             child: Text(
                               booking.run ?? 'Service',
+                              maxLines: 1,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF002CC0),
+                                color: Color(0xFF192653),
                                 fontFamily: 'Montserrat',
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Status Badge
+                          // Status Badge with checkmark
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -326,7 +349,7 @@ class _CrpBookingState extends State<CrpBooking> {
                                 isConfirmed
                                     ? Icons.check_circle
                                     : Icons.cancel,
-                                size: 16,
+                                size: 18,
                                 color: isConfirmed
                                     ? Colors.green
                                     : Colors.red,
@@ -351,8 +374,9 @@ class _CrpBookingState extends State<CrpBooking> {
                       Text(
                         booking.model ?? '-',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                          fontSize: 15,
+                          color: Color(0xFF939393),
+                          fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
                         ),
                       ),
@@ -362,115 +386,134 @@ class _CrpBookingState extends State<CrpBooking> {
               ],
             ),
             const SizedBox(height: 16),
-            // Route Visualization
+            // // Middle Section: Route Visualization
+            // Row(
+            //   crossAxisAlignment: CrossAxisAlignment.start,
+            //   children: [
+            //     // Vertical Line with Circle and Square
+            //     Column(
+            //       children: [
+            //         // Circle at top
+            //         Container(
+            //           width: 12,
+            //           height: 12,
+            //           decoration: const BoxDecoration(
+            //             color: Color(0xFF002CC0),
+            //             shape: BoxShape.circle,
+            //           ),
+            //         ),
+            //         // Vertical Line
+            //         Container(
+            //           width: 2,
+            //           height: 36,
+            //           color: const Color(0xFF002CC0),
+            //         ),
+            //         // Square at bottom
+            //         Container(
+            //           width: 12,
+            //           height: 12,
+            //           decoration: const BoxDecoration(
+            //             color: Color(0xFF002CC0),
+            //           ),
+            //         ),
+            //       ],
+            //     ),
+            //     const SizedBox(width: 12),
+            //     // Pickup and Drop Locations
+            //     Expanded(
+            //       child: Column(
+            //         crossAxisAlignment: CrossAxisAlignment.start,
+            //         children: [
+            //           // Pickup Location
+            //           Text(
+            //             booking.passenger ?? 'Pickup location',
+            //             style: TextStyle(
+            //               fontSize: 13,
+            //               color: Colors.grey.shade700,
+            //               fontFamily: 'Montserrat',
+            //               height: 1.3,
+            //             ),
+            //             maxLines: 2,
+            //             overflow: TextOverflow.ellipsis,
+            //           ),
+            //           const SizedBox(height: 14),
+            //           // Drop Location
+            //           Text(
+            //             'Drop location',
+            //             style: TextStyle(
+            //               fontSize: 13,
+            //               color: Colors.grey.shade700,
+            //               fontFamily: 'Montserrat',
+            //               height: 1.3,
+            //             ),
+            //             maxLines: 2,
+            //             overflow: TextOverflow.ellipsis,
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            // const SizedBox(height: 16),
+            // Dashed Line Separator
+            CustomPaint(
+              painter: DashedLinePainter(),
+              child: const SizedBox(
+                height: 1,
+                width: double.infinity,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Bottom Section: Booking ID, Date, and Driver Details
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Vertical Line with Circle and Square
-                Column(
-                  children: [
-                    // Circle at top
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF002CC0),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    // Vertical Line
-                    Container(
-                      width: 2,
-                      height: 35,
-                      color: const Color(0xFF002CC0),
-                    ),
-                    // Square at bottom
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF002CC0),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                // Pickup and Drop Locations
+                // Booking ID and Date (Left side)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Pickup Location
                       Text(
-                        'Passenger: ${booking.passenger ?? '-'}',
+                        'Booking ID ${booking.bookingNo ?? booking.bookingId ?? ''}',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Colors.grey.shade700,
                           fontFamily: 'Montserrat',
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 10),
-                      // Drop Location
+                      const SizedBox(height: 4),
                       Text(
-                        'Cab Required: ${booking.cabRequiredOn ?? '-'}',
+                        'Booked on $formattedDate',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Colors.grey.shade700,
                           fontFamily: 'Montserrat',
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Driver Details Link
-                Align(
-                  alignment: Alignment.topRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // Navigate to driver details
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
-                      'Driver Details',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF002CC0),
-                        fontFamily: 'Montserrat',
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
+                // Driver Details Link (Right side)
+                TextButton(
+                  onPressed: () {
+                    // Navigate to driver details
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    alignment: Alignment.centerRight,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Booking ID and Date
-            Wrap(
-              children: [
-                Text(
-                  'Booking No ${booking.bookingNo ?? booking.bookingId ?? ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Status: ${booking.status ?? '-'}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontFamily: 'Montserrat',
+                  child: Text(
+                    'Driver Details',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
+                      fontFamily: 'Montserrat',
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.grey.shade700,
+                    ),
                   ),
                 ),
               ],
@@ -509,14 +552,10 @@ class _CrpBookingState extends State<CrpBooking> {
 
   Widget _buildActionButton(String text, VoidCallback onPressed) {
     return Container(
-      height: 36,
+      height: 40,
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
-        ),
       ),
       child: TextButton(
         onPressed: onPressed,
@@ -538,4 +577,30 @@ class _CrpBookingState extends State<CrpBooking> {
       ),
     );
   }
+}
+
+// Custom painter for dashed line
+class DashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.shade300
+      ..strokeWidth = 1.0;
+
+    const dashWidth = 5.0;
+    const dashSpace = 3.0;
+    double startX = 0;
+
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, 0),
+        Offset(startX + dashWidth, 0),
+        paint,
+      );
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
