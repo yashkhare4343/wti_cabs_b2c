@@ -445,36 +445,36 @@ class _CrpProfileState extends State<CrpProfile> {
                       ),
 
                       // About Us
-                      InkWell(
-                        onTap: () {
-                          // Navigate to about us
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline,
-                                size: 20,
-                                color: Color(0xFF1C1B1F),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'About Us',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      // InkWell(
+                      //   onTap: () {
+                      //     // Navigate to about us
+                      //   },
+                      //   child: Padding(
+                      //     padding: const EdgeInsets.symmetric(
+                      //       horizontal: 0,
+                      //       vertical: 12,
+                      //     ),
+                      //     child: Row(
+                      //       children: [
+                      //         const Icon(
+                      //           Icons.info_outline,
+                      //           size: 20,
+                      //           color: Color(0xFF1C1B1F),
+                      //         ),
+                      //         const SizedBox(width: 12),
+                      //         const Text(
+                      //           'About Us',
+                      //           style: TextStyle(
+                      //             fontSize: 14,
+                      //             fontWeight: FontWeight.w400,
+                      //             color: Color(0xFF000000),
+                      //             fontFamily: 'Montserrat',
+                      //           ),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //   ),
+                      // ),
 
                       const SizedBox(height: 32),
                     ],

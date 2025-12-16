@@ -138,20 +138,20 @@ class _CrpContactUsState extends State<CrpContactUs> {
                     _InfoRow(
                       icon: Icons.facebook,
                       label: "Facebook",
-                      onTap: () => _launchWebsite("https://www.facebook.com"),
+                      onTap: () => _launchWebsite("https://www.facebook.com/search/top?q=wti%20cabs"),
                     ),
                     const SizedBox(height: 12),
                     _InfoRow(
                       icon: Icons.linked_camera, // closest to LinkedIn
                       label: "LinkedIn",
-                      onTap: () => _launchWebsite("https://www.linkedin.com"),
+                      onTap: () => _launchWebsite("https://www.linkedin.com/search/results/all/?keywords=wticabs&origin=GLOBAL_SEARCH_HEADER&sid=jYo"),
                     ),
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.alternate_email, // closest to Twitter/X
-                      label: "Twitter",
-                      onTap: () => _launchWebsite("https://twitter.com"),
-                    ),
+                    // const SizedBox(height: 12),
+                    // _InfoRow(
+                    //   icon: Icons.alternate_email, // closest to Twitter/X
+                    //   label: "Twitter",
+                    //   onTap: () => _launchWebsite("https://twitter.com"),
+                    // ),
                   ],
                 ),
               ),

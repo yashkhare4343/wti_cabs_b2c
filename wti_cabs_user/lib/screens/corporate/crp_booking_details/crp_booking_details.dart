@@ -445,19 +445,19 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         ),
                       ),
                       // Vertical Divider
-                      Container(
-                        width: 8,
-                        height: 36,
-                        color: Colors.transparent,
-                      ),
-                      Expanded(
-                        child: _buildActionButton(
-                          'Feedback',
-                              () {
-                            // Handle feedback
-                          },
-                        ),
-                      ),
+                      // Container(
+                      //   width: 8,
+                      //   height: 36,
+                      //   color: Colors.transparent,
+                      // ),
+                      // Expanded(
+                      //   child: _buildActionButton(
+                      //     'Feedback',
+                      //         () {
+                      //       // Handle feedback
+                      //     },
+                      //   ),
+                      // ),
                     ],
                   ),
                 ],
@@ -467,51 +467,51 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           }),
             const SizedBox(height: 16),
             // Need Help? Section
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F0FE),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    // Handle need help navigation
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 14.0,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.headset_mic,
-                          color: const Color(0xFF002CC0),
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Need Help?',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF002CC0),
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            // Container(
+            //   width: double.infinity,
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFFE8F0FE),
+            //     borderRadius: BorderRadius.circular(12),
+            //     border: Border.all(
+            //       color: Colors.grey.shade200,
+            //       width: 1,
+            //     ),
+            //   ),
+            //   child: Material(
+            //     color: Colors.transparent,
+            //     child: InkWell(
+            //       onTap: () {
+            //         // Handle need help navigation
+            //       },
+            //       borderRadius: BorderRadius.circular(12),
+            //       child: Padding(
+            //         padding: const EdgeInsets.symmetric(
+            //           horizontal: 16.0,
+            //           vertical: 14.0,
+            //         ),
+            //         child: Row(
+            //           children: [
+            //             Icon(
+            //               Icons.headset_mic,
+            //               color: const Color(0xFF002CC0),
+            //               size: 24,
+            //             ),
+            //             const SizedBox(width: 12),
+            //             const Text(
+            //               'Need Help?',
+            //               style: TextStyle(
+            //                 fontSize: 16,
+            //                 fontWeight: FontWeight.w500,
+            //                 color: Color(0xFF002CC0),
+            //                 fontFamily: 'Montserrat',
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

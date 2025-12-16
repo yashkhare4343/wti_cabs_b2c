@@ -508,28 +508,28 @@ class _CrpBookingState extends State<CrpBooking> {
                   ),
                 ),
                 // Driver Details Link (Right side)
-                TextButton(
-                  onPressed: () {
-                    // Navigate to driver details
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    alignment: Alignment.centerRight,
-                  ),
-                  child: Text(
-                    'Driver Details',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade700,
-                      fontFamily: 'Montserrat',
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.grey.shade700,
-                    ),
-                  ),
-                ),
+                // TextButton(
+                //   onPressed: () {
+                //     // Navigate to driver details
+                //   },
+                //   style: TextButton.styleFrom(
+                //     padding: EdgeInsets.zero,
+                //     minimumSize: Size.zero,
+                //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                //     alignment: Alignment.centerRight,
+                //   ),
+                //   child: Text(
+                //     'Driver Details',
+                //     style: TextStyle(
+                //       fontSize: 12,
+                //       fontWeight: FontWeight.w500,
+                //       color: Colors.grey.shade700,
+                //       fontFamily: 'Montserrat',
+                //       decoration: TextDecoration.underline,
+                //       decorationColor: Colors.grey.shade700,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 16),
@@ -547,15 +547,15 @@ class _CrpBookingState extends State<CrpBooking> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionButton(
-                    'Feedback',
-                    () {
-                      // Handle feedback
-                    },
-                  ),
-                ),
+                // const SizedBox(width: 12),
+                // Expanded(
+                //   child: _buildActionButton(
+                //     'Feedback',
+                //     () {
+                //       // Handle feedback
+                //     },
+                //   ),
+                // ),
               ],
             ),
           ],
