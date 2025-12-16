@@ -1184,9 +1184,15 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final remarks = bookingData?.referenceNumber ?? '';
         final transNo = '';
 
+        // Decide which corporate ID to send: entityId (from booking) or fallback corporateID from storage
+        final bookingEntityId = bookingData?.entityId;
+        final corporateIdForApi = bookingEntityId != null && bookingEntityId != 0
+            ? bookingEntityId.toString()
+            : corporateID;
+
         // Build params
         final params = <String, dynamic>{
-          'corporateID': corporateID,
+          'corporateID': corporateIdForApi,
           'passenger': passengerName,
           'email': email,
           'mobile': mobile,

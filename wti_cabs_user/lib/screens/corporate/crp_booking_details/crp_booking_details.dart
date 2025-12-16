@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_detail/crp_booking_detail_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -394,7 +395,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   const SizedBox(height: 16),
                   // Booking ID and Date
                   Text(
-                    'Booking ID ${widget.booking.bookingNo ?? widget.booking.bookingId ?? '432411'}',
+                    'Booking ID:- ${widget.booking.bookingNo ?? widget.booking.bookingId ?? '432411'}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
@@ -403,15 +404,27 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Booked on 23 Nov 2025',
+                Obx(() {
+                  final raw = crpBookingDetailsController
+                      .crpBookingDetailResponse.value?.cabRequiredOn;
+
+                  if (raw == null || raw.isEmpty) {
+                    return const SizedBox();
+                  }
+
+                  final formattedDate = DateFormat('dd MMM yyyy')
+                      .format(DateTime.parse(raw));
+
+                  return Text(
+                    'Pickup Time:- $formattedDate',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
                       color: Colors.grey.shade600,
                       fontFamily: 'Montserrat',
                     ),
-                  ),
+                  );
+                }),
                   const SizedBox(height: 20),
                   // Edit Booking and Feedback Buttons
                   Row(

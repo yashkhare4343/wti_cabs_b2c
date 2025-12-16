@@ -6,6 +6,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wti_cabs_user/common_widget/dropdown/cpr_select_box.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -15,8 +16,10 @@ import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
 import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
 import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
+import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
 import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import '../../../core/model/corporate/get_entity_list/get_entity_list_response.dart';
 import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
 import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
 import '../../../core/model/corporate/crp_payment_method/crp_payment_mode.dart';
@@ -47,16 +50,30 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   final CarProviderController carProviderController =
       Get.put(CarProviderController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final CrpGetEntityListController crpGetEntityListController =
+      Get.put(CrpGetEntityListController());
 
   String? guestId, token, user;
   int? _preselectedRunTypeId;
   bool _hasAppliedPreselection = false;
+  Entity? selectedCorporate;
 
   Future<void> fetchParameter() async {
     final storage = StorageServices.instance;
     guestId = await storage.read('branchId');
     token = loginInfoController.crpLoginInfo.value?.key ?? await storage.read('crpKey');
     user = await storage.read('email');
+  }
+
+  Future<void> _loadCorporateEntities() async {
+    try {
+      final email = await StorageServices.instance.read('email');
+      if (email != null && email.isNotEmpty) {
+        await crpGetEntityListController.fetchAllEntities(email, '');
+      }
+    } catch (_) {
+      // Silently ignore – dropdown will just be empty on failure.
+    }
   }
 
   @override
@@ -99,6 +116,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     _loadPreselectedRunType();
     runTypesAndPaymentModes();
     _prefillPickupFromCurrentLocation();
+    _loadCorporateEntities();
   }
 
   void runTypesAndPaymentModes() async {
@@ -242,6 +260,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String? paymentModeError;
   String? genderError;
   String? carProviderError;
+   String? corporateError;
 
   final TextEditingController referenceNumberController =
       TextEditingController();
@@ -336,7 +355,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 // Pick Up Type Button (always shown, replaces tabs)
                 const SizedBox(height: 20),
                 // Booking For
-                _buildSectionLabel('Booking Type'),
+                _buildSectionLabel('Booking Type *'),
                 const SizedBox(height: 10),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   GestureDetector(
@@ -421,6 +440,166 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 ]),
 
                 const SizedBox(height: 12),
+                // Choose Corporate (mandatory)
+                Obx(() {
+                  final entities = crpGetEntityListController
+                          .getAllEntityList.value?.getEntityList ??
+                      [];
+
+                  if (entities.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final hasError =
+                      corporateError != null && corporateError!.isNotEmpty;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionLabel('Choose Corporate *'),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => corporateError = null);
+                          showModalBottomSheet<Entity>(
+                            context: context,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20)),
+                            ),
+                            builder: (ctx) {
+                              return SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 16),
+                                      child: Text(
+                                        'Select Corporate',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    const Divider(height: 1),
+                                    Flexible(
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: entities.length,
+                                        itemBuilder: (context, index) {
+                                          final item = entities[index];
+                                          final isSelected =
+                                              selectedCorporate?.entityId ==
+                                                  item.entityId;
+                                          return ListTile(
+                                            title: Text(item.entityName ?? ''),
+                                            trailing: isSelected
+                                                ? const Icon(Icons.check,
+                                                    color:
+                                                        AppColors.mainButtonBg)
+                                                : null,
+                                            onTap: () {
+                                              setState(() {
+                                                corporateError = null;
+                                                selectedCorporate = item;
+                                              });
+                                              Navigator.of(ctx).pop();
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(37),
+                            border: Border.all(
+                              color: hasError
+                                  ? Colors.red.shade400
+                                  : const Color(0xFFE2E2E2),
+                              width: hasError ? 1.5 : 1,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                height: 24,
+                                width: 24,
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: const BoxDecoration(),
+                                child: SvgPicture.asset(
+                                  'assets/images/booking_type.svg',
+                                  width: 20,
+                                  height: 20,
+                                  color: const Color(0xFF52A6F9),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  selectedCorporate?.entityName ??
+                                      'Select Corporate',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: hasError
+                                        ? Colors.red.shade700
+                                        : const Color(0xFF333333),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: hasError
+                                    ? Colors.red.shade400
+                                    : const Color(0xFF6B7280),
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (corporateError != null) ...[
+                        const SizedBox(height: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 16, color: Colors.red.shade600),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  corporateError!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
+                const SizedBox(height: 12),
                 // Payment Controller
                 Obx(() {
                   if (paymentModeController.isLoading.value) {
@@ -471,7 +650,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionLabel('Payment Mode'),
+                      _buildSectionLabel('Payment Mode *'),
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () {
@@ -566,7 +745,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionLabel('Gender'),
+                    _buildSectionLabel('Gender *'),
                     const SizedBox(height: 10),
                     Obx(() {
                       final hasError =
@@ -681,7 +860,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionLabel('Car Provider'),
+                      _buildSectionLabel('Car Provider *'),
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () {
@@ -1059,7 +1238,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         child: Text(
                           selectedPickupDateTime != null
                               ? _formatDateTime(selectedPickupDateTime!)
-                              : 'Pick Up Date',
+                              : 'Pick Up Date *',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
@@ -1079,7 +1258,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               ),
             ),
             const SizedBox(width: 12),
-            // Drop Date Button
+            // Drop Date Button (optional)
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -1160,46 +1339,6 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         ],
         // Drop error message
         if (dropDateError != null) ...[
-          const SizedBox(height: 20),
-          // Drop Date Section
-          _buildSectionLabel('Drop Date'),
-          const SizedBox(height: 10),
-          _buildActionButton(
-            icon: Icons.calendar_today_rounded,
-            label: selectedDropDateTime != null
-                ? _formatDateTime(selectedDropDateTime!)
-                : 'Select Drop Date & Time',
-            errorText: dropDateError,
-            onTap: () {
-              setState(() {
-                dropDateError = null;
-              });
-              _showCupertinoDateTimePicker(context, isPickup: false);
-            },
-          ),
-          if (dropDateError != null) ...[
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 16, color: Colors.red.shade600),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      dropDateError!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ],
     );
@@ -1503,7 +1642,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                           Row(
                             children: [
                               Text(
-                                'Pick Up Type',
+                                'Pick Up Type *',
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
@@ -2272,6 +2411,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       paymentModeError = null;
       genderError = null;
       carProviderError = null;
+      corporateError = null;
     });
   }
 
@@ -2287,6 +2427,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       paymentModeError = null;
       genderError = null;
       carProviderError = null;
+      corporateError = null;
     });
 
     // Collect all validation errors
@@ -2349,15 +2490,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     //   hasValidationError = true;
     // }
 
-    // 6. Validate Drop Date is after Pickup Date (Required)
-    if (selectedPickupDateTime != null && selectedDropDateTime != null) {
-      if (selectedDropDateTime!.isBefore(selectedPickupDateTime!) ||
-          selectedDropDateTime!.isAtSameMomentAs(selectedPickupDateTime!)) {
-        dropDateError = 'Drop date and time must be after pickup date and time';
-        errors.add(dropDateError!);
-        hasValidationError = true;
-      }
-    }
+    // 6. Drop Date is optional – no validation needed
 
     // 7. Validate Pickup Type (Required)
     final List<RunTypeItem> allRunTypes =
@@ -2391,21 +2524,28 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       }
     }
 
-    // 9. Validate Payment Mode (Required)
+    // 9. Validate Corporate (Required)
+    if (selectedCorporate == null) {
+      corporateError = 'Please select a corporate';
+      errors.add(corporateError!);
+      hasValidationError = true;
+    }
+
+    // 10. Validate Payment Mode (Required)
     if (paymentModeController.selectedMode.value == null) {
       paymentModeError = 'Please select a payment mode';
       errors.add(paymentModeError!);
       hasValidationError = true;
     }
 
-    // 10. Validate Gender (Required)
+    // 11. Validate Gender (Required)
     if (controller.selectedGender.value == null) {
       genderError = 'Please select a gender';
       errors.add(genderError!);
       hasValidationError = true;
     }
 
-    // 11. Validate Car Provider (Required)
+    // 12. Validate Car Provider (Required)
     if (carProviderController.carProviderList.isNotEmpty) {
       if (carProviderController.selectedCarProvider.value == null) {
         carProviderError = 'Please select a car provider';
@@ -2465,6 +2605,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       gender: controller.selectedGender.value,
       carProvider: carProviderController.selectedCarProvider.value,
       selectedTabIndex: null, // No longer using tabs, always use dropdown
+      entityId: selectedCorporate?.entityId,
     );
 
     // Navigate to inventory screen with booking data
