@@ -10,6 +10,7 @@ import '../../../core/controller/corporate/crp_login_controller/crp_login_contro
 import '../../../core/services/storage_services.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../corporate_landing_page/corporate_landing_page.dart';
+import '../../../main.dart';
 
 class CrpProfile extends StatefulWidget {
   const CrpProfile({super.key});
@@ -80,7 +81,7 @@ class _CrpProfileState extends State<CrpProfile> {
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   backgroundColor: AppColors.mainButtonBg,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -109,9 +110,6 @@ class _CrpProfileState extends State<CrpProfile> {
 
   /// Perform logout: clear corporate data and navigate to landing page
   Future<void> _performLogout(BuildContext context) async {
-    // Store context reference before async operations
-    final navigatorContext = context;
-
     final keysToDelete = [
       'crpKey',
       'crpId',
@@ -140,8 +138,18 @@ class _CrpProfileState extends State<CrpProfile> {
 
     debugPrint('✅ Corporate logout data cleared');
 
-    // Navigate to corporate landing page (or redirect) and clear navigation stack
-    context.go(AppRoutes.cprLandingPage);
+    // Try navigating using the root GoRouter context first
+    final rootContext = navigatorKey.currentContext;
+    if (rootContext != null) {
+      rootContext.go(AppRoutes.cprLandingPage);
+      return;
+    }
+
+    // Fallback: reset navigation stack using Navigator if GoRouter context isn't available
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const CorporateLandingPage()),
+      (route) => false,
+    );
   }
 
   @override
