@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -8,9 +11,8 @@ import 'package:get/get.dart';
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/services/storage_services.dart';
-import '../corporate_bottom_nav/corporate_bottom_nav.dart';
-import '../corporate_landing_page/corporate_landing_page.dart';
 import '../../../main.dart';
+import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
 class CrpProfile extends StatefulWidget {
   const CrpProfile({super.key});
@@ -37,80 +39,41 @@ class _CrpProfileState extends State<CrpProfile> {
     });
   }
 
-  /// Show logout confirmation dialog
-  void _showLogoutDialog(BuildContext context) {
+  void showLogOutSkeletonLoader(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Log Out',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to log out?',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF666666),
-                  fontFamily: 'Montserrat',
-                ),
+      barrierDismissible: false, // disables tapping outside to dismiss
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false, // disables back button
+          child: Dialog(
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Logging Out...',
+                      style: CommonFonts.bodyText3,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                  backgroundColor: AppColors.mainButtonBg,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () async {
-                  Navigator.of(dialogContext).pop();
-                  await _performLogout(context);
-                },
-                child: const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
   }
 
-  /// Perform logout: clear corporate data and navigate to landing page
+
+  /// Perform logout: clear corporate data and navigate to bottom nav
   Future<void> _performLogout(BuildContext context) async {
-    final keysToDelete = [
+    const keysToDelete = [
       'crpKey',
       'crpId',
       'branchId',
@@ -119,36 +82,161 @@ class _CrpProfileState extends State<CrpProfile> {
       'email',
     ];
 
-    // Delete keys in parallel with error handling
+    // Clear stored session data
     await Future.wait(
-      keysToDelete.map((key) async {
-        try {
-          await StorageServices.instance.delete(key);
-          debugPrint('✅ Deleted $key');
-        } catch (e) {
-          // Ignore errors if key doesn't exist - this is expected
-          debugPrint('Key $key not found or already deleted: $e');
-        }
-      }),
-      eagerError: false, // Continue even if one fails
+      keysToDelete.map(
+            (k) => StorageServices.instance.delete(k).catchError((_) {}),
+      ),
     );
 
-    // Reset LoginInfoController
     loginInfoController.crpLoginInfo.value = null;
 
-    debugPrint('✅ Corporate logout data cleared');
+    /// 🔑 Store logout flag
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('force_logout', true);
 
-    // Try navigating using the root GoRouter context first
-    final rootContext = navigatorKey.currentContext;
-    if (rootContext != null) {
-      rootContext.go(AppRoutes.cprLandingPage);
-      return;
+    /// Optional loader
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null) {
+      showLogOutSkeletonLoader(ctx);
     }
 
-    // Fallback: reset navigation stack using Navigator if GoRouter context isn't available
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const CorporateLandingPage()),
-      (route) => false,
+    /// Warm navigation (cold start handled by redirect)
+    if (ctx != null) {
+      GoRouter.of(ctx).push(AppRoutes.bottomNav);
+    }
+  }
+
+  /// Navigate to bottom nav with retry mechanism
+  void _navigateToBottomNav({int retryCount = 0}) {
+    const maxRetries = 5;
+    const retryDelay = Duration(milliseconds: 200);
+
+    if (navigatorKey.currentContext != null) {
+      try {
+        GoRouter.of(navigatorKey.currentContext!).go(AppRoutes.cprLandingPage);
+        debugPrint('✅ Navigated to ${AppRoutes.cprLandingPage}');
+      } catch (e) {
+        debugPrint('❌ Navigation error: $e');
+        // Retry if context is available but navigation failed
+        if (retryCount < maxRetries) {
+          Future.delayed(retryDelay, () {
+            _navigateToBottomNav(retryCount: retryCount + 1);
+          });
+        }
+      }
+    } else {
+      // Retry if context is not yet available
+      if (retryCount < maxRetries) {
+        debugPrint('⏳ Context not available, retrying... (${retryCount + 1}/$maxRetries)');
+        Future.delayed(retryDelay, () {
+          _navigateToBottomNav(retryCount: retryCount + 1);
+        });
+      } else {
+        debugPrint('❌ Failed to navigate: context not available after $maxRetries retries');
+      }
+    }
+  }
+
+  /// Show logout confirmation dialog
+  void _showLogoutDialog(BuildContext context) {
+    final ValueNotifier<bool> isLoggingOut = ValueNotifier<bool>(false);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: isLoggingOut,
+          builder: (context, loggingOut, _) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Log Out',
+                      style: CommonFonts.heading1Bold
+                          .copyWith(fontSize: 18, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Are you sure you want to log out? You will need to log in again to access your corporate account.',
+                      textAlign: TextAlign.center,
+                      style: CommonFonts.bodyText6
+                          .copyWith(fontSize: 15, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 25),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: loggingOut
+                                ? null
+                                : () {
+                                    Navigator.of(dialogContext).pop();
+                                  },
+                            child: Text(
+                              'Cancel',
+                              style: CommonFonts.bodyText6
+                                  .copyWith(fontSize: 14, color: Colors.black87),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: AppColors.mainButtonBg,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: loggingOut
+                                ? null
+                                : () async {
+                                    isLoggingOut.value = true;
+                                    await _performLogout(dialogContext);
+                                  },
+                            child: loggingOut
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Log Out',
+                                    style: CommonFonts.bodyText6
+                                        .copyWith(fontSize: 14, color: Colors.white),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -158,331 +246,326 @@ class _CrpProfileState extends State<CrpProfile> {
       return const CorporateShimmer();
     }
 
-    return PopScope(
-      canPop: true, // allow router to change route
-      onPopInvoked: (didPop) {
-        // block only system back
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Profile Picture and Name Section
-              Padding(
-                padding: const EdgeInsets.only(top: 32, bottom: 24),
-                child: Column(
-                  children: [
-                    // Light blue circular profile picture placeholder
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFB3D9F2), // Light blue color matching image
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF7BB3E8), // Slightly darker blue for icon
-                      ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Profile Picture and Name Section
+            Padding(
+              padding: const EdgeInsets.only(top: 32, bottom: 24),
+              child: Column(
+                children: [
+                  // Light blue circular profile picture placeholder
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFB3D9F2), // Light blue color matching image
                     ),
-                    const SizedBox(height: 16),
-                    // Name
-                    Obx(()=>Text(
-                      loginInfoController.crpLoginInfo.value?.guestName??'Guest',
+                    child: const Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Color(0xFF7BB3E8), // Slightly darker blue for icon
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Name
+                  Obx(()=>Text(
+                    loginInfoController.crpLoginInfo.value?.guestName??'Guest',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontFamily: 'Montserrat',
+                    ),
+                  )),
+                ],
+              ),
+            ),
+
+            // Content Section
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Account & Profile Section
+                    const Text(
+                      'Account & Profile',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                         fontFamily: 'Montserrat',
                       ),
-                    )),
-                  ],
-                ),
-              ),
-
-              // Content Section
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Account & Profile Section
-                      const Text(
-                        'Account & Profile',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontFamily: 'Montserrat',
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Personal Details
-                            InkWell(
-                              onTap: () {
-                                // Navigate to edit profile
-                                GoRouter.of(context).push(AppRoutes.cprEditProfile);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Person icon with gear icon overlay (matching image)
-                                    SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          const Positioned(
-                                            left: 0,
-                                            top: 0,
-                                            child: Icon(
-                                              Icons.person_outline,
-                                              size: 20,
+                      child: Column(
+                        children: [
+                          // Personal Details
+                          InkWell(
+                            onTap: () {
+                              // Navigate to edit profile
+                              GoRouter.of(context).push(AppRoutes.cprEditProfile);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  // Person icon with gear icon overlay (matching image)
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        const Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          child: Icon(
+                                            Icons.person_outline,
+                                            size: 20,
+                                            color: Color(0xFF404040),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          right: -2,
+                                          bottom: -2,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.settings,
+                                              size: 10,
                                               color: Color(0xFF404040),
                                             ),
                                           ),
-                                          Positioned(
-                                            right: -2,
-                                            bottom: -2,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(2),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.white,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.settings,
-                                                size: 10,
-                                                color: Color(0xFF404040),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
-                                    const Text(
-                                      'Personal Details',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF333333),
-                                        fontFamily: 'Montserrat',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Booking & Activity Section
-                      const Text(
-                        'Booking & Activity',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Divider
-                            Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: Colors.grey.withOpacity(0.2),
-                            ),
-                            // Manage Booking
-                            InkWell(
-                              onTap: () {
-                                // Navigate to manage booking
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const CorporateBottomNavScreen(initialIndex: 1),
                                   ),
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.calendar_month_outlined,
-                                      size: 20,
-                                      color: Color(0xFF404040),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Personal Details',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF333333),
+                                      fontFamily: 'Montserrat',
                                     ),
-                                    const SizedBox(width: 12),
-                                    const Text(
-                                      'Manage Booking',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF333333),
-                                        fontFamily: 'Montserrat',
-                                      ),
-                                    ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Booking & Activity Section
+                    const Text(
+                      'Booking & Activity',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Divider
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Colors.grey.withOpacity(0.2),
+                          ),
+                          // Manage Booking
+                          InkWell(
+                            onTap: () {
+                              // Navigate to manage booking
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CorporateBottomNavScreen(initialIndex: 1),
                                 ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_month_outlined,
+                                    size: 20,
+                                    color: Color(0xFF404040),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Manage Booking',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF333333),
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Contact Us
+                    InkWell(
+                      onTap: () {
+                        // Navigate to contact us
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CorporateBottomNavScreen(initialIndex: 2),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.headset_mic_outlined,
+                              size: 20,
+                              color: Color(0xFF1C1B1F),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Contact Us',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF000000),
+                                fontFamily: 'Montserrat',
                               ),
                             ),
                           ],
                         ),
                       ),
+                    ),
 
-                      const SizedBox(height: 16),
-
-                      // Contact Us
-                      InkWell(
-                        onTap: () {
-                          // Navigate to contact us
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const CorporateBottomNavScreen(initialIndex: 2),
+                    // Log Out
+                    InkWell(
+                      onTap: () {
+                        // _showLogoutDialog(context);
+                        _performLogout(context);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.logout,
+                              size: 20,
+                              color: Color(0xFF1C1B1F),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.headset_mic_outlined,
-                                size: 20,
-                                color: Color(0xFF1C1B1F),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Log Out',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF000000),
+                                fontFamily: 'Montserrat',
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Contact Us',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
 
-                      // Log Out
-                      InkWell(
-                        onTap: () {
-                          _showLogoutDialog(context);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.logout,
-                                size: 20,
-                                color: Color(0xFF1C1B1F),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Log Out',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    // About Us
+                    // InkWell(
+                    //   onTap: () {
+                    //     // Navigate to about us
+                    //   },
+                    //   child: Padding(
+                    //     padding: const EdgeInsets.symmetric(
+                    //       horizontal: 0,
+                    //       vertical: 12,
+                    //     ),
+                    //     child: Row(
+                    //       children: [
+                    //         const Icon(
+                    //           Icons.info_outline,
+                    //           size: 20,
+                    //           color: Color(0xFF1C1B1F),
+                    //         ),
+                    //         const SizedBox(width: 12),
+                    //         const Text(
+                    //           'About Us',
+                    //           style: TextStyle(
+                    //             fontSize: 14,
+                    //             fontWeight: FontWeight.w400,
+                    //             color: Color(0xFF000000),
+                    //             fontFamily: 'Montserrat',
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
 
-                      // About Us
-                      // InkWell(
-                      //   onTap: () {
-                      //     // Navigate to about us
-                      //   },
-                      //   child: Padding(
-                      //     padding: const EdgeInsets.symmetric(
-                      //       horizontal: 0,
-                      //       vertical: 12,
-                      //     ),
-                      //     child: Row(
-                      //       children: [
-                      //         const Icon(
-                      //           Icons.info_outline,
-                      //           size: 20,
-                      //           color: Color(0xFF1C1B1F),
-                      //         ),
-                      //         const SizedBox(width: 12),
-                      //         const Text(
-                      //           'About Us',
-                      //           style: TextStyle(
-                      //             fontSize: 14,
-                      //             fontWeight: FontWeight.w400,
-                      //             color: Color(0xFF000000),
-                      //             fontFamily: 'Montserrat',
-                      //           ),
-                      //         ),
-                      //       ],
-                      //     ),
-                      //   ),
-                      // ),
-
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

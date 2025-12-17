@@ -1771,7 +1771,6 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Future<void> _handleModifyBooking() async {
-    // Get booking details
     final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1783,7 +1782,6 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       return;
     }
 
-    // Ensure we have token and user
     await fetchParameter();
     if (token == null || user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1795,141 +1793,113 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       return;
     }
 
-    // Get pickup and drop addresses
-    final pickupAddress = crpSelectPickupController.selectedPlace.value?.primaryText ?? 
-                         crpSelectPickupController.searchController.text.trim();
-    final dropAddress = crpSelectDropController.selectedPlace.value?.primaryText ?? 
-                       crpSelectDropController.searchController.text.trim();
+    final pickupAddress =
+        crpSelectPickupController.selectedPlace.value?.primaryText ??
+            crpSelectPickupController.searchController.text.trim();
 
-    // Get selected car type ID
-    final carTypeID = crpInventoryListController.selectedModel.value?.makeId ?? 
-                     bookingData.makeID;
+    final dropAddress =
+        crpSelectDropController.selectedPlace.value?.primaryText ??
+            crpSelectDropController.searchController.text.trim();
 
-    // Get selected run type ID
-    final selectedRunTypeID = runTypeIdForInventory() ?? bookingData.runTypeID;
+    final carTypeID =
+        crpInventoryListController.selectedModel.value?.makeId ??
+            bookingData.makeID;
 
-    // Format date/time for API (format: 2025-12-12T16:30:00)
-    final cabRequiredOn = selectedPickupDateTime ?? _parseDateTime(bookingData.cabRequiredOn);
-    final formattedDateTime = cabRequiredOn != null 
+    final selectedRunTypeID =
+        runTypeIdForInventory() ?? bookingData.runTypeID;
+
+    final cabRequiredOn =
+        selectedPickupDateTime ?? _parseDateTime(bookingData.cabRequiredOn);
+
+    final formattedDateTime = cabRequiredOn != null
         ? DateFormat('yyyy-MM-ddTHH:mm:ss').format(cabRequiredOn)
         : '';
 
     final prefs = await SharedPreferences.getInstance();
-    String? email = prefs.getString('email');
-    // Build request parameters
-    // Use modified values if available, otherwise use original values from booking details
+    final email = prefs.getString('email');
+
     final Map<String, dynamic> params = {
       'OrderID': widget.orderId,
       'costCode': bookingData.costCode ?? '',
       'CabRequiredOn': formattedDateTime,
       'carTypeID': carTypeID?.toString() ?? '',
-      'PickUpAddress': pickupAddress.isNotEmpty ? pickupAddress : (bookingData.pickupAddress ?? ''),
+      'PickUpAddress':
+      pickupAddress.isNotEmpty ? pickupAddress : bookingData.pickupAddress,
       'transNo': bookingData.transNo ?? '',
       'mobile': bookingData.mobile ?? '',
       'runTypeID': selectedRunTypeID?.toString() ?? '',
       'arrivalDetails': bookingData.arrivalDetails ?? '',
-      'dropAddress': dropAddress.isNotEmpty ? dropAddress : (bookingData.dropAddress ?? ''),
+      'dropAddress':
+      dropAddress.isNotEmpty ? dropAddress : bookingData.dropAddress,
       'specialInstructions': bookingData.specialInstructions ?? '',
       'uID': bookingData.uid?.toString() ?? '',
-      'token': token ?? '',
+      'token': token!,
       'user': user ?? email,
     };
 
-    debugPrint('📤 Modify Booking Params: $params');
+    if (!context.mounted) return;
 
-    // Show loading indicator
+    /// ✅ SHOW DIALOG ON ROOT NAVIGATOR
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (_) => const Center(
         child: CircularProgressIndicator(),
       ),
     );
 
     try {
-      final response = await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
+      final response =
+      await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
         'PostEditBooking',
         params,
-        (body) {
-          // Handle string response that might be JSON
+            (body) {
           if (body is String) {
             try {
-              final decoded = jsonDecode(body);
-              if (decoded is Map) {
-                return Map<String, dynamic>.from(decoded);
-              }
-            } catch (e) {
-              debugPrint('⚠️ Error parsing string response: $e');
-            }
+              return Map<String, dynamic>.from(jsonDecode(body));
+            } catch (_) {}
           }
-          
-          if (body is Map) {
-            return Map<String, dynamic>.from(body);
-          }
-          
-          return {"response": body};
+          return Map<String, dynamic>.from(body as Map);
         },
         context,
       );
 
-      // Close loading dialog
+      /// ✅ CLOSE ONLY THE DIALOG (ROOT)
       if (context.mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context, rootNavigator: true).pop();
       }
 
-      debugPrint('✅ Modify Booking Response: $response');
+      final bStatus = response['bStatus'] as bool? ?? false;
+      final sMessage = response['sMessage'] as String? ??
+          (bStatus ? 'Successfully Modified' : 'Failed to modify booking');
 
-      // Parse response to check bStatus
-      final bStatus = response['bStatus'] as bool?;
-      final sMessage = response['sMessage'] as String? ?? 
-                      (bStatus == true ? 'Successfully Modified' : 'Failed to modify booking');
+      if (!context.mounted) return;
 
-      if (context.mounted) {
-        if (bStatus == true) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(sMessage),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          
-          // Navigate back after success
-          Future.delayed(const Duration(seconds: 1), () {
-            if (context.mounted) {
-              context.go(AppRoutes.cprBottomNav);
-            }
-          });
-        } else {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(sMessage),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(sMessage),
+          backgroundColor: bStatus ? Colors.green : Colors.red,
+        ),
+      );
+
+      if (bStatus) {
+        /// ✅ NAVIGATE AFTER FRAME (SAFE WITH GOROUTER)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            GoRouter.of(context).pop();
+          }
+        });
       }
     } catch (e) {
-      // Close loading dialog
       if (context.mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Show error message
-      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
-
-      debugPrint('❌ Error modifying booking: $e');
     }
   }
 
@@ -1983,11 +1953,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     debugPrint('📤 Cancel Booking Params: $params');
 
+    if (!context.mounted) return;
+
     // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      barrierColor: Colors.black54,
+      builder: (dialogContext) => const Center(
         child: CircularProgressIndicator(),
       ),
     );
@@ -2018,9 +1991,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         context,
       );
 
-      // Close loading dialog
+      // Close loading dialog - use rootNavigator: false to ensure we only close the dialog
       if (context.mounted) {
-        Navigator.of(context).pop();
+        final navigator = Navigator.of(context, rootNavigator: false);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
       }
 
       debugPrint('✅ Cancel Booking Response: $response');
@@ -2044,10 +2020,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           // Clear cancel reason controller
           cancelReasonController.clear();
           
-          // Navigate back after success
-          Future.delayed(const Duration(seconds: 1), () {
+          // Navigate back after success - use microtask to ensure dialog is fully closed
+          Future.microtask(() {
             if (context.mounted) {
-              GoRouter.of(context).go(AppRoutes.cprBottomNav);
+              GoRouter.of(context).pop();
+              GoRouter.of(context).pop();
+
             }
           });
         } else {
@@ -2062,9 +2040,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         }
       }
     } catch (e) {
-      // Close loading dialog
+      // Close loading dialog - use rootNavigator: false to ensure we only close the dialog
       if (context.mounted) {
-        Navigator.of(context).pop();
+        final navigator = Navigator.of(context, rootNavigator: false);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
       }
 
       // Show error message

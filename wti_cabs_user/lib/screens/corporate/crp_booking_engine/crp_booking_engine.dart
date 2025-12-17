@@ -269,7 +269,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   final TextEditingController costCodeController = TextEditingController();
   final TextEditingController flightDetailsController = TextEditingController();
 
-  final List<String> bookingForList = ['Myself', 'Corporate'];
+  final List<String> bookingForList = ['Corporate'];
   // final TextEditingController pickupController = TextEditingController();
   // final TextEditingController dropController = TextEditingController();
 

@@ -57,7 +57,7 @@ class _CprLoginState extends State<CprLogin> {
       await StorageServices.instance.save('crpKey', response?.key??'');
       await StorageServices.instance.save('crpId', response?.corpID?.toString()??'');
       await StorageServices.instance.save('branchId', response?.branchID?.toString()??'');
-      await StorageServices.instance.save('guestId', response?.guestID?.toString()??'');
+      await StorageServices.instance.save('guestId', response?.guestID.toString()??'');
       await StorageServices.instance.save('guestName', response?.guestName??'');
 
       // ✅ Ensure email is saved again after successful login for persistence

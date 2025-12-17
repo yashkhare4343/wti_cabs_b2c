@@ -1131,6 +1131,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
 
   Future<void> _makeBooking() async {
     FocusScope.of(context).unfocus();
+    final CprProfileController cprProfileController = Get.put(CprProfileController());
 
     if (widget.formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -1139,12 +1140,13 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
 
       try {
         // Get data from storage
-        final corporateID = await StorageServices.instance.read('crpId') ?? '1';
-        final branchID = await StorageServices.instance.read('branchId') ?? '1';
+        final corporateID = await StorageServices.instance.read('crpId') ?? cprProfileController.crpProfileInfo.value?.corporateID.toString();
+        final branchID = await StorageServices.instance.read('branchId') ?? cprProfileController.crpProfileInfo.value?.branchID.toString();
         final token = await StorageServices.instance.read('crpKey') ?? '';
-        final user = await StorageServices.instance.read('email') ?? '';
-        final uID = await StorageServices.instance.read('guestID') ?? '26142';
-        final contactCode = await StorageServices.instance.read('contactCode') ?? '';
+        final user = await StorageServices.instance.read('email') ?? cprProfileController.crpProfileInfo.value?.emailID;
+        final uID = await StorageServices.instance.read('guestID') ??   cprProfileController.crpProfileInfo.value?.guestID.toString() ;
+
+        final contactCode = await StorageServices.instance.read('contactCode') ?? cprProfileController.crpProfileInfo.value?.mobile.toString();
         final contact = await StorageServices.instance.read('contact') ?? widget.contactController.text.trim();
 
         // Get booking data
@@ -1172,10 +1174,10 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final dropAddress = bookingData?.dropPlace?.primaryText ?? '';
         
         // Coordinates
-        final frmlat = bookingData?.pickupPlace?.latitude?.toString() ?? '0';
-        final frmlng = bookingData?.pickupPlace?.longitude?.toString() ?? '0';
-        final tolat = bookingData?.dropPlace?.latitude?.toString() ?? '0';
-        final tolng = bookingData?.dropPlace?.longitude?.toString() ?? '0';
+        final frmlat = bookingData?.pickupPlace?.latitude?.toString() ?? '';
+        final frmlng = bookingData?.pickupPlace?.longitude?.toString() ?? '';
+        final tolat = bookingData?.dropPlace?.latitude?.toString() ?? '';
+        final tolng = bookingData?.dropPlace?.longitude?.toString() ?? '';
         
         // Optional fields
         final arrivalDetails = bookingData?.flightDetails ?? '';

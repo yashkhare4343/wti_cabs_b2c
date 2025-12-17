@@ -113,6 +113,9 @@ Future<String> _determineStartRoute(
   return AppRoutes.bottomNav;
 }
 
+late final SharedPreferences appPrefs;
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final FetchCountryController fetchCountryController =
@@ -131,6 +134,8 @@ void main() async {
 
     print('📦 Initializing StorageServices');
     await StorageServices.instance.init();
+    appPrefs = await SharedPreferences.getInstance();
+
     // await CacheHelper.clearAllCache();
 
     print('🔧 Registering services');

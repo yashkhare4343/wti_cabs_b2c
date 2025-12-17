@@ -488,7 +488,7 @@ class _CrpBookingState extends State<CrpBooking> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Booking ID ${booking.bookingNo ?? booking.bookingId ?? ''}',
+                        'Passenger Name:- ${booking.passenger ?? booking.passenger ?? ''}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade700,
@@ -497,7 +497,16 @@ class _CrpBookingState extends State<CrpBooking> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Booked on $formattedDate',
+                        'Booking ID:- ${booking.bookingNo ?? booking.bookingId ?? ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Booked on:- $formattedDate',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade700,

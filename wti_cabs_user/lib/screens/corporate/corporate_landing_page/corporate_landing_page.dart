@@ -9,6 +9,7 @@ import 'package:wti_cabs_user/core/services/storage_services.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
 import '../../../core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
+import '../../../main.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 
 class CorporateLandingPage extends StatefulWidget {
@@ -25,8 +26,11 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _redirectIfAlreadyLoggedIn();
+      appPrefs.remove('force_logout');
+
       // _showBottomSheet();
     });  }
+
 
   final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
   final CrpBranchListController crpBranchListController = Get.put(CrpBranchListController());
@@ -88,10 +92,10 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          context.go(AppRoutes.bottomNav);
+          GoRouter.of(context).push(AppRoutes.bottomNav);
         }
       },
       child: Scaffold(

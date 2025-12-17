@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
@@ -46,11 +47,13 @@ import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../screens/corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile_form.dart';
+import '../../screens/corporate/crp_logout_confirmation/crp_logout_confirmation.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
 import '../model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import '../model/booking_engine/suggestions_places_response.dart';
+import '../services/storage_services.dart';
 
 class AppPages {
   static Page _platformPage(Widget child) {
@@ -319,6 +322,10 @@ class AppPages {
         ));
       },
     ),
+    GoRoute(
+      path: AppRoutes.cprLogoutConfirmation,
+      pageBuilder: (context, state) => _platformPage(const CrpLogoutConfirmation()),
+    ),
   ];
 
   // ✅ Router with configurable initial location
@@ -327,6 +334,18 @@ class AppPages {
       navigatorKey: navigatorKey,
       initialLocation: initialLocation,
       routes: routeList,
+
+      redirect: (context, state) {
+        final forceLogout = appPrefs.getBool('force_logout') ?? false;
+
+        if (forceLogout &&
+            state.matchedLocation != AppRoutes.cprLandingPage) {
+          return AppRoutes.cprLandingPage;
+        }
+
+        return null;
+      },
     );
   }
+
 }

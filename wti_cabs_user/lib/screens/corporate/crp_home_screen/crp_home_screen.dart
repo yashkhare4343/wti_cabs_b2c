@@ -103,7 +103,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     });
   }
 
-  Future<void> _showBranchSelectorBottomSheet() async {
+  Future<void> _showBranchSelectorBottomSheet({bool forceShow = false}) async {
     // Fetch branches if not already loaded
     if (crpGetBranchListController.branchNames.isEmpty) {
       final corpId = await StorageServices.instance.read('crpId');
@@ -119,8 +119,19 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
       return;
     }
 
+    // Always show bottom sheet if forceShow is true (manual tap from OfficeBranchTile)
+    // Otherwise, only show if count is 0 (first time automatic display)
+    if(forceShow) {
+      // Always show when manually tapped from OfficeBranchTile
+      _displayBranchBottomSheet(context, items, selected);
+    } else if(crpGetBranchListController.count.value == 0) {
+      // Only show automatically on first load if no branch is selected yet
+      _displayBranchBottomSheet(context, items, selected);
+    }
+  }
 
-    if(crpGetBranchListController.count.value == 0) showModalBottomSheet(
+  void _displayBranchBottomSheet(BuildContext context, List<String> items, String selected) {
+    showModalBottomSheet(
       context: context,
       isDismissible: false,
       enableDrag: true,
@@ -362,7 +373,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
           // )),
           OfficeBranchTile(
             onTap: () async {
-              await _showBranchSelectorBottomSheet();
+              await _showBranchSelectorBottomSheet(forceShow: true);
             },
           ),
           SizedBox(
@@ -1317,9 +1328,7 @@ class _OfficeBranchTileState extends State<OfficeBranchTile> {
   Widget build(BuildContext context) {
     return Obx(() => InkWell(
           splashColor: Colors.white,
-          onTap: crpGetBranchListController.selectedBranchName.value == null
-              ? () {}
-              : widget.onTap,
+          onTap: widget.onTap,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
