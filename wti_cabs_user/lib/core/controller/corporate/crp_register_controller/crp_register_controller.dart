@@ -18,7 +18,7 @@ class CrpRegisterController extends GetxController {
       debugPrint('📦 Query Params: $params');
 
       final result = await crpApiService.postRequestParamsNew<CrpRegisterResponse>(
-        'PostUpdateProfile_V2',   // endpoint
+        'PostRegisterV1?',   // endpoint
         params,             // send as query parameters
             (data) {            // fromJson callback
           if (data is String) return CrpRegisterResponse.fromString(data);

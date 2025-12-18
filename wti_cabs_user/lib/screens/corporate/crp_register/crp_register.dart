@@ -511,13 +511,22 @@ class _CprRegisterState extends State<CprRegister> {
                             }
                           },
                           onChanged: (value) {
-                            // Clear error when user starts typing (for better UX)
-                            if (_emailError != null && value.isNotEmpty) {
-                              setState(() {
+                            // Always rebuild to update dropdown visibility
+                            setState(() {
+                              // Clear error when user starts typing (for better UX)
+                              if (_emailError != null && value.isNotEmpty) {
                                 _emailError = null;
                                 _isEmailValid = false;
-                              });
-                            }
+                              }
+                              
+                              // Clear dropdowns when email is cleared
+                              if (value.trim().isEmpty) {
+                                selectedEntity = null;
+                                crpGetBranchListController.selectedBranchName.value = null;
+                                crpGetBranchListController.selectedBranchId.value = null;
+                                crpGetEntityListController.getAllEntityList.value = null;
+                              }
+                            });
 
                             // 🔥 Force revalidation to show/hide error text dynamically
                             _revalidateFields();
@@ -676,36 +685,39 @@ class _CprRegisterState extends State<CprRegister> {
                       ),
                       const SizedBox(height: 14),
 
-                      // City
-                      verifyCorporateController.cprVerifyResponse.value?.code ==
+                      // City - Only show if email is not empty and verification passed
+                      emailController.text.trim().isNotEmpty &&
+                              verifyCorporateController.cprVerifyResponse.value?.code ==
                               0
                           ? CorporateBranchDropdown(
                               corpId:
                                   selectedEntity?.entityId.toString() ?? '')
                           : const SizedBox.shrink(),
                       const SizedBox(height: 8),
-                      // Entity List
-                      CprSelectBox(
-                        labelText: "Choose Corporate",
-                        hintText: "",
-                        items: crpGetEntityListController
-                                .getAllEntityList.value?.getEntityList
-                                ?.map((val) => val.entityName ?? '')
-                                .toList() ??
-                            [],
-                        selectedValue: selectedEntity?.entityName,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedEntity = crpGetEntityListController
-                                .getAllEntityList.value?.getEntityList
-                                ?.firstWhere((e) => e.entityName == value);
-                          });
-                          print(
-                              "Selected Entity ID: ${selectedEntity?.entityId}");
-                          print(
-                              "Selected Entity Name: ${selectedEntity?.entityName}");
-                        },
-                      ),
+                      // Entity List - Only show if email is not empty
+                      emailController.text.trim().isNotEmpty
+                          ? CprSelectBox(
+                              labelText: "Choose Corporate",
+                              hintText: "",
+                              items: crpGetEntityListController
+                                      .getAllEntityList.value?.getEntityList
+                                      ?.map((val) => val.entityName ?? '')
+                                      .toList() ??
+                                  [],
+                              selectedValue: selectedEntity?.entityName,
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedEntity = crpGetEntityListController
+                                      .getAllEntityList.value?.getEntityList
+                                      ?.firstWhere((e) => e.entityName == value);
+                                });
+                                print(
+                                    "Selected Entity ID: ${selectedEntity?.entityId}");
+                                print(
+                                    "Selected Entity Name: ${selectedEntity?.entityName}");
+                              },
+                            )
+                          : const SizedBox.shrink(),
 
                       const SizedBox(height: 20),
 
@@ -728,17 +740,17 @@ class _CprRegisterState extends State<CprRegister> {
                                   "IP": "local",
                                   "android_gcm": "",
                                   "ios_token": "",
-                                  "EntityID": selectedEntity?.entityId,
+                                  "EntityID": selectedEntity?.entityId!=null? selectedEntity?.entityId : "",
                                   "ManagerEmail": "",
                                   "register_sourceID": "Mobile",
-                                  "gmail":_genderController.selectedGender.value?.genderID.toString()
+                                  "gender":_genderController.selectedGender.value?.genderID
                                 };
                                 _validateAndSubmit(params);
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF01ACF2),
+                                backgroundColor: const Color(0xFF4082F1),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(50),
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                               ),

@@ -1163,7 +1163,7 @@ class _TopBannerState extends State<TopBanner> {
                               );
                             },
                             child: const Text(
-                              "Home",
+                              "Retail",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
