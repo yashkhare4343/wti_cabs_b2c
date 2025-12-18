@@ -198,6 +198,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       InkWell(
                         splashColor: Colors.transparent,
                         onTap: (){
+                          if(!mounted) return;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             GoRouter.of(context).push(AppRoutes.cprRegister);
                           });

@@ -52,24 +52,32 @@ class _CprLoginState extends State<CprLogin> {
     await loginInfoController.fetchLoginInfo(params, context);
 
     final response = loginInfoController.crpLoginInfo.value;
-    if(response?.bStatus == true){
+    if (response?.bStatus == true) {
       // Store all corporate session data
-      await StorageServices.instance.save('crpKey', response?.key??'');
-      await StorageServices.instance.save('crpId', response?.corpID?.toString()??'');
-      await StorageServices.instance.save('branchId', response?.branchID?.toString()??'');
-      await StorageServices.instance.save('guestId', response?.guestID.toString()??'');
-      await StorageServices.instance.save('guestName', response?.guestName??'');
+      await StorageServices.instance.save('crpKey', response?.key ?? '');
+      await StorageServices.instance.save('crpId', response?.corpID?.toString() ?? '');
+      await StorageServices.instance.save('branchId', response?.branchID?.toString() ?? '');
+      await StorageServices.instance.save('guestId', response?.guestID.toString() ?? '');
+      await StorageServices.instance.save('guestName', response?.guestName ?? '');
 
-      // ✅ Ensure email is saved again after successful login for persistence
-      // Get email from params (it was saved in onTap, but ensure it's persisted)
+      // ✅ Ensure email & password are saved again after successful login for persistence
       final email = params['email']?.toString() ?? emailController.text.trim();
+      final password = params['password']?.toString() ?? passwordController.text.trim();
+
       if (email.isNotEmpty) {
         await StorageServices.instance.save('email', email);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('email', email);
         debugPrint('✅ Email saved after successful login: $email');
       }
-      
+
+      if (password.isNotEmpty) {
+        await StorageServices.instance.save('crpPassword', password);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('crpPassword', password);
+        debugPrint('✅ Corporate password saved after successful login');
+      }
+
       // Navigate to corporate bottom nav
       if (context.mounted) {
         GoRouter.of(context).push(AppRoutes.cprBottomNav);

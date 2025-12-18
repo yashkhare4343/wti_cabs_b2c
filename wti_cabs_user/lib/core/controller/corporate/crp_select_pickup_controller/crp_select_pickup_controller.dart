@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 
 class CrpSelectPickupController extends GetxController {
@@ -56,7 +57,8 @@ class CrpSelectPickupController extends GetxController {
         "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$searchedText&key=$googleApiKey&components=country:in";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await CprApiService()
+          .sendRequestWithRetry(() => http.get(Uri.parse(url)));
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
@@ -95,7 +97,8 @@ class CrpSelectPickupController extends GetxController {
       final url =
           "https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=$googleApiKey&fields=geometry,formatted_address,name";
 
-      final response = await http.get(Uri.parse(url));
+      final response = await CprApiService()
+          .sendRequestWithRetry(() => http.get(Uri.parse(url)));
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);

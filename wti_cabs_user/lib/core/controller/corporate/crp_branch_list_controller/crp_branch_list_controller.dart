@@ -25,7 +25,9 @@ class CrpBranchListController extends GetxController {
       final url = Uri.parse("${CprApiService().baseUrl}/GetBranches_Reg?CorpID=$corpId");
       print("📡 Fetching from: $url");
 
-      final response = await http.get(url);
+      // Use centralized retry + 401 auto re-login logic
+      final response = await CprApiService()
+          .sendRequestWithRetry(() => http.get(url));
       print("📥 Raw API Response: ${response.body}");
 
       if (response.statusCode == 200) {

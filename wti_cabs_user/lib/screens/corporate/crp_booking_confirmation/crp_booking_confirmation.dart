@@ -10,6 +10,7 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
@@ -1132,6 +1133,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
   Future<void> _makeBooking() async {
     FocusScope.of(context).unfocus();
     final CprProfileController cprProfileController = Get.put(CprProfileController());
+    final CrpBranchListController crpBranchListController = Get.put(CrpBranchListController());
 
     if (widget.formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -1141,7 +1143,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
       try {
         // Get data from storage
         final corporateID = await StorageServices.instance.read('crpId') ?? cprProfileController.crpProfileInfo.value?.corporateID.toString();
-        final branchID = await StorageServices.instance.read('branchId') ?? cprProfileController.crpProfileInfo.value?.branchID.toString();
+        final branchID = crpBranchListController.selectedBranchId.value ?? cprProfileController.crpProfileInfo.value?.branchID.toString();
         final token = await StorageServices.instance.read('crpKey') ?? '';
         final user = await StorageServices.instance.read('email') ?? cprProfileController.crpProfileInfo.value?.emailID;
         final uID = await StorageServices.instance.read('guestID') ??   cprProfileController.crpProfileInfo.value?.guestID.toString() ;
@@ -1181,10 +1183,10 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         
         // Optional fields
         final arrivalDetails = bookingData?.flightDetails ?? '';
-        final specialInstructions = bookingData?.specialInstruction ?? '';
-        final costCode = bookingData?.costCode ?? '';
-        final remarks = bookingData?.referenceNumber ?? '';
-        final transNo = '';
+        final specialInstructions = widget.bookingData?.specialInstruction ?? '';
+        final costCode = widget.bookingData?.costCode ?? '';
+        final remarks = widget.bookingData?.referenceNumber ?? '';
+        final transNo = "";
 
         // Decide which corporate ID to send: entityId (from booking) or fallback corporateID from storage
         final bookingEntityId = bookingData?.entityId;

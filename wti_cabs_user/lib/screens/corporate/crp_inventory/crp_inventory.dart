@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
@@ -301,7 +302,8 @@ class _BookingBodyState extends State<_BookingBody> {
             '&key=$googleApiKey',
       );
 
-      final response = await http.get(url);
+      final response = await CprApiService()
+          .sendRequestWithRetry(() => http.get(url));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

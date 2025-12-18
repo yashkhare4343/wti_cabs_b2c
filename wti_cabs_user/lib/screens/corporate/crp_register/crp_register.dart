@@ -16,6 +16,8 @@ import '../../../common_widget/textformfield/crp_text_form_field.dart';
 import '../../../core/api/corporate/cpr_api_services.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/model/corporate/get_entity_list/get_entity_list_response.dart';
+import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
+import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
 import '../../../core/route_management/app_routes.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import 'package:http/http.dart' as http;
@@ -62,10 +64,36 @@ class _CprRegisterState extends State<CprRegister> {
   String? _emailFieldError;
   String? _phoneFieldError;
   String? _entityFieldError;
+  String? genderError;
+
+  final GenderController _genderController = Get.put(GenderController());
 
   @override
   void initState() {
     super.initState();
+
+    // 🔁 Reset all inputs and selections when screen appears
+    nameController.clear();
+    phoneNoController.clear();
+    emailController.clear();
+    passwordController.clear();
+    confirmPasswordController.clear();
+    empIdController.clear();
+    selectedEntity = null;
+    _autoValidate = false;
+    _emailError = null;
+    _emailFieldError = null;
+    _phoneFieldError = null;
+    _entityFieldError = null;
+    genderError = null;
+
+    // Defer Rx updates & dropdown data fetch to after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      crpGetBranchListController.selectedBranchName.value = null;
+      crpGetBranchListController.selectedBranchId.value = null;
+      _genderController.selectGender(null);
+      _genderController.fetchGender(context);
+    });
 
     // Validate when user leaves the email field (on blur)
     emailFocusNode.addListener(() async {
@@ -75,11 +103,81 @@ class _CprRegisterState extends State<CprRegister> {
           !_isValidating) {
         await _validateEmail();
         // Trigger validation to show error immediately
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async{
           _emailFieldKey.currentState?.validate();
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    emailFocusNode.removeListener(() {});
+    emailFocusNode.dispose();
+    emailController.dispose();
+    nameController.dispose();
+    phoneNoController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    empIdController.dispose();
+    super.dispose();
+  }
+
+  void _showGenderBottomSheet() {
+    final list = _genderController.genderList;
+    showModalBottomSheet<GenderModel>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Text(
+                  'Select Gender',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    final isSelected =
+                        _genderController.selectedGender.value == item;
+                    return ListTile(
+                      title: Text(item.gender ?? ''),
+                      trailing: isSelected
+                          ? const Icon(Icons.check,
+                              color: AppColors.mainButtonBg)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          genderError = null;
+                        });
+                        _genderController.selectGender(item);
+                        Navigator.of(ctx).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _validateAndSubmit(Map<String, dynamic> params) async {
@@ -90,9 +188,19 @@ class _CprRegisterState extends State<CprRegister> {
     _phoneFieldError = null;
     _entityFieldError = null;
 
-    // Validate form
+    // Validate form fields
     final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid) return;
+
+    // Validate gender (mandatory)
+    bool extraValid = true;
+    if (_genderController.selectedGender.value == null) {
+      setState(() {
+        genderError = 'Please select a gender';
+      });
+      extraValid = false;
+    }
+
+    if (!isValid || !extraValid) return;
 
     print('✅ Form is valid, proceed to API call');
 
@@ -118,13 +226,14 @@ class _CprRegisterState extends State<CprRegister> {
         });
       } else {
         // Success
+        FocusScope.of(context).unfocus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
             backgroundColor: Colors.green,
           ),
         );
-        context.go(AppRoutes.cprLogin);
+        context.push(AppRoutes.cprLandingPage);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -239,6 +348,7 @@ class _CprRegisterState extends State<CprRegister> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
+          FocusScope.of(context).unfocus();
           context.go(AppRoutes.cprLandingPage);
         }
       },
@@ -318,8 +428,8 @@ class _CprRegisterState extends State<CprRegister> {
                       // ✅ Name
                       CprTextFormField(
                         controller: nameController,
-                        hintText: "Enter Name",
-                        labelText: "Name",
+                        hintText: "Enter Name*",
+                        labelText: "Name *",
                         validator: (value) => value == null || value.isEmpty
                             ? "Name is required"
                             : null,
@@ -330,9 +440,10 @@ class _CprRegisterState extends State<CprRegister> {
                       // ✅ Phone
                       CprTextFormField(
                         controller: phoneNoController,
-                        hintText: "Enter Phone Number",
-                        labelText: "Phone Number",
+                        hintText: "Enter Phone Number*",
+                        labelText: "Phone Number*",
                         keyboardType: TextInputType.phone,
+                        isMobileNo: true,
                         validator: (value) {
                           if (_phoneFieldError != null) return _phoneFieldError;
 
@@ -353,8 +464,8 @@ class _CprRegisterState extends State<CprRegister> {
                           fieldKey: _emailFieldKey,
                           controller: emailController,
                           focusNode: emailFocusNode,
-                          hintText: "Enter your email",
-                          labelText: "Enter Official Email ID (Used as login ID)",
+                          hintText: "Enter your email*",
+                          labelText: "Enter Official Email ID (Used as login ID)*",
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             // Check API validation error first (highest priority)
@@ -415,11 +526,102 @@ class _CprRegisterState extends State<CprRegister> {
 
                       const SizedBox(height: 14),
 
+                      // ✅ Gender
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // const Text(
+                          //   'Gender *',
+                          //   style: TextStyle(
+                          //     fontSize: 14,
+                          //     fontWeight: FontWeight.w500,
+                          //     color: Color(0xFF374151),
+                          //   ),
+                          // ),
+                          // const SizedBox(height: 10),
+                          Obx(() {
+                            final hasError = genderError != null && genderError!.isNotEmpty;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => genderError = null);
+                                _showGenderBottomSheet();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(9),
+                                  border: Border.all(
+                                    color: hasError
+                                        ? Colors.red.shade400
+                                        : const Color(0xFFE2E2E2),
+                                    width: hasError ? 1.5 : 1,
+                                  ),
+                                  color: Colors.white,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _genderController
+                                                .selectedGender.value?.gender ??
+                                            'Select Gender*',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: hasError
+                                              ? Colors.red.shade700
+                                              : const Color(0xFF333333),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: hasError
+                                          ? Colors.red.shade400
+                                          : const Color(0xFF6B7280),
+                                      size: 22,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                          if (genderError != null) ...[
+                            const SizedBox(height: 6),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.error_outline,
+                                      size: 16, color: Colors.red.shade600),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      genderError!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.red.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 14),
+
                       // ✅ Password
                       CprTextFormField(
                         controller: passwordController,
-                        hintText: "Enter Password",
-                        labelText: "Password",
+                        hintText: "Enter Password*",
+                        labelText: "Password*",
                         isPassword: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -449,8 +651,8 @@ class _CprRegisterState extends State<CprRegister> {
                       // ✅ Confirm Password
                       CprTextFormField(
                         controller: confirmPasswordController,
-                        hintText: "Enter Confirm Password",
-                        labelText: "Confirm Password",
+                        hintText: "Enter Confirm Password*",
+                        labelText: "Confirm Password*",
                         isPassword: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -475,17 +677,22 @@ class _CprRegisterState extends State<CprRegister> {
                       const SizedBox(height: 14),
 
                       // City
-                      verifyCorporateController.cprVerifyResponse.value?.code == 0 ? CorporateBranchDropdown(corpId: selectedEntity?.entityId.toString()??''): SizedBox.shrink(),
-                      const SizedBox(height: 14),
+                      verifyCorporateController.cprVerifyResponse.value?.code ==
+                              0
+                          ? CorporateBranchDropdown(
+                              corpId:
+                                  selectedEntity?.entityId.toString() ?? '')
+                          : const SizedBox.shrink(),
+                      const SizedBox(height: 8),
                       // Entity List
                       CprSelectBox(
                         labelText: "Choose Corporate",
-                        hintText: "Choose Corporate",
+                        hintText: "",
                         items: crpGetEntityListController
-                            .getAllEntityList.value?.getEntityList
-                            ?.map((val) => val.entityName ?? '')
-                            .toList() ??
-                            ['Choose Entity'],
+                                .getAllEntityList.value?.getEntityList
+                                ?.map((val) => val.entityName ?? '')
+                                .toList() ??
+                            [],
                         selectedValue: selectedEntity?.entityName,
                         onChanged: (value) {
                           setState(() {
@@ -496,7 +703,8 @@ class _CprRegisterState extends State<CprRegister> {
                           print(
                               "Selected Entity ID: ${selectedEntity?.entityId}");
                           print(
-                              "Selected Entity Name: ${selectedEntity?.entityName}");               },
+                              "Selected Entity Name: ${selectedEntity?.entityName}");
+                        },
                       ),
 
                       const SizedBox(height: 20),
@@ -522,7 +730,8 @@ class _CprRegisterState extends State<CprRegister> {
                                   "ios_token": "",
                                   "EntityID": selectedEntity?.entityId,
                                   "ManagerEmail": "",
-                                  "register_sourceID": "Mobile"
+                                  "register_sourceID": "Mobile",
+                                  "gmail":_genderController.selectedGender.value?.genderID.toString()
                                 };
                                 _validateAndSubmit(params);
                               },

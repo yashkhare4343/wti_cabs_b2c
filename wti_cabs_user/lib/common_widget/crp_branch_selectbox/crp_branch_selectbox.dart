@@ -2,17 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 
-class CorporateBranchDropdown extends StatelessWidget {
+class CorporateBranchDropdown extends StatefulWidget {
   final String corpId;
-  CorporateBranchDropdown({super.key, required this.corpId});
+  const CorporateBranchDropdown({super.key, required this.corpId});
 
-  final CrpBranchListController controller = Get.put(CrpBranchListController());
+  @override
+  State<CorporateBranchDropdown> createState() =>
+      _CorporateBranchDropdownState();
+}
+
+class _CorporateBranchDropdownState extends State<CorporateBranchDropdown> {
+  late final CrpBranchListController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reuse existing controller if available, otherwise create it
+    controller = Get.isRegistered<CrpBranchListController>()
+        ? Get.find<CrpBranchListController>()
+        : Get.put(CrpBranchListController());
+
+    // Fetch branches after first frame to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.fetchBranches(widget.corpId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Fetch branches when widget builds
-    controller.fetchBranches(corpId);
-
     return Obx(() {
       final isLoading = controller.isLoading.value;
       final items = controller.branchNames;
@@ -21,18 +38,18 @@ class CorporateBranchDropdown extends StatelessWidget {
       return GestureDetector(
         onTap: isLoading
             ? null
-            : () => _showBranchSelector(context, items, selected??''),
+            : () => _showBranchSelector(context, items, selected ?? ''),
         child: AbsorbPointer(
           // Prevents text field interaction
           child: TextFormField(
             controller: TextEditingController(
-              text: selected?.isEmpty??false ? '' : selected,
+              text: selected?.isEmpty ?? false ? '' : selected,
             ),
             readOnly: true,
             validator: (value) =>
-            (value == null || value.isEmpty) ? "Please select a city" : null,
+                (value == null || value.isEmpty) ? "Please select a city" : null,
             decoration: InputDecoration(
-              labelText: "Choose City",
+              labelText: "Choose City*",
               labelStyle: TextStyle(
                 color: Colors.grey.shade700,
                 fontSize: 14,
@@ -44,39 +61,42 @@ class CorporateBranchDropdown extends StatelessWidget {
               ),
               suffixIcon: isLoading
                   ? const Padding(
-                padding: EdgeInsets.all(12.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.indigo,
-                  ),
-                ),
-              )
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.indigo,
+                        ),
+                      ),
+                    )
                   : const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Colors.indigo,
-              ),
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.indigo,
+                    ),
               filled: true,
               fillColor: Colors.grey.shade100,
               contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.indigo, width: 1.5),
+                borderSide:
+                    const BorderSide(color: Colors.indigo, width: 1.5),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+                borderSide:
+                    const BorderSide(color: Colors.redAccent, width: 1.2),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+                borderSide:
+                    const BorderSide(color: Colors.redAccent, width: 1.2),
               ),
             ),
           ),

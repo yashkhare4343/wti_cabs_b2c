@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/route_management/app_routes.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
@@ -59,11 +61,20 @@ class _CrpLogoutConfirmationState extends State<CrpLogoutConfirmation> {
 
     debugPrint('✅ Corporate logout data cleared');
 
-    // Navigate using retry mechanism that works after app kill
-    // await _navigateToLandingPage();
-    await Future.delayed(const Duration(milliseconds: 500));
+    // 🔑 Store logout flag so router redirects correctly even after app kill
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('force_logout', true);
+    } catch (e) {
+      debugPrint('⚠️ Failed to persist logout flag: $e');
+    }
 
-    GoRouter.of(context).go(AppRoutes.cprBottomNav);
+    // Small delay to ensure storage writes complete
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Always go to Corporate Landing Page (not profile/bottom nav)
+    if (!mounted) return;
+    GoRouter.of(context).go(AppRoutes.cprLandingPage);
   }
 
   /// Navigate to landing page with retry mechanism for app kill scenarios

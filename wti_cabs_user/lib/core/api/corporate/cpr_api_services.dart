@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import '../../../config/enviornment_config.dart';
 import '../../response/api_response.dart';
 import '../../services/storage_services.dart';
+import '../../model/corporate/crp_login_response/crp_login_response.dart';
 
 class CprApiService {
   CprApiService._internal();
@@ -76,19 +77,136 @@ class CprApiService {
     }
   }
 
+  // ===================== 🔐 Re-login with stored credentials =====================
+  Future<String?> _getPasswordFallback() async {
+    final storedPassword = await StorageServices.instance.read('crpPassword');
+    if (storedPassword != null && storedPassword.isNotEmpty && storedPassword != 'null') {
+      return storedPassword;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final prefsPassword = prefs.getString('crpPassword');
+    if (prefsPassword != null && prefsPassword.isNotEmpty && prefsPassword != 'null') {
+      return prefsPassword;
+    }
+    return null;
+  }
+
+  Future<bool> _reLoginWithStoredCredentials() async {
+    try {
+      final email = await _getEmailFallback();
+      final password = await _getPasswordFallback();
+
+      if (email == null || email.isEmpty || password == null || password.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('⚠️ Cannot re-login: missing stored email or password');
+        }
+        return false;
+      }
+
+      final params = {
+        'email': email,
+        'password': password,
+        'android_gcm': '',
+        'ios_token': '',
+      };
+
+      final uri = Uri.parse('$baseUrl/GetLoginInfo')
+          .replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
+
+      final headers = {
+        'Content-Type': 'application/json',
+        // Always use app basic auth for login, not the (possibly expired) crpKey
+        'Authorization': 'Basic ${base64Encode(utf8.encode('harsh:123'))}',
+      };
+
+      if (kDebugMode) {
+        debugPrint('🔐 Re-login attempt with stored credentials');
+        debugPrint('📡 [GET] Login URL: $uri');
+      }
+
+      final response = await http.get(uri, headers: headers);
+
+      if (kDebugMode) {
+        debugPrint('🔐 Re-login status: ${response.statusCode}');
+        debugPrint('🔐 Re-login body: ${response.body}');
+      }
+
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      // Handle wrapped / nested JSON like "\"{...}\""
+      dynamic jsonBody = jsonDecode(response.body);
+      try {
+        if (jsonBody is String &&
+            ((jsonBody.startsWith('{') && jsonBody.endsWith('}')) ||
+                (jsonBody.startsWith('[') && jsonBody.endsWith(']')))) {
+          jsonBody = jsonDecode(jsonBody);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error decoding re-login body twice: $e');
+      }
+
+      final CrpLoginResponse loginResponse;
+
+      if (jsonBody is Map<String, dynamic>) {
+        loginResponse = CrpLoginResponse.fromJson(jsonBody);
+      } else {
+        // Fallback – at least capture message
+        loginResponse =
+            CrpLoginResponse.fromJson({'sMessage': jsonBody.toString()});
+      }
+
+      if (loginResponse.bStatus != true ||
+          (loginResponse.key == null || loginResponse.key!.isEmpty)) {
+        if (kDebugMode) {
+          debugPrint('⚠️ Re-login failed: invalid status or key');
+        }
+        return false;
+      }
+
+      // Persist the new token & core session details
+      await _saveToken(loginResponse.key ?? '');
+      await StorageServices.instance.save('crpId', loginResponse.corpID?.toString() ?? '');
+      await StorageServices.instance.save('branchId', loginResponse.branchID?.toString() ?? '');
+      await StorageServices.instance.save('guestId', loginResponse.guestID.toString());
+      await StorageServices.instance.save('guestName', loginResponse.guestName ?? '');
+
+      if (kDebugMode) debugPrint('✅ Corporate token refreshed via re-login');
+      return true;
+    } catch (e, st) {
+      debugPrint('❌ Error during corporate re-login: $e');
+      debugPrint('📄 Stacktrace: $st');
+      return false;
+    }
+  }
+
   // ===================== 🧠 Generic Retry Wrapper =====================
-  Future<http.Response> _sendRequestWithRetry(Future<http.Response> Function() requestFn) async {
+  Future<http.Response> _sendRequestWithRetry(
+      Future<http.Response> Function() requestFn) async {
     http.Response response = await requestFn();
 
     if (response.statusCode == 401 || response.statusCode == 403) {
+      // First try refresh-token flow
       final refreshed = await _refreshToken();
       if (refreshed) {
-        final newResponse = await requestFn();
-        return newResponse;
+        return await requestFn();
+      }
+
+      // If refresh-token failed, try to re-login with stored credentials
+      final reLoggedIn = await _reLoginWithStoredCredentials();
+      if (reLoggedIn) {
+        return await requestFn();
       }
     }
 
     return response;
+  }
+
+  /// Public helper so controllers/screens can also benefit from 401 → re-login logic
+  Future<http.Response> sendRequestWithRetry(
+      Future<http.Response> Function() requestFn) async {
+    return _sendRequestWithRetry(requestFn);
   }
 
   // ===================== 🟢 GET =====================
@@ -161,24 +279,8 @@ class CprApiService {
       return await http.get(url, headers: headers);
     }
 
-    // 🔄 Step 1: Make request
-    http.Response response = await sendRequest();
-
-    // 🔄 Step 2: Handle token expiry
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      if (kDebugMode) debugPrint("⚠️ Token expired, trying to refresh...");
-      final refreshed = await _refreshToken();
-      if (refreshed) {
-        final newToken = await _getToken(); // get updated token
-        response = await http.get(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic $newToken',
-          },
-        );
-      }
-    }
+    // 🔄 Step 1 & 2: Make request with retry (refresh token / re-login on 401)
+    http.Response response = await _sendRequestWithRetry(() => sendRequest());
 
     // 🧠 Step 3: Decode and parse
     if (kDebugMode) {
@@ -339,21 +441,8 @@ class CprApiService {
     }
 
     try {
-      // 🔹 Step 1: First request
-      http.Response response = await sendRequest(token);
-
-      // 🔄 Step 2: If token expired, refresh and retry once
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        if (kDebugMode) debugPrint("⚠️ Token expired — refreshing...");
-
-        final refreshed = await _refreshToken();
-        if (refreshed) {
-          final newToken = await _getToken();
-          response = await sendRequest(newToken);
-        } else {
-          throw Exception("❌ Token refresh failed");
-        }
-      }
+      // 🔹 Step 1 & 2: First request + retry via generic handler
+      http.Response response = await _sendRequestWithRetry(() => sendRequest(token));
 
       // ✅ Step 3: Handle final response
       if (response.statusCode == 200) {
@@ -562,21 +651,8 @@ class CprApiService {
       return await http.post(url, headers: mergedHeaders, body: jsonEncode(data));
     }
 
-    // 🔄 Step 1: First attempt
-    http.Response response = await sendRequest(token);
-
-    // 🔄 Step 2: Token refresh if expired
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      if (kDebugMode) debugPrint("⚠️ Token expired — attempting refresh...");
-      final refreshed = await _refreshToken();
-      if (refreshed) {
-        final newToken = await _getToken();
-        response = await sendRequest(newToken); // Retry with new token
-      } else {
-        if (kDebugMode) debugPrint("❌ Token refresh failed");
-        throw Exception("Token refresh failed");
-      }
-    }
+    // 🔄 Step 1 & 2: First attempt + retry via generic handler
+    http.Response response = await _sendRequestWithRetry(() => sendRequest(token));
 
     // 🧠 Step 3: Parse response
     if (kDebugMode) {
