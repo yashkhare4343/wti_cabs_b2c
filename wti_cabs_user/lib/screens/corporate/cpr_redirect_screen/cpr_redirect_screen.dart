@@ -29,7 +29,6 @@ class _CprRedirectScreenState extends State<CprRedirectScreen> {
   Future<void> _checkCrpKeyAndRedirect() async {
     try {
       // Load corporate login info from storage
-      await loginInfoController.loadFromStorage();
 
       // Wait for the next frame to ensure context is available
       if (!mounted) return;

@@ -10,45 +10,6 @@ class LoginInfoController extends GetxController {
   Rx<CrpLoginResponse?> crpLoginInfo = Rx<CrpLoginResponse?>(null);
   RxBool isLoading = false.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    // Load saved corporate login info from storage
-    loadFromStorage();
-  }
-
-  /// Load corporate login info from storage
-  Future<void> loadFromStorage() async {
-    try {
-      final crpKey = await StorageServices.instance.read('crpKey');
-      final crpId = await StorageServices.instance.read('crpId');
-      final branchId = await StorageServices.instance.read('branchId');
-      final guestId = await StorageServices.instance.read('guestId');
-      final guestName = await StorageServices.instance.read('guestName');
-
-      // If crpKey exists, reconstruct the response object
-      if (crpKey != null && crpKey.isNotEmpty) {
-        crpLoginInfo.value = CrpLoginResponse(
-          key: crpKey,
-          bStatus: true,
-          sMessage: '',
-          guestID: int.tryParse(guestId ?? '0') ?? 0,
-          guestName: guestName ?? '',
-          branchID: branchId ?? '0',
-          subbranchID: 0,
-          lastRideBookingRatingFlag: false,
-          corpID: crpId ?? '0',
-          payModeID: '0',
-          carProviders: '0',
-          logoPath: '',
-        );
-        debugPrint('✅ Loaded corporate login info from storage');
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading corporate login info from storage: $e');
-    }
-  }
-
   Future<void> fetchLoginInfo(
       Map<String, dynamic> params,
       BuildContext context
@@ -60,7 +21,7 @@ class LoginInfoController extends GetxController {
       debugPrint('📦 Query Params: $params');
 
       final result = await crpApiService.getRequestCrp<CrpLoginResponse>(
-        'GetLoginInfo',
+        'GetLoginInfoV1',
         params,
             (data) {
           // 🔹 Print raw response
@@ -86,6 +47,21 @@ class LoginInfoController extends GetxController {
       debugPrint('✅ Parsed Response: ${result.toJson()}');
 
       crpLoginInfo.value = result;
+
+      // Store EntityId and GenderId for prefilling in booking engine
+      if (result.bStatus == true) {
+        final storage = StorageServices.instance;
+        // Store EntityId
+        if (result.entityId != null && result.entityId != 0) {
+          await storage.save('crpEntityId', result.entityId.toString());
+          debugPrint('💾 Stored EntityId: ${result.entityId}');
+        }
+        // Store GenderId
+        if (result.genderId != null && result.genderId != 0) {
+          await storage.save('crpGenderId', result.genderId.toString());
+          debugPrint('💾 Stored GenderId: ${result.genderId}');
+        }
+      }
 
       // // Show SnackBar based on status
       // if (crpLoginInfo.value?.bStatus == true) {

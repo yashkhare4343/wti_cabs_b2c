@@ -81,6 +81,7 @@ import '../corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
 import '../trip_history_controller/trip_history_controller.dart';
+import '../../core/api/corporate/cpr_api_services.dart';
 import 'package:location/location.dart' as location;
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'dart:convert'; // for jsonEncode
@@ -118,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final UpcomingBookingController upcomingBookingController =
       Get.put(UpcomingBookingController());
   final CurrencyController currencyController = Get.put(CurrencyController());
+  final LoginInfoController crploginInfoController = Get.put(LoginInfoController());
   void showUpcomingServiceModal(BuildContext context, String tabName) {
     showModalBottomSheet(
       context: context,
@@ -198,12 +200,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Get.put(FetchMostPopularLocationController());
     Get.put(FetchAllFleetsController());
     Get.put(FetchAllCitiesController());
+
   }
 
   String? crpKey;
 
   void loaderCrpToken() async{
-    crpKey = await await StorageServices.instance.read('crpKey');
+    crpKey = await StorageServices.instance.read('crpKey');
+
+    // If a corporate session already exists, silently refresh it by
+    // calling the corporate login API with the stored email/password.
+    if (crpKey != null && crpKey!.isNotEmpty) {
+      try {
+        await CprApiService().reLoginWithStoredCredentials();
+      } catch (e) {
+        debugPrint('❌ Corporate re-login from HomeScreen failed: $e');
+      }
+    }
   }
 
   Future<void> _handleCorporateEntry(BuildContext context) async {

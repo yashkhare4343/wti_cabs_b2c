@@ -37,13 +37,26 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
   }
   
   void _loadProfileData() async {
+    // Try to get GuestID and token from controller first, fallback to storage
+    final guestIDFromController = loginInfoController.crpLoginInfo.value?.guestID?.toString();
+    final tokenFromController = loginInfoController.crpLoginInfo.value?.key;
+    final guestIDFromStorage = await StorageServices.instance.read('guestId');
+    final tokenFromStorage = await StorageServices.instance.read('crpKey');
+    final email = await StorageServices.instance.read('email');
+    
     final Map<String, dynamic> params = {
-      'email': await StorageServices.instance.read('email'),
-      'GuestID':loginInfoController.crpLoginInfo.value?.guestID??'',
-      'token':loginInfoController.crpLoginInfo.value?.key??'',
-      'user': await StorageServices.instance.read('email')
+      'email': email ?? '',
+      'GuestID': guestIDFromController ?? guestIDFromStorage ?? '',
+      'token': tokenFromController ?? tokenFromStorage ?? '',
+      'user': email ?? '',
     };
-    cprProfileController.fetchProfileInfo(params, context);
+    
+    // Only proceed if we have a valid token
+    if (params['token'] != null && params['token']!.toString().isNotEmpty) {
+      cprProfileController.fetchProfileInfo(params, context);
+    } else {
+      debugPrint('⚠️ Cannot load profile: token is missing');
+    }
     
     setState(() {});
   }

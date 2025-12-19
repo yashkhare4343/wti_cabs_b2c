@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/dropdown/cpr_select_box.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import '../../../../common_widget/textformfield/booking_textformfield.dart';
@@ -19,6 +20,7 @@ import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_con
 import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
 import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import '../../../core/model/corporate/crp_login_response/crp_login_response.dart';
 import '../../../core/model/corporate/get_entity_list/get_entity_list_response.dart';
 import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
 import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
@@ -33,10 +35,10 @@ class CprBookingEngine extends StatefulWidget {
   final String? selectedPickupType;
   final SuggestionPlacesResponse? selectedPickupPlace;
   final SuggestionPlacesResponse? selectedDropPlace;
-  
+
   const CprBookingEngine({
-    super.key, 
-    this.selectedPickupType, 
+    super.key,
+    this.selectedPickupType,
     this.selectedPickupPlace,
     this.selectedDropPlace,
   });
@@ -48,15 +50,19 @@ class CprBookingEngine extends StatefulWidget {
 class _CprBookingEngineState extends State<CprBookingEngine> {
   final GenderController controller = Get.put(GenderController());
   final CarProviderController carProviderController =
-      Get.put(CarProviderController());
+  Get.put(CarProviderController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   final CrpGetEntityListController crpGetEntityListController =
-      Get.put(CrpGetEntityListController());
+  Get.put(CrpGetEntityListController());
+
+  final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
 
   String? guestId, token, user;
   int? _preselectedRunTypeId;
   bool _hasAppliedPreselection = false;
   Entity? selectedCorporate;
+  Entity? selectedEntity;
+
 
   Future<void> fetchParameter() async {
     final storage = StorageServices.instance;
@@ -80,7 +86,65 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    // If selectedPickupType is passed from navigation, use it
+    // Initialize async operations
+    _initializeData();
+    
+    // Listen to entity list changes and retry prefilling
+    ever(crpGetEntityListController.getAllEntityList, (_) {
+      if (mounted && selectedCorporate == null) {
+        final entities = crpGetEntityListController.getAllEntityList.value?.getEntityList ?? [];
+        if (entities.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _tryPrefillCorporateEntity(entities);
+          });
+        }
+      }
+    });
+    
+    // Listen to gender list changes and retry prefilling
+    ever(controller.genderList, (_) {
+      if (mounted && controller.selectedGender.value == null && controller.genderList.isNotEmpty) {
+        debugPrint('🔄 Gender list updated, retrying prefilling. List size: ${controller.genderList.length}');
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          // Get gender ID and try to prefill
+          final int targetGenderId = await _getPrefillGenderId();
+          if (targetGenderId != 0 && mounted) {
+            GenderModel? matchedGender;
+            for (final gender in controller.genderList) {
+              if (gender.genderID != null && gender.genderID == targetGenderId) {
+                matchedGender = gender;
+                break;
+              }
+            }
+            if (matchedGender != null && mounted) {
+              setState(() {
+                controller.selectGender(matchedGender);
+                debugPrint('✅ Prefilled Gender from listener: ${matchedGender?.gender}');
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    // Listen to car provider list changes and retry prefilling
+    ever(carProviderController.carProviderList, (_) {
+      if (mounted && carProviderController.selectedCarProvider.value == null && carProviderController.carProviderList.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _applyPrefilledDataFromLogin();
+        });
+      }
+    });
+  }
+
+  /// Initialize all data sources - ensures proper order and waiting
+  Future<void> _initializeData() async {
+    // 1. Login info should already be loaded from main.dart, but ensure it's available
+    // This is a safety check in case main.dart didn't load it yet
+    // Force reload to ensure fresh data after app kill
+
+
+    // 3. If selectedPickupType is passed from navigation, use it
     if (widget.selectedPickupType != null) {
       selectedPickupType = widget.selectedPickupType;
       // Only clear pickup and drop locations when navigating from corporate bottom nav (home screen)
@@ -92,8 +156,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         });
       }
     }
-    
-    // If selected place is passed from location selection, set it in the controller
+
+    // 4. If selected place is passed from location selection, set it in the controller
     if (widget.selectedPickupPlace != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         crpSelectPickupController.selectedPlace.value = widget.selectedPickupPlace;
@@ -102,8 +166,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         }
       });
     }
-    
-    // If selected drop place is passed from location selection, set it in the controller
+
+    // 5. If selected drop place is passed from location selection, set it in the controller
     if (widget.selectedDropPlace != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         crpSelectDropController.selectedPlace.value = widget.selectedDropPlace;
@@ -112,32 +176,102 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         }
       });
     }
-    
+
+    // 6. Load other data (these don't need to wait)
     _loadPreselectedRunType();
-    runTypesAndPaymentModes();
     _prefillPickupFromCurrentLocation();
     _loadCorporateEntities();
+
+    // 7. Fetch fresh data from APIs (will use cached data if API fails)
+    // Don't await - let it run in background while UI shows cached data
+    runTypesAndPaymentModes();
+
+    // 8. Apply all other prefilled data once APIs & lists are ready
+    // Use a post-frame callback with a small delay to ensure everything is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Small delay to ensure storage-loaded lists are available
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _applyPrefilledDataFromLogin();
+      }
+      
+      // Retry prefilling after a longer delay to catch late-loading data
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          _applyPrefilledDataFromLogin();
+        }
+      });
+    });
   }
 
   void runTypesAndPaymentModes() async {
-    // 1. Fetch Run Types
-    runTypeController.fetchRunTypes(params, context);
+    try {
+      // 1. Login info should already be loaded from main.dart
+      // This is a safety check in case it wasn't loaded yet
+      if (loginInfoController.crpLoginInfo.value == null) {
+        debugPrint('⚠️ Login info not available, loading from storage...');
+        // Wait a bit more to ensure it's fully loaded
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
 
-    // 2. Wait for guestId, token, user
-    await fetchParameter();
-    final prefs = await SharedPreferences.getInstance();
-    String? email = prefs.getString('email');
-    // 3. Now call payment modes safely
-    final resolvedToken = loginInfoController.crpLoginInfo.value?.key ?? token ?? '';
-    final Map<String, dynamic> paymentParams = {
-      'GuestID': int.tryParse(guestId ?? '') ?? 0,
-      'token': resolvedToken,
-      'user': user ?? email
-    };
+      // 2. Fetch Run Types (doesn't depend on token)
+      runTypeController.fetchRunTypes(params, context);
 
-    paymentModeController.fetchPaymentModes(paymentParams, context);
-    controller.fetchGender(context);
-    carProviderController.fetchCarProviders(context);
+      // 4. Wait for guestId, token, user
+      await fetchParameter();
+      final prefs = await SharedPreferences.getInstance();
+      String? email = prefs.getString('email');
+
+      // 5. Get token - prioritize login info, then storage, then fallback
+      String? resolvedToken = loginInfoController.crpLoginInfo.value?.key;
+      if (resolvedToken == null || resolvedToken.isEmpty) {
+        resolvedToken = token ?? await StorageServices.instance.read('crpKey');
+      }
+
+      // 6. Wait a bit more if token is still not available (give storage time to load)
+      if (resolvedToken == null || resolvedToken.isEmpty) {
+        debugPrint('⚠️ Token not available yet, waiting...');
+        int retryCount = 0;
+        while ((resolvedToken == null || resolvedToken.isEmpty) && retryCount < 10) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          resolvedToken = loginInfoController.crpLoginInfo.value?.key ??
+              token ??
+              await StorageServices.instance.read('crpKey');
+          retryCount++;
+        }
+      }
+
+      final Map<String, dynamic> paymentParams = {
+        'GuestID': int.tryParse(guestId ?? '') ?? 0,
+        'token': resolvedToken ?? '',
+        'user': user ?? email ?? ''
+      };
+
+      // 7. Fetch all data in parallel (fire-and-forget, but with error handling in controllers)
+      // Only fetch if we have a valid token
+      if (resolvedToken != null && resolvedToken.isNotEmpty) {
+        paymentModeController.fetchPaymentModes(paymentParams, context);
+        controller.fetchGender(context);
+        carProviderController.fetchCarProviders(context);
+
+      } else {
+        debugPrint('❌ Cannot fetch data: Token not available');
+        // Retry after a delay
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            runTypesAndPaymentModes();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error in runTypesAndPaymentModes: $e');
+      // Retry after a delay if there was an error
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          runTypesAndPaymentModes();
+        }
+      });
+    }
   }
 
   /// Clear pickup and drop locations when navigating from corporate bottom nav
@@ -151,19 +285,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     if (widget.selectedPickupType != null) {
       return;
     }
-    
+
     // Only load preselected run type if we're not coming back from location selection screens
     // If locations are already selected, we're likely coming back from location screens, so skip preselection
     final hasPickupLocation = crpSelectPickupController.selectedPlace.value != null;
     final hasDropLocation = crpSelectDropController.selectedPlace.value != null;
-    
+
     if (hasPickupLocation || hasDropLocation) {
       // User has already selected locations, likely coming back from location screens
       // Clear any stored preselected run type to prevent applying it
       await StorageServices.instance.delete('cprSelectedRunTypeId');
       return;
     }
-    
+
     final idStr = await StorageServices.instance.read('cprSelectedRunTypeId');
     if (idStr != null) {
       final parsed = int.tryParse(idStr);
@@ -178,11 +312,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   }
 
   final CrpServicesController runTypeController =
-      Get.put(CrpServicesController());
+  Get.put(CrpServicesController());
   final CrpSelectPickupController crpSelectPickupController =
-      Get.put(CrpSelectPickupController());
+  Get.put(CrpSelectPickupController());
   final CrpSelectDropController crpSelectDropController =
-      Get.put(CrpSelectDropController());
+  Get.put(CrpSelectDropController());
   final paymentModeController = Get.put(PaymentModeController());
 
   String? selectedPickupType;
@@ -194,6 +328,281 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     'BranchID': StorageServices.instance.read('branchId')
   };
 
+  /// Get the gender ID to use for prefilling:
+  /// 1. Prefer value from corporate login (CrpLoginResponse.genderId)
+  /// 2. Fallback to stored value from storage
+  Future<int> _getPrefillGenderId() async {
+    final loginGenderId =
+        loginInfoController.crpLoginInfo.value?.genderId ?? 0;
+    if (loginGenderId != 0) {
+      debugPrint('✅ Using GenderId from login info: $loginGenderId');
+      return loginGenderId;
+    }
+
+    // Try to get from storage
+    final storedGenderIdStr = await StorageServices.instance.read('crpGenderId');
+    debugPrint('💾 Stored GenderId from storage: $storedGenderIdStr');
+    if (storedGenderIdStr != null && storedGenderIdStr.isNotEmpty) {
+      final storedGenderId = int.tryParse(storedGenderIdStr);
+      if (storedGenderId != null && storedGenderId != 0) {
+        debugPrint('✅ Using stored GenderId: $storedGenderId');
+        return storedGenderId;
+      }
+    }
+
+    debugPrint('⚠️ No GenderId found, returning 0');
+    return 0;
+  }
+
+  /// Apply all possible prefilled data using values returned by the corporate
+  /// login API (`CrpLoginResponse`) once the respective lists are loaded.
+  ///
+  /// This covers:
+  /// - Booking Type (always "Corporate")
+  /// - Gender (using `genderId`)
+  /// - Corporate Entity (using `entityId`)
+  /// - Payment Mode (using `payModeID`)
+  /// - Car Provider (using first element from list)
+  /// - Pickup DateTime (using `advancedHourToConfirm` as an offset from now)
+  Future<void> _applyPrefilledDataFromLogin() async {
+    debugPrint('🔄 Starting _applyPrefilledDataFromLogin()');
+    
+    // Ensure login info is available (loaded either from API or storage)
+    if (loginInfoController.crpLoginInfo.value == null) {
+      debugPrint('⚠️ Login info is null, waiting...');
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    final loginInfo = loginInfoController.crpLoginInfo.value;
+    debugPrint('📋 Login info available: ${loginInfo != null}');
+    if (loginInfo != null) {
+      debugPrint('📋 EntityId from login: ${loginInfo.entityId}, GenderId from login: ${loginInfo.genderId}');
+    }
+
+    // Always set pickup datetime using advancedHourToConfirm from login info
+    final int hoursOffset = _getAdvancedHourToConfirm();
+    if (selectedPickupDateTime == null) {
+      setState(() {
+        selectedPickupDateTime = DateTime.now().add(Duration(minutes: hoursOffset*60));
+      });
+    } else {
+      // Ensure existing selection is at least advancedHourToConfirm hours from now
+      final DateTime now = DateTime.now();
+      final DateTime minDateTime = now.add(Duration(minutes: hoursOffset*60));
+      if (selectedPickupDateTime!.isBefore(minDateTime)) {
+        setState(() {
+          selectedPickupDateTime = minDateTime;
+        });
+      }
+    }
+
+    // Don't return early - we can still use stored values even if loginInfo is null
+
+    // Wait briefly for dependent API lists to load so we can match IDs safely.
+    // We poll a few times instead of blocking indefinitely.
+    const int maxAttempts = 50; // ~5 seconds at 100ms interval (increased for app restart scenario)
+    for (int i = 0; i < maxAttempts; i++) {
+      final bool gendersReady = controller.genderList.isNotEmpty;
+      final bool paymentModesReady = paymentModeController.modes.isNotEmpty;
+      final bool entitiesReady = (crpGetEntityListController
+          .getAllEntityList.value
+          ?.getEntityList ??
+          [])
+          .isNotEmpty;
+      final bool carProvidersReady =
+          carProviderController.carProviderList.isNotEmpty ||
+              !carProviderController.isLoading.value;
+
+      debugPrint('📊 Lists status - Genders: $gendersReady (${controller.genderList.length}), '
+          'PaymentModes: $paymentModesReady (${paymentModeController.modes.length}), '
+          'Entities: $entitiesReady, CarProviders: $carProvidersReady (${carProviderController.carProviderList.length})');
+
+      if (gendersReady &&
+          paymentModesReady &&
+          entitiesReady &&
+          carProvidersReady) {
+        debugPrint('✅ All lists are ready!');
+        break;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
+    }
+
+    if (!mounted) return;
+
+    // Handle corporate entity prefilling with storage fallback (before setState)
+    int targetEntityId = loginInfo?.entityId ?? 0;
+    debugPrint('🔍 Initial targetEntityId: $targetEntityId');
+    if (targetEntityId == 0) {
+      final storedEntityIdStr = await StorageServices.instance.read('crpEntityId');
+      debugPrint('💾 Stored EntityId from storage: $storedEntityIdStr');
+      if (storedEntityIdStr != null && storedEntityIdStr.isNotEmpty) {
+        targetEntityId = int.tryParse(storedEntityIdStr) ?? 0;
+        debugPrint('✅ Using stored EntityId: $targetEntityId');
+      }
+    }
+
+    // Get gender ID for prefilling
+    final int targetGenderId = await _getPrefillGenderId();
+    debugPrint('🔍 Target GenderId: $targetGenderId');
+
+    if (!mounted) return;
+
+    setState(() {
+      // Booking Type – default to "Corporate" if nothing is selected (first element)
+      if (selectedBookingFor == null && bookingForList.isNotEmpty) {
+        selectedBookingFor = bookingForList.first;
+        debugPrint('✅ Prefilled Booking Type: $selectedBookingFor');
+      }
+
+      // Gender – match using GenderID from login info or storage (prefill from storage/API)
+      if (controller.selectedGender.value == null &&
+          controller.genderList.isNotEmpty) {
+        debugPrint('🔍 Attempting to prefill Gender. Target ID: $targetGenderId, List size: ${controller.genderList.length}');
+        debugPrint('🔍 Gender list IDs: ${controller.genderList.map((g) => g.genderID).toList()}');
+        if (targetGenderId != 0) {
+          GenderModel? matchedGender;
+          for (final gender in controller.genderList) {
+            final genderId = gender.genderID;
+            debugPrint('  - Checking gender ID: $genderId (type: ${genderId.runtimeType}) vs target: $targetGenderId (type: ${targetGenderId.runtimeType})');
+            if (genderId != null && genderId == targetGenderId) {
+              matchedGender = gender;
+              debugPrint('✅ Found matching gender: ${gender.gender}');
+              break;
+            }
+          }
+          if (matchedGender != null) {
+            controller.selectGender(matchedGender);
+            debugPrint('✅ Prefilled Gender: ${matchedGender.gender}');
+            // Force UI update by accessing the value
+            final _ = controller.selectedGender.value;
+          } else {
+            debugPrint('❌ No matching gender found for ID: $targetGenderId');
+            debugPrint('❌ Available gender IDs: ${controller.genderList.map((g) => g.genderID).toList()}');
+          }
+        } else {
+          debugPrint('⚠️ Target GenderId is 0, skipping prefilling');
+        }
+      } else {
+        debugPrint('⚠️ Gender already selected or list empty. Selected: ${controller.selectedGender.value?.gender}, List empty: ${controller.genderList.isEmpty}');
+      }
+
+      // Corporate Entity – match using EntityId from login info or storage, else fallback to first
+      if (selectedCorporate == null) {
+        final entities = crpGetEntityListController
+            .getAllEntityList.value
+            ?.getEntityList ??
+            [];
+        debugPrint('🔍 Attempting to prefill Corporate Entity. Target ID: $targetEntityId, List size: ${entities.length}');
+        if (entities.isNotEmpty) {
+          Entity? matched;
+          if (targetEntityId != 0) {
+            for (final entity in entities) {
+              debugPrint('  - Checking entity ID: ${entity.entityId}');
+              if (entity.entityId == targetEntityId) {
+                matched = entity;
+                debugPrint('✅ Found matching entity: ${entity.entityName}');
+                break;
+              }
+            }
+          }
+          selectedCorporate = matched ?? entities.first;
+          debugPrint('✅ Prefilled Corporate Entity: ${selectedCorporate?.entityName} (matched: ${matched != null})');
+        } else {
+          debugPrint('⚠️ Entities list is empty');
+        }
+      } else {
+        debugPrint('⚠️ Corporate Entity already selected: ${selectedCorporate?.entityName}');
+      }
+
+      // Payment Mode – match using PayModeID from login info
+      if (paymentModeController.modes.isNotEmpty) {
+        final String payModeIdStr = loginInfo?.payModeID??'';
+        final int? payModeId = int.tryParse(payModeIdStr);
+
+        PaymentModeItem? matchedMode;
+        if (payModeId != null) {
+          for (final mode in paymentModeController.modes) {
+            if (mode.id == payModeId) {
+              matchedMode = mode;
+              break;
+            }
+          }
+        }
+
+        // If nothing matched, keep current selection or fall back to first item
+        paymentModeController.updateSelected(
+          matchedMode ??
+              paymentModeController.selectedMode.value ??
+              (paymentModeController.modes.isNotEmpty
+                  ? paymentModeController.modes.first
+                  : null),
+        );
+      }
+
+      // Car Provider – use first element from the list (as per requirement)
+      if (carProviderController.carProviderList.isNotEmpty &&
+          carProviderController.selectedCarProvider.value == null) {
+        // Use first element from the list
+        carProviderController.selectCarProvider(carProviderController.carProviderList.first);
+        debugPrint('✅ Prefilled Car Provider: ${carProviderController.carProviderList.first.providerName}');
+      } else {
+        debugPrint('⚠️ Car Provider already selected or list empty. Selected: ${carProviderController.selectedCarProvider.value?.providerName}, List empty: ${carProviderController.carProviderList.isEmpty}');
+      }
+
+      // Pickup DateTime is already set above (before checking loginInfo)
+      // This ensures it's always at least advancedHourToConfirm hours from now
+    });
+    debugPrint('✅ Finished _applyPrefilledDataFromLogin()');
+  }
+
+  /// Try to prefill corporate entity from login info or storage
+  void _tryPrefillCorporateEntity(List<Entity> entities) {
+    if (selectedCorporate != null || entities.isEmpty) return;
+    
+    int targetEntityId = 0;
+    
+    // Try login info first
+    if (loginInfoController.crpLoginInfo.value != null) {
+      targetEntityId = loginInfoController.crpLoginInfo.value!.entityId;
+    }
+    
+    // Fallback to storage
+    if (targetEntityId == 0) {
+      StorageServices.instance.read('crpEntityId').then((storedEntityIdStr) {
+        if (storedEntityIdStr != null && storedEntityIdStr.isNotEmpty) {
+          final storedEntityId = int.tryParse(storedEntityIdStr);
+          if (storedEntityId != null && storedEntityId != 0 && mounted) {
+            setState(() {
+              for (final entity in entities) {
+                if (entity.entityId == storedEntityId) {
+                  selectedCorporate = entity;
+                  debugPrint('✅ Prefilled Corporate Entity from storage: ${entity.entityName}');
+                  return;
+                }
+              }
+            });
+          }
+        }
+      });
+      return;
+    }
+    
+    // Match from login info
+    if (targetEntityId != 0 && mounted) {
+      setState(() {
+        for (final entity in entities) {
+          if (entity.entityId == targetEntityId) {
+            selectedCorporate = entity;
+            debugPrint('✅ Prefilled Corporate Entity from login: ${entity.entityName}');
+            return;
+          }
+        }
+      });
+    }
+  }
+
   /// Prefill pickup with current location (name + lat/lng) if available.
   /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
   /// Skips prefilling when navigating from corporate bottom nav (when selectedPickupType is passed).
@@ -201,7 +610,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     try {
       // If selectedPickupType is passed, we're coming from corporate bottom nav, so don't prefill
       if (widget.selectedPickupType != null) return;
-      
+
       // If user has already selected a pickup in corporate flow, don't override it.
       if (crpSelectPickupController.selectedPlace.value != null) return;
 
@@ -260,12 +669,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String? paymentModeError;
   String? genderError;
   String? carProviderError;
-   String? corporateError;
+  String? corporateError;
 
   final TextEditingController referenceNumberController =
-      TextEditingController();
+  TextEditingController();
   final TextEditingController specialInstructionController =
-      TextEditingController();
+  TextEditingController();
   final TextEditingController costCodeController = TextEditingController();
   final TextEditingController flightDetailsController = TextEditingController();
 
@@ -273,10 +682,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   // final TextEditingController pickupController = TextEditingController();
   // final TextEditingController dropController = TextEditingController();
 
+  /// Get the minimum hours offset for pickup datetime from login info
+  /// Falls back to 4 hours if not available or if value is 0
+  int _getAdvancedHourToConfirm() {
+    final loginInfo = loginInfoController.crpLoginInfo.value;
+    final hours = loginInfo?.advancedHourToConfirm ?? 0;
+    // Use the value from API if it's greater than 0, otherwise default to 4 hours
+    return hours > 0 ? hours : 0;
+  }
+
   CarProviderModel? _getValidCarProviderValue(
-    CarProviderModel? selectedValue,
-    List<CarProviderModel> list,
-  ) {
+      CarProviderModel? selectedValue,
+      List<CarProviderModel> list,
+      ) {
     if (selectedValue == null) return null;
 
     // Check if the selected value exists in the list
@@ -285,9 +703,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   }
 
   GenderModel? _getValidGenderValue(
-    GenderModel? selectedValue,
-    List<GenderModel> list,
-  ) {
+      GenderModel? selectedValue,
+      List<GenderModel> list,
+      ) {
     if (selectedValue == null) return null;
 
     // Check if the selected value exists in the list
@@ -321,8 +739,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           backgroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.black.withOpacity(0.05),
-            surfaceTintColor: Colors.transparent,
-            leading: IconButton(
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
             onPressed: () => context.push(AppRoutes.cprBottomNav),
           ),
@@ -340,7 +758,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         body: SafeArea(
           child: SingleChildScrollView(
             padding:
-                const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
+            const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -422,7 +840,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         children: [
                           Icon(Icons.error_outline,
                               size: 16, color: Colors.red.shade600),
-                           const SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               bookingTypeError!,
@@ -443,8 +861,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 // Choose Corporate (mandatory)
                 Obx(() {
                   final entities = crpGetEntityListController
-                          .getAllEntityList.value?.getEntityList ??
+                      .getAllEntityList.value?.getEntityList ??
                       [];
+
+                  // Try to prefill from storage if not already set (only in build, don't modify state here)
+                  // The actual prefilling is handled in _applyPrefilledDataFromLogin()
+                  if (selectedCorporate == null &&
+                      entities.isNotEmpty) {
+                    // Schedule prefilling outside build method
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _tryPrefillCorporateEntity(entities);
+                    });
+                  }
+
+
 
                   if (entities.isEmpty) {
                     return const SizedBox.shrink();
@@ -452,6 +882,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
                   final hasError =
                       corporateError != null && corporateError!.isNotEmpty;
+
+
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,11 +905,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Padding(
+                                    Padding(
                                       padding: EdgeInsets.symmetric(
                                           horizontal: 20, vertical: 16),
                                       child: Text(
-                                        'Select Corporate',
+                                        selectedCorporate?.entityName??'Choose Corporate',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -498,8 +930,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                             title: Text(item.entityName ?? ''),
                                             trailing: isSelected
                                                 ? const Icon(Icons.check,
-                                                    color:
-                                                        AppColors.mainButtonBg)
+                                                color:
+                                                AppColors.mainButtonBg)
                                                 : null,
                                             onTap: () {
                                               setState(() {
@@ -617,32 +1049,35 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
                   final list = paymentModeController.modes;
 
+                  // if (list.isEmpty) {
+                  //   return Container(
+                  //     padding: const EdgeInsets.all(16),
+                  //     decoration: BoxDecoration(
+                  //       color: Colors.orange.shade50,
+                  //       borderRadius: BorderRadius.circular(12),
+                  //       border: Border.all(color: Colors.orange.shade200),
+                  //     ),
+                  //     child: Row(
+                  //       children: [
+                  //         Icon(Icons.info_outline,
+                  //             color: Colors.orange.shade700, size: 20),
+                  //         const SizedBox(width: 12),
+                  //         Expanded(
+                  //           child: Text(
+                  //             "No Payment Modes Found",
+                  //             style: TextStyle(
+                  //               fontSize: 14,
+                  //               color: Colors.orange.shade700,
+                  //               fontWeight: FontWeight.w500,
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   );
+                  // }
                   if (list.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline,
-                              color: Colors.orange.shade700, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "No Payment Modes Found",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.orange.shade700,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    return SizedBox();
                   }
 
                   final hasError =
@@ -689,7 +1124,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                               Expanded(
                                 child: Text(
                                   paymentModeController
-                                          .selectedMode.value?.mode ??
+                                      .selectedMode.value?.mode ??
                                       'Select Payment Mode',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -741,6 +1176,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 }),
                 const SizedBox(height: 12),
 
+                // Gender
                 // Gender
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,8 +1333,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                               Expanded(
                                 child: Text(
                                   carProviderController
-                                          .selectedCarProvider.value
-                                          ?.providerName ??
+                                      .selectedCarProvider.value
+                                      ?.providerName ??
                                       'Select Car Provider',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -949,6 +1385,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   );
                 }),
 
+
                 const SizedBox(height: 20),
                 Divider(height: 1,color: Color(0xFFE6E6E6),),
                 const SizedBox(height: 20),
@@ -983,7 +1420,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         allRunTypes.isNotEmpty &&
         selectedPickupType == null) {
       final index =
-          allRunTypes.indexWhere((rt) => rt.runTypeID == _preselectedRunTypeId);
+      allRunTypes.indexWhere((rt) => rt.runTypeID == _preselectedRunTypeId);
       if (index != -1) {
         selectedPickupType = allRunTypes[index].run;
       }
@@ -1113,7 +1550,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       final pickupPlace = crpSelectPickupController.selectedPlace.value;
                       String displayText;
                       bool hasText;
-                      
+
                       if (pickupPlace != null && pickupPlace.primaryText != null && pickupPlace.primaryText!.isNotEmpty) {
                         final secondaryText = pickupPlace.secondaryText ?? '';
                         displayText = secondaryText.isNotEmpty
@@ -1124,7 +1561,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         displayText = 'Enter Pickup Location';
                         hasText = false;
                       }
-                      
+
                       return Text(
                         displayText,
                         style: TextStyle(
@@ -1161,7 +1598,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       final dropPlace = crpSelectDropController.selectedPlace.value;
                       String displayText;
                       bool hasText;
-                      
+
                       if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
                         final secondaryText = dropPlace.secondaryText ?? '';
                         displayText = secondaryText.isNotEmpty
@@ -1172,7 +1609,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                         displayText = 'Enter drop location';
                         hasText = false;
                       }
-                      
+
                       return Text(
                         displayText,
                         style: TextStyle(
@@ -1214,7 +1651,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 child: Container(
                   // height: 38,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(36),
@@ -1269,12 +1706,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                 },
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(36),
                     border: Border.all(
-                      color: pickupDateError != null
+                      color: dropDateError != null
                           ? Colors.red.shade400
                           : const Color(0xFF000000),
                       width: 1.4,
@@ -1370,7 +1807,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             children: [
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Text(
                   'Select Booking Type',
                   style: const TextStyle(
@@ -1381,7 +1818,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               ),
               const Divider(height: 1),
               ...bookingForList.map(
-                (bookingFor) => ListTile(
+                    (bookingFor) => ListTile(
                   title: Text(bookingFor),
                   trailing: selectedBookingFor == bookingFor
                       ? const Icon(Icons.check, color: AppColors.mainButtonBg)
@@ -1439,7 +1876,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       title: Text(item.mode ?? ''),
                       trailing: isSelected
                           ? const Icon(Icons.check,
-                              color: AppColors.mainButtonBg)
+                          color: AppColors.mainButtonBg)
                           : null,
                       onTap: () {
                         setState(() {
@@ -1496,7 +1933,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       title: Text(item.gender ?? ''),
                       trailing: isSelected
                           ? const Icon(Icons.check,
-                              color: AppColors.mainButtonBg)
+                          color: AppColors.mainButtonBg)
                           : null,
                       onTap: () {
                         setState(() {
@@ -1554,7 +1991,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       title: Text(item.providerName ?? ''),
                       trailing: isSelected
                           ? const Icon(Icons.check,
-                              color: AppColors.mainButtonBg)
+                          color: AppColors.mainButtonBg)
                           : null,
                       onTap: () {
                         setState(() {
@@ -1579,7 +2016,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     final List<RunTypeItem> allRunTypes =
         runTypeController.runTypes.value?.runTypes ?? [];
     final List<String> allPickupTypes =
-        allRunTypes.map((val) => val.run ?? '').toList();
+    allRunTypes.map((val) => val.run ?? '').toList();
     final hasError = pickupTypeError != null && pickupTypeError!.isNotEmpty;
     final isExpanded = _isPickupTypeExpanded;
 
@@ -1607,9 +2044,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               borderRadius: BorderRadius.circular(30),
               border: hasError
                   ? Border.all(
-                      color: Colors.red.shade400,
-                      width: 2,
-                    )
+                color: Colors.red.shade400,
+                width: 2,
+              )
                   : null,
             ),
             child: Row(
@@ -1661,7 +2098,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                   color: hasError
                                       ? Colors.red.shade700
                                       : const Color(
-                                          0xFF585858), // Dark gray, bold
+                                      0xFF585858), // Dark gray, bold
                                 ),
                               ),
                             ],
@@ -1754,7 +2191,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       decoration: const BoxDecoration(
                         color: Color(0xFFEFF6FF), // Light blue background
                         borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(20)),
+                        BorderRadius.vertical(top: Radius.circular(20)),
                       ),
                       child: Row(
                         children: [
@@ -1913,15 +2350,18 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   void _showCupertinoDateTimePicker(BuildContext context,
       {required bool isPickup}) {
     final DateTime now = DateTime.now();
-    final DateTime minimumDate =
-        isPickup ? now : (selectedPickupDateTime ?? now);
+    // For pickup, minimum date uses advancedHourToConfirm from login info
+    final int hoursOffset = _getAdvancedHourToConfirm();
+    final DateTime minimumDate = isPickup
+        ? now.add(Duration(hours: 0))
+        : (selectedPickupDateTime ?? now);
 
-    // Use selected date if it exists and is not in the past, otherwise use minimum date
+    // Use selected date if it exists and is valid, otherwise use minimum date
     DateTime? currentSelectedDateTime =
-        isPickup ? selectedPickupDateTime : selectedDropDateTime;
+    isPickup ? selectedPickupDateTime : selectedDropDateTime;
     DateTime tempDateTime = currentSelectedDateTime != null &&
-            currentSelectedDateTime.isAfter(minimumDate) &&
-            (!isPickup || currentSelectedDateTime.isAfter(now))
+        currentSelectedDateTime.isAfter(minimumDate) &&
+        (!isPickup || currentSelectedDateTime.isAfter(now.add(Duration(minutes: hoursOffset*60))))
         ? currentSelectedDateTime
         : minimumDate;
 
@@ -1941,32 +2381,37 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20),
-                      child: Text(
-                        isPickup
-                            ? 'Select Pickup Date & Time'
-                            : 'Select Drop Date & Time',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A1A),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Text(
+                            isPickup
+                                ? 'Select Pickup Date & Time'
+                                : 'Select Drop Date & Time',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF333333),
+                            ),
+                          ),
                         ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              color: Colors.grey.shade600),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Divider(
+                        height: 1,
+                        color: Color(0xFF939393),
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded,
-                          color: Colors.grey.shade600),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    )
                   ],
                 ),
               ),
@@ -1982,7 +2427,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
               ),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   border: Border(
@@ -2020,15 +2465,37 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          setState(() {
-                            if (isPickup) {
+                          if (isPickup) {
+                            final DateTime now = DateTime.now();
+                            final int hoursOffset = _getAdvancedHourToConfirm();
+                            final DateTime minPickupDateTime = now.add(Duration(minutes: hoursOffset*60));
+
+                            // Validate pickup date is at least advancedHourToConfirm hours from now
+                            if (tempDateTime.isBefore(minPickupDateTime)) {
+                              setState(() {
+                                pickupDateError = 'Pickup date and time must be at least $hoursOffset hours from now';
+                              });
+                              // Show error snackbar
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Pickup date and time must be at least $hoursOffset hours from now'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                              return; // Don't close the picker
+                            }
+                            setState(() {
                               selectedPickupDateTime = tempDateTime;
                               pickupDateError = null;
-                            } else {
+                            });
+                          } else {
+                            setState(() {
                               selectedDropDateTime = tempDateTime;
                               dropDateError = null;
-                            }
-                          });
+                            });
+                          }
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
@@ -2085,19 +2552,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           ),
           boxShadow: hasError
               ? [
-                  BoxShadow(
-                    color: Colors.red.shade50,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
+            BoxShadow(
+              color: Colors.red.shade50,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ]
               : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -2123,7 +2590,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color:
-                      hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
+                  hasError ? Colors.red.shade700 : const Color(0xFF1A1A1A),
                   letterSpacing: -0.2,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -2212,7 +2679,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
@@ -2242,12 +2709,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
@@ -2272,12 +2739,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
@@ -2303,12 +2770,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(35),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+                        const BorderSide(color: Color(0xFFE2E2E2), width: 1),
                       ),
                     ),
                     style: const TextStyle(
@@ -2475,9 +2942,13 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       errors.add(pickupDateError!);
       hasValidationError = true;
     } else {
-      // Validate pickup date is not in the past
-      if (selectedPickupDateTime!.isBefore(DateTime.now())) {
-        pickupDateError = 'Pickup date and time cannot be in the past';
+      final DateTime now = DateTime.now();
+      final int hoursOffset = _getAdvancedHourToConfirm();
+      final DateTime minPickupDateTime = now.add(Duration(minutes: hoursOffset*60));
+
+      // Validate pickup date is at least advancedHourToConfirm hours from now
+      if (selectedPickupDateTime!.isBefore(minPickupDateTime)) {
+        pickupDateError = 'Pickup date and time must be at least $hoursOffset hours from now';
         errors.add(pickupDateError!);
         hasValidationError = true;
       }
@@ -2502,7 +2973,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     } else {
       // Validate that selected pickup type exists in the run types list
       final pickupTypeExists =
-          allRunTypes.any((runType) => runType.run == selectedPickupType);
+      allRunTypes.any((runType) => runType.run == selectedPickupType);
       if (!pickupTypeExists) {
         pickupTypeError = 'Selected pickup type is invalid';
         errors.add(pickupTypeError!);

@@ -60,6 +60,19 @@ class _CprLoginState extends State<CprLogin> {
       await StorageServices.instance.save('guestId', response?.guestID.toString() ?? '');
       await StorageServices.instance.save('guestName', response?.guestName ?? '');
 
+      // Store additional prefill-related fields so booking engine can restore them
+      await StorageServices.instance
+          .save('crpGenderId', response?.genderId.toString() ?? '');
+      await StorageServices.instance
+          .save('crpEntityId', response?.entityId.toString() ?? '');
+      await StorageServices.instance
+          .save('crpPayModeId', response?.payModeID.toString() ?? '');
+      await StorageServices.instance
+          .save('crpCarProviders', response?.carProviders.toString() ?? '');
+      await StorageServices.instance.save(
+          'crpAdvancedHourToConfirm',
+          response?.advancedHourToConfirm.toString() ?? '');
+
       // ✅ Ensure email & password are saved again after successful login for persistence
       final email = params['email']?.toString() ?? emailController.text.trim();
       final password = params['password']?.toString() ?? passwordController.text.trim();

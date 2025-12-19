@@ -30,7 +30,6 @@ class VerifyCorporateController extends GetxController {
     };
   }
 
-
   /// Fetch booking data based on the given country and request body
   Future<void> verifyCorporate(String email, String cprId) async {
     isLoading.value = true;

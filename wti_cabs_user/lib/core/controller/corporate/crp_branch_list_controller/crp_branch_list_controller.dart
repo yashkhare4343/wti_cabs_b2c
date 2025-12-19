@@ -12,7 +12,7 @@ class CrpBranchListController extends GetxController {
   var selectedBranchName = RxnString();
   var selectedBranchId = RxnString();
   var count = 0.obs;
-  final VerifyCorporateController verifyCorporateController = Get.find<VerifyCorporateController>();
+  final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
 
   Future<void> fetchBranches(String corpId) async {
     isLoading.value = true;

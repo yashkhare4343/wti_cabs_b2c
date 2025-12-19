@@ -10,6 +10,7 @@ import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import 'package:get/get.dart';
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../../core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
@@ -24,11 +25,14 @@ class CrpProfile extends StatefulWidget {
 class _CrpProfileState extends State<CrpProfile> {
   final CurrencyController currencyController = Get.find<CurrencyController>();
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final CprProfileController cprProfileController = Get.put(CprProfileController());
   bool _showShimmer = true;
 
   @override
   void initState() {
     super.initState();
+    // Fetch profile data to get gender and other info
+    _loadProfileData();
     // Show shimmer for 0.5 seconds
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
@@ -37,6 +41,29 @@ class _CrpProfileState extends State<CrpProfile> {
         });
       }
     });
+  }
+
+  void _loadProfileData() async {
+    // Try to get GuestID and token from controller first, fallback to storage
+    final guestIDFromController = loginInfoController.crpLoginInfo.value?.guestID?.toString();
+    final tokenFromController = loginInfoController.crpLoginInfo.value?.key;
+    final guestIDFromStorage = await StorageServices.instance.read('guestId');
+    final tokenFromStorage = await StorageServices.instance.read('crpKey');
+    final email = await StorageServices.instance.read('email');
+    
+    final Map<String, dynamic> params = {
+      'email': email ?? '',
+      'GuestID': guestIDFromController ?? guestIDFromStorage ?? '',
+      'token': tokenFromController ?? tokenFromStorage ?? '',
+      'user': email ?? '',
+    };
+    
+    // Only proceed if we have a valid token
+    if (params['token'] != null && params['token']!.toString().isNotEmpty) {
+      cprProfileController.fetchProfileInfo(params, context);
+    } else {
+      debugPrint('⚠️ Cannot load profile: token is missing');
+    }
   }
 
   void showLogOutSkeletonLoader(BuildContext context) {

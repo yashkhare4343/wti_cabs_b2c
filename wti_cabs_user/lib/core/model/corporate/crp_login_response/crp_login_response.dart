@@ -11,6 +11,10 @@ class CrpLoginResponse {
   final String payModeID;
   final String carProviders;
   final String logoPath;
+  final int genderId;
+  final int entityId;
+  final int advancedHourToConfirm;
+
 
   CrpLoginResponse({
     required this.key,
@@ -25,6 +29,9 @@ class CrpLoginResponse {
     required this.payModeID,
     required this.carProviders,
     required this.logoPath,
+    required this.genderId,
+    required this.entityId,
+    required this.advancedHourToConfirm,
   });
 
   factory CrpLoginResponse.fromJson(Map<String, dynamic> json) => CrpLoginResponse(
@@ -40,6 +47,9 @@ class CrpLoginResponse {
     payModeID: json['PayModeID'] ?? '0',
     carProviders: json['CarProviders'] ?? '0',
     logoPath: json['LogoPath'] ?? '',
+    genderId: json['GenderId'] ?? 1,
+    entityId: json['EntityId'] ?? 1,
+    advancedHourToConfirm: json['Advanced_Hour_To_Confirm'] ?? 4,
   );
 
   Map<String, dynamic> toJson() => {
@@ -55,5 +65,8 @@ class CrpLoginResponse {
     'PayModeID': payModeID,
     'CarProviders': carProviders,
     'LogoPath': logoPath,
+    'GenderId': genderId,
+    'EntityId': entityId,
+    'Advanced_Hour_To_Confirm': advancedHourToConfirm,
   };
 }

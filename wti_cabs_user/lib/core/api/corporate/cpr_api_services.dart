@@ -12,10 +12,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:get/get.dart';
 import '../../../config/enviornment_config.dart';
 import '../../response/api_response.dart';
 import '../../services/storage_services.dart';
 import '../../model/corporate/crp_login_response/crp_login_response.dart';
+import '../../controller/corporate/crp_login_controller/crp_login_controller.dart';
 
 class CprApiService {
   CprApiService._internal();
@@ -110,7 +112,7 @@ class CprApiService {
         'ios_token': '',
       };
 
-      final uri = Uri.parse('$baseUrl/GetLoginInfo')
+      final uri = Uri.parse('$baseUrl/GetLoginInfoV1')
           .replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
 
       final headers = {
@@ -172,6 +174,18 @@ class CprApiService {
       await StorageServices.instance.save('guestId', loginResponse.guestID.toString());
       await StorageServices.instance.save('guestName', loginResponse.guestName ?? '');
 
+      // Update LoginInfoController if it exists to keep it in sync
+      try {
+        if (Get.isRegistered<LoginInfoController>()) {
+          final loginInfoController = Get.find<LoginInfoController>();
+          loginInfoController.crpLoginInfo.value = loginResponse;
+          if (kDebugMode) debugPrint('✅ Updated LoginInfoController after re-login');
+        }
+      } catch (e) {
+        // Controller might not be initialized yet, that's ok
+        if (kDebugMode) debugPrint('ℹ️ LoginInfoController not found, skipping update: $e');
+      }
+
       if (kDebugMode) debugPrint('✅ Corporate token refreshed via re-login');
       return true;
     } catch (e, st) {
@@ -179,6 +193,15 @@ class CprApiService {
       debugPrint('📄 Stacktrace: $st');
       return false;
     }
+  }
+
+  /// Public helper so UI/controllers can explicitly trigger a corporate re-login
+  /// using the stored email & password (if available).
+  ///
+  /// This simply forwards to the internal `_reLoginWithStoredCredentials`
+  /// which is already used by the retry logic above.
+  Future<bool> reLoginWithStoredCredentials() async {
+    return _reLoginWithStoredCredentials();
   }
 
   // ===================== 🧠 Generic Retry Wrapper =====================
@@ -341,13 +364,26 @@ class CprApiService {
     if (!params.containsKey('token') && token != null && token.isNotEmpty) {
       params['token'] = token;
       debugPrint('✅ Auto-added token to query params');
-    } else if (params.containsKey('token') && (params['token'] == null || params['token'].toString() == 'null')) {
-      // Replace null token if it exists
+    } else if (params.containsKey('token') && (params['token'] == null || params['token'].toString() == 'null' || params['token'].toString().isEmpty)) {
+      // Replace null/empty token if it exists
       if (token != null && token.isNotEmpty) {
         params['token'] = token;
-        debugPrint('✅ Replaced null token with valid token');
+        debugPrint('✅ Replaced null/empty token with valid token');
       } else {
         params.remove('token');
+      }
+    }
+    
+    // Add GuestID to params if not already present or if it's empty
+    final guestIDFromStorage = await StorageServices.instance.read('guestId');
+    if (!params.containsKey('GuestID') && guestIDFromStorage != null && guestIDFromStorage.isNotEmpty) {
+      params['GuestID'] = guestIDFromStorage;
+      debugPrint('✅ Auto-added GuestID from storage to query params');
+    } else if (params.containsKey('GuestID') && (params['GuestID'] == null || params['GuestID'].toString() == 'null' || params['GuestID'].toString().isEmpty)) {
+      // Replace null/empty GuestID if it exists
+      if (guestIDFromStorage != null && guestIDFromStorage.isNotEmpty) {
+        params['GuestID'] = guestIDFromStorage;
+        debugPrint('✅ Replaced null/empty GuestID with value from storage');
       }
     }
     
