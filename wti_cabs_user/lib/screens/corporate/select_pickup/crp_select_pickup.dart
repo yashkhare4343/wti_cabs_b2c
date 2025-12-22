@@ -1,15 +1,24 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
-import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
-import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
-import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart' as location;
+import 'package:http/http.dart' as http;
 
+import '../../../common_widget/loader/popup_loader.dart';
+import '../../../core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
+import '../../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../../core/route_management/app_routes.dart';
+import '../../../utility/constants/colors/app_colors.dart';
+import '../../../utility/constants/fonts/common_fonts.dart';
+import '../../../core/services/storage_services.dart';
+import 'crp_pickup_search_screen.dart';
 
 class CrpSelectPickupScreen extends StatefulWidget {
   final String? selectedPickupType;
-  
+
   const CrpSelectPickupScreen({super.key, this.selectedPickupType});
 
   @override
@@ -17,371 +26,392 @@ class CrpSelectPickupScreen extends StatefulWidget {
 }
 
 class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
+  final CrpSelectPickupController crpSelectPickupController =
+      Get.put(CrpSelectPickupController());
 
-  final CrpSelectPickupController controller =
-  Get.put(CrpSelectPickupController());
+  GoogleMapController? mapController;
+  LatLng currentLocation = const LatLng(28.7041, 77.1025);
+  LatLng selectedLocation = const LatLng(28.7041, 77.1025);
+  String selectedAddress = 'Fetching address...';
+  bool isLoading = true;
+  Timer? _debounce;
 
-  bool _isProcessingTap = false;
+  // Google API Key
+  final String googleApiKey = "AIzaSyCWbmCiquOta1iF6um7_5_NFh6YM5wPL30";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastSelectedOrCurrent();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    mapController?.dispose();
+    super.dispose();
+  }
+
+  /// Get current location & center map
+  Future<void> _getCurrentLocation() async {
+    final loc = location.Location();
+    try {
+      if (!(await loc.serviceEnabled()) && !(await loc.requestService())) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      var permission = await loc.hasPermission();
+      if (permission == location.PermissionStatus.denied) {
+        permission = await loc.requestPermission();
+        if (permission != location.PermissionStatus.granted) {
+          setState(() => isLoading = false);
+          return;
+        }
+      }
+
+      final locData = await loc.getLocation();
+      if (locData.latitude == null || locData.longitude == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      setState(() {
+        currentLocation = LatLng(locData.latitude!, locData.longitude!);
+        selectedLocation = currentLocation;
+        isLoading = false;
+      });
+
+      mapController?.animateCamera(CameraUpdate.newLatLng(currentLocation));
+      await _getAddressFromLatLng(currentLocation);
+    } catch (e) {
+      debugPrint('Error getting current location: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  /// Get address from LatLng using Google Maps Geocoding API
+  Future<void> _getAddressFromLatLng(LatLng latLng) async {
+    setState(() {
+      selectedAddress = 'Fetching address...';
+    });
+
+    try {
+      final url =
+          "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latLng.latitude},${latLng.longitude}&key=$googleApiKey";
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        final results = jsonData["results"] as List;
+
+        if (results.isNotEmpty) {
+          final formattedAddress = results[0]["formatted_address"] ?? "";
+          setState(() {
+            selectedAddress = formattedAddress;
+          });
+        } else {
+          setState(() {
+            selectedAddress = 'Address not found';
+          });
+        }
+      } else {
+        setState(() {
+          selectedAddress = 'Error fetching address';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        selectedAddress = 'Error fetching address';
+      });
+      debugPrint('Error fetching address: $e');
+    }
+  }
+
+  /// Debounced map movement handler
+  void _onCameraMove(CameraPosition position) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        selectedLocation = position.target;
+      });
+      _getAddressFromLatLng(selectedLocation);
+    });
+  }
+
+  /// Load last selected place from storage; fall back to current location on first time
+  Future<void> _loadLastSelectedOrCurrent() async {
+    try {
+      final storage = StorageServices.instance;
+      final sourceTitle = await storage.read('sourceTitle');
+      final sourceLatStr = await storage.read('sourceLat');
+      final sourceLngStr = await storage.read('sourceLng');
+
+      if (sourceTitle == null ||
+          sourceLatStr == null ||
+          sourceLngStr == null) {
+        await _getCurrentLocation();
+        return;
+      }
+
+      final lat = double.tryParse(sourceLatStr);
+      final lng = double.tryParse(sourceLngStr);
+      if (lat == null || lng == null) {
+        await _getCurrentLocation();
+        return;
+      }
+
+      final lastLatLng = LatLng(lat, lng);
+      setState(() {
+        currentLocation = lastLatLng;
+        selectedLocation = lastLatLng;
+        selectedAddress = sourceTitle;
+        isLoading = false;
+      });
+
+      mapController?.animateCamera(CameraUpdate.newLatLng(lastLatLng));
+    } catch (e) {
+      debugPrint('Error loading last selected pickup: $e');
+      await _getCurrentLocation();
+    }
+  }
+
+  /// Open Google Places search on a separate screen
+  Future<void> _openPlaceSearch() async {
+    final SuggestionPlacesResponse? selected =
+        await Navigator.of(context).push<SuggestionPlacesResponse?>(
+      MaterialPageRoute(
+        builder: (_) => CrpPickupSearchScreen(),
+      ),
+    );
+
+    if (selected != null) {
+      final lat = selected.latitude;
+      final lng = selected.longitude;
+
+      if (lat != null && lng != null) {
+        final newLatLng = LatLng(lat, lng);
+        setState(() {
+          selectedLocation = newLatLng;
+        });
+        mapController?.animateCamera(CameraUpdate.newLatLng(newLatLng));
+        await _getAddressFromLatLng(newLatLng);
+      } else {
+        setState(() {
+          selectedAddress = selected.secondaryText.isNotEmpty
+              ? selected.secondaryText
+              : selected.primaryText;
+        });
+      }
+    }
+  }
+
+  /// Save location and update controller
+  Future<void> _saveLocation(LatLng latLng) async {
+    try {
+      // Get address from lat/lng
+      await _getAddressFromLatLng(latLng);
+
+      // Get place details using Google Places API
+      final placeDetailsUrl =
+          "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latLng.latitude},${latLng.longitude}&key=$googleApiKey";
+
+      final response = await http.get(Uri.parse(placeDetailsUrl));
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        final results = jsonData["results"] as List;
+
+        if (results.isNotEmpty) {
+          final result = results[0];
+          final formattedAddress = result["formatted_address"] ?? "";
+          final placeId = result["place_id"] ?? "";
+
+          // Extract address components
+          final addressComponents = result["address_components"] as List;
+          String city = '';
+          String state = '';
+          String country = '';
+
+          for (var component in addressComponents) {
+            final types = component["types"] as List;
+            if (types.contains("locality")) {
+              city = component["long_name"] ?? "";
+            } else if (types.contains("administrative_area_level_1")) {
+              state = component["long_name"] ?? "";
+            } else if (types.contains("country")) {
+              country = component["long_name"] ?? "";
+            }
+          }
+
+          // Create SuggestionPlacesResponse object
+          final place = SuggestionPlacesResponse(
+            primaryText: formattedAddress.split(',').first.trim(),
+            secondaryText: formattedAddress,
+            placeId: placeId,
+            types: [],
+            terms: [],
+            city: city,
+            state: state,
+            country: country,
+            isAirport: false,
+            latitude: latLng.latitude,
+            longitude: latLng.longitude,
+            placeName: formattedAddress,
+          );
+
+          // Update controller with selected place
+          crpSelectPickupController.selectedPlace.value = place;
+          crpSelectPickupController.searchController.text = place.primaryText;
+
+          // Persist last selected pickup for future sessions
+          final storage = StorageServices.instance;
+          await Future.wait([
+            storage.save('sourceTitle', place.primaryText),
+            storage.save('sourcePlaceId', place.placeId),
+            storage.save('sourceLat', latLng.latitude.toString()),
+            storage.save('sourceLng', latLng.longitude.toString()),
+          ]);
+
+          debugPrint('📍 Saved Corporate Pickup Location:');
+          debugPrint('Latitude: ${latLng.latitude}');
+          debugPrint('Longitude: ${latLng.longitude}');
+          debugPrint('Address: $formattedAddress');
+          debugPrint('Place ID: $placeId');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error saving location: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
-      // ---------------- APP BAR ----------------
       appBar: AppBar(
+        elevation: 0.8,
         backgroundColor: Colors.white,
-        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: AppColors.polylineGrey),
+          onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Select Pickup Location',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+        title: Text("Choose pickup location", style: CommonFonts.appBarText),
       ),
-
-      // ---------------- BODY ----------------
-      body: Column(
-        children: [
-          // ---------------- SEARCH BAR ----------------
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
-              ),
-              child: TextField(
-                controller: controller.searchController,
-                autofocus: true,
-
-                decoration: InputDecoration(
-                  hintText: "Search for a location...",
-                  hintStyle: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Colors.grey.shade600,
-                    size: 22,
-                  ),
-
-                  // CLEAR BUTTON
-                  suffixIcon: Obx(() =>
-                  controller.hasSearchText.value
-                      ? IconButton(
-                    icon: Icon(
-                      Icons.clear,
-                      color: Colors.grey.shade600,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      controller.searchController.clear();
-                      controller.suggestions.clear();
-                    },
-                  )
-                      : const SizedBox()),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            ),
-          ),
-
-          // ---------------- LOADING INDICATOR ----------------
-          Obx(() => controller.isLoading.value
-              ? const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          )
-              : const SizedBox.shrink()),
-
-          // ---------------- ERROR MESSAGE ----------------
-          Obx(() => controller.errorMessage.value.isNotEmpty
-              ? Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline,
-                      color: Colors.red.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      controller.errorMessage.value,
-                      style: TextStyle(
-                        color: Colors.red.shade700,
-                        fontSize: 12,
+      body: isLoading
+          ? const Center(child: PopupLoader(message: 'Loading...'))
+          : Stack(
+              children: [
+                Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.93,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1F000000),
+                            offset: Offset(0, 3),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 8),
+                        leading: const Icon(
+                          Icons.location_on,
+                          color: Color(0xFFE5383F),
+                        ),
+                        title: Text(
+                          selectedAddress,
+                          style: CommonFonts.prefixTextAuth,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          onPressed: () => context.pop(),
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.greyText2,
+                          ),
+                        ),
+                        onTap: _openPlaceSearch,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          )
-              : const SizedBox.shrink()),
-
-          // ---------------- SUGGESTIONS LIST ----------------
-          Expanded(
-            child: Obx(() {
-              final suggestions = controller.suggestions.value;
-
-              // No results
-              if (suggestions.isEmpty &&
-                  controller.hasSearchText.value &&
-                  !controller.isLoading.value) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off_rounded,
-                        size: 64,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No locations found",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: selectedLocation,
+                          zoom: 14,
                         ),
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        onCameraMove: _onCameraMove,
+                        markers: const {},
+                        onMapCreated: (controller) => mapController = controller,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Try searching with a different term",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              // Initial State
-              if (suggestions.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 64,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "Search for a pickup location",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Start typing to see suggestions",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              // Show list
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: suggestions.length,
-                separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: AppColors.bgGrey2),
-                itemBuilder: (context, index) {
-                  final place = suggestions[index];
-                  final isSelected =
-                      controller.selectedPlace.value?.placeId == place.placeId;
-
-
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _isProcessingTap
-                          ? null
-                          : () {
-                        if (_isProcessingTap) return;
-                        setState(() => _isProcessingTap = true);
-
-                        _handlePlaceSelection(context, place);
-
-                        Future.delayed(
-                            const Duration(milliseconds: 300), () {
-                          if (mounted) {
-                            setState(() => _isProcessingTap = false);
-                          }
-                        });
+                    ),
+                  ],
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const PopupLoader(message: 'Saving...'),
+                        );
+                        await _saveLocation(selectedLocation);
+                        if (context.mounted) Navigator.pop(context);
+                        if (context.mounted) {
+                          context.pop();
+                        }
                       },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.mainButtonBg.withOpacity(0.08)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.mainButtonBg
-                                    : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                place.isAirport
-                                    ? Icons.flight_takeoff
-                                    : Icons.location_on_rounded,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.grey.shade600,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    place.primaryText.split(',').first.trim(),
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      color: isSelected
-                                          ? AppColors.mainButtonBg
-                                          : const Color(0xFF1A1A1A),
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  if (place.secondaryText.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      place.secondaryText,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.mainButtonBg,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                          ],
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
+                      child: Text("Confirm Location",
+                          style: CommonFonts.primaryButtonText),
                     ),
-                  );
-                },
-              );
-            }),
-          ),
-        ],
-      ),
+                  ),
+                ),
+                Center(
+                  child: Image.asset('assets/images/source.png', height: 50),
+                ),
+                Positioned(
+                  right: 12,
+                  bottom: MediaQuery.of(context).size.height * 0.24,
+                  child: FloatingActionButton(
+                    mini: true,
+                    onPressed: () async {
+                      mapController?.animateCamera(
+                        CameraUpdate.newLatLng(currentLocation),
+                      );
+                      setState(() => selectedLocation = currentLocation);
+                      await _saveLocation(currentLocation);
+                    },
+                    backgroundColor: AppColors.bgGreen2,
+                    child: const Icon(Icons.my_location,
+                        color: AppColors.prefixAuthText, size: 20),
+                  ),
+                ),
+              ],
+            ),
     );
   }
-
-  // ---------------- HANDLE SELECTION ----------------
-  Future<void> _handlePlaceSelection(
-      BuildContext context, SuggestionPlacesResponse place) async {
-    // Fetch place details and store lat/lng
-    FocusScope.of(context).unfocus();
-
-    await controller.selectPlace(place);
-    
-    // Get the updated place with latitude and longitude from controller
-    final updatedPlace = controller.selectedPlace.value;
-    if (updatedPlace == null) {
-      // If for some reason the place is null, use the original
-      if (context.mounted) {
-        GoRouter.of(context).pushReplacement(
-          AppRoutes.cprBookingEngine,
-          extra: {
-            'selectedPickupType': widget.selectedPickupType,
-            'selectedPickupPlace': place.toJson(),
-          },
-        );
-      }
-      return;
-    }
-    
-    // Navigate back to booking engine and pass the selected place explicitly
-    // This ensures the selected place with lat/lng is displayed correctly
-    if (context.mounted) {
-      GoRouter.of(context).pushReplacement(
-        AppRoutes.cprBookingEngine,
-        extra: {
-          'selectedPickupType': widget.selectedPickupType,
-          'selectedPickupPlace': updatedPlace.toJson(),
-        },
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
+

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,6 +8,8 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:location/location.dart' as location;
+import 'package:http/http.dart' as http;
 import 'package:wti_cabs_user/common_widget/dropdown/cpr_select_box.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
@@ -319,6 +323,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   Get.put(CrpSelectDropController());
   final paymentModeController = Get.put(PaymentModeController());
 
+  // Google API Key for reverse geocoding current location
+  final String googleApiKey = "AIzaSyCWbmCiquOta1iF6um7_5_NFh6YM5wPL30";
+
   String? selectedPickupType;
   String? selectedBookingFor;
   String? selectedPaymentMethod;
@@ -605,12 +612,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   /// Prefill pickup with current location (name + lat/lng) if available.
   /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
-  /// Skips prefilling when navigating from corporate bottom nav (when selectedPickupType is passed).
   Future<void> _prefillPickupFromCurrentLocation() async {
     try {
-      // If selectedPickupType is passed, we're coming from corporate bottom nav, so don't prefill
-      if (widget.selectedPickupType != null) return;
-
       // If user has already selected a pickup in corporate flow, don't override it.
       if (crpSelectPickupController.selectedPlace.value != null) return;
 
@@ -620,20 +623,95 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       final sourceLngStr = await storage.read('sourceLng');
       final sourcePlaceId = await storage.read('sourcePlaceId') ?? '';
 
-      if (sourceTitle == null || sourceLatStr == null || sourceLngStr == null) {
+      // If we already have a stored pickup (from map/search), use it as prefill.
+      if (sourceTitle != null &&
+          sourceLatStr != null &&
+          sourceLngStr != null) {
+        final lat = double.tryParse(sourceLatStr);
+        final lng = double.tryParse(sourceLngStr);
+
+        if (lat != null && lng != null) {
+          final prefilledPlace = SuggestionPlacesResponse(
+            primaryText: sourceTitle,
+            secondaryText: '',
+            placeId: sourcePlaceId,
+            types: const [],
+            terms: const [],
+            city: '',
+            state: '',
+            country: '',
+            isAirport: false,
+            latitude: lat,
+            longitude: lng,
+            placeName: sourceTitle,
+          );
+
+          crpSelectPickupController.selectedPlace.value = prefilledPlace;
+          crpSelectPickupController.searchController.text = sourceTitle;
+          return;
+        }
+      }
+
+      // Otherwise, take the device's current GPS location as the starting pickup.
+      // This will also update storage so other screens see the same current location.
+      await _setPickupFromCurrentGps();
+    } catch (_) {
+      // Silently ignore any errors – prefill is best-effort only.
+    }
+  }
+
+  /// Fallback: fetch device's current GPS location, reverse geocode it,
+  /// and use that address as pickup. Saves to storage so other screens
+  /// (map, search) also see the same current-location address.
+  Future<void> _setPickupFromCurrentGps() async {
+    try {
+      final loc = location.Location();
+
+      if (!(await loc.serviceEnabled()) && !(await loc.requestService())) {
         return;
       }
 
-      final lat = double.tryParse(sourceLatStr);
-      final lng = double.tryParse(sourceLngStr);
-      if (lat == null || lng == null) {
+      var permission = await loc.hasPermission();
+      if (permission == location.PermissionStatus.denied) {
+        permission = await loc.requestPermission();
+        if (permission != location.PermissionStatus.granted) {
+          return;
+        }
+      }
+
+      final locData = await loc.getLocation();
+      if (locData.latitude == null || locData.longitude == null) {
         return;
       }
 
-      final prefilledPlace = SuggestionPlacesResponse(
-        primaryText: sourceTitle,
-        secondaryText: '',
-        placeId: sourcePlaceId,
+      final lat = locData.latitude!;
+      final lng = locData.longitude!;
+
+      // Reverse geocode to get a human-readable address
+      String addressTitle = 'Current location';
+      String fullAddress = '';
+      try {
+        final url =
+            "https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$googleApiKey";
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final jsonData = jsonDecode(response.body);
+          final results = jsonData["results"] as List;
+          if (results.isNotEmpty) {
+            fullAddress = results[0]["formatted_address"] ?? '';
+            if (fullAddress.isNotEmpty) {
+              addressTitle = fullAddress.split(',').first.trim();
+            }
+          }
+        }
+      } catch (_) {
+        // If reverse geocoding fails, we still fall back to generic "Current location"
+      }
+
+      final place = SuggestionPlacesResponse(
+        primaryText: addressTitle,
+        secondaryText: fullAddress,
+        placeId: '',
         types: const [],
         terms: const [],
         city: '',
@@ -642,13 +720,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         isAirport: false,
         latitude: lat,
         longitude: lng,
-        placeName: sourceTitle,
+        placeName: fullAddress.isNotEmpty ? fullAddress : addressTitle,
       );
 
-      crpSelectPickupController.selectedPlace.value = prefilledPlace;
-      crpSelectPickupController.searchController.text = sourceTitle;
+      crpSelectPickupController.selectedPlace.value = place;
+      crpSelectPickupController.searchController.text = addressTitle;
+
+      final storage = StorageServices.instance;
+      await Future.wait([
+        storage.save('sourceTitle', addressTitle),
+        storage.save('sourceLat', lat.toString()),
+        storage.save('sourceLng', lng.toString()),
+      ]);
     } catch (_) {
-      // Silently ignore any errors – prefill is best-effort only.
+      // Best-effort only – ignore failures.
     }
   }
 
