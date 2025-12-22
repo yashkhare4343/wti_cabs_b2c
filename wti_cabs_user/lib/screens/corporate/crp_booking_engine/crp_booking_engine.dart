@@ -361,6 +361,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return 0;
   }
 
+  bool get _isAirportRunType {
+    final type = selectedPickupType ?? widget.selectedPickupType;
+    if (type == null) return false;
+    return type.toLowerCase().contains('airport');
+  }
+
   /// Apply all possible prefilled data using values returned by the corporate
   /// login API (`CrpLoginResponse`) once the respective lists are loaded.
   ///
@@ -614,7 +620,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
   Future<void> _prefillPickupFromCurrentLocation() async {
     try {
-      // If user has already selected a pickup in corporate flow, don't override it.
+      // For Airport run type, ALWAYS start from current location,
+      // even if a previous pickup was selected earlier.
+      if (_isAirportRunType) {
+        await _setPickupFromCurrentGps();
+        return;
+      }
+
+      // For other run types, if user has already selected a pickup
+      // in corporate flow, don't override it.
       if (crpSelectPickupController.selectedPlace.value != null) return;
 
       final storage = StorageServices.instance;

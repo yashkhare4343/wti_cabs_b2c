@@ -142,43 +142,19 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
 
   /// Load last selected place from storage; fall back to current location on first time
   Future<void> _loadLastSelectedOrCurrent() async {
-    try {
-      final storage = StorageServices.instance;
-      final sourceTitle = await storage.read('sourceTitle');
-      final sourceLatStr = await storage.read('sourceLat');
-      final sourceLngStr = await storage.read('sourceLng');
-
-      if (sourceTitle == null ||
-          sourceLatStr == null ||
-          sourceLngStr == null) {
-        await _getCurrentLocation();
-        return;
-      }
-
-      final lat = double.tryParse(sourceLatStr);
-      final lng = double.tryParse(sourceLngStr);
-      if (lat == null || lng == null) {
-        await _getCurrentLocation();
-        return;
-      }
-
-      final lastLatLng = LatLng(lat, lng);
-      setState(() {
-        currentLocation = lastLatLng;
-        selectedLocation = lastLatLng;
-        selectedAddress = sourceTitle;
-        isLoading = false;
-      });
-
-      mapController?.animateCamera(CameraUpdate.newLatLng(lastLatLng));
-    } catch (e) {
-      debugPrint('Error loading last selected pickup: $e');
-      await _getCurrentLocation();
-    }
+    // For corporate booking flow, always start from the device's
+    // current GPS location when opening the pickup map screen.
+    await _getCurrentLocation();
   }
 
   /// Open Google Places search on a separate screen
   Future<void> _openPlaceSearch() async {
+    // Clear any old search text/suggestions before opening search UI,
+    // while keeping the currently selected pickup location intact.
+    crpSelectPickupController.searchController.clear();
+    crpSelectPickupController.suggestions.clear();
+    crpSelectPickupController.hasSearchText.value = false;
+
     final SuggestionPlacesResponse? selected =
         await Navigator.of(context).push<SuggestionPlacesResponse?>(
       MaterialPageRoute(
@@ -398,11 +374,8 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
                   child: FloatingActionButton(
                     mini: true,
                     onPressed: () async {
-                      mapController?.animateCamera(
-                        CameraUpdate.newLatLng(currentLocation),
-                      );
-                      setState(() => selectedLocation = currentLocation);
-                      await _saveLocation(currentLocation);
+                      // Refresh device GPS location and move camera there
+                      await _getCurrentLocation();
                     },
                     backgroundColor: AppColors.bgGreen2,
                     child: const Icon(Icons.my_location,

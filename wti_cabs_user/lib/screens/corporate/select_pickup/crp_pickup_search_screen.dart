@@ -18,33 +18,6 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
   final CrpSelectPickupController crpSelectPickupController =
       Get.put(CrpSelectPickupController());
 
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _prefillLastSelected();
-  }
-
-  Future<void> _prefillLastSelected() async {
-    try {
-      final storage = StorageServices.instance;
-      final lastTitle = await storage.read('sourceTitle');
-
-      if (lastTitle != null && lastTitle.isNotEmpty) {
-        crpSelectPickupController.searchController.text = lastTitle;
-      }
-    } catch (_) {
-      // Ignore storage errors; user can still search normally
-    } finally {
-      if (mounted) {
-        setState(() {
-          _initialized = true;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,7 +39,7 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
             Obx(
               () => TextField(
                 controller: crpSelectPickupController.searchController,
-                autofocus: _initialized,
+                autofocus: true,
                 decoration: InputDecoration(
                   hintText: 'Enter pickup location',
                   prefixIcon: const Icon(Icons.search),
