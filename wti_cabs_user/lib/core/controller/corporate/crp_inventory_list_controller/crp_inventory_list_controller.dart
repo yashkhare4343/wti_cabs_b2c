@@ -20,7 +20,7 @@ class CrpInventoryListController extends GetxController {
 
       final result =
           await apiService.getRequestCrp<CrpCarModelsResponse>(
-        'GetAllCarModels',
+        'GetAllCarModelsV1',
         params,
         (json) => CrpCarModelsResponse.fromJson(json),
         context!,

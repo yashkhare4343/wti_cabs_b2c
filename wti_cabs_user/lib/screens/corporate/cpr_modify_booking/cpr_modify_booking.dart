@@ -34,9 +34,14 @@ import '../../../core/services/storage_services.dart';
 import '../../../core/api/corporate/cpr_api_services.dart';
 
 class CprModifyBooking extends StatefulWidget {
-  const CprModifyBooking({super.key, required this.orderId});
+  const CprModifyBooking({
+    super.key,
+    required this.orderId,
+    this.initialCarModelName,
+  });
 
   final String orderId;
+  final String? initialCarModelName;
 
   @override
   State<CprModifyBooking> createState() => _CprModifyBookingState();
@@ -60,6 +65,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   bool _hasAppliedFieldPrefill = false;
   bool _hasAppliedSelectionPrefill = false;
   bool _showSkeletonLoader = true;
+  bool _hasAppliedCarModelPrefill = false;
 
   Future<void> fetchParameter() async {
     // Resolve identifiers from storage; fallback to in-memory login info when returning from other screens
@@ -164,6 +170,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     ever(controller.genderList, (_) => _applyPrefilledSelectionsIfReady());
     ever(carProviderController.carProviderList,
         (_) => _applyPrefilledSelectionsIfReady());
+    // Apply car model prefill once inventory models are loaded
+    ever(crpInventoryListController.models, (_) => _applyCarModelPrefill());
   }
 
   Future<void> _loadBookingDetails() async {
@@ -421,6 +429,26 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     if (runTypeReady && paymentReady && genderReady && providerReady) {
       _hasAppliedSelectionPrefill =
           runTypeApplied || paymentApplied || genderApplied || providerApplied;
+    }
+  }
+
+  /// Prefill car model in dropdown using the passed car model name (if any)
+  void _applyCarModelPrefill() {
+    if (_hasAppliedCarModelPrefill) return;
+    final targetName = widget.initialCarModelName;
+    if (targetName == null || targetName.trim().isEmpty) return;
+
+    final models = crpInventoryListController.models;
+    if (models.isEmpty) return;
+
+    final normalizedTarget = targetName.trim().toLowerCase();
+    final match = models.firstWhereOrNull(
+      (m) => (m.carType ?? '').trim().toLowerCase() == normalizedTarget,
+    );
+
+    if (match != null) {
+      crpInventoryListController.updateSelected(match);
+      _hasAppliedCarModelPrefill = true;
     }
   }
 

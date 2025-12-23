@@ -963,7 +963,7 @@ class _RouteCard extends StatelessWidget {
             /// BOTTOM SECTION
             Container(
               padding: const EdgeInsets.only(
-                  left: 48, top: 10, bottom: 10, right: 20),
+                  left: 16, top: 10, bottom: 10, right: 20),
               decoration: const BoxDecoration(
                 color: Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.only(
@@ -1179,27 +1179,50 @@ class _VehicleFilterTabs extends StatelessWidget {
   }
 }
 
-class _VehicleCard extends StatelessWidget {
+class _VehicleCard extends StatefulWidget {
   final CrpCarModel model;
   final CrpBookingData? bookingData;
 
   const _VehicleCard({required this.model, this.bookingData});
 
   @override
+  State<_VehicleCard> createState() => _VehicleCardState();
+}
+
+class _VehicleCardState extends State<_VehicleCard> {
+  /// Extracts category from carType string like "Hyundai Accent[Intermediate]" -> "Intermediate"
+  String? _extractCategory(String? carType) {
+    if (carType == null || carType.isEmpty) return null;
+    final match = RegExp(r'\[([^\]]+)\]').firstMatch(carType);
+    return match?.group(1);
+  }
+
+  /// Extracts car name from carType string like "Hyundai Accent[Intermediate]" -> "Hyundai Accent"
+  String _extractCarName(String? carType) {
+    if (carType == null || carType.isEmpty) return '';
+    final bracketIndex = carType.indexOf('[');
+    if (bracketIndex == -1) return carType;
+    return carType.substring(0, bracketIndex).trim();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final carName = _extractCarName(widget.model.carType);
+    final category = _extractCategory(widget.model.carType);
+
     return GestureDetector(
         onTap: () {
           GoRouter.of(context).push(
             AppRoutes.cprBookingConfirmation,
             extra: {
-              'carModel': model.toJson(),
-              'bookingData': bookingData?.toJson(),
+              'carModel': widget.model.toJson(),
+              'bookingData': widget.bookingData?.toJson(),
             },
           );
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -1217,10 +1240,16 @@ class _VehicleCard extends StatelessWidget {
               // Car image
               Container(
                 width: 71,
-                height: 71,
-                child: Image.asset(
-                  'assets/images/outstation.png',
+                height: 51,
+                child: Image.network(
+                   widget.model.carImageUrl??'',
                   fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -1229,35 +1258,57 @@ class _VehicleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      model.carType ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF373737)),
+                    // Car name and category in a row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            carName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF373737)),
+                          ),
+                        ),
+                        if (category != null && category.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2B64E5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              category,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    // Row(
-                    //   children: [
-                    //     SvgPicture.asset('assets/images/passenger.svg', width: 16, height: 16,),
-                    //     const SizedBox(width: 4),
-                    //     const Text('4', style: TextStyle(fontSize: 11)),
-                    //     const SizedBox(width: 8),
-                    //     Container(width: 9, height: 9, decoration: BoxDecoration(
-                    //       color: Color(0xFF949494)
-                    //     ),),
-                    //     const SizedBox(width: 8),
-                    //     const Icon(Icons.luggage_outlined, size: 14, color: Colors.grey),
-                    //     const SizedBox(width: 4),
-                    //     const Text('2', style: TextStyle(fontSize: 11)),
-                    //     const SizedBox(width: 10),
-                    //     const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                    //     const SizedBox(width: 4),
-                    //     const Text('2 hrs', style: TextStyle(fontSize: 11)),
-                    //   ],
-                    // ),
+                    Row(
+                      children: [
+                        SvgPicture.asset('assets/images/passenger.svg', width: 12, height: 12,),
+                        const SizedBox(width: 4),
+                         Text(widget.model.seats.toString()??'', style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 8),
+                        Container(width: 9, height: 9, decoration: const BoxDecoration(
+                          color: Color(0xFF949494)
+                        ),),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.ac_unit, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        const Text('AC', style: TextStyle(fontSize: 11)),
+                      ],
+                    ),
                   ],
                 ),
               ),

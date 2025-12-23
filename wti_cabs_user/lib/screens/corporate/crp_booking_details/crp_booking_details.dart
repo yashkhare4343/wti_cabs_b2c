@@ -432,13 +432,18 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       Expanded(
                         child: _buildActionButton(
                           'Edit Booking',
-                              () {
-                            // Navigate to modify booking screen with booking ID
-                            final orderId = widget.booking.bookingId?.toString() ?? widget.booking.bookingNo ?? '';
+                          () {
+                            // Navigate to modify booking screen with booking ID and car model
+                            final orderId = widget.booking.bookingId?.toString() ??
+                                widget.booking.bookingNo ??
+                                '';
                             if (orderId.isNotEmpty) {
                               GoRouter.of(context).push(
                                 AppRoutes.cprModifyBooking,
-                                extra: orderId,
+                                extra: {
+                                  'orderId': orderId,
+                                  'carModelName': widget.booking.model,
+                                },
                               );
                             }
                           },

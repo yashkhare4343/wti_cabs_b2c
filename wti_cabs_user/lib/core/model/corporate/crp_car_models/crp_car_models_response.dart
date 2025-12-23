@@ -36,20 +36,28 @@ class CrpCarModelsResponse {
 class CrpCarModel {
   final int? makeId;
   final String? carType;
+  final String? carImageUrl;
+  final int? seats;
 
   CrpCarModel({
     this.makeId,
     this.carType,
+    this.carImageUrl,
+    this.seats
   });
 
   factory CrpCarModel.fromJson(Map<String, dynamic> json) => CrpCarModel(
         makeId: json['MakeID'] as int?,
         carType: json['CarType'] as String?,
+        carImageUrl: json['carImageUrl'] as String?,
+        seats: json['seats'] as int?
       );
 
   Map<String, dynamic> toJson() => {
         'MakeID': makeId,
         'CarType': carType,
+        'carImageUrl':carImageUrl,
+        'seats': seats
       };
 }
 

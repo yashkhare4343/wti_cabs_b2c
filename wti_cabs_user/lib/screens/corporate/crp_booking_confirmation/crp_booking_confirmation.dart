@@ -63,10 +63,21 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
     _loadInitialData();
   }
 
+  /// Shorten address-like text to keep UI clean.
+  /// Adds ".." when truncated.
+  String _shortenAddress(String text, {int maxChars = 40}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars - 2)}..';
+  }
+
   Future<void> _loadInitialData() async {
     if (widget.bookingData != null) {
-      sourceController.text = widget.bookingData!.pickupPlace?.primaryText ?? '';
-      destinationController.text = widget.bookingData!.dropPlace?.primaryText ?? '';
+      final pickupText = widget.bookingData!.pickupPlace?.primaryText ?? '';
+      final dropText = widget.bookingData!.dropPlace?.primaryText ?? '';
+
+      // Apply character limit so fields don't overflow UI
+      sourceController.text = _shortenAddress(pickupText, maxChars: 40);
+      destinationController.text = _shortenAddress(dropText, maxChars: 40);
     }
   }
 
@@ -1014,6 +1025,13 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
     return DateFormat('yyyy-MM-ddTHH:mm:ss').format(dateTime);
   }
 
+  /// Shorten strings sent to API for addresses / notes
+  /// to avoid excessively long values.
+  String _shortenForApi(String text, {int maxChars = 80}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars - 2)}..';
+  }
+
   int? _getRunTypeID(String? pickupType) {
     if (pickupType == null) return null;
     
@@ -1171,9 +1189,11 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final payMode = bookingData?.paymentMode?.id ?? 1;
         final bookingType = bookingData?.bookingType == 'Corporate' ? '1' : '0';
         
-        // Addresses
-        final pickupAddress = bookingData?.pickupPlace?.primaryText ?? '';
-        final dropAddress = bookingData?.dropPlace?.primaryText ?? '';
+        // Addresses (character-limited)
+        final rawPickupAddress = bookingData?.pickupPlace?.primaryText ?? '';
+        final rawDropAddress = bookingData?.dropPlace?.primaryText ?? '';
+        final pickupAddress = _shortenForApi(rawPickupAddress, maxChars: 80);
+        final dropAddress = _shortenForApi(rawDropAddress, maxChars: 80);
         
         // Coordinates
         final frmlat = bookingData?.pickupPlace?.latitude?.toString() ?? '';
@@ -1183,7 +1203,10 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         
         // Optional fields
         final arrivalDetails = bookingData?.flightDetails ?? '';
-        final specialInstructions = widget.bookingData?.specialInstruction ?? '';
+        final specialInstructionsRaw =
+            widget.bookingData?.specialInstruction ?? '';
+        final specialInstructions =
+            _shortenForApi(specialInstructionsRaw, maxChars: 120);
         final costCode = widget.bookingData?.costCode ?? '';
         final remarks = widget.bookingData?.referenceNumber ?? '';
         final transNo = "";
@@ -1326,6 +1349,15 @@ class RouteCard extends StatelessWidget {
 
   const RouteCard({this.bookingData});
 
+  /// Safely shortens a text to a maximum number of characters.
+  /// Adds ".." suffix if truncated.
+  /// Uses character length only (not widget width) to keep
+  /// strings compact inside the route chip.
+  String _shorten(String text, {int maxChars = 25}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars - 2)}..';
+  }
+
   String _formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return '';
     return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
@@ -1336,14 +1368,24 @@ class RouteCard extends StatelessWidget {
       return 'Please select pickup and drop locations';
     }
 
-    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
-    final drop = bookingData!.dropPlace?.primaryText ?? 'Drop location';
+    final pickupPlace = bookingData!.pickupPlace;
+    final dropPlace = bookingData!.dropPlace;
 
-    // Truncate if too long
-    String pickupText = pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
-    String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
 
-    return '$pickupText to $dropText';
+    final dropPrimary = dropPlace?.primaryText ?? 'Drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
+
+    final combined = '$pickupFull to $dropFull';
+    // Slightly higher limit for combined route text
+    return _shorten(combined, maxChars: 40);
   }
 
   String _getPickupRouteText() {
@@ -1351,12 +1393,15 @@ class RouteCard extends StatelessWidget {
       return 'Please select pickup locations';
     }
 
-    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
 
-    // Truncate if too long
-    String pickupText = pickup.length > 30 ? '${pickup.substring(0, 25)}..' : pickup;
-
-    return '$pickupText';
+    // Character-limited pickup text (single-line chip)
+    return _shorten(pickupFull, maxChars: 25);
   }
 
   String _getDropRouteText() {
@@ -1364,12 +1409,15 @@ class RouteCard extends StatelessWidget {
       return 'Please select drop locations';
     }
 
-    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
 
-    // Truncate if too long
-    String dropText = drop.length > 30 ? '${drop.substring(0, 25)}..' : drop;
-
-    return '$dropText';
+    // Character-limited drop text (single-line chip)
+    return _shorten(dropFull, maxChars: 25);
   }
 
   String _getPickupTypeText() {

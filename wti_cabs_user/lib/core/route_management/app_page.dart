@@ -303,6 +303,7 @@ class AppPages {
         
         return _platformPage(CprModifyBooking(
           orderId: orderId,
+          initialCarModelName: carModelName,
         ));
       },
     ),
