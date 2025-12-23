@@ -287,8 +287,23 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprModifyBooking,
       pageBuilder: (context, state) {
-        final orderId = state.extra as String? ?? state.uri.queryParameters['orderId'] ?? '';
-        return _platformPage(CprModifyBooking(orderId: orderId));
+        final extra = state.extra;
+        String orderId = '';
+        String? carModelName;
+        
+        if (extra is String) {
+          orderId = extra;
+        } else if (extra is Map<String, dynamic>) {
+          orderId = extra['orderId'] as String? ?? '';
+          carModelName = extra['carModelName'] as String?;
+        } else {
+          orderId = state.uri.queryParameters['orderId'] ?? '';
+          carModelName = state.uri.queryParameters['carModelName'];
+        }
+        
+        return _platformPage(CprModifyBooking(
+          orderId: orderId,
+        ));
       },
     ),
     GoRoute(

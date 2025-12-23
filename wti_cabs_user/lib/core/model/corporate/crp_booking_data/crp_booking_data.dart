@@ -19,6 +19,7 @@ class CrpBookingData {
   final CarProviderModel? carProvider;
   final int? selectedTabIndex; // For tabs (when run types <= 3)
   final int? entityId; // Selected corporate entity ID
+  final int? runTypeId; // Selected run type ID
 
   CrpBookingData({
     this.pickupPlace,
@@ -36,6 +37,7 @@ class CrpBookingData {
     this.carProvider,
     this.selectedTabIndex,
     this.entityId,
+    this.runTypeId,
   });
 
   Map<String, dynamic> toJson() {
@@ -81,12 +83,15 @@ class CrpBookingData {
         'genderID': gender!.genderID,
         'gender': gender!.gender,
       } : null,
-      'carProvider': carProvider != null ? {
-        'providerID': carProvider!.providerID,
-        'providerName': carProvider!.providerName,
-      } : null,
+      'carProvider': carProvider != null
+          ? {
+              'providerID': carProvider!.providerID,
+              'providerName': carProvider!.providerName,
+            }
+          : null,
       'selectedTabIndex': selectedTabIndex,
       'entityId': entityId,
+      'runTypeId': runTypeId,
     };
   }
 
@@ -117,10 +122,13 @@ class CrpBookingData {
           ? GenderModel.fromJson(json['gender'] as Map<String, dynamic>)
           : null,
       carProvider: json['carProvider'] != null && json['carProvider'] is Map
-          ? CarProviderModel.fromJson(json['carProvider'] as Map<String, dynamic>)
+          ? CarProviderModel.fromJson(
+              json['carProvider'] as Map<String, dynamic>,
+            )
           : null,
       selectedTabIndex: json['selectedTabIndex'] as int?,
       entityId: json['entityId'] as int?,
+      runTypeId: json['runTypeId'] as int?,
     );
   }
 }

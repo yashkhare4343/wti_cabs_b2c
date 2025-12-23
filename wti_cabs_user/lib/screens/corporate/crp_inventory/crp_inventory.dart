@@ -64,12 +64,27 @@ class _CrpInventoryState extends State<CrpInventory> {
     await fetchParameter();
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
+    
+    // Get runTypeId from booking data if available, otherwise default to 1
+    int runTypeId = 1;
+    if (widget.bookingData != null) {
+      try {
+        final parsedBookingData = CrpBookingData.fromJson(widget.bookingData!);
+        if (parsedBookingData.runTypeId != null &&
+            parsedBookingData.runTypeId! > 0) {
+          runTypeId = parsedBookingData.runTypeId!;
+        }
+      } catch (e) {
+        print('Error parsing booking data for runTypeId: $e');
+      }
+    }
+    
     final Map<String, dynamic> params = {
       'token': token,
       'user': user??email,
       'CorpID': corpId,
       'BranchID': branchId,
-      'RunTypeID': 1
+      'RunTypeID': runTypeId
     };
     await controller.fetchCarModels(params, context);
   }
@@ -816,17 +831,17 @@ class _RouteCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x40000000), // #00000040
-            offset: Offset(0, 0.2), // matches 0px 1px
-            blurRadius: 8, // matches 3px
-            spreadRadius: 0, // matches 0px
+            color: Color(0x05000000), // ultra subtle, barely perceptible
+            offset: Offset(0, 0.5),
+            blurRadius: 1,
+            spreadRadius: 0,
           ),
         ],
       ),
 
       // Ensures all child corners are clipped properly
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           children: [
             /// TOP CARD
@@ -835,9 +850,17 @@ class _RouteCard extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x05000000), // ultra subtle, barely perceptible
+                    offset: Offset(0, 0.5),
+                    blurRadius: 1,
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -930,8 +953,8 @@ class _RouteCard extends StatelessWidget {
                   Text(
                     _formatDateTime(bookingData?.pickupDateTime),
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFF717171),
                     ),
                   ),
@@ -941,8 +964,8 @@ class _RouteCard extends StatelessWidget {
                       child: Text(
                         _getPickupTypeText(),
                         style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFF4082F1),
                         ),
                       ),
@@ -1098,7 +1121,7 @@ class _VehicleFilterTabs extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 22,
+      height: 32,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1110,16 +1133,16 @@ class _VehicleFilterTabs extends StatelessWidget {
           return GestureDetector(
             onTap: () => onCategorySelected(category),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF2B64E5) : Color(0xFFE2E2E2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(17),
               ),
               child: Text(
                 category,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   color: isSelected ? Colors.white : Colors.black,
                 ),

@@ -18,7 +18,7 @@ class CrpBookingHistoryController extends GetxController {
     int? monthId,
     int status = -1,
     int startRowIndex = 0,
-    int maximumRows = 10,
+    int maximumRows = 40,
     int providerId = 1,
     int fiscalYear = 2026,
     String criteria = "",

@@ -790,6 +790,43 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return hours > 0 ? hours : 0;
   }
 
+  /// Safely check if pickup and drop refer to the same location.
+  /// Handles cases where placeId may be empty (typed or map-selected locations).
+  bool _arePickupAndDropSame(
+      SuggestionPlacesResponse pickup, SuggestionPlacesResponse drop) {
+    // If both have coordinates, compare lat/lng
+    if (pickup.latitude != null &&
+        pickup.longitude != null &&
+        drop.latitude != null &&
+        drop.longitude != null) {
+      final latDiff = (pickup.latitude! - drop.latitude!).abs();
+      final lngDiff = (pickup.longitude! - drop.longitude!).abs();
+      // Treat as same if extremely close (within ~1e-4 degrees)
+      if (latDiff < 0.0001 && lngDiff < 0.0001) {
+        return true;
+      }
+    }
+
+    // If both have non-empty placeId, fall back to ID comparison
+    if ((pickup.placeId ?? '').isNotEmpty &&
+        (drop.placeId ?? '').isNotEmpty &&
+        pickup.placeId == drop.placeId) {
+      return true;
+    }
+
+    // As a last resort, compare normalized primaryText
+    final pickupText = (pickup.primaryText ?? '').trim().toLowerCase();
+    final dropText = (drop.primaryText ?? '').trim().toLowerCase();
+
+    if (pickupText.isNotEmpty &&
+        dropText.isNotEmpty &&
+        pickupText == dropText) {
+      return true;
+    }
+
+    return false;
+  }
+
   CarProviderModel? _getValidCarProviderValue(
       CarProviderModel? selectedValue,
       List<CarProviderModel> list,
@@ -1541,6 +1578,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
     if (allRunTypes.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    // If no pickup type is selected yet, default to the first run type.
+    // This applies only after run types are loaded and no preselection was applied.
+    if (selectedPickupType == null) {
+      selectedPickupType = allRunTypes.first.run;
     }
 
     return Column(
@@ -3027,7 +3070,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
     // 3. Validate Pickup and Drop are not the same (Required)
     if (pickupPlace != null && dropPlace != null) {
-      if (pickupPlace.placeId == dropPlace.placeId) {
+      if (_arePickupAndDropSame(pickupPlace, dropPlace)) {
         pickupLocationError = 'Pickup and drop locations cannot be the same';
         dropLocationError = 'Pickup and drop locations cannot be the same';
         errors.add(pickupLocationError!);
@@ -3151,6 +3194,16 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         runTypeController.runTypes.value?.runTypes ?? [];
     String? finalPickupType = selectedPickupType;
 
+    // Find the runTypeID from the selected pickup type
+    int? selectedRunTypeId;
+    if (finalPickupType != null && allRunTypes.isNotEmpty) {
+      final matchedRunType = allRunTypes.firstWhere(
+        (rt) => rt.run == finalPickupType,
+        orElse: () => allRunTypes.first,
+      );
+      selectedRunTypeId = matchedRunType.runTypeID;
+    }
+
     // Create booking data object
     final bookingData = CrpBookingData(
       pickupPlace: crpSelectPickupController.selectedPlace.value,
@@ -3176,6 +3229,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       carProvider: carProviderController.selectedCarProvider.value,
       selectedTabIndex: null, // No longer using tabs, always use dropdown
       entityId: selectedCorporate?.entityId,
+      runTypeId: selectedRunTypeId,
     );
 
     // Navigate to inventory screen with booking data
