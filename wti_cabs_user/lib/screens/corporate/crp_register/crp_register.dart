@@ -349,7 +349,7 @@ class _CprRegisterState extends State<CprRegister> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
           FocusScope.of(context).unfocus();
-          context.go(AppRoutes.cprLandingPage);
+          GoRouter.of(context).push(AppRoutes.cprLandingPage);
         }
       },
       child: Scaffold(

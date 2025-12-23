@@ -773,20 +773,39 @@ class _RouteCard extends StatelessWidget {
     return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
   }
 
+  /// Safely shortens a text to a maximum number of characters.
+  /// Adds ".." suffix if truncated.
+  /// This uses character length only (not widget width) to keep
+  /// strings compact inside the RouteCard.
+  String _shorten(String text, {int maxChars = 25}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars - 2)}..';
+  }
+
   String _getRouteText() {
     if (bookingData == null) {
       return 'Please select pickup and drop locations';
     }
 
-    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
-    final drop = bookingData!.dropPlace?.primaryText ?? 'Drop location';
+    final pickupPlace = bookingData!.pickupPlace;
+    final dropPlace = bookingData!.dropPlace;
 
-    // Truncate if too long
-    String pickupText =
-    pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
-    String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
+    // Build full text using primary + secondary, similar to booking screen
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
 
-    return '$pickupText to $dropText';
+    final dropPrimary = dropPlace?.primaryText ?? 'Drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
+
+    final combined = '$pickupFull to $dropFull';
+    // Slightly higher limit for the combined route line
+    return _shorten(combined, maxChars: 40);
   }
 
   String _getPickupRouteText() {
@@ -794,13 +813,15 @@ class _RouteCard extends StatelessWidget {
       return 'Please select pickup locations';
     }
 
-    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
 
-    // Truncate if too long
-    String pickupText =
-    pickup.length > 30 ? '${pickup.substring(0, 25)}..' : pickup;
-
-    return '$pickupText';
+    // Enforce a strict character length for the pickup text
+    return _shorten(pickupFull, maxChars: 25);
   }
 
   String _getDropRouteText() {
@@ -808,12 +829,15 @@ class _RouteCard extends StatelessWidget {
       return 'Please select drop locations';
     }
 
-    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
 
-    // Truncate if too long
-    String dropText = drop.length > 30 ? '${drop.substring(0, 25)}..' : drop;
-
-    return '$dropText';
+    // Enforce a strict character length for the drop text
+    return _shorten(dropFull, maxChars: 25);
   }
 
   String _getPickupTypeText() {
@@ -1311,13 +1335,15 @@ class TripContainer extends StatelessWidget {
       return 'Please select pickup locations';
     }
 
-    final pickup = bookingData!.pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickup = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
 
-    // Truncate if too long
-    String pickupText =
-    pickup.length > 20 ? '${pickup.substring(0, 20)}..' : pickup;
-
-    return '$pickupText';
+    // Let the Text widget handle truncation
+    return pickup;
   }
 
   String _getDropRouteText() {
@@ -1325,12 +1351,15 @@ class TripContainer extends StatelessWidget {
       return 'Please select drop locations';
     }
 
-    final drop = bookingData!.dropPlace?.primaryText ?? 'drop location';
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final drop = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
 
-    // Truncate if too long
-    String dropText = drop.length > 20 ? '${drop.substring(0, 20)}..' : drop;
-
-    return '$dropText';
+    // Let the Text widget handle truncation
+    return drop;
   }
 
   String _getPickupTypeText() {

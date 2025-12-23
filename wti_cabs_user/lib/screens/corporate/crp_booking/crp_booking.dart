@@ -284,7 +284,9 @@ class _CrpBookingState extends State<CrpBooking> {
             parsedDate = DateFormat('dd/MM/yyyy').parse(booking.cabRequiredOn!);
           } catch (e2) {
             // If all parsing fails, use current date
-            parsedDate = DateTime.now();
+            // parsedDate = DateTime.now();
+            parsedDate = DateFormat('dd/MM/yyyy').parse(booking.cabRequiredOn!);
+
           }
         }
         formattedDate = DateFormat('dd MMM yyyy').format(parsedDate);
@@ -506,7 +508,7 @@ class _CrpBookingState extends State<CrpBooking> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Booked on:- $formattedDate',
+                        'Pickup on:- $formattedDate',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade700,
