@@ -14,6 +14,8 @@ import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../../common_widget/buttons/outline_button.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
+import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
 
 class CrpBooking extends StatefulWidget {
   const CrpBooking({super.key});
@@ -24,10 +26,18 @@ class CrpBooking extends StatefulWidget {
 
 class _CrpBookingState extends State<CrpBooking> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _filterSearchController = TextEditingController();
   final CrpBookingHistoryController _controller =
       Get.put(CrpBookingHistoryController());
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   bool _showShimmer = true;
+  
+  // Filter state
+  String _selectedCategory = 'Car Rental City';
+  String? _selectedCity;
+  String? _selectedCarProvider;
+  String? _selectedBookingMonth;
+  String? _selectedFiscalYear;
 
   @override
   void initState() {
@@ -83,6 +93,7 @@ class _CrpBookingState extends State<CrpBooking> {
   @override
   void dispose() {
     _searchController.dispose();
+    _filterSearchController.dispose();
     super.dispose();
   }
 
@@ -147,67 +158,18 @@ class _CrpBookingState extends State<CrpBooking> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // // Search Bar
-                        // Container(
-                        //   height: 48,
-                        //   decoration: BoxDecoration(
-                        //     color: Colors.white,
-                        //     borderRadius: BorderRadius.circular(8),
-                        //     border: Border.all(
-                        //       color: Color(0xFFD9D9D9),
-                        //       width: 1,
-                        //     ),
-                        //   ),
-                        //   child: TextField(
-                        //     controller: _searchController,
-                        //     decoration: InputDecoration(
-                        //       hintText: 'Search previous bookings',
-                        //       hintStyle: TextStyle(
-                        //         fontSize: 14,
-                        //         fontWeight: FontWeight.w400,
-                        //         color: Color(0xFF333333),
-                        //         fontFamily: 'Montserrat',
-                        //       ),
-                        //       prefixIcon: Padding(
-                        //         padding: const EdgeInsets.all(12.0),
-                        //         child: Image.asset(
-                        //           'assets/images/search.png',
-                        //           width: 20,
-                        //           height: 20,
-                        //           fit: BoxFit.contain,
-                        //         ),
-                        //       ),
-                        //       border: InputBorder.none,
-                        //       contentPadding: const EdgeInsets.symmetric(
-                        //         horizontal: 14,
-                        //         vertical: 16,
-                        //       ),
-                        //     ),
-                        //     style: const TextStyle(
-                        //       fontSize: 14,
-                        //       fontWeight: FontWeight.w400,
-                        //       color: Color(0xFF333333),
-                        //       fontFamily: 'Montserrat',
-                        //     ),
-                        //     onChanged: (value) {
-                        //       // Search can be wired up later
-                        //     },
-                        //   ),
-                        // ),
-                        // const SizedBox(height: 12),
-                        // // Filters and Sort Buttons
-                        // Row(
-                        //   children: [
-                        //     Expanded(
-                        //       child: _buildFilterButton('Filters', Icons.filter_list),
-                        //     ),
-                        //     const SizedBox(width: 12),
-                        //     Expanded(
-                        //       child: _buildFilterButton('Sort', Icons.sort),
-                        //     ),
-                        //   ],
-                        // ),
-                        // const SizedBox(height: 4),
+                        // Filters Button
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showFilterBottomSheet(context),
+                                child: _buildFilterButton('Filters', Icons.filter_list),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                       ],
                     ),
                   );
@@ -262,6 +224,61 @@ class _CrpBookingState extends State<CrpBooking> {
             color: Colors.grey.shade700,
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context) {
+    final CarProviderController carProviderController = Get.put(CarProviderController());
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FilterBottomSheet(
+        selectedCategory: _selectedCategory,
+        selectedCity: _selectedCity,
+        selectedCarProvider: _selectedCarProvider ?? carProviderController.selectedCarProvider.value?.providerName,
+        selectedBookingMonth: _selectedBookingMonth,
+        selectedFiscalYear: _selectedFiscalYear ?? '2026',
+        searchController: _filterSearchController,
+        onCategoryChanged: (category) {
+          setState(() {
+            _selectedCategory = category;
+          });
+        },
+        onCityChanged: (city) {
+          setState(() {
+            _selectedCity = city;
+          });
+        },
+        onCarProviderChanged: (carProvider) {
+          setState(() {
+            _selectedCarProvider = carProvider;
+          });
+        },
+        onBookingMonthChanged: (month) {
+          setState(() {
+            _selectedBookingMonth = month;
+          });
+        },
+        onFiscalYearChanged: (year) {
+          setState(() {
+            _selectedFiscalYear = year;
+          });
+        },
+        onApply: () {
+          // Apply filters logic here
+          Navigator.pop(context);
+          // You can add filter application logic here
+        },
+        onClear: () {
+          setState(() {
+            _selectedCity = null;
+            _selectedCarProvider = null;
+            _selectedBookingMonth = null;
+            _selectedFiscalYear = null;
+          });
+        },
       ),
     );
   }
@@ -414,7 +431,7 @@ class _CrpBookingState extends State<CrpBooking> {
             //           width: 12,
             //           height: 12,
             //           decoration: const BoxDecoration(
-            //             color: Color(0xFF002CC0),
+            //             color: Color(0xFF4082F1),
             //             shape: BoxShape.circle,
             //           ),
             //         ),
@@ -422,14 +439,14 @@ class _CrpBookingState extends State<CrpBooking> {
             //         Container(
             //           width: 2,
             //           height: 36,
-            //           color: const Color(0xFF002CC0),
+            //           color: const Color(0xFF4082F1),
             //         ),
             //         // Square at bottom
             //         Container(
             //           width: 12,
             //           height: 12,
             //           decoration: const BoxDecoration(
-            //             color: Color(0xFF002CC0),
+            //             color: Color(0xFF4082F1),
             //           ),
             //         ),
             //       ],
@@ -595,7 +612,7 @@ class _CrpBookingState extends State<CrpBooking> {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF002CC0),
+            color: Color(0xFF4082F1),
             fontFamily: 'Montserrat',
           ),
         ),
@@ -628,4 +645,807 @@ class DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// Filter Bottom Sheet Widget
+class _FilterBottomSheet extends StatefulWidget {
+  final String selectedCategory;
+  final String? selectedCity;
+  final String? selectedCarProvider;
+  final String? selectedBookingMonth;
+  final String? selectedFiscalYear;
+  final TextEditingController searchController;
+  final Function(String) onCategoryChanged;
+  final Function(String) onCityChanged;
+  final Function(String) onCarProviderChanged;
+  final Function(String) onBookingMonthChanged;
+  final Function(String) onFiscalYearChanged;
+  final VoidCallback onApply;
+  final VoidCallback onClear;
+
+  const _FilterBottomSheet({
+    required this.selectedCategory,
+    required this.selectedCity,
+    required this.selectedCarProvider,
+    required this.selectedBookingMonth,
+    required this.selectedFiscalYear,
+    required this.searchController,
+    required this.onCategoryChanged,
+    required this.onCityChanged,
+    required this.onCarProviderChanged,
+    required this.onBookingMonthChanged,
+    required this.onFiscalYearChanged,
+    required this.onApply,
+    required this.onClear,
+  });
+
+  @override
+  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+  late String _currentCategory;
+  late String? _currentCity;
+  late String? _currentCarProvider;
+  late String? _currentBookingMonth;
+  late String? _currentFiscalYear;
+  final CrpBranchListController _branchController = Get.find<CrpBranchListController>();
+  final CarProviderController _carProviderController = Get.put(CarProviderController());
+  String _searchQuery = '';
+  
+  // List of months
+  final List<String> _months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  
+  // List of fiscal years
+  final List<String> _fiscalYears = [
+    '2026',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentCategory = widget.selectedCategory;
+    // Set default selected city from branch controller or widget
+    _currentCity = widget.selectedCity ?? _branchController.selectedBranchName.value;
+    // Set default selected car provider from controller (always use controller value)
+    _currentCarProvider = _carProviderController.selectedCarProvider.value?.providerName;
+    // Always set booking month to current month (ignore previous selection)
+    _currentBookingMonth = _getCurrentMonth();
+    // Set default fiscal year to 2026
+    _currentFiscalYear = widget.selectedFiscalYear ?? '2026';
+    _fetchBranches();
+    _fetchCarProviders();
+    
+    // Add listener to search controller for filtering
+    widget.searchController.addListener(_onSearchChanged);
+  }
+
+  String _getCurrentMonth() {
+    final now = DateTime.now();
+    return _months[now.month - 1]; // month is 1-12, list index is 0-11
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = widget.searchController.text;
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.searchController.removeListener(_onSearchChanged);
+    super.dispose();
+  }
+
+  Future<void> _fetchBranches() async {
+    final corpId = await StorageServices.instance.read('crpId');
+    if (corpId != null && corpId.isNotEmpty) {
+      await _branchController.fetchBranches(corpId);
+      // After fetching, set default selected city if not already set
+      if (_currentCity == null && _branchController.selectedBranchName.value != null) {
+        setState(() {
+          _currentCity = _branchController.selectedBranchName.value;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchCarProviders() async {
+    if (_carProviderController.carProviderList.isEmpty && !_carProviderController.isLoading.value) {
+      await _carProviderController.fetchCarProviders(context);
+    }
+    // Always set selected car provider from controller (like city does)
+    if (_carProviderController.selectedCarProvider.value != null) {
+      setState(() {
+        _currentCarProvider = _carProviderController.selectedCarProvider.value?.providerName;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.85,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE9E9F6), // Light blue background
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF000000)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Text(
+                  'Filters',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF000000),
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Search Bar
+          Container(
+            margin: const EdgeInsets.all(16),
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFD9D9D9),
+                width: 1,
+              ),
+            ),
+            child: TextField(
+              controller: widget.searchController,
+              decoration: InputDecoration(
+                hintText: 'Search Criteria',
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF333333),
+                  fontFamily: 'Montserrat',
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Image.asset(
+                    'assets/images/search.png',
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
+                ),
+              ),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+          // Main Content - Two Pane Layout
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  // Left Pane - Filter Categories
+                  Container(
+                    width: 140,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
+                      ),
+                    ),
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        _buildCategoryItem('Car Rental City'),
+                        _buildCategoryItem('Car Provider'),
+                        _buildCategoryItem('Booking Month'),
+                        _buildCategoryItem('Search Fiscal Year'),
+                      ],
+                    ),
+                  ),
+                  // Divider
+                  Container(
+                    width: 1,
+                    color: Colors.grey.shade300,
+                  ),
+                  // Right Pane - Filter Options
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: _buildFilterOptions(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Bottom Buttons
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            ),
+            child: Row(
+              children: [
+                // Apply Button
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4082F1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        widget.onCityChanged(_currentCity ?? '');
+                        widget.onCarProviderChanged(_currentCarProvider ?? '');
+                        widget.onBookingMonthChanged(_currentBookingMonth ?? '');
+                        widget.onFiscalYearChanged(_currentFiscalYear ?? '');
+                        widget.onApply();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Apply',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Clear Filter Button
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF4082F1),
+                        width: 1,
+                      ),
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _currentCity = null;
+                          _currentCarProvider = null;
+                          _currentBookingMonth = null;
+                          _currentFiscalYear = null;
+                        });
+                        widget.onClear();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Clear Filter',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4082F1),
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(String category) {
+    final isSelected = _currentCategory == category;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentCategory = category;
+        });
+        widget.onCategoryChanged(category);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF4082F1)
+              : Colors.white,
+        ),
+        child: Text(
+          category,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : const Color(0xFF939393),
+            fontFamily: 'Montserrat',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOptions() {
+    if (_currentCategory == 'Car Rental City') {
+      return Obx(() {
+        if (_branchController.isLoading.value) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        
+        if (_branchController.branchNames.isEmpty) {
+          return const Center(
+            child: Text(
+              'No cities available',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF939393),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          );
+        }
+
+        // Filter branches based on search
+        final searchQuery = _searchQuery.toLowerCase();
+        final filteredBranches = searchQuery.isEmpty
+            ? _branchController.branchNames
+            : _branchController.branchNames
+                .where((name) => name.toLowerCase().contains(searchQuery))
+                .toList();
+
+        if (filteredBranches.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'No cities found',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF939393),
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: filteredBranches.length,
+          itemBuilder: (context, index) {
+            final branchName = filteredBranches[index];
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index < filteredBranches.length - 1 ? 16 : 0,
+              ),
+              child: _buildRadioOption(branchName, branchName),
+            );
+          },
+        );
+      });
+    } else if (_currentCategory == 'Car Provider') {
+      return Obx(() {
+        if (_carProviderController.isLoading.value) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        
+        if (_carProviderController.carProviderList.isEmpty) {
+          return const Center(
+            child: Text(
+              'No car providers available',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF939393),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          );
+        }
+
+        // Filter car providers based on search
+        final searchQuery = _searchQuery.toLowerCase();
+        final filteredProviders = searchQuery.isEmpty
+            ? _carProviderController.carProviderList
+            : _carProviderController.carProviderList
+                .where((provider) => 
+                    (provider.providerName ?? '').toLowerCase().contains(searchQuery))
+                .toList();
+
+        if (filteredProviders.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'No car providers found',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF939393),
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: filteredProviders.length,
+          itemBuilder: (context, index) {
+            final provider = filteredProviders[index];
+            final providerName = provider.providerName ?? '';
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index < filteredProviders.length - 1 ? 16 : 0,
+              ),
+              child: _buildCarProviderRadioOption(providerName, providerName),
+            );
+          },
+        );
+      });
+    } else if (_currentCategory == 'Booking Month') {
+      // Filter months based on search
+      final searchQuery = _searchQuery.toLowerCase();
+      final filteredMonths = searchQuery.isEmpty
+          ? _months
+          : _months
+              .where((month) => month.toLowerCase().contains(searchQuery))
+              .toList();
+
+      if (filteredMonths.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'No months found',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF939393),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        itemCount: filteredMonths.length,
+        itemBuilder: (context, index) {
+          final month = filteredMonths[index];
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < filteredMonths.length - 1 ? 16 : 0,
+            ),
+            child: _buildBookingMonthRadioOption(month, month),
+          );
+        },
+      );
+    } else if (_currentCategory == 'Search Fiscal Year') {
+      // Filter fiscal years based on search
+      final searchQuery = _searchQuery.toLowerCase();
+      final filteredYears = searchQuery.isEmpty
+          ? _fiscalYears
+          : _fiscalYears
+              .where((year) => year.toLowerCase().contains(searchQuery))
+              .toList();
+
+      if (filteredYears.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'No fiscal years found',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF939393),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        itemCount: filteredYears.length,
+        itemBuilder: (context, index) {
+          final year = filteredYears[index];
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < filteredYears.length - 1 ? 16 : 0,
+            ),
+            child: _buildFiscalYearRadioOption(year, year),
+          );
+        },
+      );
+    }
+    return const SizedBox();
+  }
+
+  Widget _buildRadioOption(String label, String value) {
+    final isSelected = _currentCity == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentCity = value;
+        });
+        widget.onCityChanged(value);
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF4082F1)
+                    : const Color(0xFF939393),
+                width: 2,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarProviderRadioOption(String label, String value) {
+    final isSelected = _currentCarProvider == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentCarProvider = value;
+        });
+        widget.onCarProviderChanged(value);
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF4082F1)
+                    : const Color(0xFF939393),
+                width: 2,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingMonthRadioOption(String label, String value) {
+    final isSelected = _currentBookingMonth == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentBookingMonth = value;
+        });
+        widget.onBookingMonthChanged(value);
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF4082F1)
+                    : const Color(0xFF939393),
+                width: 2,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiscalYearRadioOption(String label, String value) {
+    final isSelected = _currentFiscalYear == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentFiscalYear = value;
+        });
+        widget.onFiscalYearChanged(value);
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF4082F1)
+                    : const Color(0xFF939393),
+                width: 2,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF333333),
+                fontFamily: 'Montserrat',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

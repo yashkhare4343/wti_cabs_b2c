@@ -336,84 +336,134 @@ class _CarDetailsCard extends StatelessWidget {
 
   const _CarDetailsCard({super.key, this.carModel});
 
+  /// Extracts category from carType string like "Hyundai Accent[Intermediate]" -> "Intermediate"
+  String? _extractCategory(String? carType) {
+    if (carType == null || carType.isEmpty) return null;
+    final match = RegExp(r'\[([^\]]+)\]').firstMatch(carType);
+    return match?.group(1);
+  }
+
+  /// Extracts car name from carType string like "Hyundai Accent[Intermediate]" -> "Hyundai Accent"
+  String _extractCarName(String? carType) {
+    if (carType == null || carType.isEmpty) return '';
+    final bracketIndex = carType.indexOf('[');
+    if (bracketIndex == -1) return carType;
+    return carType.substring(0, bracketIndex).trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final carName = _extractCarName(carModel?.carType);
+    final category = _extractCategory(carModel?.carType);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 0.0),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x40000000), // #00000040
-            offset: Offset(0, 1),     // 0px 1px
-            blurRadius: 3,            // 3px
-            spreadRadius: 0,          // 0px
+            color: Color(0x402B64E5), // #2B64E540
+            offset: Offset(0, 1), // 0px 1px
+            blurRadius: 3, // 3px blur
+            spreadRadius: 0, // 0px spread
           ),
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-            // Left content: title + icons/text
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    carModel?.carType ?? 'Suzuki Dzire',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF373737),
+          // Car image
+          SizedBox(
+            width: 71,
+            height: 51,
+            child: Image.network(
+              carModel?.carImageUrl ?? '',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Text details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Car name and category in a row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        carName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF373737),
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Row(
-                  //   children: [
-                  //     _IconText(
-                  //       icon: Icons.people_alt_outlined,
-                  //       value: '4',
-                  //     ),
-                  //     const SizedBox(width: 12),
-                  //
-                  //     _IconText(
-                  //       icon: Icons.luggage_outlined,
-                  //       value: '2',
-                  //     ),
-                  //     const SizedBox(width: 12),
-                  //
-                  //     _IconText(
-                  //       icon: Icons.access_time_rounded,
-                  //       value: '2 hrs',
-                  //     ),
-                  //   ],
-                  // ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Right: car image
-            SizedBox(
-              height: 70,
-              width: 120,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Image.asset(
-                  'assets/images/inventory_car.png',
-                  fit: BoxFit.cover,
+                    if (category != null && category.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2B64E5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/images/passenger.svg',
+                      width: 12,
+                      height: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      (carModel?.seats ?? '').toString(),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF949494),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.ac_unit, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text('AC', style: TextStyle(fontSize: 11)),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1349,113 +1399,43 @@ class RouteCard extends StatelessWidget {
 
   const RouteCard({this.bookingData});
 
-  /// Safely shortens a text to a maximum number of characters.
-  /// Adds ".." suffix if truncated.
-  /// Uses character length only (not widget width) to keep
-  /// strings compact inside the route chip.
-  String _shorten(String text, {int maxChars = 25}) {
-    if (text.length <= maxChars) return text;
-    return '${text.substring(0, maxChars - 2)}..';
-  }
-
-  String _formatDateTime(DateTime? dateTime) {
-    if (dateTime == null) return '';
-    return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
-  }
-
-  String _getRouteText() {
-    if (bookingData == null) {
-      return 'Please select pickup and drop locations';
-    }
-
-    final pickupPlace = bookingData!.pickupPlace;
-    final dropPlace = bookingData!.dropPlace;
-
-    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
-    final pickupSecondary = pickupPlace?.secondaryText ?? '';
-    final pickupFull = pickupSecondary.isNotEmpty
-        ? '$pickupPrimary, $pickupSecondary'
-        : pickupPrimary;
-
-    final dropPrimary = dropPlace?.primaryText ?? 'Drop location';
-    final dropSecondary = dropPlace?.secondaryText ?? '';
-    final dropFull = dropSecondary.isNotEmpty
-        ? '$dropPrimary, $dropSecondary'
-        : dropPrimary;
-
-    final combined = '$pickupFull to $dropFull';
-    // Slightly higher limit for combined route text
-    return _shorten(combined, maxChars: 40);
-  }
-
-  String _getPickupRouteText() {
-    if (bookingData == null) {
-      return 'Please select pickup locations';
-    }
-
-    final pickupPlace = bookingData!.pickupPlace;
-    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
-    final pickupSecondary = pickupPlace?.secondaryText ?? '';
-    final pickupFull = pickupSecondary.isNotEmpty
-        ? '$pickupPrimary, $pickupSecondary'
-        : pickupPrimary;
-
-    // Character-limited pickup text (single-line chip)
-    return _shorten(pickupFull, maxChars: 25);
-  }
-
-  String _getDropRouteText() {
-    if (bookingData == null) {
-      return 'Please select drop locations';
-    }
-
-    final dropPlace = bookingData!.dropPlace;
-    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
-    final dropSecondary = dropPlace?.secondaryText ?? '';
-    final dropFull = dropSecondary.isNotEmpty
-        ? '$dropPrimary, $dropSecondary'
-        : dropPrimary;
-
-    // Character-limited drop text (single-line chip)
-    return _shorten(dropFull, maxChars: 25);
-  }
-
-  String _getPickupTypeText() {
-    if (bookingData == null || bookingData!.pickupType == null) {
-      return '';
-    }
-    return bookingData!.pickupType ?? '';
-  }
-
-
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.only(top: 16, left: 0, right: 0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x40000000), // #00000040
-            offset: Offset(1, 1),     // 1px 1px (x-axis and y-axis)
-            blurRadius: 3,            // 3px
-            spreadRadius: 0,          // 0px
+            color: Color(0x05000000), // ultra subtle, barely perceptible
+            offset: Offset(0, 0.5),
+            blurRadius: 1,
+            spreadRadius: 0,
           ),
         ],
       ),
+      // Ensures all child corners are clipped properly
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           children: [
             /// TOP CARD
             Container(
-              padding: const EdgeInsets.only(top: 14, right: 0, left: 14),
+              padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
               decoration: const BoxDecoration(
-                color: Color(0xFFFCFCFC),
+                color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x05000000), // ultra subtle, barely perceptible
+                    offset: Offset(0, 0.5),
+                    blurRadius: 1,
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1468,7 +1448,9 @@ class RouteCard extends StatelessWidget {
                             Row(
                               children: [
                                 InkWell(
-                                  onTap: () => GoRouter.of(context).pop(),
+                                  onTap: () {
+                                    context.push(AppRoutes.cprBookingEngine);
+                                  },
                                   child: SvgPicture.asset(
                                     'assets/images/back.svg',
                                     width: 18,
@@ -1493,18 +1475,18 @@ class RouteCard extends StatelessWidget {
                                 ),
                               ],
                             ),
-
                             Container(
                               margin: const EdgeInsets.symmetric(vertical: 10),
-                              padding: const EdgeInsets.symmetric(horizontal: 28),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 28),
                               child: const Divider(
                                 height: 1,
                                 color: Color(0xFFE2E2E2),
                               ),
                             ),
-
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 34),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 34.0),
                               child: Row(
                                 children: [
                                   SvgPicture.asset(
@@ -1535,12 +1517,12 @@ class RouteCard extends StatelessWidget {
             ),
 
             /// WHITE SPACER
-            Container(height: 10, color: Color(0xFFFCFCFC)),
+            Container(height: 10, color: Colors.white),
 
             /// BOTTOM SECTION
             Container(
               padding: const EdgeInsets.only(
-                  left: 48, top: 10, bottom: 10, right: 20),
+                  left: 16, top: 10, bottom: 10, right: 20),
               decoration: const BoxDecoration(
                 color: Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.only(
@@ -1554,19 +1536,18 @@ class RouteCard extends StatelessWidget {
                   Text(
                     _formatDateTime(bookingData?.pickupDateTime),
                     style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFF717171),
                     ),
                   ),
-
                   if (_getPickupTypeText().isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(
                       _getPickupTypeText(),
                       style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: Color(0xFF4082F1),
                       ),
                     ),
@@ -1578,7 +1559,59 @@ class RouteCard extends StatelessWidget {
         ),
       ),
     );
+  }
 
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return DateFormat('dd MMM, yyyy, hh:mm a zz').format(dateTime);
+  }
+
+  /// Safely shortens a text to a maximum number of characters.
+  /// Adds ".." suffix if truncated.
+  /// This uses character length only (not widget width) to keep
+  /// strings compact inside the RouteCard.
+  String _shorten(String text, {int maxChars = 25}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars - 2)}..';
+  }
+
+  String _getPickupRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
+
+    // Enforce a strict character length for the pickup text
+    return _shorten(pickupFull, maxChars: 25);
+  }
+
+  String _getDropRouteText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
+
+    // Enforce a strict character length for the drop text
+    return _shorten(dropFull, maxChars: 25);
+  }
+
+  String _getPickupTypeText() {
+    if (bookingData == null || bookingData!.pickupType == null) {
+      return '';
+    }
+    return bookingData!.pickupType ?? '';
   }
 }
 

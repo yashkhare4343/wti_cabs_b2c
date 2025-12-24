@@ -2615,16 +2615,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                             // Validate pickup date is at least advancedHourToConfirm hours from now
                             if (tempDateTime.isBefore(minPickupDateTime)) {
                               setState(() {
-                                pickupDateError = 'Pickup date and time must be at least $hoursOffset hours from now';
+                                pickupDateError =
+                                    'Pickup date and time must be at least $hoursOffset hours from now';
                               });
-                              // Show error snackbar
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Pickup date and time must be at least $hoursOffset hours from now'),
-                                  backgroundColor: Colors.red,
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 3),
-                                ),
+                              // Show smooth, professional error snackbar
+                              _showErrorSnackBar(
+                                'Pickup date and time must be at least $hoursOffset hours from now',
                               );
                               return; // Don't close the picker
                             }
@@ -3173,19 +3169,68 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // Show errors or proceed
     if (hasValidationError) {
       // Scroll to first error field
-      // Show first error in a snackbar as well
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errors.first),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      // Show first error in a smooth, professional snackbar as well
+      _showErrorSnackBar(errors.first);
     } else {
       // All validations passed, proceed with view cabs
       _handleViewCabs();
     }
+  }
+
+  /// Show a smooth, Swiggy-style floating error snackbar
+  void _showErrorSnackBar(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        elevation: 10,
+        backgroundColor: const Color(0xFF0B1120), // Deep navy / near-black
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: const Color(0xFF4B5563).withOpacity(0.5), // Subtle border
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: const Color(0xFFB91C1C).withOpacity(0.15), // Soft red bg
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: Color(0xFFF87171), // Muted red accent
+                  size: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleViewCabs() {
