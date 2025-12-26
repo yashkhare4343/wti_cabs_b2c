@@ -24,6 +24,7 @@ import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_con
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
+import '../../../core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import '../../../core/model/corporate/crp_gender_response/crp_gender_response.dart';
 import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
 import '../../../core/model/corporate/crp_payment_method/crp_payment_mode.dart';
@@ -143,7 +144,6 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
     }
 
-
     final Map<String, dynamic> inventoryParams = {
       'token': token,
       'user': user??email,
@@ -156,13 +156,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     paymentModeController.fetchPaymentModes(paymentParams, context);
     controller.fetchGender(context);
-    crpInventoryListController.fetchCarModels(inventoryParams, context);
+    // Skip auto-selection so we can preselect based on booking details
+    crpInventoryListController.fetchCarModels(inventoryParams, context, skipAutoSelection: true);
   }
 
   void _initPrefillListeners() {
     ever<dynamic>(crpBookingDetailsController.crpBookingDetailResponse, (_) {
       _applyPrefilledFields();
       _applyPrefilledSelectionsIfReady();
+      // Also try to apply car model prefill when booking details are loaded
+      _applyCarModelPrefill();
     });
     ever(runTypeController.runTypes, (_) => _applyPrefilledSelectionsIfReady());
     ever(
@@ -172,6 +175,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         (_) => _applyPrefilledSelectionsIfReady());
     // Apply car model prefill once inventory models are loaded
     ever(crpInventoryListController.models, (_) => _applyCarModelPrefill());
+    // Also trigger when loading finishes to ensure prefill happens
+    ever(crpInventoryListController.isLoading, (isLoading) {
+      if (!isLoading && crpInventoryListController.models.isNotEmpty) {
+        _applyCarModelPrefill();
+      }
+    });
   }
 
   Future<void> _loadBookingDetails() async {
@@ -433,22 +442,66 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   /// Prefill car model in dropdown using the passed car model name (if any)
+  /// or makeID from booking details response
   void _applyCarModelPrefill() {
     if (_hasAppliedCarModelPrefill) return;
-    final targetName = widget.initialCarModelName;
-    if (targetName == null || targetName.trim().isEmpty) return;
 
     final models = crpInventoryListController.models;
     if (models.isEmpty) return;
 
-    final normalizedTarget = targetName.trim().toLowerCase();
-    final match = models.firstWhereOrNull(
-      (m) => (m.carType ?? '').trim().toLowerCase() == normalizedTarget,
-    );
+    CrpCarModel? matchedModel;
 
-    if (match != null) {
-      crpInventoryListController.updateSelected(match);
-      _hasAppliedCarModelPrefill = true;
+    // First, try to match by makeID from booking details response (more reliable)
+    final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+    if (bookingDetails?.makeID != null) {
+      matchedModel = models.firstWhereOrNull(
+        (m) => m.makeId == bookingDetails!.makeID,
+      );
+      if (matchedModel != null) {
+        crpInventoryListController.updateSelected(matchedModel);
+        _hasAppliedCarModelPrefill = true;
+        debugPrint('✅ Car model preselected by makeID: ${matchedModel.carType}');
+        return;
+      }
+    }
+
+    // Fallback to matching by car model name from initialCarModelName
+    final targetName = widget.initialCarModelName;
+    if (targetName != null && targetName.trim().isNotEmpty) {
+      final normalizedTarget = targetName.trim().toLowerCase();
+      
+      // Try exact match first
+      matchedModel = models.firstWhereOrNull(
+        (m) => (m.carType ?? '').trim().toLowerCase() == normalizedTarget,
+      );
+      
+      // If no exact match, try partial match (contains)
+      if (matchedModel == null) {
+        matchedModel = models.firstWhereOrNull(
+          (m) => (m.carType ?? '').trim().toLowerCase().contains(normalizedTarget) ||
+                 normalizedTarget.contains((m.carType ?? '').trim().toLowerCase()),
+        );
+      }
+
+      if (matchedModel != null) {
+        crpInventoryListController.updateSelected(matchedModel);
+        _hasAppliedCarModelPrefill = true;
+        debugPrint('✅ Car model preselected by name: ${matchedModel.carType}');
+      } else {
+        debugPrint('⚠️ Could not find car model matching: $targetName');
+        debugPrint('Available models: ${models.map((m) => m.carType).toList()}');
+        // If no match found, select first model as fallback
+        if (models.isNotEmpty) {
+          crpInventoryListController.updateSelected(models.first);
+          _hasAppliedCarModelPrefill = true;
+        }
+      }
+    } else {
+      // If no target name provided, select first model as fallback
+      if (models.isNotEmpty) {
+        crpInventoryListController.updateSelected(models.first);
+        _hasAppliedCarModelPrefill = true;
+      }
     }
   }
 
@@ -1483,7 +1536,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
                                           crpInventoryListController
                                               .fetchCarModels(
-                                                  inventoryParams, context);
+                                                  inventoryParams, context, skipAutoSelection: true);
+                                          // Reset prefill flag so it can reapply after models reload
+                                          _hasAppliedCarModelPrefill = false;
                                         });
                                         Navigator.pop(context);
                                       },

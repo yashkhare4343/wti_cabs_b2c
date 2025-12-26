@@ -13,8 +13,9 @@ class CrpInventoryListController extends GetxController {
 
   Future<void> fetchCarModels(
     Map<String, dynamic> params,
-    BuildContext? context,
-  ) async {
+    BuildContext? context, {
+    bool skipAutoSelection = false,
+  }) async {
     try {
       isLoading.value = true;
 
@@ -28,7 +29,8 @@ class CrpInventoryListController extends GetxController {
 
       models.assignAll(result.models ?? []);
 
-      if (models.isNotEmpty) {
+      // Only auto-select first model if not skipping auto-selection
+      if (models.isNotEmpty && !skipAutoSelection) {
         selectedModel.value = models.first;
       }
     } catch (e) {

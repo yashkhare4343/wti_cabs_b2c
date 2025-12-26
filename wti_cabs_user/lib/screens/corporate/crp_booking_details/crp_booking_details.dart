@@ -477,9 +477,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
             Obx(() {
               final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
               // Only show card if bStatus is true
-              // if (driverDetails?.bStatus != true) {
-              //   return const SizedBox.shrink();
-              // }
+              if (driverDetails?.bStatus != true) {
+                return const SizedBox.shrink();
+              }
 
               return Container(
                 decoration: BoxDecoration(
