@@ -1682,8 +1682,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       pickupLocationError = null;
                     });
                     GoRouter.of(context).push(
-                      AppRoutes.cprSelectPickup,
-                      extra: selectedPickupType,
+                      AppRoutes.cprPickupSearch,
+                      extra: {
+                        'selectedPickupType': selectedPickupType,
+                      },
                     );
                   },
                   child: Container(
@@ -1729,8 +1731,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                       dropLocationError = null;
                     });
                     GoRouter.of(context).push(
-                      AppRoutes.cprSelectDrop,
-                      extra: selectedPickupType,
+                      AppRoutes.cprDropSearch,
+                      extra: {
+                        'selectedPickupType': selectedPickupType,
+                      },
                     );
                   },
                   child: Container(

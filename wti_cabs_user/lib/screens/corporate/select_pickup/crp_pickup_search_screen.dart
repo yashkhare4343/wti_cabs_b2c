@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
+import '../../../core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import '../../../core/model/booking_engine/suggestions_places_response.dart';
-import '../../../core/services/storage_services.dart';
+import '../../../core/route_management/app_routes.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
+import 'crp_select_pickup.dart';
 
 class CrpPickupSearchScreen extends StatefulWidget {
-  const CrpPickupSearchScreen({super.key});
+  final String? selectedPickupType;
+  
+  const CrpPickupSearchScreen({super.key, this.selectedPickupType});
 
   @override
   State<CrpPickupSearchScreen> createState() => _CrpPickupSearchScreenState();
@@ -17,6 +22,27 @@ class CrpPickupSearchScreen extends StatefulWidget {
 class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
   final CrpSelectPickupController crpSelectPickupController =
       Get.put(CrpSelectPickupController());
+  final CrpSelectDropController dropController =
+      Get.put(CrpSelectDropController());
+
+  Future<void> _handlePlaceSelection(SuggestionPlacesResponse place) async {
+    await crpSelectPickupController.selectPlace(place);
+    final selected = crpSelectPickupController.selectedPlace.value;
+    
+    // Preserve the current drop location when navigating back
+    final currentDrop = dropController.selectedPlace.value;
+    
+    if (selected != null && context.mounted) {
+      GoRouter.of(context).pushReplacement(
+        AppRoutes.cprBookingEngine,
+        extra: {
+          'selectedPickupType': widget.selectedPickupType,
+          'selectedPickupPlace': selected.toJson(),
+          if (currentDrop != null) 'selectedDropPlace': currentDrop.toJson(),
+        },
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +57,13 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
           style: CommonFonts.appBarText,
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Obx(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Choose location on map button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Obx(
               () => TextField(
                 controller: crpSelectPickupController.searchController,
                 autofocus: true,
@@ -70,34 +97,83 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Obx(() {
-                if (crpSelectPickupController.isLoading.value) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () async {
+                  final SuggestionPlacesResponse? place =
+                  await Navigator.push<SuggestionPlacesResponse?>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CrpSelectPickupScreen(
+                        selectedPickupType: widget.selectedPickupType,
+                      ),
+                    ),
                   );
-                }
 
-                final suggestions =
-                    crpSelectPickupController.suggestions.toList();
-
-                if (suggestions.isEmpty) {
-                  if (crpSelectPickupController.hasSearchText.value) {
-                    return const Center(
-                      child: Text(
-                        'No results found',
+                  if (place != null && context.mounted) {
+                    await _handlePlaceSelection(place);
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: const [
+                      Icon(
+                        Icons.pin_drop_outlined,
+                        color: AppColors.mainButtonBg,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Choose location on map',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.greyText2,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.mainButtonBg,
                         ),
                       ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Obx(() {
+              if (crpSelectPickupController.isLoading.value) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
 
-                return ListView.separated(
+              final suggestions =
+                  crpSelectPickupController.suggestions.toList();
+
+              if (suggestions.isEmpty) {
+                if (crpSelectPickupController.hasSearchText.value) {
+                  return const Center(
+                    child: Text(
+                      'No results found',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.greyText2,
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: ListView.separated(
                   itemCount: suggestions.length,
                   separatorBuilder: (_, __) => const Divider(
                     height: 1,
@@ -121,18 +197,15 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
                         style: CommonFonts.bodyText6Black,
                       ),
                       onTap: () async {
-                        await crpSelectPickupController.selectPlace(place);
-                        final selected =
-                            crpSelectPickupController.selectedPlace.value;
-                        Navigator.of(context).pop(selected);
+                        await _handlePlaceSelection(place);
                       },
                     );
                   },
-                );
-              }),
-            ),
-          ],
-        ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

@@ -247,9 +247,38 @@ class CprApiService {
     final response = await _sendRequestWithRetry(() => http.get(url, headers: headers));
     debugPrint('🌐 GET $url → ${response.statusCode}');
 
-    final body = jsonDecode(response.body);
-    if (response.statusCode == 200) return body;
-    throw Exception("❌ ${response.statusCode} - ${body['message'] ?? 'Error'}");
+    dynamic body = jsonDecode(response.body);
+    
+    // Handle double-encoded JSON strings
+    if (body is String) {
+      // If body is a string, it might be a JSON-encoded string that needs decoding
+      if (body.startsWith('"') && body.endsWith('"')) {
+        body = jsonDecode(body);
+        debugPrint('🔁 Decoded once from wrapped string');
+      }
+      
+      // If it's still a string and looks like JSON, decode it again
+      if (body is String && 
+          ((body.startsWith('{') && body.endsWith('}')) ||
+           (body.startsWith('[') && body.endsWith(']')))) {
+        body = jsonDecode(body);
+        debugPrint('🔁 Decoded twice for nested JSON');
+      }
+    }
+    
+    // Ensure we return a Map
+    if (body is Map<String, dynamic>) {
+      if (response.statusCode == 200) return body;
+      throw Exception("❌ ${response.statusCode} - ${body['message'] ?? 'Error'}");
+    } else {
+      // If body is not a Map, try to convert or throw error
+      debugPrint('⚠️ Response body is not a Map: ${body.runtimeType}');
+      if (response.statusCode == 200) {
+        // Try to return as empty map or handle gracefully
+        return <String, dynamic>{};
+      }
+      throw Exception("❌ ${response.statusCode} - Unexpected response format");
+    }
   }
 
   // ===================== 🟡 POST =====================

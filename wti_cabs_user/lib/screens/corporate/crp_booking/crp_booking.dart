@@ -4,11 +4,15 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_feedback_questions_controller/crp_feedback_questions_controller.dart';
+import 'package:wti_cabs_user/core/model/corporate/crp_feedback_questions/crp_feedback_questions_response.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
+import '../../../core/model/corporate/crp_car_provider_response/crp_car_provider_response.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../../common_widget/buttons/outline_button.dart';
@@ -29,9 +33,15 @@ class _CrpBookingState extends State<CrpBooking> {
   final TextEditingController _filterSearchController = TextEditingController();
   final CrpBookingHistoryController _controller =
       Get.put(CrpBookingHistoryController());
-  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final LoginInfoController loginInfoController =
+      Get.put(LoginInfoController());
+  final CrpBranchListController _branchController =
+      Get.find<CrpBranchListController>();
+  final CarProviderController _carProviderController =
+      Get.put(CarProviderController());
+  final CrpFeedbackQuestionsController _feedbackController = Get.put(CrpFeedbackQuestionsController());
   bool _showShimmer = true;
-  
+
   // Filter state
   String _selectedCategory = 'Car Rental City';
   String? _selectedCity;
@@ -39,9 +49,91 @@ class _CrpBookingState extends State<CrpBooking> {
   String? _selectedBookingMonth;
   String? _selectedFiscalYear;
 
+  // Month name to ID mapping
+  final Map<String, int> _monthMap = {
+    'January': 1,
+    'February': 2,
+    'March': 3,
+    'April': 4,
+    'May': 5,
+    'June': 6,
+    'July': 7,
+    'August': 8,
+    'September': 9,
+    'October': 10,
+    'November': 11,
+    'December': 12,
+  };
+
+  // Helper methods to get IDs from names
+  String? _getBranchIdFromName(String? branchName) {
+    if (branchName == null) return null;
+    try {
+      final branch = _branchController.branches.firstWhere(
+        (b) => b['BranchName'] == branchName,
+        orElse: () => {},
+      );
+      return branch['BranchID']?.toString();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getProviderIdFromName(String? providerName) {
+    if (providerName == null) return null;
+    try {
+      final provider = _carProviderController.carProviderList.firstWhere(
+        (p) => p.providerName == providerName,
+        orElse: () => CarProviderModel(),
+      );
+      return provider.providerID;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getMonthIdFromName(String? monthName) {
+    if (monthName == null) return null;
+    return _monthMap[monthName];
+  }
+
+  int? _getFiscalYearFromString(String? yearString) {
+    if (yearString == null) return null;
+    return int.tryParse(yearString);
+  }
+
+  Future<void> _applyFilters() async {
+    // Save filter selections
+    await _saveFilters();
+
+    // Get IDs from selected filter values
+    final branchId = _getBranchIdFromName(_selectedCity);
+    final providerId = _getProviderIdFromName(_selectedCarProvider) ?? 1;
+    final monthId = _getMonthIdFromName(_selectedBookingMonth);
+    final fiscalYear = _getFiscalYearFromString(_selectedFiscalYear) ?? 2026;
+
+    // If branch is selected, update it in storage
+    if (branchId != null) {
+      await StorageServices.instance.save('branchId', branchId);
+    }
+
+    // Fetch booking history with filters
+    final criteria = _filterSearchController.text.trim();
+    await _controller.fetchBookingHistory(
+      context,
+      branchId: branchId,
+      monthId: monthId,
+      providerId: providerId,
+      fiscalYear: fiscalYear,
+      criteria: criteria,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    // Load saved filter selections
+    _loadSavedFilters();
     // Show shimmer for 0.5 seconds
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
@@ -53,8 +145,59 @@ class _CrpBookingState extends State<CrpBooking> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ✅ Ensure email is persisted before fetching booking history
       await _ensureEmailPersistence();
-      _controller.fetchBookingHistory(context);
+      // Fetch feedback questions status
+      await _feedbackController.fetchFeedbackQuestions(context);
+      // Fetch with saved or default values
+      await _loadAndFetchBookings();
     });
+  }
+
+  Future<void> _loadSavedFilters() async {
+    _selectedCity = await StorageServices.instance.read('filter_selected_city');
+    _selectedCarProvider =
+        await StorageServices.instance.read('filter_selected_car_provider');
+    _selectedBookingMonth =
+        await StorageServices.instance.read('filter_selected_booking_month');
+    _selectedFiscalYear =
+        await StorageServices.instance.read('filter_selected_fiscal_year') ??
+            '2026';
+  }
+
+  Future<void> _saveFilters() async {
+    if (_selectedCity != null) {
+      await StorageServices.instance
+          .save('filter_selected_city', _selectedCity!);
+    }
+    if (_selectedCarProvider != null) {
+      await StorageServices.instance
+          .save('filter_selected_car_provider', _selectedCarProvider!);
+    }
+    if (_selectedBookingMonth != null) {
+      await StorageServices.instance
+          .save('filter_selected_booking_month', _selectedBookingMonth!);
+    }
+    if (_selectedFiscalYear != null) {
+      await StorageServices.instance
+          .save('filter_selected_fiscal_year', _selectedFiscalYear!);
+    }
+  }
+
+  Future<void> _loadAndFetchBookings() async {
+    final now = DateTime.now();
+    final monthId = _getMonthIdFromName(_selectedBookingMonth) ?? now.month;
+    final fiscalYear = _getFiscalYearFromString(_selectedFiscalYear) ?? 2026;
+    final providerId = _getProviderIdFromName(_selectedCarProvider) ?? 1;
+    final branchId = _getBranchIdFromName(_selectedCity);
+    final criteria = _filterSearchController.text.trim();
+
+    await _controller.fetchBookingHistory(
+      context,
+      branchId: branchId,
+      monthId: monthId,
+      providerId: providerId,
+      fiscalYear: fiscalYear,
+      criteria: criteria,
+    );
   }
 
   /// Ensure email is persisted in storage for API calls
@@ -62,19 +205,19 @@ class _CrpBookingState extends State<CrpBooking> {
     try {
       // Check if email exists in StorageServices
       String? email = await StorageServices.instance.read('email');
-      
+
       // If not found, try SharedPreferences as fallback
       if (email == null || email.isEmpty || email == 'null') {
         final prefs = await SharedPreferences.getInstance();
         email = prefs.getString('email');
-        
+
         // If found in SharedPreferences, save to StorageServices
         if (email != null && email.isNotEmpty && email != 'null') {
           await StorageServices.instance.save('email', email);
           debugPrint('✅ Email restored from SharedPreferences: $email');
         }
       }
-      
+
       // If still not found, ensure it's saved if available
       if (email != null && email.isNotEmpty && email != 'null') {
         // Ensure it's in both storage locations
@@ -133,54 +276,53 @@ class _CrpBookingState extends State<CrpBooking> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (_controller.bookings.isEmpty) {
-            return const Center(
-              child: Text(
-                'No bookings found',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
-            );
-          }
-
           return RefreshIndicator(
-            onRefresh: () => _controller.fetchBookingHistory(context),
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: _controller.bookings.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        // Filters Button
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => _showFilterBottomSheet(context),
-                                child: _buildFilterButton('Filters', Icons.filter_list),
-                              ),
-                            ),
-                          ],
+            onRefresh: () => _loadAndFetchBookings(),
+            child: Column(
+              children: [
+                // Filters Button - Always visible
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _showFilterBottomSheet(context),
+                          child:
+                              _buildFilterButton('Filters', Icons.filter_list),
                         ),
-                        const SizedBox(height: 4),
-                      ],
-                    ),
-                  );
-                }
-
-                final booking = _controller.bookings[index - 1];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildBookingCard(booking),
-                );
-              },
+                      ),
+                    ],
+                  ),
+                ),
+                // Content: Either empty state or bookings list
+                Expanded(
+                  child: _controller.bookings.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No Bookings Found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          itemCount: _controller.bookings.length,
+                          itemBuilder: (context, index) {
+                            final booking = _controller.bookings[index];
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: _buildBookingCard(booking),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
           );
         }),
@@ -193,7 +335,7 @@ class _CrpBookingState extends State<CrpBooking> {
       height: 40,
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(50),
         border: Border.all(
           color: Colors.grey.shade300,
           width: 1,
@@ -229,7 +371,11 @@ class _CrpBookingState extends State<CrpBooking> {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
-    final CarProviderController carProviderController = Get.put(CarProviderController());
+    final CarProviderController carProviderController =
+        Get.put(CarProviderController());
+    // Get the preselected car provider from saved filters or controller
+    final preselectedCarProvider = _selectedCarProvider ??
+        carProviderController.selectedCarProvider.value?.providerName;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -237,7 +383,7 @@ class _CrpBookingState extends State<CrpBooking> {
       builder: (context) => _FilterBottomSheet(
         selectedCategory: _selectedCategory,
         selectedCity: _selectedCity,
-        selectedCarProvider: _selectedCarProvider ?? carProviderController.selectedCarProvider.value?.providerName,
+        selectedCarProvider: preselectedCarProvider,
         selectedBookingMonth: _selectedBookingMonth,
         selectedFiscalYear: _selectedFiscalYear ?? '2026',
         searchController: _filterSearchController,
@@ -267,17 +413,35 @@ class _CrpBookingState extends State<CrpBooking> {
           });
         },
         onApply: () {
-          // Apply filters logic here
           Navigator.pop(context);
-          // You can add filter application logic here
+          _applyFilters();
         },
-        onClear: () {
+        onClear: () async {
           setState(() {
             _selectedCity = null;
             _selectedCarProvider = null;
             _selectedBookingMonth = null;
             _selectedFiscalYear = null;
           });
+          // Clear saved filters
+          await StorageServices.instance.delete('filter_selected_city');
+          await StorageServices.instance.delete('filter_selected_car_provider');
+          await StorageServices.instance
+              .delete('filter_selected_booking_month');
+          await StorageServices.instance.delete('filter_selected_fiscal_year');
+
+          // Clear search criteria text as well
+          _filterSearchController.clear();
+
+          Navigator.pop(context);
+          // Reset to default values and fetch
+          final now = DateTime.now();
+          await _controller.fetchBookingHistory(
+            context,
+            monthId: now.month,
+            fiscalYear: 2026,
+            criteria: '',
+          );
         },
       ),
     );
@@ -285,7 +449,7 @@ class _CrpBookingState extends State<CrpBooking> {
 
   Widget _buildBookingCard(CrpBookingHistoryItem booking) {
     final bool isConfirmed = booking.status == 'Confirmed';
-    
+
     // Format booking date
     String formattedDate = 'N/A';
     if (booking.cabRequiredOn != null && booking.cabRequiredOn!.isNotEmpty) {
@@ -303,7 +467,6 @@ class _CrpBookingState extends State<CrpBooking> {
             // If all parsing fails, use current date
             // parsedDate = DateTime.now();
             parsedDate = DateFormat('dd/MM/yyyy').parse(booking.cabRequiredOn!);
-
           }
         }
         formattedDate = DateFormat('dd MMM yyyy').format(parsedDate);
@@ -379,13 +542,9 @@ class _CrpBookingState extends State<CrpBooking> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isConfirmed
-                                    ? Icons.check_circle
-                                    : Icons.cancel,
+                                isConfirmed ? Icons.check_circle : Icons.cancel,
                                 size: 18,
-                                color: isConfirmed
-                                    ? Colors.green
-                                    : Colors.red,
+                                color: isConfirmed ? Colors.green : Colors.red,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -393,9 +552,8 @@ class _CrpBookingState extends State<CrpBooking> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: isConfirmed
-                                      ? Colors.green
-                                      : Colors.red,
+                                  color:
+                                      isConfirmed ? Colors.green : Colors.red,
                                   fontFamily: 'Montserrat',
                                 ),
                               ),
@@ -562,30 +720,36 @@ class _CrpBookingState extends State<CrpBooking> {
             ),
             const SizedBox(height: 16),
             // Edit Booking and Feedback Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    'Edit Booking',
-                    () {
-                      context.push(
-                        AppRoutes.cprBookingDetails,
-                        extra: booking,
-                      );
-                    },
+            Obx(() {
+              final showFeedbackButton = _feedbackController.feedbackQuestionsResponse.value?.bStatus == true;
+              
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      'Booking Detail',
+                      () {
+                        context.push(
+                          AppRoutes.cprBookingDetails,
+                          extra: booking,
+                        );
+                      },
+                    ),
                   ),
-                ),
-                // const SizedBox(width: 12),
-                // Expanded(
-                //   child: _buildActionButton(
-                //     'Feedback',
-                //     () {
-                //       // Handle feedback
-                //     },
-                //   ),
-                // ),
-              ],
-            ),
+                  if (showFeedbackButton) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionButton(
+                        'Feedback',
+                        () {
+                          _showFeedbackDialog(context, booking);
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            }),
           ],
         ),
       ),
@@ -617,6 +781,15 @@ class _CrpBookingState extends State<CrpBooking> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showFeedbackDialog(
+      BuildContext context, CrpBookingHistoryItem booking) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => _FeedbackDialog(booking: booking),
     );
   }
 }
@@ -689,10 +862,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late String? _currentCarProvider;
   late String? _currentBookingMonth;
   late String? _currentFiscalYear;
-  final CrpBranchListController _branchController = Get.find<CrpBranchListController>();
-  final CarProviderController _carProviderController = Get.put(CarProviderController());
-  String _searchQuery = '';
-  
+  final CrpBranchListController _branchController =
+      Get.find<CrpBranchListController>();
+  final CarProviderController _carProviderController =
+      Get.put(CarProviderController());
+
   // List of months
   final List<String> _months = [
     'January',
@@ -708,7 +882,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'November',
     'December',
   ];
-  
+
   // List of fiscal years
   final List<String> _fiscalYears = [
     '2026',
@@ -719,18 +893,17 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     super.initState();
     _currentCategory = widget.selectedCategory;
     // Set default selected city from branch controller or widget
-    _currentCity = widget.selectedCity ?? _branchController.selectedBranchName.value;
-    // Set default selected car provider from controller (always use controller value)
-    _currentCarProvider = _carProviderController.selectedCarProvider.value?.providerName;
+    _currentCity =
+        widget.selectedCity ?? _branchController.selectedBranchName.value;
+    // Set default selected car provider from widget or controller (prioritize widget value)
+    _currentCarProvider = widget.selectedCarProvider ??
+        _carProviderController.selectedCarProvider.value?.providerName;
     // Always set booking month to current month (ignore previous selection)
     _currentBookingMonth = _getCurrentMonth();
     // Set default fiscal year to 2026
     _currentFiscalYear = widget.selectedFiscalYear ?? '2026';
     _fetchBranches();
     _fetchCarProviders();
-    
-    // Add listener to search controller for filtering
-    widget.searchController.addListener(_onSearchChanged);
   }
 
   String _getCurrentMonth() {
@@ -738,24 +911,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return _months[now.month - 1]; // month is 1-12, list index is 0-11
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      _searchQuery = widget.searchController.text;
-    });
-  }
-
-  @override
-  void dispose() {
-    widget.searchController.removeListener(_onSearchChanged);
-    super.dispose();
-  }
-
   Future<void> _fetchBranches() async {
     final corpId = await StorageServices.instance.read('crpId');
     if (corpId != null && corpId.isNotEmpty) {
       await _branchController.fetchBranches(corpId);
       // After fetching, set default selected city if not already set
-      if (_currentCity == null && _branchController.selectedBranchName.value != null) {
+      if (_currentCity == null &&
+          _branchController.selectedBranchName.value != null) {
         setState(() {
           _currentCity = _branchController.selectedBranchName.value;
         });
@@ -764,14 +926,37 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   Future<void> _fetchCarProviders() async {
-    if (_carProviderController.carProviderList.isEmpty && !_carProviderController.isLoading.value) {
+    if (_carProviderController.carProviderList.isEmpty &&
+        !_carProviderController.isLoading.value) {
       await _carProviderController.fetchCarProviders(context);
     }
-    // Always set selected car provider from controller (like city does)
-    if (_carProviderController.selectedCarProvider.value != null) {
-      setState(() {
-        _currentCarProvider = _carProviderController.selectedCarProvider.value?.providerName;
-      });
+    // Set selected car provider from controller if not already set from widget
+    // But preserve widget value if it exists
+    if (_currentCarProvider == null) {
+      if (_carProviderController.selectedCarProvider.value != null) {
+        setState(() {
+          _currentCarProvider =
+              _carProviderController.selectedCarProvider.value?.providerName;
+        });
+      } else if (_carProviderController.carProviderList.isNotEmpty) {
+        // If no selection and list is available, use the first one
+        setState(() {
+          _currentCarProvider =
+              _carProviderController.carProviderList.first.providerName;
+        });
+      }
+    } else {
+      // If we have a preselected value, make sure it exists in the list
+      // If not, fall back to controller's selection
+      final exists = _carProviderController.carProviderList.any(
+        (p) => p.providerName == _currentCarProvider,
+      );
+      if (!exists && _carProviderController.selectedCarProvider.value != null) {
+        setState(() {
+          _currentCarProvider =
+              _carProviderController.selectedCarProvider.value?.providerName;
+        });
+      }
     }
   }
 
@@ -823,10 +1008,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 width: 1,
               ),
             ),
-            child: TextField(
+            child: TextFormField(
               controller: widget.searchController,
               decoration: InputDecoration(
-                hintText: 'Search Criteria',
+                hintText: 'Search By Booking Number',
                 hintStyle: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -867,23 +1052,28 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               child: Row(
                 children: [
                   // Left Pane - Filter Categories
-                  Container(
-                    width: 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                      ),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
                     ),
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        _buildCategoryItem('Car Rental City'),
-                        _buildCategoryItem('Car Provider'),
-                        _buildCategoryItem('Booking Month'),
-                        _buildCategoryItem('Search Fiscal Year'),
-                      ],
+                    child: Container(
+                      width: 140,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          bottomLeft: Radius.circular(16),
+                        ),
+                      ),
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          _buildCategoryItem('Car Rental City'),
+                          _buildCategoryItem('Car Provider'),
+                          _buildCategoryItem('Booking Month'),
+                          _buildCategoryItem('Search Fiscal Year'),
+                        ],
+                      ),
                     ),
                   ),
                   // Divider
@@ -924,20 +1114,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: const Color(0xFF4082F1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(50),
                     ),
                     child: TextButton(
                       onPressed: () {
                         widget.onCityChanged(_currentCity ?? '');
                         widget.onCarProviderChanged(_currentCarProvider ?? '');
-                        widget.onBookingMonthChanged(_currentBookingMonth ?? '');
+                        widget
+                            .onBookingMonthChanged(_currentBookingMonth ?? '');
                         widget.onFiscalYearChanged(_currentFiscalYear ?? '');
                         widget.onApply();
                       },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(50),
                         ),
                       ),
                       child: const Text(
@@ -959,7 +1150,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(50),
                       border: Border.all(
                         color: const Color(0xFF4082F1),
                         width: 1,
@@ -978,7 +1169,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(50),
                         ),
                       ),
                       child: const Text(
@@ -1011,20 +1202,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         widget.onCategoryChanged(category);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF4082F1)
-              : Colors.white,
+          color: Colors.white,
         ),
         child: Text(
           category,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isSelected
-                ? Colors.white
-                : const Color(0xFF939393),
+            color: isSelected ? Color(0xFF4082F1) : const Color(0xFF939393),
             fontFamily: 'Montserrat',
           ),
         ),
@@ -1040,7 +1227,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             child: CircularProgressIndicator(),
           );
         }
-        
+
         if (_branchController.branchNames.isEmpty) {
           return const Center(
             child: Text(
@@ -1054,39 +1241,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           );
         }
 
-        // Filter branches based on search
-        final searchQuery = _searchQuery.toLowerCase();
-        final filteredBranches = searchQuery.isEmpty
-            ? _branchController.branchNames
-            : _branchController.branchNames
-                .where((name) => name.toLowerCase().contains(searchQuery))
-                .toList();
-
-        if (filteredBranches.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No cities found',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF939393),
-                  fontFamily: 'Montserrat',
-                ),
-              ),
-            ),
-          );
-        }
-
         return ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          itemCount: filteredBranches.length,
+          itemCount: _branchController.branchNames.length,
           itemBuilder: (context, index) {
-            final branchName = filteredBranches[index];
+            final branchName = _branchController.branchNames[index];
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index < filteredBranches.length - 1 ? 16 : 0,
+                bottom:
+                    index < _branchController.branchNames.length - 1 ? 16 : 0,
               ),
               child: _buildRadioOption(branchName, branchName),
             );
@@ -1100,7 +1264,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             child: CircularProgressIndicator(),
           );
         }
-        
+
         if (_carProviderController.carProviderList.isEmpty) {
           return const Center(
             child: Text(
@@ -1114,41 +1278,19 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           );
         }
 
-        // Filter car providers based on search
-        final searchQuery = _searchQuery.toLowerCase();
-        final filteredProviders = searchQuery.isEmpty
-            ? _carProviderController.carProviderList
-            : _carProviderController.carProviderList
-                .where((provider) => 
-                    (provider.providerName ?? '').toLowerCase().contains(searchQuery))
-                .toList();
-
-        if (filteredProviders.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No car providers found',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF939393),
-                  fontFamily: 'Montserrat',
-                ),
-              ),
-            ),
-          );
-        }
-
         return ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          itemCount: filteredProviders.length,
+          itemCount: _carProviderController.carProviderList.length,
           itemBuilder: (context, index) {
-            final provider = filteredProviders[index];
+            final provider = _carProviderController.carProviderList[index];
             final providerName = provider.providerName ?? '';
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index < filteredProviders.length - 1 ? 16 : 0,
+                bottom:
+                    index < _carProviderController.carProviderList.length - 1
+                        ? 16
+                        : 0,
               ),
               child: _buildCarProviderRadioOption(providerName, providerName),
             );
@@ -1156,78 +1298,30 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         );
       });
     } else if (_currentCategory == 'Booking Month') {
-      // Filter months based on search
-      final searchQuery = _searchQuery.toLowerCase();
-      final filteredMonths = searchQuery.isEmpty
-          ? _months
-          : _months
-              .where((month) => month.toLowerCase().contains(searchQuery))
-              .toList();
-
-      if (filteredMonths.isEmpty) {
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'No months found',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF939393),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-        );
-      }
-
       return ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
-        itemCount: filteredMonths.length,
+        itemCount: _months.length,
         itemBuilder: (context, index) {
-          final month = filteredMonths[index];
+          final month = _months[index];
           return Padding(
             padding: EdgeInsets.only(
-              bottom: index < filteredMonths.length - 1 ? 16 : 0,
+              bottom: index < _months.length - 1 ? 16 : 0,
             ),
             child: _buildBookingMonthRadioOption(month, month),
           );
         },
       );
     } else if (_currentCategory == 'Search Fiscal Year') {
-      // Filter fiscal years based on search
-      final searchQuery = _searchQuery.toLowerCase();
-      final filteredYears = searchQuery.isEmpty
-          ? _fiscalYears
-          : _fiscalYears
-              .where((year) => year.toLowerCase().contains(searchQuery))
-              .toList();
-
-      if (filteredYears.isEmpty) {
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'No fiscal years found',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF939393),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-        );
-      }
-
       return ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
-        itemCount: filteredYears.length,
+        itemCount: _fiscalYears.length,
         itemBuilder: (context, index) {
-          final year = filteredYears[index];
+          final year = _fiscalYears[index];
           return Padding(
             padding: EdgeInsets.only(
-              bottom: index < filteredYears.length - 1 ? 16 : 0,
+              bottom: index < _fiscalYears.length - 1 ? 16 : 0,
             ),
             child: _buildFiscalYearRadioOption(year, year),
           );
@@ -1277,10 +1371,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
+                color: isSelected ? Color(0xFF4082F1) : Color(0xFF333333),
                 fontFamily: 'Montserrat',
               ),
             ),
@@ -1445,6 +1539,413 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Feedback Dialog Widget
+class _FeedbackDialog extends StatefulWidget {
+  final CrpBookingHistoryItem booking;
+
+  const _FeedbackDialog({
+    required this.booking,
+    super.key,
+  });
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final TextEditingController _remarksController = TextEditingController();
+  final CrpFeedbackQuestionsController _feedbackController = Get.put(CrpFeedbackQuestionsController());
+  
+  // Store answers for each question by Q_id (true = Yes, false = No, null = not answered)
+  Map<int, bool?> _answers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchQuestions();
+    });
+  }
+
+  Future<void> _fetchQuestions() async {
+    await _feedbackController.fetchFeedbackQuestions(context);
+    // Initialize answers map with question IDs
+    if (_feedbackController.feedbackQuestions.isNotEmpty) {
+      setState(() {
+        _answers = {
+          for (var question in _feedbackController.feedbackQuestions)
+            question.qId ?? 0: null
+        };
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _remarksController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSubmit() async {
+    // Get required parameters
+    final guestIdStr = await StorageServices.instance.read('guestId');
+    final guestId = int.tryParse(guestIdStr ?? '') ?? 0;
+    
+    // Get OrderID from booking (use bookingId or id)
+    final orderId = widget.booking.bookingId ?? widget.booking.id ?? 0;
+    
+    // Get QuestionID from response
+    final questionId = _feedbackController.feedbackQuestionsResponse.value?.noOfQuestions ?? 
+                       _feedbackController.feedbackQuestions.length;
+    
+    if (guestId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Guest ID not found'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    if (orderId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order ID not found'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // Submit feedback
+    final response = await _feedbackController.submitFeedback(
+      context: context,
+      guestId: guestId,
+      orderId: orderId,
+      questionId: questionId,
+      answers: _answers,
+      remarks: _remarksController.text.trim(),
+    );
+    
+    if (response != null) {
+      // Close dialog first
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show success/failure message based on bStatus
+      final message = response.sMessage ?? 'Feedback submitted';
+      final isSuccess = response.bStatus == true;
+      final bgColor = isSuccess ? Colors.green : Colors.red;
+      final icon = isSuccess ? Icons.check_circle : Icons.error;
+
+      if (mounted) {
+        Flushbar(
+          flushbarPosition: FlushbarPosition.TOP,
+          margin: const EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(12),
+          backgroundColor: bgColor,
+          duration: const Duration(seconds: 3),
+          icon: Icon(icon, color: Colors.white),
+          messageText: Text(
+            message,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ).show(context);
+      }
+    } else {
+      // Error submitting
+      if (mounted) {
+        Flushbar(
+          flushbarPosition: FlushbarPosition.TOP,
+          margin: const EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(12),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          icon: const Icon(Icons.error, color: Colors.white),
+          messageText: const Text(
+            'Failed to submit feedback. Please try again.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ).show(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.black,
+            width: 1,
+          ),
+        ),
+        child: Obx(() {
+          if (_feedbackController.isLoading.value) {
+            return const SizedBox(
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
+          final questions = _feedbackController.feedbackQuestions;
+          
+          if (questions.isEmpty) {
+            return const SizedBox(
+              height: 200,
+              child: Center(
+                child: Text(
+                  'No feedback questions available',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title with Close Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'FeedBack',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.black,
+                        size: 24,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Questions
+                ...List.generate(questions.length, (index) {
+                  final question = questions[index];
+                  final questionId = question.qId ?? 0;
+                  
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index < questions.length - 1 ? 20 : 0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          question.question ?? '',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Radio<bool>(
+                              value: true,
+                              groupValue: _answers[questionId],
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  _answers[questionId] = value;
+                                });
+                              },
+                              activeColor: const Color(0xFF4082F1),
+                            ),
+                            const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _answers[questionId] = true;
+                                });
+                              },
+                              child: const Text(
+                                'Yes',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                '|',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade400,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            ),
+                            Radio<bool>(
+                              value: false,
+                              groupValue: _answers[questionId],
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  _answers[questionId] = value;
+                                });
+                              },
+                              activeColor: const Color(0xFF4082F1),
+                            ),
+                            const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _answers[questionId] = false;
+                                });
+                              },
+                              child: const Text(
+                                'No',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 24),
+
+                // Remarks Text Field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _remarksController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter Remarks here',
+                      hintStyle: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFFB2B2B2),
+                        fontFamily: 'Montserrat',
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.black,
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Submit Button
+                Obx(() {
+                  final isSubmitting = _feedbackController.isSubmitting.value;
+                  
+                  return SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4082F1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextButton(
+                        onPressed: isSubmitting ? null : _handleSubmit,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Submit',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }

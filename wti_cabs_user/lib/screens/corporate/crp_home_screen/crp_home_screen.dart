@@ -1250,12 +1250,10 @@ class _TopBannerState extends State<TopBanner> {
               // Search field
               GestureDetector(
                 onTap: () {
-                  if(crpGetBranchListController.count.value == 0){
-                    _showBranchSelectorBottomSheet();
-                  }
-                  else {
-                    GoRouter.of(context).push(AppRoutes.cprSelectDrop);
-                  }
+
+                  GoRouter.of(context).push(
+                    AppRoutes.cprDropSearch,
+                  );
                 },
                 child: Container(
                   width: double.infinity,

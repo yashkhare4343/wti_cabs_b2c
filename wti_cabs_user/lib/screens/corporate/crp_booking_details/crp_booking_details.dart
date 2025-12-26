@@ -42,7 +42,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   void fetchBookingDetails() async{
     final token = await StorageServices.instance.read('crpKey');
     final userEmail = await StorageServices.instance.read('email');
-    await crpBookingDetailsController.fetchBookingData(widget.booking.bookingId.toString(), token??'', userEmail??'');
+    final orderId = widget.booking.bookingId.toString();
+    await crpBookingDetailsController.fetchBookingData(orderId, token??'', userEmail??'');
+    await crpBookingDetailsController.fetchDriverDetails(orderId, token??'', userEmail??'');
   }
 
   // Helper method to get status icon and color based on status
@@ -471,6 +473,79 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           );
           }),
             const SizedBox(height: 16),
+            // Chauffeur Details Card
+            Obx(() {
+              final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
+              // Only show card if bStatus is true
+              // if (driverDetails?.bStatus != true) {
+              //   return const SizedBox.shrink();
+              // }
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade200,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      const Text(
+                        'Chauffeur Details',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF192653),
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Driver Name
+                      _buildDetailRow(
+                        'Driver Name',
+                        driverDetails?.chauffeur ?? 'N/A',
+                        Icons.person,
+                      ),
+                      const SizedBox(height: 12),
+                      // Driver No
+                      _buildDetailRow(
+                        'Driver No',
+                        driverDetails?.mobile ?? 'N/A',
+                        Icons.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      // Car Model
+                      _buildDetailRow(
+                        'Car Model',
+                        widget.booking.model ?? 'N/A',
+                        Icons.directions_car,
+                      ),
+                      const SizedBox(height: 12),
+                      // Car No
+                      _buildDetailRow(
+                        'Car No',
+                        driverDetails?.carNo ?? 'N/A',
+                        Icons.confirmation_number,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
             // Need Help? Section
             // Container(
             //   width: double.infinity,
@@ -552,6 +627,46 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF002CC0),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey.shade600,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4F4F4F),
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

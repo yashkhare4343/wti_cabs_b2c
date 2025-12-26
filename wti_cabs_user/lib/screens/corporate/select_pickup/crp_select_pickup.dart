@@ -184,7 +184,7 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
   }
 
   /// Save location and update controller
-  Future<void> _saveLocation(LatLng latLng) async {
+  Future<SuggestionPlacesResponse?> _saveLocation(LatLng latLng) async {
     try {
       // Get address from lat/lng
       await _getAddressFromLatLng(latLng);
@@ -255,11 +255,14 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
           debugPrint('Longitude: ${latLng.longitude}');
           debugPrint('Address: $formattedAddress');
           debugPrint('Place ID: $placeId');
+          
+          return place;
         }
       }
     } catch (e) {
       debugPrint('Error saving location: $e');
     }
+    return null;
   }
 
   @override
@@ -348,10 +351,10 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
                           barrierDismissible: false,
                           builder: (_) => const PopupLoader(message: 'Saving...'),
                         );
-                        await _saveLocation(selectedLocation);
+                        final place = await _saveLocation(selectedLocation);
                         if (context.mounted) Navigator.pop(context);
-                        if (context.mounted) {
-                          context.pop();
+                        if (context.mounted && place != null) {
+                          Navigator.of(context).pop<SuggestionPlacesResponse>(place);
                         }
                       },
                       style: ElevatedButton.styleFrom(

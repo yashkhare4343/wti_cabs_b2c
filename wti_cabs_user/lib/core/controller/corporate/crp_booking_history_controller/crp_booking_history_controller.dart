@@ -15,6 +15,7 @@ class CrpBookingHistoryController extends GetxController {
 
   Future<void> fetchBookingHistory(
     BuildContext context, {
+    String? branchId,
     int? monthId,
     int status = -1,
     int startRowIndex = 0,
@@ -26,7 +27,7 @@ class CrpBookingHistoryController extends GetxController {
     try {
       isLoading.value = true;
 
-      final branchId = await StorageServices.instance.read('branchId');
+      final resolvedBranchId = branchId ?? await StorageServices.instance.read('branchId');
       // Resolve guest id from storage or in-memory login info to avoid sending 0
       String? guestId = await StorageServices.instance.read('guestId');
       final loginGuestId = loginInfoController.crpLoginInfo.value?.guestID;
@@ -52,13 +53,13 @@ class CrpBookingHistoryController extends GetxController {
       final resolvedFiscal = fiscalYear == 0 ? now.year : fiscalYear;
 
       final params = {
-        'branchID': branchId ?? '0',
+        'branchID': resolvedBranchId ?? '0',
         'uID': guestId ?? '0',
         'monthID': resolvedMonthId,
         'providerID': providerId,
         'status': status,
-        'criteria': criteria,
-        'fiscal': 2026,
+        'criteria': criteria.trim(),
+        'fiscal': resolvedFiscal,
         'startRowIndex': startRowIndex,
         'maximumRows': maximumRows,
         if (token != null && token.isNotEmpty) 'token': token,
@@ -72,7 +73,12 @@ class CrpBookingHistoryController extends GetxController {
         context,
       );
 
-      bookings.assignAll(result.history ?? []);
+      // Handle bStatus == false or null/empty array
+      if (result.bStatus == false || result.history == null || result.history!.isEmpty) {
+        bookings.clear();
+      } else {
+        bookings.assignAll(result.history!);
+      }
     } catch (e) {
       debugPrint('CRP Booking History Fetch Error: $e');
     } finally {

@@ -38,7 +38,9 @@ import '../../screens/corporate/cpr_profile_response/cpr_profile_response.dart';
 import '../../screens/corporate/crp_booking_engine/crp_booking_engine.dart';
 import '../../screens/corporate/crp_home_screen/crp_home_screen.dart';
 import '../../screens/corporate/select_drop/crp_select_drop.dart';
+import '../../screens/corporate/select_drop/crp_drop_search_screen.dart';
 import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
+import '../../screens/corporate/select_pickup/crp_pickup_search_screen.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
 import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
 import '../../screens/corporate/cpr_modify_booking/cpr_modify_booking.dart';
@@ -250,10 +252,26 @@ class AppPages {
       },
     ),
     GoRoute(
+      path: AppRoutes.cprPickupSearch,
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final selectedPickupType = extra?['selectedPickupType'] as String?;
+        return _platformPage(CrpPickupSearchScreen(selectedPickupType: selectedPickupType));
+      },
+    ),
+    GoRoute(
       path: AppRoutes.cprSelectDrop,
       pageBuilder: (context, state) {
         final selectedPickupType = state.extra as String?;
         return _platformPage(CrpSelectDropScreen(selectedPickupType: selectedPickupType));
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.cprDropSearch,
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final selectedPickupType = extra?['selectedPickupType'] as String?;
+        return _platformPage(CrpDropSearchScreen(selectedPickupType: selectedPickupType));
       },
     ),
     GoRoute(
