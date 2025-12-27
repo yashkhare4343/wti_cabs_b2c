@@ -45,4 +45,5 @@ class AppRoutes{
   static const String cprBottomNav = '/CorporateBottomNavScreen';
   static const String cprEditProfile = '/cprEditProfile';
   static const String cprEditProfileForm = '/cprEditProfileForm';
+  static const String cprChangePassword = '/cprChangePassword';
 }

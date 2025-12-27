@@ -241,6 +241,23 @@ class _CprLoginState extends State<CprLogin> {
                                     return null;
                                   },
                                 ),
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      GoRouter.of(context).push(AppRoutes.cprChangePassword);
+                                    },
+                                    child: const Text(
+                                      'Forgot password',
+                                      style: TextStyle(
+                                        color: Color(0xFF01ACF2),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),

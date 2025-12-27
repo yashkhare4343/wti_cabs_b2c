@@ -64,6 +64,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   String? guestId, token, user;
   int? _preselectedRunTypeId;
   bool _hasAppliedPreselection = false;
+  bool _hasAppliedPrefilledData = false;
   Entity? selectedCorporate;
   Entity? selectedEntity;
 
@@ -77,6 +78,13 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   Future<void> _loadCorporateEntities() async {
     try {
+      // Check if entities are already loaded
+      final entities = crpGetEntityListController.getAllEntityList.value?.getEntityList ?? [];
+      if (entities.isNotEmpty) {
+        debugPrint('✅ Corporate entities already loaded, skipping API call');
+        return;
+      }
+
       final email = await StorageServices.instance.read('email');
       if (email != null && email.isNotEmpty) {
         await crpGetEntityListController.fetchAllEntities(email, '');
@@ -210,6 +218,22 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   void runTypesAndPaymentModes() async {
     try {
+      // Check if data is already loaded - skip API calls if already fetched
+      final runTypesAlreadyLoaded = runTypeController.runTypes.value != null &&
+          (runTypeController.runTypes.value?.runTypes?.isNotEmpty ?? false);
+      final paymentModesAlreadyLoaded = paymentModeController.modes.isNotEmpty;
+      final genderAlreadyLoaded = controller.genderList.isNotEmpty;
+      final carProvidersAlreadyLoaded = carProviderController.carProviderList.isNotEmpty;
+
+      // If all data is already loaded, skip API calls
+      if (runTypesAlreadyLoaded &&
+          paymentModesAlreadyLoaded &&
+          genderAlreadyLoaded &&
+          carProvidersAlreadyLoaded) {
+        debugPrint('✅ All data already loaded, skipping API calls');
+        return;
+      }
+
       // 1. Login info should already be loaded from main.dart
       // This is a safety check in case it wasn't loaded yet
       if (loginInfoController.crpLoginInfo.value == null) {
@@ -218,8 +242,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      // 2. Fetch Run Types (doesn't depend on token)
-      runTypeController.fetchRunTypes(params, context);
+      // 2. Fetch Run Types only if not already loaded (doesn't depend on token)
+      if (!runTypesAlreadyLoaded) {
+        runTypeController.fetchRunTypes(params, context);
+      }
 
       // 4. Wait for guestId, token, user
       await fetchParameter();
@@ -251,30 +277,51 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         'user': user ?? email ?? ''
       };
 
-      // 7. Fetch all data in parallel (fire-and-forget, but with error handling in controllers)
+      // 7. Fetch only missing data in parallel (fire-and-forget, but with error handling in controllers)
       // Only fetch if we have a valid token
       if (resolvedToken != null && resolvedToken.isNotEmpty) {
-        paymentModeController.fetchPaymentModes(paymentParams, context);
-        controller.fetchGender(context);
-        carProviderController.fetchCarProviders(context);
-
+        if (!paymentModesAlreadyLoaded) {
+          paymentModeController.fetchPaymentModes(paymentParams, context);
+        }
+        if (!genderAlreadyLoaded) {
+          controller.fetchGender(context);
+        }
+        if (!carProvidersAlreadyLoaded) {
+          carProviderController.fetchCarProviders(context);
+        }
       } else {
         debugPrint('❌ Cannot fetch data: Token not available');
-        // Retry after a delay
+        // Retry after a delay only if we need to fetch data
+        if (!runTypesAlreadyLoaded ||
+            !paymentModesAlreadyLoaded ||
+            !genderAlreadyLoaded ||
+            !carProvidersAlreadyLoaded) {
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              runTypesAndPaymentModes();
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error in runTypesAndPaymentModes: $e');
+      // Retry after a delay if there was an error and we still need data
+      final runTypesAlreadyLoaded = runTypeController.runTypes.value != null &&
+          (runTypeController.runTypes.value?.runTypes?.isNotEmpty ?? false);
+      final paymentModesAlreadyLoaded = paymentModeController.modes.isNotEmpty;
+      final genderAlreadyLoaded = controller.genderList.isNotEmpty;
+      final carProvidersAlreadyLoaded = carProviderController.carProviderList.isNotEmpty;
+
+      if (!runTypesAlreadyLoaded ||
+          !paymentModesAlreadyLoaded ||
+          !genderAlreadyLoaded ||
+          !carProvidersAlreadyLoaded) {
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
             runTypesAndPaymentModes();
           }
         });
       }
-    } catch (e) {
-      debugPrint('❌ Error in runTypesAndPaymentModes: $e');
-      // Retry after a delay if there was an error
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          runTypesAndPaymentModes();
-        }
-      });
     }
   }
 
@@ -378,6 +425,22 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   /// - Car Provider (using first element from list)
   /// - Pickup DateTime (using `advancedHourToConfirm` as an offset from now)
   Future<void> _applyPrefilledDataFromLogin() async {
+    // Check if prefilling has already been completed
+    if (_hasAppliedPrefilledData) {
+      // Check if all data is already prefilled - if so, skip
+      final hasBookingType = selectedBookingFor != null;
+      final hasGender = controller.selectedGender.value != null;
+      final hasCorporate = selectedCorporate != null;
+      final hasPaymentMode = paymentModeController.selectedMode.value != null;
+      final hasCarProvider = carProviderController.selectedCarProvider.value != null;
+      final hasDateTime = selectedPickupDateTime != null;
+
+      if (hasBookingType && hasGender && hasCorporate && hasPaymentMode && hasCarProvider && hasDateTime) {
+        debugPrint('✅ All data already prefilled, skipping _applyPrefilledDataFromLogin()');
+        return;
+      }
+    }
+
     debugPrint('🔄 Starting _applyPrefilledDataFromLogin()');
     
     // Ensure login info is available (loaded either from API or storage)
@@ -567,6 +630,9 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       // Pickup DateTime is already set above (before checking loginInfo)
       // This ensures it's always at least advancedHourToConfirm hours from now
     });
+    
+    // Mark prefilling as completed
+    _hasAppliedPrefilledData = true;
     debugPrint('✅ Finished _applyPrefilledDataFromLogin()');
   }
 
