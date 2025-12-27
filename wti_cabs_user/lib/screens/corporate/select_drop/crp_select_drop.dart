@@ -5,6 +5,7 @@ import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controll
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/core/route_management/corporate_page_transitions.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import 'crp_drop_map_screen.dart';
@@ -90,8 +91,9 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
                       final SuggestionPlacesResponse? place =
                           await Navigator.push<SuggestionPlacesResponse?>(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const CrpDropMapScreen(),
+                        CorporatePageTransitions.pushRoute(
+                          context,
+                          const CrpDropMapScreen(),
                         ),
                       );
                       if (place != null) {

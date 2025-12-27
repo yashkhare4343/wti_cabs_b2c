@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import '../../../core/model/booking_engine/suggestions_places_response.dart';
+import '../../../core/route_management/corporate_page_transitions.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../../common_widget/loader/popup_loader.dart';
@@ -145,8 +146,9 @@ class _CrpDropMapScreenState extends State<CrpDropMapScreen> {
 
     final SuggestionPlacesResponse? selected =
         await Navigator.of(context).push<SuggestionPlacesResponse?>(
-      MaterialPageRoute(
-        builder: (_) => const CrpDropSearchScreen(),
+      CorporatePageTransitions.pushRoute(
+        context,
+        const CrpDropSearchScreen(),
       ),
     );
 

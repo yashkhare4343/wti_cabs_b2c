@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/core/route_management/corporate_page_transitions.dart';
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/booking_ride/booking_ride.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
@@ -187,19 +188,19 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprRedirect,
-      pageBuilder: (context, state) => _platformPage(const CprRedirectScreen()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CprRedirectScreen()),
     ),
     GoRoute(
       path: AppRoutes.cprLogin,
-      pageBuilder: (context, state) => _platformPage(CprLogin()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(CprLogin()),
     ),
     GoRoute(
       path: AppRoutes.cprRegister,
-      pageBuilder: (context, state) => _platformPage(CprRegister()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(CprRegister()),
     ),
     GoRoute(
       path: AppRoutes.cprHomeScreen,
-      pageBuilder: (context, state) => _platformPage(CprHomeScreen()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(CprHomeScreen()),
     ),
     GoRoute(
       path: AppRoutes.cprBookingEngine,
@@ -238,7 +239,7 @@ class AppPages {
           }
         }
         
-        return _platformPage(CprBookingEngine(
+        return CorporatePageTransitions.defaultTransition(CprBookingEngine(
           selectedPickupType: selectedPickupType,
           selectedPickupPlace: selectedPickupPlace,
           selectedDropPlace: selectedDropPlace,
@@ -249,7 +250,7 @@ class AppPages {
       path: AppRoutes.cprSelectPickup,
       pageBuilder: (context, state) {
         final selectedPickupType = state.extra as String?;
-        return _platformPage(CrpSelectPickupScreen(selectedPickupType: selectedPickupType));
+        return CorporatePageTransitions.defaultTransition(CrpSelectPickupScreen(selectedPickupType: selectedPickupType));
       },
     ),
     GoRoute(
@@ -257,14 +258,14 @@ class AppPages {
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         final selectedPickupType = extra?['selectedPickupType'] as String?;
-        return _platformPage(CrpPickupSearchScreen(selectedPickupType: selectedPickupType));
+        return CorporatePageTransitions.defaultTransition(CrpPickupSearchScreen(selectedPickupType: selectedPickupType));
       },
     ),
     GoRoute(
       path: AppRoutes.cprSelectDrop,
       pageBuilder: (context, state) {
         final selectedPickupType = state.extra as String?;
-        return _platformPage(CrpSelectDropScreen(selectedPickupType: selectedPickupType));
+        return CorporatePageTransitions.defaultTransition(CrpSelectDropScreen(selectedPickupType: selectedPickupType));
       },
     ),
     GoRoute(
@@ -272,14 +273,14 @@ class AppPages {
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         final selectedPickupType = extra?['selectedPickupType'] as String?;
-        return _platformPage(CrpDropSearchScreen(selectedPickupType: selectedPickupType));
+        return CorporatePageTransitions.defaultTransition(CrpDropSearchScreen(selectedPickupType: selectedPickupType));
       },
     ),
     GoRoute(
       path: AppRoutes.cprInventory,
       pageBuilder: (context, state) {
         final bookingData = state.extra as Map<String, dynamic>?;
-        return _platformPage(CrpInventory(bookingData: bookingData));
+        return CorporatePageTransitions.defaultTransition(CrpInventory(bookingData: bookingData));
       },
     ),
     GoRoute(
@@ -288,7 +289,7 @@ class AppPages {
         final extra = state.extra as Map<String, dynamic>?;
         final carModelJson = extra?['carModel'] as Map<String, dynamic>?;
         final bookingData = extra?['bookingData'] as Map<String, dynamic>?;
-        return _platformPage(
+        return CorporatePageTransitions.scaleFadeTransition(
           CrpBookingConfirmation(
             selectedCar: carModelJson != null ? CrpCarModel.fromJson(carModelJson) : null,
             bookingData: bookingData != null ? CrpBookingData.fromJson(bookingData) : null,
@@ -300,7 +301,7 @@ class AppPages {
       path: AppRoutes.cprBookingDetails,
       pageBuilder: (context, state) {
         final booking = state.extra as CrpBookingHistoryItem;
-        return _platformPage(CrpBookingDetails(booking: booking));
+        return CorporatePageTransitions.defaultTransition(CrpBookingDetails(booking: booking));
       },
     ),
     GoRoute(
@@ -320,7 +321,7 @@ class AppPages {
           carModelName = state.uri.queryParameters['carModelName'];
         }
         
-        return _platformPage(CprModifyBooking(
+        return CorporatePageTransitions.defaultTransition(CprModifyBooking(
           orderId: orderId,
           initialCarModelName: carModelName,
         ));
@@ -328,15 +329,15 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprBottomNav,
-      pageBuilder: (context, state) => _platformPage(CorporateBottomNavScreen()),
+      pageBuilder: (context, state) => CorporatePageTransitions.fadeTransition(CorporateBottomNavScreen()),
     ),
     GoRoute(
       path: AppRoutes.cprLandingPage,
-      pageBuilder: (context, state) => _platformPage(CorporateLandingPage()),
+      pageBuilder: (context, state) => CorporatePageTransitions.fadeTransition(CorporateLandingPage()),
     ),
     GoRoute(
       path: AppRoutes.cprEditProfile,
-      pageBuilder: (context, state) => _platformPage(const CrpEditProfile()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CrpEditProfile()),
     ),
     GoRoute(
       path: AppRoutes.cprEditProfileForm,
@@ -346,7 +347,7 @@ class AppPages {
         final email = extraData?['email'] as String?;
         final token = extraData?['token'] as String?;
         final guestID = extraData?['guestID'] as int?;
-        return _platformPage(CrpEditProfileForm(
+        return CorporatePageTransitions.defaultTransition(CrpEditProfileForm(
           profile: profile,
           email: email,
           token: token,
@@ -356,7 +357,7 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprChangePassword,
-      pageBuilder: (context, state) => _platformPage(const CprChangePassword()),
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CprChangePassword()),
     ),
   ];
 

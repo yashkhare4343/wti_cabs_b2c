@@ -11,6 +11,7 @@ import '../../../common_widget/loader/popup_loader.dart';
 import '../../../core/controller/corporate/crp_select_pickup_controller/crp_select_pickup_controller.dart';
 import '../../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../../core/route_management/app_routes.dart';
+import '../../../core/route_management/corporate_page_transitions.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../../core/services/storage_services.dart';
@@ -157,8 +158,9 @@ class _CrpSelectPickupScreenState extends State<CrpSelectPickupScreen> {
 
     final SuggestionPlacesResponse? selected =
         await Navigator.of(context).push<SuggestionPlacesResponse?>(
-      MaterialPageRoute(
-        builder: (_) => CrpPickupSearchScreen(),
+      CorporatePageTransitions.pushRoute(
+        context,
+        CrpPickupSearchScreen(),
       ),
     );
 

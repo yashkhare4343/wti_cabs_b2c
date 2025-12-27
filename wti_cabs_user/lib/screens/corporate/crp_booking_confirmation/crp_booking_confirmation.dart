@@ -17,6 +17,7 @@ import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/c
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/core/route_management/corporate_page_transitions.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/corporate_shimmer.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
@@ -269,8 +270,9 @@ class _BookingTopBar extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => CrpInventory(
+              CorporatePageTransitions.pushRoute(
+                context,
+                CrpInventory(
                   bookingData: bookingData?.toJson(),
                 ),
               ),
@@ -1186,13 +1188,15 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
       ),
     );
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CrpBookingResultPage(
+      CorporatePageTransitions.pushRoute(
+        context,
+        CrpBookingResultPage(
           isSuccess: isSuccess,
           message: message,
           bookingData: widget.bookingData,
           selectedCar: widget.selectedCar,
         ),
+        transitionType: TransitionType.scaleFade,
       ),
     );
   }
