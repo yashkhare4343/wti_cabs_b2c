@@ -272,8 +272,8 @@ class AppPages {
       path: AppRoutes.cprDropSearch,
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
-        final selectedPickupType = extra?['selectedPickupType'] as String?;
-        return CorporatePageTransitions.defaultTransition(CrpDropSearchScreen(selectedPickupType: selectedPickupType));
+        final fromCrpHomeScreen = extra?['fromCrpHomeScreen'] as bool?;
+        return CorporatePageTransitions.defaultTransition(CrpDropSearchScreen(fromCrpHomeScreen: fromCrpHomeScreen));
       },
     ),
     GoRoute(

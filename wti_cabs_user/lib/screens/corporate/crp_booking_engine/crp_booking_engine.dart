@@ -1984,7 +1984,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     GoRouter.of(context).push(
                       AppRoutes.cprDropSearch,
                       extra: {
-                        'selectedPickupType': selectedPickupType,
+                        'fromCrpHomeScreen': false,
                       },
                     );
                   },

@@ -210,13 +210,14 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
                     placeName: text,
                   );
 
-                  // Update controller and navigate back to booking engine
+                  // Update controller first
                   controller.selectedPlace.value = place;
 
-                  // Preserve the current pickup location when navigating back
+                  // Navigate to booking engine with the selected place
+                  // This works whether coming from booking engine or home screen
                   final currentPickup = pickupController.selectedPlace.value;
-
-                  GoRouter.of(context).pushReplacement(
+                  
+                  GoRouter.of(context).go(
                     AppRoutes.cprBookingEngine,
                     extra: {
                       'selectedPickupType': widget.selectedPickupType,
@@ -253,37 +254,21 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
     // Fetch place details and store lat/lng
     FocusScope.of(context).unfocus();
 
+    // Update the controller first
     await controller.selectPlace(place);
     
-    // Get the updated place with latitude and longitude from controller
-    final updatedPlace = controller.selectedPlace.value;
-    
-    // Preserve the current pickup location when navigating back
-    final currentPickup = pickupController.selectedPlace.value;
-    
-    if (updatedPlace == null) {
-      // If for some reason the place is null, use the original
-      if (context.mounted) {
-        GoRouter.of(context).pushReplacement(
-          AppRoutes.cprBookingEngine,
-          extra: {
-            'selectedPickupType': widget.selectedPickupType,
-            'selectedDropPlace': place.toJson(),
-            if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
-          },
-        );
-      }
-      return;
-    }
-    
-    // Navigate back to booking engine and pass both drop and pickup explicitly
-    // This ensures both locations are preserved
+    // Navigate to booking engine with the selected place
+    // This works whether coming from booking engine or home screen
     if (context.mounted) {
-      GoRouter.of(context).pushReplacement(
+      final updatedPlace = controller.selectedPlace.value;
+      final currentPickup = pickupController.selectedPlace.value;
+      final placeToUse = updatedPlace ?? place;
+      
+      GoRouter.of(context).go(
         AppRoutes.cprBookingEngine,
         extra: {
           'selectedPickupType': widget.selectedPickupType,
-          'selectedDropPlace': updatedPlace.toJson(),
+          'selectedDropPlace': placeToUse.toJson(),
           if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
         },
       );

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 
@@ -26,6 +27,7 @@ class CprHomeScreen extends StatefulWidget {
 
 class _CprHomeScreenState extends State<CprHomeScreen> {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final CrpSelectDropController crpSelectDropController = Get.put(CrpSelectDropController());
   @override
   void initState() {
     super.initState();
@@ -793,6 +795,10 @@ class TopBanner extends StatefulWidget {
 class _TopBannerState extends State<TopBanner> {
   final CrpBranchListController crpGetBranchListController =
   Get.put(CrpBranchListController());
+  final CrpSelectDropController crpSelectDropController =
+  Get.put(CrpSelectDropController());
+  String? dropLocationError;
+
   Future<void> _showBranchSelectorBottomSheet() async {
     // Fetch branches if not already loaded
     if (crpGetBranchListController.branchNames.isEmpty) {
@@ -1250,9 +1256,14 @@ class _TopBannerState extends State<TopBanner> {
               // Search field
               GestureDetector(
                 onTap: () {
-
+                  setState(() {
+                    dropLocationError = null;
+                  });
                   GoRouter.of(context).push(
                     AppRoutes.cprDropSearch,
+                    extra: {
+                      'fromCrpHomeScreen': true,
+                    },
                   );
                 },
                 child: Container(
@@ -1284,16 +1295,36 @@ class _TopBannerState extends State<TopBanner> {
                       const SizedBox(width: 8), // gap: 12px
 
                       Expanded(
-                        child: Text(
-                          "Where to?",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF333333),
-                            fontWeight: FontWeight.w400,
-                            fontFamily: 'Montserrat',
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Obx(() {
+                          final dropPlace = crpSelectDropController.selectedPlace.value;
+                          String displayText;
+                          bool hasText;
+
+                          if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
+                            final secondaryText = dropPlace.secondaryText ?? '';
+                            displayText = secondaryText.isNotEmpty
+                                ? '${dropPlace.primaryText}, $secondaryText'
+                                : dropPlace.primaryText!;
+                            hasText = true;
+                          } else {
+                            displayText = 'Where to?';
+                            hasText = false;
+                          }
+
+                          return Text(
+                            displayText,
+                            style: TextStyle(
+                              fontWeight: hasText ? FontWeight.w600 : FontWeight.w400,
+                              color: hasText
+                                  ? const Color(0xFF4F4F4F)
+                                  : Color(0xFF333333),
+                              fontSize: 14,
+                              overflow: TextOverflow.ellipsis,
+                              fontFamily: 'Montserrat',
+                            ),
+                            maxLines: 1,
+                          );
+                        }),
                       ),
                     ],
                   ),

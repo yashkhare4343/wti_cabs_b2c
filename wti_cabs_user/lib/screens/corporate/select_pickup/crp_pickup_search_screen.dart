@@ -26,22 +26,31 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
   final CrpSelectDropController dropController =
       Get.put(CrpSelectDropController());
 
+
   Future<void> _handlePlaceSelection(SuggestionPlacesResponse place) async {
+    // Update the controller first
     await crpSelectPickupController.selectPlace(place);
-    final selected = crpSelectPickupController.selectedPlace.value;
     
-    // Preserve the current drop location when navigating back
-    final currentDrop = dropController.selectedPlace.value;
-    
-    if (selected != null && context.mounted) {
-      GoRouter.of(context).pushReplacement(
-        AppRoutes.cprBookingEngine,
-        extra: {
-          'selectedPickupType': widget.selectedPickupType,
-          'selectedPickupPlace': selected.toJson(),
-          if (currentDrop != null) 'selectedDropPlace': currentDrop.toJson(),
-        },
-      );
+    // Navigate back to booking engine
+    // The booking engine will read from the controller via Obx()
+    if (context.mounted) {
+      if (GoRouter.of(context).canPop()) {
+        GoRouter.of(context).pop();
+      } else {
+        // Fallback: navigate to booking engine with data
+        final selected = crpSelectPickupController.selectedPlace.value;
+        final currentDrop = dropController.selectedPlace.value;
+        if (selected != null) {
+          GoRouter.of(context).go(
+            AppRoutes.cprBookingEngine,
+            extra: {
+              'selectedPickupType': widget.selectedPickupType,
+              'selectedPickupPlace': selected.toJson(),
+              if (currentDrop != null) 'selectedDropPlace': currentDrop.toJson(),
+            },
+          );
+        }
+      }
     }
   }
 
@@ -119,6 +128,7 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
                   );
 
                   if (place != null && context.mounted) {
+                    // Handle the place selection and navigate back to booking engine
                     await _handlePlaceSelection(place);
                   }
                 },

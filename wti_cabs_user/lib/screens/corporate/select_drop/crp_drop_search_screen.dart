@@ -12,9 +12,9 @@ import '../../../utility/constants/fonts/common_fonts.dart';
 import 'crp_drop_map_screen.dart';
 
 class CrpDropSearchScreen extends StatefulWidget {
-  final String? selectedPickupType;
+  final bool? fromCrpHomeScreen;
   
-  const CrpDropSearchScreen({super.key, this.selectedPickupType});
+  const CrpDropSearchScreen({super.key, this.fromCrpHomeScreen});
 
   @override
   State<CrpDropSearchScreen> createState() => _CrpDropSearchScreenState();
@@ -27,21 +27,30 @@ class _CrpDropSearchScreenState extends State<CrpDropSearchScreen> {
       Get.put(CrpSelectPickupController());
 
   Future<void> _handlePlaceSelection(SuggestionPlacesResponse place) async {
+    // Update the controller first
     await crpSelectDropController.selectPlace(place);
-    final selected = crpSelectDropController.selectedPlace.value;
     
-    // Preserve the current pickup location when navigating back
-    final currentPickup = pickupController.selectedPlace.value;
-    
-    if (selected != null && context.mounted) {
-      GoRouter.of(context).pushReplacement(
-        AppRoutes.cprBookingEngine,
-        extra: {
-          'selectedPickupType': widget.selectedPickupType,
-          'selectedDropPlace': selected.toJson(),
-          if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
-        },
-      );
+    // Navigate based on where we came from
+    if (context.mounted) {
+      // Get the updated place from controller, or use the passed place as fallback
+      final selected = crpSelectDropController.selectedPlace.value ?? place;
+      final currentPickup = pickupController.selectedPlace.value;
+      
+      // Check if coming from home screen
+      if (widget.fromCrpHomeScreen == true) {
+        // Coming from home screen - navigate to booking engine with drop location
+        GoRouter.of(context).push(
+          AppRoutes.cprBookingEngine,
+          extra: {
+            'selectedDropPlace': selected.toJson(),
+            if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
+          },
+        );
+      } else {
+        // Coming from booking engine - pop back
+        // The booking engine will read from the controller via Obx()
+        GoRouter.of(context).pop();
+      }
     }
   }
 
@@ -117,6 +126,7 @@ class _CrpDropSearchScreenState extends State<CrpDropSearchScreen> {
                   );
 
                   if (place != null && context.mounted) {
+                    // Handle the place selection and navigate back to booking engine
                     await _handlePlaceSelection(place);
                   }
                 },
