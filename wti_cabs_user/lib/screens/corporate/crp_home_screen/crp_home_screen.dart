@@ -1302,9 +1302,7 @@ class _TopBannerState extends State<TopBanner> {
 
                           if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
                             final secondaryText = dropPlace.secondaryText ?? '';
-                            displayText = secondaryText.isNotEmpty
-                                ? '${dropPlace.primaryText}, $secondaryText'
-                                : dropPlace.primaryText!;
+                            displayText = 'Where to?';
                             hasText = true;
                           } else {
                             displayText = 'Where to?';
