@@ -67,6 +67,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   bool _hasAppliedPrefilledData = false;
   Entity? selectedCorporate;
   Entity? selectedEntity;
+  bool _isLoadingPickupLocation = true; // Track loading state for pickup location
 
 
   Future<void> fetchParameter() async {
@@ -98,6 +99,16 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    
+    // PRIORITY: Prefill current location immediately when screen appears (like Uber)
+    // This happens first to ensure location is visible immediately
+    // Skip if selectedPickupType is passed (will be handled in _initializeData after clearing)
+    if (widget.selectedPickupType == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _prefillPickupFromCurrentLocation();
+      });
+    }
+    
     // Initialize async operations
     _initializeData();
     
@@ -162,9 +173,19 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       // Only clear pickup and drop locations when navigating from corporate bottom nav (home screen)
       // Don't clear if we're coming back from location selection (selectedPickupPlace or selectedDropPlace is passed)
       if (widget.selectedPickupPlace == null && widget.selectedDropPlace == null) {
+        // Ensure loading state is true when coming from home screen (will show loading indicator)
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = true;
+          });
+        }
         // Defer clearing until after build to avoid setState during build error
+        // After clearing, immediately prefill with current location from storage
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _clearPickupAndDropLocations();
+          // Prefill current location after clearing (to show current location when coming from home screen)
+          // Loading will stop when prefilling completes in _prefillPickupFromCurrentLocation()
+          _prefillPickupFromCurrentLocation();
         });
       }
     }
@@ -175,6 +196,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         crpSelectPickupController.selectedPlace.value = widget.selectedPickupPlace;
         if (widget.selectedPickupPlace!.primaryText.isNotEmpty) {
           crpSelectPickupController.searchController.text = widget.selectedPickupPlace!.primaryText;
+        }
+        // Stop loading since pickup is already provided
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
         }
       });
     }
@@ -191,7 +218,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
     // 6. Load other data (these don't need to wait)
     _loadPreselectedRunType();
-    _prefillPickupFromCurrentLocation();
+    // Note: Location prefilling is now handled in initState() for immediate display
     _loadCorporateEntities();
 
     // 7. Fetch fresh data from APIs (will use cached data if API fails)
@@ -682,61 +709,182 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     }
   }
 
-  /// Prefill pickup with current location (name + lat/lng) if available.
-  /// Uses the same stored values as the personal cab flow (`sourceTitle`, `sourceLat`, `sourceLng`).
-  Future<void> _prefillPickupFromCurrentLocation() async {
+  /// Load current location from storage (saved at app start in main.dart).
+  /// Optimized for speed - reads all data in parallel and validates quickly.
+  /// Returns a SuggestionPlacesResponse if all required data is available, null otherwise.
+  Future<SuggestionPlacesResponse?> _loadCurrentLocationFromStorage() async {
     try {
-      // For Airport run type, ALWAYS start from current location,
-      // even if a previous pickup was selected earlier.
-      if (_isAirportRunType) {
-        await _setPickupFromCurrentGps();
-        return;
+      final storage = StorageServices.instance;
+      
+      // Read all stored location data in parallel for maximum speed
+      final results = await Future.wait([
+        storage.read('sourceTitle'),
+        storage.read('sourceLat'),
+        storage.read('sourceLng'),
+        storage.read('sourcePlaceId'),
+        storage.read('sourceCity'),
+        storage.read('sourceState'),
+        storage.read('sourceCountry'),
+        storage.read('sourceTypes'),
+        storage.read('sourceTerms'),
+      ]);
+
+      final sourceTitle = results[0] as String?;
+      final sourceLatStr = results[1] as String?;
+      final sourceLngStr = results[2] as String?;
+      final sourcePlaceId = (results[3] as String?) ?? '';
+      final sourceCity = (results[4] as String?) ?? '';
+      final sourceState = (results[5] as String?) ?? '';
+      final sourceCountry = (results[6] as String?) ?? '';
+      final sourceTypesStr = results[7] as String?;
+      final sourceTermsStr = results[8] as String?;
+
+      // Quick validation of essential fields (title, lat, lng are required)
+      if (sourceTitle == null || sourceTitle.isEmpty ||
+          sourceLatStr == null || sourceLatStr.isEmpty ||
+          sourceLngStr == null || sourceLngStr.isEmpty) {
+        return null; // Don't log in normal case - storage might not be ready yet
       }
 
-      // For other run types, if user has already selected a pickup
-      // in corporate flow, don't override it.
-      if (crpSelectPickupController.selectedPlace.value != null) return;
+      final lat = double.tryParse(sourceLatStr);
+      final lng = double.tryParse(sourceLngStr);
 
-      final storage = StorageServices.instance;
-      final sourceTitle = await storage.read('sourceTitle');
-      final sourceLatStr = await storage.read('sourceLat');
-      final sourceLngStr = await storage.read('sourceLng');
-      final sourcePlaceId = await storage.read('sourcePlaceId') ?? '';
+      if (lat == null || lng == null) {
+        return null;
+      }
 
-      // If we already have a stored pickup (from map/search), use it as prefill.
-      if (sourceTitle != null &&
-          sourceLatStr != null &&
-          sourceLngStr != null) {
-        final lat = double.tryParse(sourceLatStr);
-        final lng = double.tryParse(sourceLngStr);
-
-        if (lat != null && lng != null) {
-          final prefilledPlace = SuggestionPlacesResponse(
-            primaryText: sourceTitle,
-            secondaryText: '',
-            placeId: sourcePlaceId,
-            types: const [],
-            terms: const [],
-            city: '',
-            state: '',
-            country: '',
-            isAirport: false,
-            latitude: lat,
-            longitude: lng,
-            placeName: sourceTitle,
-          );
-
-          crpSelectPickupController.selectedPlace.value = prefilledPlace;
-          crpSelectPickupController.searchController.text = sourceTitle;
-          return;
+      // Parse types from JSON string (optional field, don't block on errors)
+      List<String> types = [];
+      if (sourceTypesStr != null && sourceTypesStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(sourceTypesStr) as List;
+          types = decoded.map((e) => e.toString()).toList();
+        } catch (_) {
+          // Ignore parse errors for optional fields
         }
       }
 
-      // Otherwise, take the device's current GPS location as the starting pickup.
-      // This will also update storage so other screens see the same current location.
-      await _setPickupFromCurrentGps();
-    } catch (_) {
-      // Silently ignore any errors – prefill is best-effort only.
+      // Parse terms from JSON string (optional field, don't block on errors)
+      List<Term> terms = [];
+      if (sourceTermsStr != null && sourceTermsStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(sourceTermsStr) as List;
+          terms = decoded.map((e) => Term.fromJson(e as Map<String, dynamic>)).toList();
+        } catch (_) {
+          // Ignore parse errors for optional fields
+        }
+      }
+
+      // Build secondary text from city, state, country if available
+      String secondaryText = '';
+      final locationParts = <String>[
+        if (sourceCity.isNotEmpty) sourceCity,
+        if (sourceState.isNotEmpty) sourceState,
+        if (sourceCountry.isNotEmpty) sourceCountry,
+      ];
+      if (locationParts.isNotEmpty) {
+        secondaryText = locationParts.join(', ');
+      }
+
+      // Build place name (use full address if available, otherwise use title)
+      String placeName = sourceTitle;
+      if (secondaryText.isNotEmpty) {
+        placeName = '$sourceTitle, $secondaryText';
+      }
+
+      final storedPlace = SuggestionPlacesResponse(
+        primaryText: sourceTitle,
+        secondaryText: secondaryText,
+        placeId: sourcePlaceId,
+        types: types,
+        terms: terms,
+        city: sourceCity,
+        state: sourceState,
+        country: sourceCountry,
+        isAirport: false,
+        latitude: lat,
+        longitude: lng,
+        placeName: placeName,
+      );
+
+      return storedPlace;
+    } catch (e) {
+      // Silently fail - storage might not be ready or location not saved yet
+      return null;
+    }
+  }
+
+  /// Prefill pickup with current location (name + lat/lng) if available.
+  /// Uses the same stored values as the personal cab flow (saved at app start in main.dart).
+  /// Optimized for immediate display - only uses storage (no GPS fetch to avoid delay).
+  Future<void> _prefillPickupFromCurrentLocation() async {
+    try {
+      // Don't override if user has already selected a pickup location
+      if (crpSelectPickupController.selectedPlace.value != null) {
+        debugPrint('📍 Pickup location already selected, skipping prefilling');
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
+        return;
+      }
+
+      // Don't override if pickup place was passed from navigation
+      if (widget.selectedPickupPlace != null) {
+        debugPrint('📍 Pickup place passed from navigation, skipping prefilling');
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
+        return;
+      }
+
+      // Try to load from storage first (fast, no GPS fetch needed)
+      // This is the main path - should be instant since data is already in storage
+      final storedPlace = await _loadCurrentLocationFromStorage();
+      
+      if (storedPlace != null && mounted) {
+        // Use stored location data - this should be instant
+        crpSelectPickupController.selectedPlace.value = storedPlace;
+        crpSelectPickupController.searchController.text = storedPlace.primaryText;
+        debugPrint('✅ Prefilled pickup from stored location: ${storedPlace.primaryText}');
+        
+        // Stop loading and trigger UI update
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
+        return;
+      }
+
+      // Only fetch GPS in background if absolutely necessary (should rarely happen)
+      // Don't await this - let it happen in background so UI doesn't wait
+      debugPrint('⚠️ No stored location found, will fetch GPS in background');
+      _setPickupFromCurrentGps().then((_) {
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
+      }).catchError((e) {
+        debugPrint('❌ GPS fetch failed: $e');
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('❌ Error in _prefillPickupFromCurrentLocation: $e');
+      // Stop loading even on error
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
     }
   }
 
@@ -812,8 +960,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         storage.save('sourceLat', lat.toString()),
         storage.save('sourceLng', lng.toString()),
       ]);
+      
+      // Stop loading when GPS fetch completes
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
     } catch (_) {
-      // Best-effort only – ignore failures.
+      // Stop loading even on error
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
     }
   }
 
@@ -928,6 +1088,24 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   @override
   Widget build(BuildContext context) {
+    // When coming from home screen (selectedPickupType is passed), always show loading
+    // until location is prefilled. Don't check for existing location in this case.
+    // Only check for existing location if NOT coming from home screen.
+    if (_isLoadingPickupLocation && widget.selectedPickupType == null) {
+      // Not coming from home screen - check if location is already available
+      if (crpSelectPickupController.selectedPlace.value != null || 
+          widget.selectedPickupPlace != null) {
+        // Location is already available, stop loading
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isLoadingPickupLocation = false;
+            });
+          }
+        });
+      }
+    }
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
@@ -957,7 +1135,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           ),
           centerTitle: false,
         ),
-        body: SafeArea(
+        body: _isLoadingPickupLocation
+            ? const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.mainButtonBg),
+                ),
+              )
+            : SafeArea(
           child: SingleChildScrollView(
             padding:
             const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
