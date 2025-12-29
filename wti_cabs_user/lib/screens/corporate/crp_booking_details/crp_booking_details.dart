@@ -428,7 +428,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   );
                 }),
                   const SizedBox(height: 20),
-                  // Edit Booking and Feedback Buttons
+                  // Edit Booking and Track Cab Buttons
                   Row(
                     children: [
                       Expanded(
@@ -446,6 +446,24 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                   'orderId': orderId,
                                   'carModelName': widget.booking.model,
                                 },
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildActionButton(
+                          'Track Cab',
+                          () {
+                            // Navigate to tracking screen with booking ID
+                            final bookingId = widget.booking.bookingId?.toString() ??
+                                widget.booking.bookingNo ??
+                                '';
+                            if (bookingId.isNotEmpty) {
+                              GoRouter.of(context).push(
+                                AppRoutes.cprCabTracking,
+                                extra: bookingId,
                               );
                             }
                           },

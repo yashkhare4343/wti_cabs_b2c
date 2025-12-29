@@ -44,6 +44,7 @@ import '../../screens/corporate/select_pickup/crp_select_pickup.dart';
 import '../../screens/corporate/select_pickup/crp_pickup_search_screen.dart';
 import '../../screens/corporate/crp_booking_confirmation/crp_booking_confirmation.dart';
 import '../../screens/corporate/crp_booking_details/crp_booking_details.dart';
+import '../../screens/corporate/crp_cab_tracking/crp_cab_tracking_screen.dart';
 import '../../screens/corporate/cpr_modify_booking/cpr_modify_booking.dart';
 import '../../screens/corporate/corporate_bottom_nav/corporate_bottom_nav.dart';
 import '../../screens/corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
@@ -363,6 +364,15 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprForgotPassword,
       pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CprForgotPassword()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprCabTracking,
+      pageBuilder: (context, state) {
+        final bookingId = state.extra as String? ?? state.uri.queryParameters['bookingId'] ?? '';
+        return CorporatePageTransitions.defaultTransition(
+          CrpCabTrackingScreen(bookingId: bookingId),
+        );
+      },
     ),
   ];
 

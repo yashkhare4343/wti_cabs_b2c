@@ -24,7 +24,11 @@ class CprApiService {
   static final CprApiService _instance = CprApiService._internal();
   factory CprApiService() => _instance;
 
-  final String baseUrl = 'http://103.208.202.180:120/api/Info';
+  final String baseUrl = 'http://services.aaveg.co.in/api/Info';
+  //outside office wifi(usually we use for dev)
+  // final String baseUrl = 'http://103.208.202.180:120/api/Info';
+
+  // inside office wifi
   // final String baseUrl = 'http://192.168.1.60:120/api/Info';
 
   final String priceBaseUrl = EnvironmentConfig.priceBaseUrl;
