@@ -30,26 +30,20 @@ class CrpInventory extends StatefulWidget {
 }
 
 class _CrpInventoryState extends State<CrpInventory> {
-  final CrpInventoryListController crpInventoryListController =
-  Get.put(CrpInventoryListController());
-  bool isLoading = false;
   final controller = Get.put(CrpInventoryListController());
-  bool _showShimmer = true;
+  bool _isInitialLoad = true;
 
   String? guestId, token, user, corpId, branchId;
 
   @override
   void initState() {
     super.initState();
-    // Show shimmer for 0.5 seconds
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Start fetching data after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        setState(() {
-          _showShimmer = false;
-        });
+        fetchCardModel(); // TODO: Initialize inventory data
       }
     });
-    fetchCardModel(); // TODO: Initialize inventory data
   }
 
   Future<void> fetchParameter() async {
@@ -86,15 +80,19 @@ class _CrpInventoryState extends State<CrpInventory> {
       'BranchID': branchId,
       'RunTypeID': runTypeId
     };
+    
+    // Mark initial load as complete - fetchCarModels will set isLoading = true
+    if (_isInitialLoad && mounted) {
+      setState(() {
+        _isInitialLoad = false;
+      });
+    }
+    
     await controller.fetchCarModels(params, context);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showShimmer) {
-      return const CorporateShimmer();
-    }
-
     // Parse booking data if provided
     CrpBookingData? parsedBookingData;
     if (widget.bookingData != null) {
@@ -105,20 +103,38 @@ class _CrpInventoryState extends State<CrpInventory> {
       }
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          context.push(AppRoutes.cprBookingEngine);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.scaffoldBgPrimary1,
-        body: SafeArea(
-          child: _BookingBody(bookingData: parsedBookingData),
+    return Obx(() {
+      // Show full-screen circular progress indicator while loading or during initial load
+      final bool showLoader = controller.isLoading.value || _isInitialLoad;
+      
+      if (showLoader) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (bool didPop, Object? result) {
+            if (!didPop) {
+              context.push(AppRoutes.cprBookingEngine);
+            }
+          },
+          child: const CorporateShimmer(),
+        );
+      }
+
+      // Show actual content when loading is complete
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, Object? result) {
+          if (!didPop) {
+            context.push(AppRoutes.cprBookingEngine);
+          }
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.scaffoldBgPrimary1,
+          body: SafeArea(
+            child: _BookingBody(bookingData: parsedBookingData),
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -1052,8 +1068,9 @@ class _VehicleSectionState extends State<_VehicleSection> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      // Don't render anything while loading - parent handles the loader
       if (controller.isLoading.value) {
-        return const _InventoryShimmer();
+        return const SizedBox.shrink();
       }
 
       final categories = _getCategories();

@@ -50,6 +50,7 @@ import '../../screens/corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile.dart';
 import '../../screens/corporate/crp_edit_profile/crp_edit_profile_form.dart';
 import '../../screens/corporate/cpr_change_password/cpr_change_password.dart';
+import '../../screens/corporate/cpr_forgot_password/cpr_forgot_password.dart';
 import '../../screens/select_location/airport/airport_select_drop.dart';
 import '../../screens/self_drive/self_drive_payment_failure/self_drive_payment_failure.dart';
 import '../model/corporate/crp_booking_data/crp_booking_data.dart';
@@ -358,6 +359,10 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprChangePassword,
       pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CprChangePassword()),
+    ),
+    GoRoute(
+      path: AppRoutes.cprForgotPassword,
+      pageBuilder: (context, state) => CorporatePageTransitions.defaultTransition(const CprForgotPassword()),
     ),
   ];
 

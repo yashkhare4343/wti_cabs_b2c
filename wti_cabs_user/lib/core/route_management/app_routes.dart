@@ -46,4 +46,5 @@ class AppRoutes{
   static const String cprEditProfile = '/cprEditProfile';
   static const String cprEditProfileForm = '/cprEditProfileForm';
   static const String cprChangePassword = '/cprChangePassword';
+  static const String cprForgotPassword = '/cprForgotPassword';
 }

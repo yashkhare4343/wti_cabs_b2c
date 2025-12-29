@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common_widget/textformfield/crp_text_form_field.dart';
 import '../../../core/route_management/app_routes.dart';
+import '../../../core/api/corporate/cpr_api_services.dart';
+import '../../../core/services/storage_services.dart';
 
 class CprChangePassword extends StatefulWidget {
   const CprChangePassword({super.key});
@@ -19,6 +22,7 @@ class _CprChangePasswordState extends State<CprChangePassword> {
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureReenterPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,18 +32,111 @@ class _CprChangePasswordState extends State<CprChangePassword> {
     super.dispose();
   }
 
-  void _handleChangePassword() {
+  Future<void> _handleChangePassword() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Implement password change API call
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password changed successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      // Navigate back after successful password change
-      if (context.mounted) {
-        context.pop();
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Get email from storage
+        final email = await StorageServices.instance.read('email');
+        if (email == null || email.isEmpty) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Email not found. Please login again.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Prepare query parameters
+        final params = <String, dynamic>{
+          'emailID': email,
+          'oldPassword': currentPasswordController.text,
+          'password': newPasswordController.text,
+          // token and user will be auto-added by postRequestParamsNew
+        };
+
+        // Call the API
+        final response = await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
+          'PostUpdatePassword',
+          params,
+          (data) {
+            // Handle response parsing - API service already handles JSON decoding
+            if (data is Map<String, dynamic>) {
+              return data;
+            } else if (data is String) {
+              // If response is a JSON string, try to parse it
+              try {
+                // Remove surrounding quotes if present
+                String jsonString = data;
+                if (jsonString.startsWith('"') && jsonString.endsWith('"')) {
+                  jsonString = jsonString.substring(1, jsonString.length - 1);
+                  // Unescape the string
+                  jsonString = jsonString.replaceAll('\\"', '"');
+                }
+                // Try to parse as JSON
+                final parsed = jsonDecode(jsonString);
+                if (parsed is Map<String, dynamic>) {
+                  return parsed;
+                }
+                // If parsing gives us a string, return it as message
+                return {'bStatus': false, 'sMessage': parsed.toString()};
+              } catch (e) {
+                // If parsing fails, return the string as message
+                return {'bStatus': false, 'sMessage': data};
+              }
+            }
+            // Fallback for unknown types
+            return {'bStatus': false, 'sMessage': 'Unknown error occurred'};
+          },
+          context,
+        );
+
+        // Check response status
+        final bStatus = response['bStatus'] as bool? ?? false;
+        final sMessage = response['sMessage'] as String? ?? 'Unknown error occurred';
+
+        if (context.mounted) {
+          if (bStatus) {
+            // Success
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(sMessage.isNotEmpty ? sMessage : 'Password changed successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Navigate back after successful password change
+            context.pop();
+          } else {
+            // Failure
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(sMessage),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -86,10 +183,13 @@ class _CprChangePasswordState extends State<CprChangePassword> {
               _buildRequirementItem('Use at least 8 characters'),
               const SizedBox(height: 8),
               _buildRequirementItem(
-                  'Use a mix of letters, numbers, and special characters (e.g.: #\$!%)'),
+                'Use a mix of letters, numbers, and special characters (e.g.: #\$!%)',
+              ),
               const SizedBox(height: 8),
               _buildRequirementItem(
-                  'Try combining words and symbols into a unique phrase'),
+                'Try combining words and symbols into a unique phrase',
+              ),
+
               const SizedBox(height: 32),
               // Current password field
               CprTextFormField(
@@ -149,12 +249,14 @@ class _CprChangePasswordState extends State<CprChangePassword> {
               const SizedBox(height: 32),
               // Change password button
               GestureDetector(
-                onTap: _handleChangePassword,
+                onTap: _isLoading ? null : _handleChangePassword,
                 child: Container(
                   height: 48,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF01ACF2), // Teal/blue-green color
+                    color: _isLoading 
+                        ? const Color(0xFF01ACF2).withOpacity(0.6)
+                        : const Color(0xFF01ACF2), // Teal/blue-green color
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
@@ -165,14 +267,23 @@ class _CprChangePasswordState extends State<CprChangePassword> {
                     ],
                   ),
                   alignment: Alignment.center,
-                  child: const Text(
-                    'Change password',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Change password',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

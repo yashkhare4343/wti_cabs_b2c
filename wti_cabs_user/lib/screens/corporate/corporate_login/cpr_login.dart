@@ -153,10 +153,10 @@ class _CprLoginState extends State<CprLogin> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          context.go(AppRoutes.cprLandingPage);
+          GoRouter.of(context).push(AppRoutes.cprLandingPage);
         }
       },
       child: Scaffold(
@@ -246,7 +246,7 @@ class _CprLoginState extends State<CprLogin> {
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
                                     onPressed: () {
-                                      GoRouter.of(context).push(AppRoutes.cprChangePassword);
+                                      GoRouter.of(context).push(AppRoutes.cprForgotPassword);
                                     },
                                     child: const Text(
                                       'Forgot password',

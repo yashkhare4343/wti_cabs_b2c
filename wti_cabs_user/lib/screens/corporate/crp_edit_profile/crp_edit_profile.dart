@@ -264,31 +264,33 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
                       ),
                     ),
                   ),
-                  // const SizedBox(width: 12),
-                  // Expanded(
-                  //   child: OutlinedButton(
-                  //     onPressed: () {},
-                  //     style: OutlinedButton.styleFrom(
-                  //       foregroundColor: const Color(0xFF666666),
-                  //       side: const BorderSide(
-                  //         color: Color(0xFFCCCCCC),
-                  //         width: 1,
-                  //       ),
-                  //       padding: const EdgeInsets.symmetric(vertical: 14),
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(6),
-                  //       ),
-                  //     ),
-                  //     child: const Text(
-                  //       'Change Password',
-                  //       style: TextStyle(
-                  //         fontSize: 16,
-                  //         fontWeight: FontWeight.w500,
-                  //         fontFamily: 'Montserrat',
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        GoRouter.of(context).push(AppRoutes.cprChangePassword);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF666666),
+                        side: const BorderSide(
+                          color: Color(0xFFCCCCCC),
+                          width: 1,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: const Text(
+                        'Change Password',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
