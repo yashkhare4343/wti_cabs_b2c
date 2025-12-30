@@ -917,12 +917,20 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF), // Background light blue as image
+        color: const Color(0xFFFFFFFF), // Background light blue as image
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            offset: Offset(0, 1),     // x: 0px, y: 1px
+            blurRadius: 3,            // blur: 3px
+            spreadRadius: 0,          // spread: 0px
+            color: Color(0x40000000), // #00000040 → 25% opacity black
+          ),
+        ],
         border: Border.all(
           color: pickupLocationError != null || dropLocationError != null
               ? Colors.red.shade300
-              : const Color(0xFFD3E3FD),
+              : const Color(0xFFFFFFFF),
           width: 1,
         ),
       ),
@@ -941,7 +949,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     width: 16,
                     height: 16,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF2563EB),
+                      color: Color(0xFFA4FF59),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -956,11 +964,22 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     ),
                   ),
                   // Vertical line
-                  Container(
-                    width: 3,
+                  SizedBox(
+                    width: 2,
                     height: 24,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(
+                        6,
+                        (_) => Container(
+                          width: 2,
+                          height: 3,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF7B7B7B),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   // Square end (drop icon)
@@ -969,14 +988,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     height: 15,
                     padding: EdgeInsets.all(4.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: const Color(0xFFFFB179),
                       borderRadius: BorderRadius.circular(3),
                     ),
                     child: Container(
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(0.5),
                       ),
                     ),
@@ -997,28 +1016,44 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     setState(() {
                       pickupLocationError = null;
                     });
-                    GoRouter.of(context).push(AppRoutes.cprSelectPickup);
+                    GoRouter.of(context).push(
+                      AppRoutes.cprPickupSearch,
+                      extra: {
+                        'selectedPickupType': selectedPickupType,
+                      },
+                    );
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      crpSelectPickupController.searchController.text.isNotEmpty
-                          ? crpSelectPickupController.searchController.text
-                          : 'Enter Pickup Location',
-                      style: TextStyle(
-                        fontWeight: crpSelectPickupController
-                                .searchController.text.isNotEmpty
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: crpSelectPickupController
-                                .searchController.text.isNotEmpty
-                            ? const Color(0xFF4F4F4F)
-                            : Color(0xFFB2B2B2),
-                        fontSize: 14,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
+                    child: Obx(() {
+                      final pickupPlace = crpSelectPickupController.selectedPlace.value;
+                      String displayText;
+                      bool hasText;
+
+                      if (pickupPlace != null && pickupPlace.primaryText != null && pickupPlace.primaryText!.isNotEmpty) {
+                        final secondaryText = pickupPlace.secondaryText ?? '';
+                        displayText = secondaryText.isNotEmpty
+                            ? '${pickupPlace.primaryText}, $secondaryText'
+                            : pickupPlace.primaryText!;
+                        hasText = true;
+                      } else {
+                        displayText = 'Enter Pickup Location';
+                        hasText = false;
+                      }
+
+                      return Text(
+                        displayText,
+                        style: TextStyle(
+                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          color: hasText
+                              ? const Color(0xFF4F4F4F)
+                              : Color(0xFFB2B2B2),
+                          fontSize: 14,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      );
+                    }),
                   ),
                 ),
                 SizedBox(
@@ -1030,29 +1065,45 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     setState(() {
                       dropLocationError = null;
                     });
-                    GoRouter.of(context).push(AppRoutes.cprSelectDrop);
+                    GoRouter.of(context).push(
+                      AppRoutes.cprDropSearch,
+                      extra: {
+                        'fromCrpHomeScreen': false,
+                      },
+                    );
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
                     margin: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      crpSelectDropController.searchController.text.isNotEmpty
-                          ? crpSelectDropController.searchController.text
-                          : 'Enter drop location',
-                      style: TextStyle(
-                        fontWeight: crpSelectDropController
-                                .searchController.text.isNotEmpty
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: crpSelectDropController
-                                .searchController.text.isNotEmpty
-                            ? const Color(0xFF4F4F4F)
-                            : Color(0xFFB2B2B2),
-                        fontSize: 14,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
+                    child: Obx(() {
+                      final dropPlace = crpSelectDropController.selectedPlace.value;
+                      String displayText;
+                      bool hasText;
+
+                      if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
+                        final secondaryText = dropPlace.secondaryText ?? '';
+                        displayText = secondaryText.isNotEmpty
+                            ? '${dropPlace.primaryText}, $secondaryText'
+                            : dropPlace.primaryText!;
+                        hasText = true;
+                      } else {
+                        displayText = 'Enter drop location (optional)';
+                        hasText = false;
+                      }
+
+                      return Text(
+                        displayText,
+                        style: TextStyle(
+                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          color: hasText
+                              ? const Color(0xFF4F4F4F)
+                              : Color(0xFFB2B2B2),
+                          fontSize: 14,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      );
+                    }),
                   ),
                 ),
               ],
