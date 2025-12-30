@@ -1852,12 +1852,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF), // Background light blue as image
+        color: const Color(0xFFFFFFFF), // Background light blue as image
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            offset: Offset(0, 1),     // x: 0px, y: 1px
+            blurRadius: 3,            // blur: 3px
+            spreadRadius: 0,          // spread: 0px
+            color: Color(0x40000000), // #00000040 → 25% opacity black
+          ),
+        ],
         border: Border.all(
           color: pickupLocationError != null || dropLocationError != null
               ? Colors.red.shade300
-              : const Color(0xFFD3E3FD),
+              : const Color(0xFFFFFFFF),
           width: 1,
         ),
       ),
@@ -1876,7 +1884,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     width: 16,
                     height: 16,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF2563EB),
+                      color: Color(0xFFA4FF59),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -1891,11 +1899,22 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     ),
                   ),
                   // Vertical line
-                  Container(
-                    width: 3,
+                  SizedBox(
+                    width: 2,
                     height: 24,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(
+                        6,
+                            (_) => Container(
+                          width: 2,
+                          height: 3,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF7B7B7B),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   // Square end (drop icon)
@@ -1904,14 +1923,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                     height: 15,
                     padding: EdgeInsets.all(4.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: const Color(0xFFFFB179),
                       borderRadius: BorderRadius.circular(3),
                     ),
                     child: Container(
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(0.5),
                       ),
                     ),
@@ -2003,7 +2022,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                             : dropPlace.primaryText!;
                         hasText = true;
                       } else {
-                        displayText = 'Enter drop location';
+                        displayText = 'Enter drop location (optional)';
                         hasText = false;
                       }
 
@@ -2749,171 +2768,181 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     final DateTime now = DateTime.now();
     // For pickup, minimum date uses advancedHourToConfirm from login info
     final int hoursOffset = _getAdvancedHourToConfirm();
+    // Calculate minimum date properly - for pickup, it's now + hoursOffset
+    // The picker will automatically disable dates/times before this minimum
     final DateTime minimumDate = isPickup
-        ? now.add(Duration(hours: 0))
+        ? now.add(Duration(minutes: hoursOffset * 60))
         : (selectedPickupDateTime ?? now);
 
-    // Use selected date if it exists and is valid, otherwise use minimum date
+    // Use selected date if it exists and is valid (after minimum), otherwise use minimum date
     DateTime? currentSelectedDateTime =
-    isPickup ? selectedPickupDateTime : selectedDropDateTime;
+        isPickup ? selectedPickupDateTime : selectedDropDateTime;
     DateTime tempDateTime = currentSelectedDateTime != null &&
-        currentSelectedDateTime.isAfter(minimumDate) &&
-        (!isPickup || currentSelectedDateTime.isAfter(now.add(Duration(minutes: hoursOffset*60))))
+            currentSelectedDateTime.isAfter(minimumDate)
         ? currentSelectedDateTime
         : minimumDate;
 
     showCupertinoModalPopup(
       context: context,
       builder: (BuildContext context) {
-        return Container(
-          height: 350,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setPickerState) {
+            return Container(
+              height: 350,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
                       children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: Text(
+                                isPickup
+                                    ? 'Choose Pickup Time'
+                                    : 'Choose Drop Time',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF333333),
+                                    ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close_rounded,
+                                  color: Colors.grey.shade600),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
                         Padding(
-                          padding: const EdgeInsets.only(left: 20),
-                          child: Text(
-                            isPickup
-                                ? 'Select Pickup Date & Time'
-                                : 'Select Drop Date & Time',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF333333),
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Divider(
+                            height: 1,
+                            color: Color(0xFF939393),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.dateAndTime,
+                      initialDateTime: tempDateTime,
+                      minimumDate: minimumDate,
+                      // The picker automatically prevents selecting dates before minimumDate
+                      // Invalid dates/times will appear disabled (grayed out) by default
+                      onDateTimeChanged: (DateTime newDateTime) {
+                        // Ensure the selected date is always >= minimumDate
+                        // This prevents any edge cases where user might scroll to invalid date
+                        if (newDateTime.isAfter(minimumDate) ||
+                            newDateTime.isAtSameMomentAs(minimumDate)) {
+                          setPickerState(() {
+                            tempDateTime = newDateTime;
+                          });
+                        } else {
+                          setPickerState(() {
+                            tempDateTime = minimumDate;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200, width: 1),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF1A1A1A),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                    color: Colors.grey.shade300, width: 1.5),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.close_rounded,
-                              color: Colors.grey.shade600),
-                          onPressed: () => Navigator.pop(context),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // No need to validate here - the picker's minimumDate
+                              // ensures only valid dates can be selected
+                              // The tempDateTime is guaranteed to be >= minimumDate
+                              if (isPickup) {
+                                setState(() {
+                                  selectedPickupDateTime = tempDateTime;
+                                  pickupDateError = null;
+                                });
+                              } else {
+                                setState(() {
+                                  selectedDropDateTime = tempDateTime;
+                                  dropDateError = null;
+                                });
+                              }
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.mainButtonBg,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Done',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Divider(
-                        height: 1,
-                        color: Color(0xFF939393),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.dateAndTime,
-                  initialDateTime: tempDateTime,
-                  minimumDate: minimumDate,
-                  onDateTimeChanged: (DateTime newDateTime) {
-                    tempDateTime = newDateTime;
-                  },
-                ),
-              ),
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  border: Border(
-                    top: BorderSide(color: Colors.grey.shade200, width: 1),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF1A1A1A),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            side: BorderSide(
-                                color: Colors.grey.shade300, width: 1.5),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (isPickup) {
-                            final DateTime now = DateTime.now();
-                            final int hoursOffset = _getAdvancedHourToConfirm();
-                            final DateTime minPickupDateTime = now.add(Duration(minutes: hoursOffset*60));
-
-                            // Validate pickup date is at least advancedHourToConfirm hours from now
-                            if (tempDateTime.isBefore(minPickupDateTime)) {
-                              setState(() {
-                                pickupDateError =
-                                    'Pickup date and time must be at least $hoursOffset hours from now';
-                              });
-                              // Show smooth, professional error snackbar
-                              _showErrorSnackBar(
-                                'Pickup date and time must be at least $hoursOffset hours from now',
-                              );
-                              return; // Don't close the picker
-                            }
-                            setState(() {
-                              selectedPickupDateTime = tempDateTime;
-                              pickupDateError = null;
-                            });
-                          } else {
-                            setState(() {
-                              selectedDropDateTime = tempDateTime;
-                              dropDateError = null;
-                            });
-                          }
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.mainButtonBg,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Done',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -3307,19 +3336,10 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       hasValidationError = true;
     }
 
-    // 2. Validate Drop Location (Required)
-    final dropPlace = crpSelectDropController.selectedPlace.value;
-    final dropText = crpSelectDropController.searchController.text.trim();
-    if (dropPlace == null ||
-        dropPlace.primaryText == null ||
-        dropPlace.primaryText?.isEmpty == true ||
-        dropText.isEmpty) {
-      dropLocationError = 'Please select a drop location';
-      errors.add(dropLocationError!);
-      hasValidationError = true;
-    }
+    // 2. Validate Drop Location (Optional - no validation needed)
 
-    // 3. Validate Pickup and Drop are not the same (Required)
+    // 3. Validate Pickup and Drop are not the same (only if both are provided)
+    final dropPlace = crpSelectDropController.selectedPlace.value;
     if (pickupPlace != null && dropPlace != null) {
       if (_arePickupAndDropSame(pickupPlace, dropPlace)) {
         pickupLocationError = 'Pickup and drop locations cannot be the same';
@@ -3330,22 +3350,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     }
 
     // 4. Validate Pickup Date (Required)
+    // Note: Minimum date validation is handled by the date picker itself
+    // The picker's minimumDate ensures only valid dates (>= now + advancedHourToConfirm) can be selected
     if (selectedPickupDateTime == null) {
       pickupDateError = 'Please select a pickup date and time';
       errors.add(pickupDateError!);
       hasValidationError = true;
-    } else {
-      final DateTime now = DateTime.now();
-      final int hoursOffset = _getAdvancedHourToConfirm();
-      final DateTime minPickupDateTime = now.add(Duration(minutes: hoursOffset*60));
-
-      // Validate pickup date is at least advancedHourToConfirm hours from now
-      if (selectedPickupDateTime!.isBefore(minPickupDateTime)) {
-        pickupDateError = 'Pickup date and time must be at least $hoursOffset hours from now';
-        errors.add(pickupDateError!);
-        hasValidationError = true;
-      }
     }
+    // No need to validate minimum date here - the picker prevents invalid selections
 
     // // 5. Validate Drop Date (Required)
     // if (selectedDropDateTime == null) {

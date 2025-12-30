@@ -34,21 +34,21 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     super.initState();
     _controller = Get.put(CrpCabTrackingController());
     _createCarIcon();
-    
+
     // Start tracking
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _controller.startTracking(widget.bookingId);
       }
     });
-    
+
     // Listen to tracking updates
     ever(_controller.trackingResponse, (response) {
       if (response != null && mounted) {
         _updateMapMarkers(response);
       }
     });
-    
+
     // Listen to route updates
     ever(_controller.routePoints, (points) {
       if (mounted && points.isNotEmpty) {
@@ -60,7 +60,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
   /// Create custom car icon from asset
   Future<void> _createCarIcon() async {
     try {
-      final ByteData data = await rootBundle.load('assets/images/liveCarWhite.png');
+      final ByteData data =
+          await rootBundle.load('assets/images/liveCarWhite.png');
       final ui.Codec codec = await ui.instantiateImageCodec(
         data.buffer.asUint8List(),
         targetWidth: 180, // Resize to appropriate size for marker
@@ -77,7 +78,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     } catch (e) {
       debugPrint('Error creating car icon: $e');
       // Fallback to default marker
-      _carIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+      _carIcon =
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
     }
   }
 
@@ -102,7 +104,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
         Marker(
           markerId: const MarkerId('pickup'),
           position: LatLng(pickupLat, pickupLng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
           infoWindow: const InfoWindow(
             title: 'Pickup Location',
             snippet: 'Your pickup point',
@@ -134,12 +137,13 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     if (cabLat != null && cabLng != null) {
       final cabPosition = LatLng(cabLat, cabLng);
       _lastCabPosition = cabPosition;
-      
+
       _markers.add(
         Marker(
           markerId: const MarkerId('cab'),
           position: cabPosition,
-          icon: _carIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          icon: _carIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
           infoWindow: const InfoWindow(
             title: 'Driver Location',
             snippet: 'Your driver is here',
@@ -155,7 +159,11 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     }
 
     // Fetch route from Google Directions API if we have both pickup and drop (only once)
-    if (!_routeFetched && pickupLat != null && pickupLng != null && dropLat != null && dropLng != null) {
+    if (!_routeFetched &&
+        pickupLat != null &&
+        pickupLng != null &&
+        dropLat != null &&
+        dropLng != null) {
       _routeFetched = true;
       _controller.fetchRoute(pickupLat, pickupLng, dropLat, dropLng);
     }
@@ -222,7 +230,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
       ),
       body: Obx(() {
         // Show loader until first successful response
-        if (_controller.isLoading.value && _controller.trackingResponse.value == null) {
+        if (_controller.isLoading.value &&
+            _controller.trackingResponse.value == null) {
           return const Center(
             child: CircularProgressIndicator(
               color: Color(0xFF002CC0),
@@ -557,7 +566,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         ),
                     ],
@@ -566,7 +576,8 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
               ),
 
             // Loading overlay (subtle)
-            if (_controller.isLoading.value && _controller.trackingResponse.value != null)
+            if (_controller.isLoading.value &&
+                _controller.trackingResponse.value != null)
               Positioned(
                 top: 80,
                 right: 16,
@@ -599,4 +610,3 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     );
   }
 }
-
