@@ -368,9 +368,32 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprCabTracking,
       pageBuilder: (context, state) {
-        final bookingId = state.extra as String? ?? state.uri.queryParameters['bookingId'] ?? '';
+        // Handle both String (old) and Map (new) formats
+        final extra = state.extra;
+        String bookingId = '';
+        Map<String, String>? bookingDetails;
+        
+        if (extra is String) {
+          bookingId = extra;
+        } else if (extra is Map<String, dynamic>) {
+          bookingId = extra['bookingId']?.toString() ?? '';
+          bookingDetails = {
+            'carModel': extra['carModel']?.toString() ?? '',
+            'carNo': extra['carNo']?.toString() ?? '',
+            'driverName': extra['driverName']?.toString() ?? '',
+            'driverMobile': extra['driverMobile']?.toString() ?? '',
+            'bookingNo': extra['bookingNo']?.toString() ?? '',
+            'cabRequiredOn': extra['cabRequiredOn']?.toString() ?? '',
+          };
+        } else {
+          bookingId = state.uri.queryParameters['bookingId'] ?? '';
+        }
+        
         return CorporatePageTransitions.defaultTransition(
-          CrpCabTrackingScreen(bookingId: bookingId),
+          CrpCabTrackingScreen(
+            bookingId: bookingId,
+            bookingDetails: bookingDetails,
+          ),
         );
       },
     ),

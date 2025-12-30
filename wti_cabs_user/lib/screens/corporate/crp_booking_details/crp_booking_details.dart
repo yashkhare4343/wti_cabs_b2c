@@ -513,14 +513,26 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         child: _buildActionButton(
                           'Track Cab',
                           () {
-                            // Navigate to tracking screen with booking ID
+                            // Navigate to tracking screen with booking ID and details
                             final bookingId = widget.booking.bookingId?.toString() ??
                                 widget.booking.bookingNo ??
                                 '';
                             if (bookingId.isNotEmpty) {
+                              // Get driver details from controller
+                              final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
+                              final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+                              
                               GoRouter.of(context).push(
                                 AppRoutes.cprCabTracking,
-                                extra: bookingId,
+                                extra: {
+                                  'bookingId': bookingId,
+                                  'carModel': widget.booking.model ?? '',
+                                  'carNo': driverDetails?.carNo ?? '',
+                                  'driverName': driverDetails?.chauffeur ?? '',
+                                  'driverMobile': driverDetails?.mobile ?? '',
+                                  'bookingNo': widget.booking.bookingNo ?? widget.booking.bookingId?.toString() ?? '',
+                                  'cabRequiredOn': widget.booking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
+                                },
                               );
                             }
                           },

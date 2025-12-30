@@ -1,19 +1,24 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_cab_tracking/crp_cab_tracking_controller.dart';
 
 import '../../../core/model/corporate/crp_cab_tracking/crp_cab_tracking_response.dart';
 
 class CrpCabTrackingScreen extends StatefulWidget {
   final String bookingId;
+  final Map<String, String>? bookingDetails;
 
   const CrpCabTrackingScreen({
     super.key,
     required this.bookingId,
+    this.bookingDetails,
   });
 
   @override
@@ -88,6 +93,290 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     _controller.stopPolling();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  /// Build bottom details card with car, booking, and chauffeur info
+  Widget _buildBottomDetailsCard() {
+    final details = widget.bookingDetails!;
+    final carModel = details['carModel'] ?? '';
+    final carNo = details['carNo'] ?? '';
+    final driverName = details['driverName'] ?? '';
+    final driverMobile = details['driverMobile'] ?? '';
+    final bookingNo = details['bookingNo'] ?? '';
+    final cabRequiredOn = details['cabRequiredOn'] ?? '';
+
+    // Format booking date
+    String formattedDate = '';
+    if (cabRequiredOn.isNotEmpty) {
+      try {
+        final date = DateTime.parse(cabRequiredOn);
+        formattedDate = DateFormat('dd MMM yyyy').format(date);
+      } catch (e) {
+        formattedDate = cabRequiredOn;
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(23),
+          topRight: Radius.circular(23),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Car Details and Arrival Time Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Car Image and Details
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Car Image
+                      Container(
+                        width: 90,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          // color: const Color(0xFFE8F0FE),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Image.asset(
+                          'assets/images/booking_crp_car.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.directions_car,
+                              size: 40,
+                              color: Color(0xFF002CC0),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      // License Plate - dark gray, bold
+                      Text(
+                        carNo,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF192653),
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Car Model - lighter gray
+                      Text(
+                        carModel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF939393),
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Arrival Time Badge - positioned at top right
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Arriving in',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFA5A5A5),
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                            Obx(() {
+                              // Calculate arrival time from tracking response
+                              final response = _controller.trackingResponse.value;
+                              String arrivalText = '15 Mins';
+                              
+                              // Calculate estimated time based on distance if we have coordinates
+                              if (response != null) {
+                                final cabLat = response.cabLatitude;
+                                final cabLng = response.cabLongitude;
+                                final pickupLat = response.pickupLatitude;
+                                final pickupLng = response.pickupLongitude;
+                                
+                                if (cabLat != null && cabLng != null && 
+                                    pickupLat != null && pickupLng != null) {
+                                  // Calculate distance in km
+                                  final distance = _calculateDistance(
+                                    cabLat, cabLng, 
+                                    pickupLat, pickupLng
+                                  );
+                                  
+                                  // Estimate time: assume average speed of 30 km/h
+                                  // Time in minutes = (distance / 30) * 60
+                                  final estimatedMinutes = (distance / 30 * 60).round();
+                                  if (estimatedMinutes > 0 && estimatedMinutes < 120) {
+                                    arrivalText = '$estimatedMinutes Mins';
+                                  }
+                                }
+                              }
+                              
+                              return Text(
+                                arrivalText,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F), // Dark gray instead of blue
+                                  fontFamily: 'Montserrat',
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      // Booking Information - below arrival time badge, on the right
+                      if (bookingNo.isNotEmpty || formattedDate.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (bookingNo.isNotEmpty)
+                              Text(
+                                'Booking ID $bookingNo',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF939393),
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            if (formattedDate.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Booked on $formattedDate',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF939393),
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Chauffeur Details Bar
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    // Profile Picture Placeholder - circular light gray
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.grey,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Driver Name
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Chauffer Name',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF939393),
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                          Text(
+                            driverName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4082F1),
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Phone Icon - circular white button with light blue icon
+                    if (driverMobile.isNotEmpty)
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            _launchPhoneCall(driverMobile);
+                          },
+                          icon: const Icon(
+                            Icons.phone_rounded,
+                            color: Color(0xFF64A4F6),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Update map markers based on tracking response
@@ -199,6 +488,60 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
     );
   }
 
+  /// Calculate distance between two coordinates in kilometers (Haversine formula)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371; // Earth radius in kilometers
+    
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLon = _degreesToRadians(lon2 - lon1);
+    
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) *
+            math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    
+    final double c = 2 * math.asin(math.sqrt(a));
+    
+    return earthRadius * c;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * (math.pi / 180);
+  }
+
+  /// Launch phone call using url_launcher
+  Future<void> _launchPhoneCall(String phoneNumber) async {
+    try {
+      // Remove any spaces, dashes, or other formatting
+      final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+      final Uri uri = Uri(scheme: 'tel', path: cleanedNumber);
+      
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to make phone call'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error launching phone call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,7 +561,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
           },
         ),
         title: const Text(
-          'Live Tracking',
+          'Track Chauffeur',
           style: TextStyle(
             color: Color(0xFF000000),
             fontSize: 20,
@@ -520,60 +863,60 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
             ),
 
             // Status banner at top
-            if (response?.isRideActive == true)
-              Positioned(
-                top: 16,
-                left: 16,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF002CC0),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.directions_car,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Driver is on the way',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                      ),
-                      if (_controller.isPolling.value)
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+            // if (response?.isRideActive == true)
+            //   Positioned(
+            //     top: 16,
+            //     left: 16,
+            //     right: 16,
+            //     child: Container(
+            //       padding: const EdgeInsets.symmetric(
+            //         horizontal: 16,
+            //         vertical: 12,
+            //       ),
+            //       decoration: BoxDecoration(
+            //         color: const Color(0xFF002CC0),
+            //         borderRadius: BorderRadius.circular(8),
+            //         boxShadow: [
+            //           BoxShadow(
+            //             color: Colors.black.withOpacity(0.1),
+            //             blurRadius: 4,
+            //             offset: const Offset(0, 2),
+            //           ),
+            //         ],
+            //       ),
+            //       child: Row(
+            //         children: [
+            //           const Icon(
+            //             Icons.directions_car,
+            //             color: Colors.white,
+            //             size: 24,
+            //           ),
+            //           const SizedBox(width: 12),
+            //           const Expanded(
+            //             child: Text(
+            //               'Driver is on the way',
+            //               style: TextStyle(
+            //                 fontSize: 16,
+            //                 fontWeight: FontWeight.w600,
+            //                 color: Colors.white,
+            //                 fontFamily: 'Montserrat',
+            //               ),
+            //             ),
+            //           ),
+            //           if (_controller.isPolling.value)
+            //             const SizedBox(
+            //               width: 16,
+            //               height: 16,
+            //               child: CircularProgressIndicator(
+            //                 strokeWidth: 2,
+            //                 valueColor:
+            //                     AlwaysStoppedAnimation<Color>(Colors.white),
+            //               ),
+            //             ),
+            //         ],
+            //       ),
+            //     ),
+            //   ),
 
             // Loading overlay (subtle)
             if (_controller.isLoading.value &&
@@ -603,6 +946,15 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                     ),
                   ),
                 ),
+              ),
+
+            // Bottom section with booking and chauffeur details
+            if (widget.bookingDetails != null)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildBottomDetailsCard(),
               ),
           ],
         );
