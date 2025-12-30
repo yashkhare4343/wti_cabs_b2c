@@ -312,79 +312,125 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   ),
                   SizedBox(height: 16,),
                   // Route Visualization
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Vertical Line with Circle and Square
-                        Column(
-                          children: [
-                            // Circle at top (Pickup)
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF002CC0),
-                                shape: BoxShape.circle,
+                  Obx(() {
+                    final dropAddress = crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress;
+                    final hasDropAddress = dropAddress != null && dropAddress.isNotEmpty;
+                    
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Vertical Line with Circle and Square
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: SizedBox(
+                              width: 28,
+                              child: Column(
+                                children: [
+                                  // Circle with dot (pickup icon)
+                                  Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFA4FF59),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Vertical line (only show if drop exists)
+                                  if (hasDropAddress)
+                                    SizedBox(
+                                      width: 2,
+                                      height: 24,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: List.generate(
+                                          6,
+                                          (_) => Container(
+                                            width: 2,
+                                            height: 3,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF7B7B7B),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  // Square end (drop icon) - only show if drop exists
+                                  if (hasDropAddress)
+                                    Container(
+                                      width: 15,
+                                      height: 15,
+                                      padding: EdgeInsets.all(4.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFB179),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      child: Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(0.5),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                            // Vertical Line - expands to fill available space
-                            Expanded(
-                              child: Container(
-                                width: 2,
-                                color: const Color(0xFF002CC0),
-                              ),
-                            ),
-                            // Square at bottom (Drop)
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF002CC0),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        // Pickup and Drop Locations
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Pickup Location
-                              Text(
-                                crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress ?? 
-                                widget.booking.passenger ?? 
-                                'Pickup location',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4F4F4F),
-                                  fontFamily: 'Montserrat',
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 16),
-                              // Drop Location
-                              Text(
-                                crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress ?? 
-                                'Drop location',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4F4F4F),
-                                  fontFamily: 'Montserrat',
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          const SizedBox(width: 12),
+                          // Pickup and Drop Locations
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Pickup Location
+                                Text(
+                                  crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress ?? 
+                                  widget.booking.passenger ?? 
+                                  'Pickup location',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4F4F4F),
+                                    fontFamily: 'Montserrat',
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                // Drop Location - only show if drop exists
+                                if (hasDropAddress) ...[
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    dropAddress!,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF4F4F4F),
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                   const SizedBox(height: 20),
                   // Dotted Divider
                   CustomPaint(

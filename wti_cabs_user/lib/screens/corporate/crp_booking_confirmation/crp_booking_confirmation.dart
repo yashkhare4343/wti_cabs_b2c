@@ -1201,7 +1201,6 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
     );
   }
 
-
   Future<void> _makeBooking() async {
     FocusScope.of(context).unfocus();
     final CprProfileController cprProfileController = Get.put(CprProfileController());
@@ -1247,13 +1246,16 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final rawPickupAddress = bookingData?.pickupPlace?.primaryText ?? '';
         final rawDropAddress = bookingData?.dropPlace?.primaryText ?? '';
         final pickupAddress = _shortenForApi(rawPickupAddress, maxChars: 80);
-        final dropAddress = _shortenForApi(rawDropAddress, maxChars: 80);
+        
+        // If drop address is empty, set drop address and coordinates to empty strings
+        final bool hasDropAddress = rawDropAddress.isNotEmpty;
+        final dropAddress = hasDropAddress ? _shortenForApi(rawDropAddress, maxChars: 80) : '';
         
         // Coordinates
         final frmlat = bookingData?.pickupPlace?.latitude?.toString() ?? '';
         final frmlng = bookingData?.pickupPlace?.longitude?.toString() ?? '';
-        final tolat = bookingData?.dropPlace?.latitude?.toString() ?? '';
-        final tolng = bookingData?.dropPlace?.longitude?.toString() ?? '';
+        final tolat = hasDropAddress ? (bookingData?.dropPlace?.latitude?.toString() ?? '') : '';
+        final tolng = hasDropAddress ? (bookingData?.dropPlace?.longitude?.toString() ?? '') : '';
         
         // Optional fields
         final arrivalDetails = bookingData?.flightDetails ?? '';
@@ -1445,72 +1447,120 @@ class RouteCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Back button
+                      InkWell(
+                        onTap: () {
+                          context.push(AppRoutes.cprBookingEngine);
+                        },
+                        child: SvgPicture.asset(
+                          'assets/images/back.svg',
+                          width: 18,
+                          height: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Left: vertical icon line (pickup and drop icons)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: SizedBox(
+                          width: 28,
+                          child: Column(
+                            children: [
+                              // Circle with dot (pickup icon)
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFA4FF59),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Vertical line (only show if drop exists)
+                              if (_hasDropLocation())
+                                SizedBox(
+                                  width: 2,
+                                  height: 24,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: List.generate(
+                                      6,
+                                      (_) => Container(
+                                        width: 2,
+                                        height: 3,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF7B7B7B),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Square end (drop icon) - only show if drop exists
+                              if (_hasDropLocation())
+                                Container(
+                                  width: 15,
+                                  height: 15,
+                                  padding: EdgeInsets.all(4.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFB179),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFFFF),
+                                      borderRadius: BorderRadius.circular(0.5),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Center: locations fields/text, expanded
                       Expanded(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                InkWell(
-                                  onTap: () {
-                                    context.push(AppRoutes.cprBookingEngine);
-                                  },
-                                  child: SvgPicture.asset(
-                                    'assets/images/back.svg',
-                                    width: 18,
-                                    height: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                SvgPicture.asset(
-                                  'assets/images/pick.svg',
-                                  width: 16,
-                                  height: 16,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  _getPickupRouteText(),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                            Container(
-                              margin: const EdgeInsets.symmetric(vertical: 10),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 28),
-                              child: const Divider(
-                                height: 1,
-                                color: Color(0xFFE2E2E2),
+                            // Pickup location
+                            Text(
+                              _getPickupRouteText(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF4F4F4F),
+                                fontSize: 14,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 34.0),
-                              child: Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    'assets/images/drop.svg',
-                                    width: 20,
-                                    height: 16,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    _getDropRouteText(),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                            // Drop location (only show if drop exists)
+                            if (_hasDropLocation()) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                _getDropRouteText(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -1616,6 +1666,18 @@ class RouteCard extends StatelessWidget {
       return '';
     }
     return bookingData!.pickupType ?? '';
+  }
+
+  bool _hasDropLocation() {
+    if (bookingData == null) {
+      return false;
+    }
+    final dropPlace = bookingData!.dropPlace;
+    if (dropPlace == null) {
+      return false;
+    }
+    final primaryText = dropPlace.primaryText;
+    return primaryText != null && primaryText.isNotEmpty;
   }
 }
 
