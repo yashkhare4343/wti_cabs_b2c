@@ -1681,8 +1681,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                       padding: const EdgeInsets.only(left: 20),
                       child: Text(
                         isPickup
-                            ? 'Select Pickup Date & Time'
-                            : 'Select Drop Date & Time',
+                            ? 'Choose Pickup time'
+                            : 'Choose Drop Time',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,

@@ -47,6 +47,13 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     await crpBookingDetailsController.fetchDriverDetails(orderId, token??'', userEmail??'');
   }
 
+  // Helper method to check if status is dispatched
+  bool _isDispatched(String? status) {
+    if (status == null) return false;
+    final statusLower = status.toLowerCase().trim();
+    return statusLower == '2' || statusLower == 'dispatched';
+  }
+
   // Helper method to get status icon and color based on status
   Map<String, dynamic> _getStatusIconAndColor(String? status) {
     if (status == null) {
@@ -477,27 +484,31 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   // Edit Booking and Track Cab Buttons
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildActionButton(
-                          'Edit Booking',
-                          () {
-                            // Navigate to modify booking screen with booking ID and car model
-                            final orderId = widget.booking.bookingId?.toString() ??
-                                widget.booking.bookingNo ??
-                                '';
-                            if (orderId.isNotEmpty) {
-                              GoRouter.of(context).push(
-                                AppRoutes.cprModifyBooking,
-                                extra: {
-                                  'orderId': orderId,
-                                  'carModelName': widget.booking.model,
-                                },
-                              );
-                            }
-                          },
+                      // Only show Edit Booking button if status is not dispatched or cancelled
+                      if (statusInfo['text'] != 'Dispatched' && statusInfo['text'] != 'Cancelled') ...[
+                        Expanded(
+                          child: _buildActionButton(
+                            'Edit Booking',
+                            () {
+                              // Navigate to modify booking screen with booking ID and car model
+                              final orderId = widget.booking.bookingId?.toString() ??
+                                  widget.booking.bookingNo ??
+                                  '';
+                              if (orderId.isNotEmpty) {
+                                GoRouter.of(context).push(
+                                  AppRoutes.cprModifyBooking,
+                                  extra: {
+                                    'orderId': orderId,
+                                    'carModelName': widget.booking.model,
+                                  },
+                                );
+                              }
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(width: 8),
+                      ],
+                      if(statusInfo['text'] != 'Cancelled')...[
                       Expanded(
                         child: _buildActionButton(
                           'Track Cab',
@@ -514,7 +525,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             }
                           },
                         ),
-                      ),
+                      )
+            ],
                       // Vertical Divider
                       // Container(
                       //   width: 8,
