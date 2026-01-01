@@ -21,6 +21,73 @@ import '../../../core/controller/corporate/crp_login_controller/crp_login_contro
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
 
+/// Booking Status Constants
+/// Status codes: 0 = Pending, 1 = Confirmed, 2 = Dispatched, 3 = Missed, 4 = Cancelled, 5 = Void, 6 = Allocated
+class BookingStatus {
+  // Numeric status codes
+  static const int pending = 0;
+  static const int confirmed = 1;
+  static const int dispatched = 2;
+  static const int missed = 3;
+  static const int cancelled = 4;
+  static const int voidStatus = 5;
+  static const int allocated = 6;
+  static const int all = -1;
+
+  // Status string values (as returned from API)
+  static const String pendingStr = 'Pending';
+  static const String confirmedStr = 'Confirmed';
+  static const String dispatchedStr = 'Dispatched';
+  static const String missedStr = 'Missed';
+  static const String cancelledStr = 'Cancelled';
+  static const String voidStr = 'Void';
+  static const String allocatedStr = 'Allocated';
+
+  // Tab-to-Status Mapping
+  // Confirmed Tab → Status IN (0, 1, 2) - Pending, Confirmed, Dispatched
+  static const List<String> confirmedTabStatuses = [
+    pendingStr,
+    confirmedStr,
+    dispatchedStr,
+  ];
+
+  // Completed Tab → Status = 6 - Allocated
+  static const List<String> completedTabStatuses = [
+    allocatedStr,
+  ];
+
+  // Cancelled Tab → Status = 4 - Cancelled
+  static const List<String> cancelledTabStatuses = [
+    cancelledStr,
+  ];
+
+  /// Check if a booking status belongs to a specific tab
+  /// Handles case-insensitive matching for robustness
+  static bool belongsToTab(String? status, BookingTab tab) {
+    if (status == null || status.isEmpty) return false;
+    final normalizedStatus = status.trim();
+
+    switch (tab) {
+      case BookingTab.confirmed:
+        return confirmedTabStatuses
+            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+      case BookingTab.completed:
+        return completedTabStatuses
+            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+      case BookingTab.cancelled:
+        return cancelledTabStatuses
+            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+    }
+  }
+}
+
+/// Booking Tab Enum
+enum BookingTab {
+  confirmed,
+  completed,
+  cancelled,
+}
+
 class CrpBooking extends StatefulWidget {
   const CrpBooking({super.key});
 
@@ -39,15 +106,28 @@ class _CrpBookingState extends State<CrpBooking> {
       Get.find<CrpBranchListController>();
   final CarProviderController _carProviderController =
       Get.put(CarProviderController());
-  final CrpFeedbackQuestionsController _feedbackController = Get.put(CrpFeedbackQuestionsController());
+  final CrpFeedbackQuestionsController _feedbackController =
+      Get.put(CrpFeedbackQuestionsController());
   bool _showShimmer = true;
+  bool _hasLoadedData = false; // Track if data has been loaded at least once
+
+  // Tab state - default to Confirmed (observable for reactive UI updates)
+  final Rx<BookingTab> _selectedTab = BookingTab.confirmed.obs;
+
+  // All bookings fetched from API (unfiltered)
+  final RxList<CrpBookingHistoryItem> _allBookings =
+      <CrpBookingHistoryItem>[].obs;
+
+  // Filtered bookings based on selected tab (reactive)
+  List<CrpBookingHistoryItem> get _filteredBookings {
+    return _allBookings.where((booking) {
+      return BookingStatus.belongsToTab(booking.status, _selectedTab.value);
+    }).toList();
+  }
 
   // Filter state
-  String _selectedCategory = 'Car Rental City';
-  String? _selectedCity;
-  String? _selectedCarProvider;
-  String? _selectedBookingMonth;
-  String? _selectedFiscalYear;
+  String _selectedCategory = 'Office Branches';
+  String? _selectedCity = 'All'; // Default to 'All'
 
   // Month name to ID mapping
   final Map<String, int> _monthMap = {
@@ -67,7 +147,7 @@ class _CrpBookingState extends State<CrpBooking> {
 
   // Helper methods to get IDs from names
   String? _getBranchIdFromName(String? branchName) {
-    if (branchName == null) return null;
+    if (branchName == null || branchName == 'All') return null;
     try {
       final branch = _branchController.branches.firstWhere(
         (b) => b['BranchName'] == branchName,
@@ -106,27 +186,48 @@ class _CrpBookingState extends State<CrpBooking> {
     // Save filter selections
     await _saveFilters();
 
-    // Get IDs from selected filter values
-    final branchId = _getBranchIdFromName(_selectedCity);
-    final providerId = _getProviderIdFromName(_selectedCarProvider) ?? 1;
-    final monthId = _getMonthIdFromName(_selectedBookingMonth);
-    final fiscalYear = _getFiscalYearFromString(_selectedFiscalYear) ?? 2026;
+    // Get branch ID from selected branch, defaulting to '0' if 'All' is selected
+    final branchId = _getBranchIdFromName(_selectedCity) ?? '0';
 
     // If branch is selected, update it in storage
-    if (branchId != null) {
+    if (branchId != '0') {
       await StorageServices.instance.save('branchId', branchId);
     }
 
-    // Fetch booking history with filters
+    // Fetch booking history with filters (status = -1 to get ALL, then filter on frontend)
     final criteria = _filterSearchController.text.trim();
+    await _fetchBookings(
+      branchId: branchId,
+      monthId: 0,
+      providerId: 0,
+      fiscalYear: 0,
+      criteria: criteria,
+    );
+  }
+
+  /// Fetch bookings from API and store in _allBookings, then filter based on selected tab
+  Future<void> _fetchBookings({
+    String? branchId,
+    int? monthId,
+    int providerId = 0,
+    int fiscalYear = 0,
+    String criteria = '',
+  }) async {
+    // Fetch with status = -1 (ALL) to get all bookings
     await _controller.fetchBookingHistory(
       context,
-      branchId: branchId,
-      monthId: monthId,
+      branchId: branchId ?? '0',
+      monthId: monthId ?? 0,
       providerId: providerId,
       fiscalYear: fiscalYear,
       criteria: criteria,
+      status: BookingStatus.all, // Fetch all statuses (-1)
     );
+
+    // Update _allBookings with fetched data
+    _allBookings.assignAll(_controller.bookings);
+    // Mark that data has been loaded
+    _hasLoadedData = true;
   }
 
   @override
@@ -153,14 +254,9 @@ class _CrpBookingState extends State<CrpBooking> {
   }
 
   Future<void> _loadSavedFilters() async {
-    _selectedCity = await StorageServices.instance.read('filter_selected_city');
-    _selectedCarProvider =
-        await StorageServices.instance.read('filter_selected_car_provider');
-    _selectedBookingMonth =
-        await StorageServices.instance.read('filter_selected_booking_month');
-    _selectedFiscalYear =
-        await StorageServices.instance.read('filter_selected_fiscal_year') ??
-            '2026';
+    final savedCity =
+        await StorageServices.instance.read('filter_selected_city');
+    _selectedCity = savedCity ?? 'All'; // Default to 'All' if nothing is saved
   }
 
   Future<void> _saveFilters() async {
@@ -168,36 +264,38 @@ class _CrpBookingState extends State<CrpBooking> {
       await StorageServices.instance
           .save('filter_selected_city', _selectedCity!);
     }
-    if (_selectedCarProvider != null) {
-      await StorageServices.instance
-          .save('filter_selected_car_provider', _selectedCarProvider!);
-    }
-    if (_selectedBookingMonth != null) {
-      await StorageServices.instance
-          .save('filter_selected_booking_month', _selectedBookingMonth!);
-    }
-    if (_selectedFiscalYear != null) {
-      await StorageServices.instance
-          .save('filter_selected_fiscal_year', _selectedFiscalYear!);
-    }
   }
 
   Future<void> _loadAndFetchBookings() async {
-    final now = DateTime.now();
-    final monthId = _getMonthIdFromName(_selectedBookingMonth) ?? now.month;
-    final fiscalYear = _getFiscalYearFromString(_selectedFiscalYear) ?? 2026;
-    final providerId = _getProviderIdFromName(_selectedCarProvider) ?? 1;
-    final branchId = _getBranchIdFromName(_selectedCity);
+    final branchId = _getBranchIdFromName(_selectedCity) ?? '0';
     final criteria = _filterSearchController.text.trim();
 
-    await _controller.fetchBookingHistory(
-      context,
+    await _fetchBookings(
       branchId: branchId,
-      monthId: monthId,
-      providerId: providerId,
-      fiscalYear: fiscalYear,
+      monthId: 0,
+      providerId: 0,
+      fiscalYear: 0,
       criteria: criteria,
     );
+  }
+
+  /// Handle tab change - reset pagination and filter data
+  void _onTabChanged(BookingTab tab) {
+    _selectedTab.value = tab;
+    // Data is already filtered via _filteredBookings getter
+    // No need to refetch, just update UI
+  }
+
+  /// Get empty state message based on selected tab
+  String _getEmptyStateMessage() {
+    switch (_selectedTab.value) {
+      case BookingTab.confirmed:
+        return 'No confirmed bookings found';
+      case BookingTab.completed:
+        return 'No completed bookings found';
+      case BookingTab.cancelled:
+        return 'No cancelled bookings found';
+    }
   }
 
   /// Ensure email is persisted in storage for API calls
@@ -272,7 +370,8 @@ class _CrpBookingState extends State<CrpBooking> {
         ),
         backgroundColor: Colors.white,
         body: Obx(() {
-          if (_controller.isLoading.value) {
+          // Show loader if loading OR if data hasn't been loaded yet
+          if (_controller.isLoading.value || !_hasLoadedData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -280,47 +379,55 @@ class _CrpBookingState extends State<CrpBooking> {
             onRefresh: () => _loadAndFetchBookings(),
             child: Column(
               children: [
+                // Tabs - Confirmed, Completed, Cancelled
+                _buildTabBar(),
                 // Filters Button - Always visible
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 0.0),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _showFilterBottomSheet(context),
-                          child:
-                              _buildFilterButton('Filters', Icons.filter_list),
-                        ),
+                      GestureDetector(
+                        onTap: () => _showFilterBottomSheet(context),
+                        child:
+                            _buildFilterButton('Filters', Icons.tune_outlined),
                       ),
                     ],
                   ),
                 ),
+                SizedBox(
+                  height: 16,
+                ),
                 // Content: Either empty state or bookings list
                 Expanded(
-                  child: _controller.bookings.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No Bookings Found',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'Montserrat',
+                  child: Obx(() {
+                    final filteredBookings = _filteredBookings;
+                    final emptyMessage = _getEmptyStateMessage();
+                    return filteredBookings.isEmpty
+                        ? Center(
+                            child: Text(
+                              emptyMessage,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Montserrat',
+                              ),
                             ),
-                          ),
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: EdgeInsets.zero,
-                          itemCount: _controller.bookings.length,
-                          itemBuilder: (context, index) {
-                            final booking = _controller.bookings[index];
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: _buildBookingCard(booking),
-                            );
-                          },
-                        ),
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero,
+                            itemCount: filteredBookings.length,
+                            itemBuilder: (context, index) {
+                              final booking = filteredBookings[index];
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: _buildBookingCard(booking),
+                              );
+                            },
+                          );
+                  }),
                 ),
               ],
             ),
@@ -330,16 +437,90 @@ class _CrpBookingState extends State<CrpBooking> {
     );
   }
 
+  /// Build tab bar for Confirmed, Completed, Cancelled
+  /// Matches the exact design: white container with grey border, pill-shaped selected tab
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 19, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 1),
+            blurRadius: 3,
+            spreadRadius: 0,
+            color: const Color(0x40000000),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Obx(() => _buildTabItem(
+                    'Confirmed',
+                    BookingTab.confirmed,
+                    _selectedTab.value == BookingTab.confirmed,
+                  )),
+            ),
+            Expanded(
+              child: Obx(() => _buildTabItem(
+                    'Completed',
+                    BookingTab.completed,
+                    _selectedTab.value == BookingTab.completed,
+                  )),
+            ),
+            Expanded(
+              child: Obx(() => _buildTabItem(
+                    'Cancelled',
+                    BookingTab.cancelled,
+                    _selectedTab.value == BookingTab.cancelled,
+                  )),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build individual tab item
+  /// Selected tab: blue pill-shaped background with white text
+  /// Unselected tab: transparent background with grey text
+  Widget _buildTabItem(String label, BookingTab tab, bool isSelected) {
+    return GestureDetector(
+      onTap: () => _onTabChanged(tab),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4082F1) : Colors.transparent,
+          borderRadius:
+              BorderRadius.circular(20), // Pill-shaped for selected tab
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : Color(0xFF939393),
+            fontFamily: 'Montserrat',
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterButton(String text, IconData icon) {
     return Container(
-      height: 40,
+      height: 30,
+      padding: EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
-        ),
+        color: Color(0xFFF3F3F3),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -347,23 +528,23 @@ class _CrpBookingState extends State<CrpBooking> {
           Icon(
             icon,
             size: 18,
-            color: Colors.grey.shade700,
+            color: Colors.black,
           ),
           const SizedBox(width: 6),
           Text(
             text,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w400,
+              color: Colors.black,
               fontFamily: 'Montserrat',
             ),
           ),
           const SizedBox(width: 4),
           Icon(
-            Icons.keyboard_arrow_down,
-            size: 18,
-            color: Colors.grey.shade700,
+            Icons.arrow_drop_down_outlined,
+            size: 22,
+            color: Color(0xFF1C1B1F),
           ),
         ],
       ),
@@ -371,11 +552,6 @@ class _CrpBookingState extends State<CrpBooking> {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
-    final CarProviderController carProviderController =
-        Get.put(CarProviderController());
-    // Get the preselected car provider from saved filters or controller
-    final preselectedCarProvider = _selectedCarProvider ??
-        carProviderController.selectedCarProvider.value?.providerName;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -383,9 +559,6 @@ class _CrpBookingState extends State<CrpBooking> {
       builder: (context) => _FilterBottomSheet(
         selectedCategory: _selectedCategory,
         selectedCity: _selectedCity,
-        selectedCarProvider: preselectedCarProvider,
-        selectedBookingMonth: _selectedBookingMonth,
-        selectedFiscalYear: _selectedFiscalYear ?? '2026',
         searchController: _filterSearchController,
         onCategoryChanged: (category) {
           setState(() {
@@ -397,52 +570,119 @@ class _CrpBookingState extends State<CrpBooking> {
             _selectedCity = city;
           });
         },
-        onCarProviderChanged: (carProvider) {
-          setState(() {
-            _selectedCarProvider = carProvider;
-          });
-        },
-        onBookingMonthChanged: (month) {
-          setState(() {
-            _selectedBookingMonth = month;
-          });
-        },
-        onFiscalYearChanged: (year) {
-          setState(() {
-            _selectedFiscalYear = year;
-          });
-        },
         onApply: () {
           Navigator.pop(context);
           _applyFilters();
         },
         onClear: () async {
           setState(() {
-            _selectedCity = null;
-            _selectedCarProvider = null;
-            _selectedBookingMonth = null;
-            _selectedFiscalYear = null;
+            _selectedCity = 'All';
           });
+          // Reset tab to Confirmed (default)
+          _selectedTab.value = BookingTab.confirmed;
           // Clear saved filters
           await StorageServices.instance.delete('filter_selected_city');
-          await StorageServices.instance.delete('filter_selected_car_provider');
-          await StorageServices.instance
-              .delete('filter_selected_booking_month');
-          await StorageServices.instance.delete('filter_selected_fiscal_year');
 
           // Clear search criteria text as well
           _filterSearchController.clear();
 
           Navigator.pop(context);
           // Reset to default values and fetch
-          final now = DateTime.now();
-          await _controller.fetchBookingHistory(
-            context,
-            monthId: now.month,
-            fiscalYear: 2026,
+          await _fetchBookings(
+            branchId: '0',
+            monthId: 0,
+            providerId: 0,
+            fiscalYear: 0,
             criteria: '',
           );
         },
+      ),
+    );
+  }
+
+  /// Build status badge with pill design and different colors/icons for each status
+  Widget _buildStatusBadge(String status) {
+    // Normalize status to handle case variations
+    final normalizedStatus = status.trim().toLowerCase();
+
+    // Define colors and icons for each status
+    Color backgroundColor;
+    Color textColor;
+    Color iconColor;
+    IconData icon;
+
+    if (normalizedStatus == 'confirmed') {
+      backgroundColor = const Color(0xFFECFDD7); // Light green
+      textColor = const Color(0xFF7CC521); // Dark green
+      iconColor = const Color(0xFF7CC521);
+      icon = Icons.check_circle_outline;
+    } else if (normalizedStatus == 'allocated' ||
+        normalizedStatus == 'completed') {
+      backgroundColor = const Color(0xFFE3F2FD); // Light blue
+      textColor = const Color(0xFF2196F3); // Dark blue
+      iconColor = const Color(0xFF2196F3);
+      icon = Icons.check_circle;
+    } else if (normalizedStatus == 'cancelled' ||
+        normalizedStatus == 'canceled') {
+      backgroundColor = const Color(0xFFFFEBEE); // Light red/pink
+      textColor = const Color(0xFFE91E63); // Dark pink/red
+      iconColor = const Color(0xFFE91E63);
+      icon = Icons.cancel;
+    } else if (normalizedStatus == 'pending') {
+      backgroundColor = const Color(0xFFFFF3E0); // Light orange
+      textColor = const Color(0xFFFF9800); // Dark orange
+      iconColor = const Color(0xFFFF9800);
+      icon = Icons.access_time;
+    } else if (normalizedStatus == 'dispatched') {
+      backgroundColor = const Color(0xFFF3E5F5); // Light purple
+      textColor = const Color(0xFF9C27B0); // Dark purple
+      iconColor = const Color(0xFF9C27B0);
+      icon = Icons.local_shipping;
+    } else if (normalizedStatus == 'missed') {
+      backgroundColor = const Color(0xFFE0E0E0); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.warning;
+    } else if (normalizedStatus == 'void') {
+      backgroundColor = const Color(0xFFE0E0E0); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.block;
+    } else {
+      // Default for unknown statuses
+      backgroundColor = const Color(0xFFF5F5F5); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.help_outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20), // Pill shape
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            status,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          const SizedBox(width: 6),
+          Center(
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -536,36 +776,12 @@ class _CrpBookingState extends State<CrpBooking> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Status Badge with checkmark
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isConfirmed ? Icons.check_circle : Icons.cancel,
-                                size: 18,
-                                color: isConfirmed ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                booking.status ?? 'Pending',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color:
-                                      isConfirmed ? Colors.green : Colors.red,
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         booking.model ?? '-',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           color: Color(0xFF939393),
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Montserrat',
@@ -574,6 +790,9 @@ class _CrpBookingState extends State<CrpBooking> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                // Status Badge with pill design
+                _buildStatusBadge(booking.status ?? 'Pending'),
               ],
             ),
             const SizedBox(height: 16),
@@ -721,8 +940,10 @@ class _CrpBookingState extends State<CrpBooking> {
             const SizedBox(height: 16),
             // Edit Booking and Feedback Buttons
             Obx(() {
-              final showFeedbackButton = _feedbackController.feedbackQuestionsResponse.value?.bStatus == true;
-              
+              final showFeedbackButton = _feedbackController
+                      .feedbackQuestionsResponse.value?.bStatus ==
+                  true;
+
               return Row(
                 children: [
                   Expanded(
@@ -824,30 +1045,18 @@ class DashedLinePainter extends CustomPainter {
 class _FilterBottomSheet extends StatefulWidget {
   final String selectedCategory;
   final String? selectedCity;
-  final String? selectedCarProvider;
-  final String? selectedBookingMonth;
-  final String? selectedFiscalYear;
   final TextEditingController searchController;
   final Function(String) onCategoryChanged;
   final Function(String) onCityChanged;
-  final Function(String) onCarProviderChanged;
-  final Function(String) onBookingMonthChanged;
-  final Function(String) onFiscalYearChanged;
   final VoidCallback onApply;
   final VoidCallback onClear;
 
   const _FilterBottomSheet({
     required this.selectedCategory,
     required this.selectedCity,
-    required this.selectedCarProvider,
-    required this.selectedBookingMonth,
-    required this.selectedFiscalYear,
     required this.searchController,
     required this.onCategoryChanged,
     required this.onCityChanged,
-    required this.onCarProviderChanged,
-    required this.onBookingMonthChanged,
-    required this.onFiscalYearChanged,
     required this.onApply,
     required this.onClear,
   });
@@ -859,102 +1068,26 @@ class _FilterBottomSheet extends StatefulWidget {
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late String _currentCategory;
   late String? _currentCity;
-  late String? _currentCarProvider;
-  late String? _currentBookingMonth;
-  late String? _currentFiscalYear;
   final CrpBranchListController _branchController =
       Get.find<CrpBranchListController>();
-  final CarProviderController _carProviderController =
-      Get.put(CarProviderController());
-
-  // List of months
-  final List<String> _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  // List of fiscal years
-  final List<String> _fiscalYears = [
-    '2026',
-  ];
 
   @override
   void initState() {
     super.initState();
     _currentCategory = widget.selectedCategory;
-    // Set default selected city from branch controller or widget
-    _currentCity =
-        widget.selectedCity ?? _branchController.selectedBranchName.value;
-    // Set default selected car provider from widget or controller (prioritize widget value)
-    _currentCarProvider = widget.selectedCarProvider ??
-        _carProviderController.selectedCarProvider.value?.providerName;
-    // Always set booking month to current month (ignore previous selection)
-    _currentBookingMonth = _getCurrentMonth();
-    // Set default fiscal year to 2026
-    _currentFiscalYear = widget.selectedFiscalYear ?? '2026';
+    // Set default selected city from widget, defaulting to 'All'
+    _currentCity = widget.selectedCity ?? 'All';
     _fetchBranches();
-    _fetchCarProviders();
-  }
-
-  String _getCurrentMonth() {
-    final now = DateTime.now();
-    return _months[now.month - 1]; // month is 1-12, list index is 0-11
   }
 
   Future<void> _fetchBranches() async {
     final corpId = await StorageServices.instance.read('crpId');
     if (corpId != null && corpId.isNotEmpty) {
       await _branchController.fetchBranches(corpId);
-      // After fetching, set default selected city if not already set
-      if (_currentCity == null &&
-          _branchController.selectedBranchName.value != null) {
+      // After fetching, set default to 'All' if not already set
+      if (_currentCity == null) {
         setState(() {
-          _currentCity = _branchController.selectedBranchName.value;
-        });
-      }
-    }
-  }
-
-  Future<void> _fetchCarProviders() async {
-    if (_carProviderController.carProviderList.isEmpty &&
-        !_carProviderController.isLoading.value) {
-      await _carProviderController.fetchCarProviders(context);
-    }
-    // Set selected car provider from controller if not already set from widget
-    // But preserve widget value if it exists
-    if (_currentCarProvider == null) {
-      if (_carProviderController.selectedCarProvider.value != null) {
-        setState(() {
-          _currentCarProvider =
-              _carProviderController.selectedCarProvider.value?.providerName;
-        });
-      } else if (_carProviderController.carProviderList.isNotEmpty) {
-        // If no selection and list is available, use the first one
-        setState(() {
-          _currentCarProvider =
-              _carProviderController.carProviderList.first.providerName;
-        });
-      }
-    } else {
-      // If we have a preselected value, make sure it exists in the list
-      // If not, fall back to controller's selection
-      final exists = _carProviderController.carProviderList.any(
-        (p) => p.providerName == _currentCarProvider,
-      );
-      if (!exists && _carProviderController.selectedCarProvider.value != null) {
-        setState(() {
-          _currentCarProvider =
-              _carProviderController.selectedCarProvider.value?.providerName;
+          _currentCity = 'All';
         });
       }
     }
@@ -964,9 +1097,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     return Container(
-      height: screenHeight * 0.85,
+      height: screenHeight * 0.55,
       decoration: const BoxDecoration(
-        color: Color(0xFFE9E9F6), // Light blue background
+        color: Color(0xFFF3F3F3),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -975,7 +1108,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: const BoxDecoration(
-              color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
@@ -996,104 +1128,27 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               ],
             ),
           ),
-          // Search Bar
-          Container(
-            margin: const EdgeInsets.all(16),
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: const Color(0xFFD9D9D9),
-                width: 1,
-              ),
-            ),
-            child: TextFormField(
-              controller: widget.searchController,
-              decoration: InputDecoration(
-                hintText: 'Search By Booking Number',
-                hintStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF333333),
-                  fontFamily: 'Montserrat',
-                ),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Image.asset(
-                    'assets/images/search.png',
-                    width: 20,
-                    height: 20,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 16,
-                ),
-              ),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-          // Main Content - Two Pane Layout
+          // Main Content - Grid Layout
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left Pane - Filter Categories
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                    ),
-                    child: Container(
-                      width: 140,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          bottomLeft: Radius.circular(16),
-                        ),
-                      ),
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        children: [
-                          _buildCategoryItem('Car Rental City'),
-                          _buildCategoryItem('Car Provider'),
-                          _buildCategoryItem('Booking Month'),
-                          _buildCategoryItem('Search Fiscal Year'),
-                        ],
-                      ),
+                  // Office Branches Label
+                  const Text(
+                    'Office Branches',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF000000),
+                      fontFamily: 'Montserrat',
                     ),
                   ),
-                  // Divider
-                  Container(
-                    width: 1,
-                    color: Colors.grey.shade300,
-                  ),
-                  // Right Pane - Filter Options
+                  const SizedBox(height: 16),
+                  // Grid of Branch Buttons
                   Expanded(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topRight: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: _buildFilterOptions(),
-                    ),
+                    child: _buildFilterOptions(),
                   ),
                 ],
               ),
@@ -1103,7 +1158,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Colors.white,
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
             ),
             child: Row(
@@ -1118,11 +1172,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     ),
                     child: TextButton(
                       onPressed: () {
-                        widget.onCityChanged(_currentCity ?? '');
-                        widget.onCarProviderChanged(_currentCarProvider ?? '');
-                        widget
-                            .onBookingMonthChanged(_currentBookingMonth ?? '');
-                        widget.onFiscalYearChanged(_currentFiscalYear ?? '');
+                        widget.onCityChanged(_currentCity ?? 'All');
                         widget.onApply();
                       },
                       style: TextButton.styleFrom(
@@ -1149,7 +1199,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   child: Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       borderRadius: BorderRadius.circular(50),
                       border: Border.all(
                         color: const Color(0xFF4082F1),
@@ -1159,10 +1208,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     child: TextButton(
                       onPressed: () {
                         setState(() {
-                          _currentCity = null;
-                          _currentCarProvider = null;
-                          _currentBookingMonth = null;
-                          _currentFiscalYear = null;
+                          _currentCity = 'All';
                         });
                         widget.onClear();
                       },
@@ -1220,328 +1266,131 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   Widget _buildFilterOptions() {
-    if (_currentCategory == 'Car Rental City') {
-      return Obx(() {
-        if (_branchController.isLoading.value) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        if (_branchController.branchNames.isEmpty) {
-          return const Center(
-            child: Text(
-              'No cities available',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF939393),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          );
-        }
-
-        return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: _branchController.branchNames.length,
-          itemBuilder: (context, index) {
-            final branchName = _branchController.branchNames[index];
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom:
-                    index < _branchController.branchNames.length - 1 ? 16 : 0,
-              ),
-              child: _buildRadioOption(branchName, branchName),
-            );
-          },
+    return Obx(() {
+      if (_branchController.isLoading.value) {
+        return const Center(
+          child: CircularProgressIndicator(),
         );
-      });
-    } else if (_currentCategory == 'Car Provider') {
-      return Obx(() {
-        if (_carProviderController.isLoading.value) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
+      }
 
-        if (_carProviderController.carProviderList.isEmpty) {
-          return const Center(
-            child: Text(
-              'No car providers available',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF939393),
-                fontFamily: 'Montserrat',
-              ),
+      // Create a list with 'All' at the beginning, followed by branch names
+      final List<String> branchList = ['All', ..._branchController.branchNames];
+
+      if (branchList.isEmpty) {
+        return const Center(
+          child: Text(
+            'No branches available',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF939393),
+              fontFamily: 'Montserrat',
             ),
-          );
-        }
-
-        return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: _carProviderController.carProviderList.length,
-          itemBuilder: (context, index) {
-            final provider = _carProviderController.carProviderList[index];
-            final providerName = provider.providerName ?? '';
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom:
-                    index < _carProviderController.carProviderList.length - 1
-                        ? 16
-                        : 0,
-              ),
-              child: _buildCarProviderRadioOption(providerName, providerName),
-            );
-          },
+          ),
         );
-      });
-    } else if (_currentCategory == 'Booking Month') {
-      return ListView.builder(
+      }
+
+      return GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: _months.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.5,
+        ),
+        itemCount: branchList.length,
         itemBuilder: (context, index) {
-          final month = _months[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < _months.length - 1 ? 16 : 0,
-            ),
-            child: _buildBookingMonthRadioOption(month, month),
-          );
+          final branchName = branchList[index];
+          return _buildBranchButton(branchName, branchName);
         },
       );
-    } else if (_currentCategory == 'Search Fiscal Year') {
-      return ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: _fiscalYears.length,
-        itemBuilder: (context, index) {
-          final year = _fiscalYears[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < _fiscalYears.length - 1 ? 16 : 0,
-            ),
-            child: _buildFiscalYearRadioOption(year, year),
-          );
-        },
-      );
-    }
-    return const SizedBox();
+    });
   }
 
-  Widget _buildRadioOption(String label, String value) {
+  Widget _buildBranchButton(String label, String value) {
     final isSelected = _currentCity == value;
-    return InkWell(
+    return GestureDetector(
       onTap: () {
         setState(() {
           _currentCity = value;
         });
         widget.onCityChanged(value);
       },
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF4082F1)
-                    : const Color(0xFF939393),
-                width: 2,
-              ),
-            ),
-            child: isSelected
-                ? Center(
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4082F1),
-                      ),
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: isSelected ? Color(0xFF4082F1) : Color(0xFF333333),
-                fontFamily: 'Montserrat',
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF4082F1)
+              : const Color(0xFFE8E8E8), // Light grey background
+          borderRadius: BorderRadius.circular(36),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected
+                  ? Colors.white
+                  : const Color(0xFF484848), // Dark grey text for unselected
+              fontFamily: 'Montserrat',
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCarProviderRadioOption(String label, String value) {
-    final isSelected = _currentCarProvider == value;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _currentCarProvider = value;
-        });
-        widget.onCarProviderChanged(value);
-      },
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF4082F1)
-                    : const Color(0xFF939393),
-                width: 2,
-              ),
-            ),
-            child: isSelected
-                ? Center(
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4082F1),
-                      ),
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBookingMonthRadioOption(String label, String value) {
-    final isSelected = _currentBookingMonth == value;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _currentBookingMonth = value;
-        });
-        widget.onBookingMonthChanged(value);
-      },
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF4082F1)
-                    : const Color(0xFF939393),
-                width: 2,
-              ),
-            ),
-            child: isSelected
-                ? Center(
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4082F1),
-                      ),
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFiscalYearRadioOption(String label, String value) {
-    final isSelected = _currentFiscalYear == value;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _currentFiscalYear = value;
-        });
-        widget.onFiscalYearChanged(value);
-      },
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF4082F1)
-                    : const Color(0xFF939393),
-                width: 2,
-              ),
-            ),
-            child: isSelected
-                ? Center(
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4082F1),
-                      ),
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
-                fontFamily: 'Montserrat',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildCarProviderRadioOption(String label, String value) {
+  //   final isSelected = _currentCarProvider == value;
+  //   return InkWell(
+  //     onTap: () {
+  //       setState(() {
+  //         _currentCarProvider = value;
+  //       });
+  //       widget.onCarProviderChanged(value);
+  //     },
+  //     child: Row(
+  //       children: [
+  //         Container(
+  //           width: 20,
+  //           height: 20,
+  //           decoration: BoxDecoration(
+  //             shape: BoxShape.circle,
+  //             border: Border.all(
+  //               color: isSelected
+  //                   ? const Color(0xFF4082F1)
+  //                   : const Color(0xFF939393),
+  //               width: 2,
+  //             ),
+  //           ),
+  //           child: isSelected
+  //               ? Center(
+  //                   child: Container(
+  //                     width: 12,
+  //                     height: 12,
+  //                     decoration: const BoxDecoration(
+  //                       shape: BoxShape.circle,
+  //                       color: Color(0xFF4082F1),
+  //                     ),
+  //                   ),
+  //                 )
+  //               : null,
+  //         ),
+  //         const SizedBox(width: 12),
+  //         Expanded(
+  //           child: Text(
+  //             label,
+  //             style: const TextStyle(
+  //               fontSize: 14,
+  //               fontWeight: FontWeight.w400,
+  //               color: Color(0xFF333333),
+  //               fontFamily: 'Montserrat',
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
 
 // Feedback Dialog Widget
@@ -1559,8 +1408,9 @@ class _FeedbackDialog extends StatefulWidget {
 
 class _FeedbackDialogState extends State<_FeedbackDialog> {
   final TextEditingController _remarksController = TextEditingController();
-  final CrpFeedbackQuestionsController _feedbackController = Get.put(CrpFeedbackQuestionsController());
-  
+  final CrpFeedbackQuestionsController _feedbackController =
+      Get.put(CrpFeedbackQuestionsController());
+
   // Store answers for each question by Q_id (true = Yes, false = No, null = not answered)
   Map<int, bool?> _answers = {};
 
@@ -1595,14 +1445,15 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
     // Get required parameters
     final guestIdStr = await StorageServices.instance.read('guestId');
     final guestId = int.tryParse(guestIdStr ?? '') ?? 0;
-    
+
     // Get OrderID from booking (use bookingId or id)
     final orderId = widget.booking.bookingId ?? widget.booking.id ?? 0;
-    
+
     // Get QuestionID from response
-    final questionId = _feedbackController.feedbackQuestionsResponse.value?.noOfQuestions ?? 
-                       _feedbackController.feedbackQuestions.length;
-    
+    final questionId =
+        _feedbackController.feedbackQuestionsResponse.value?.noOfQuestions ??
+            _feedbackController.feedbackQuestions.length;
+
     if (guestId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1613,7 +1464,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       );
       return;
     }
-    
+
     if (orderId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1624,7 +1475,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       );
       return;
     }
-    
+
     // Submit feedback
     final response = await _feedbackController.submitFeedback(
       context: context,
@@ -1634,13 +1485,13 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       answers: _answers,
       remarks: _remarksController.text.trim(),
     );
-    
+
     if (response != null) {
       // Close dialog first
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Show success/failure message based on bStatus
       final message = response.sMessage ?? 'Feedback submitted';
       final isSuccess = response.bStatus == true;
@@ -1716,7 +1567,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           }
 
           final questions = _feedbackController.feedbackQuestions;
-          
+
           if (questions.isEmpty) {
             return const SizedBox(
               height: 200,
@@ -1771,7 +1622,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                 ...List.generate(questions.length, (index) {
                   final question = questions[index];
                   final questionId = question.qId ?? 0;
-                  
+
                   return Padding(
                     padding: EdgeInsets.only(
                       bottom: index < questions.length - 1 ? 20 : 0,
@@ -1819,7 +1670,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
                               child: Text(
                                 '|',
                                 style: TextStyle(
@@ -1903,7 +1755,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                 // Submit Button
                 Obx(() {
                   final isSubmitting = _feedbackController.isSubmitting.value;
-                  
+
                   return SizedBox(
                     width: double.infinity,
                     child: Container(
@@ -1926,7 +1778,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Text(

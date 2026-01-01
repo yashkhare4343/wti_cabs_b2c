@@ -20,14 +20,15 @@ class CrpBookingHistoryController extends GetxController {
     int status = -1,
     int startRowIndex = 0,
     int maximumRows = 40,
-    int providerId = 1,
-    int fiscalYear = 2026,
+    int providerId = 0,
+    int fiscalYear = 0,
     String criteria = "",
   }) async {
     try {
       isLoading.value = true;
 
-      final resolvedBranchId = branchId ?? await StorageServices.instance.read('branchId');
+      // Use provided branchId or default to '0', don't fallback to storage
+      final resolvedBranchId = branchId ?? '0';
       // Resolve guest id from storage or in-memory login info to avoid sending 0
       String? guestId = await StorageServices.instance.read('guestId');
       final loginGuestId = loginInfoController.crpLoginInfo.value?.guestID;
@@ -48,12 +49,12 @@ class CrpBookingHistoryController extends GetxController {
           : loginToken;
       final userEmail = await StorageServices.instance.read('email');
 
-      final now = DateTime.now();
-      final resolvedMonthId = monthId ?? now.month;
-      final resolvedFiscal = fiscalYear == 0 ? now.year : fiscalYear;
+      // Use provided values or default to 0
+      final resolvedMonthId = monthId ?? 0;
+      final resolvedFiscal = fiscalYear;
 
       final params = {
-        'branchID': resolvedBranchId ?? '0',
+        'branchID': resolvedBranchId,
         'uID': guestId ?? '0',
         'monthID': resolvedMonthId,
         'providerID': providerId,

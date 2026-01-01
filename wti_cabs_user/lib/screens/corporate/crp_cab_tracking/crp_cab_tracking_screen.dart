@@ -629,25 +629,28 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
         }
 
         // Show completion message if ride is completed
-        if (response?.isRideCompleted == true) {
+        if (response?.isRideActive != true) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.check_circle,
-                  size: 64,
-                  color: Colors.green,
-                ),
+                Image.asset('assets/images/no_tracking.png', width: 248, height: 223,),
                 const SizedBox(height: 16),
-                const Text(
-                  'Ride has been completed',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF192653),
-                    fontFamily: 'Montserrat',
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Live Cab tracking is currently \n unavailable for this booking',
+                      maxLines: 2,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF192653),
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
