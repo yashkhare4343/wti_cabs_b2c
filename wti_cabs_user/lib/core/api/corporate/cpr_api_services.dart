@@ -16,8 +16,11 @@ import 'package:get/get.dart';
 import '../../../config/enviornment_config.dart';
 import '../../response/api_response.dart';
 import '../../services/storage_services.dart';
+import '../../services/cache_services.dart';
 import '../../model/corporate/crp_login_response/crp_login_response.dart';
 import '../../controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../route_management/app_routes.dart';
+import '../../../main.dart';
 
 class CprApiService {
   CprApiService._internal();
@@ -214,17 +217,10 @@ class CprApiService {
     http.Response response = await requestFn();
 
     if (response.statusCode == 401 || response.statusCode == 403) {
-      // First try refresh-token flow
-      final refreshed = await _refreshToken();
-      if (refreshed) {
-        return await requestFn();
-      }
-
-      // If refresh-token failed, try to re-login with stored credentials
-      final reLoggedIn = await _reLoginWithStoredCredentials();
-      if (reLoggedIn) {
-        return await requestFn();
-      }
+      // On 401, sign out and clear corporate session
+      await _handleCorporateLogout();
+      // Throw exception to prevent further processing of the failed request
+      throw Exception('Session expired. Please login again.');
     }
 
     return response;
@@ -234,6 +230,147 @@ class CprApiService {
   Future<http.Response> sendRequestWithRetry(
       Future<http.Response> Function() requestFn) async {
     return _sendRequestWithRetry(requestFn);
+  }
+
+  // ===================== 🚪 Corporate Logout Handler =====================
+  /// Navigates to corporate landing page with retry mechanism
+  void _navigateToCorporateLandingPage([int retryCount = 0]) {
+    const maxRetries = 5;
+    
+    if (retryCount >= maxRetries) {
+      if (kDebugMode) debugPrint('❌ Max retries reached for navigation to corporate landing page');
+      return;
+    }
+    
+    final navigationContext = navigatorKey.currentContext;
+    if (navigationContext != null) {
+      try {
+        // Try to get GoRouter from context
+        final router = GoRouter.maybeOf(navigationContext);
+        if (router != null) {
+          router.push(AppRoutes.cprLandingPage);
+          if (kDebugMode) debugPrint('✅ Navigated to corporate landing page via GoRouter');
+          return;
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ GoRouter.maybeOf error: $e');
+      }
+      
+      // Fallback: Try using GoRouter.of directly
+      try {
+        GoRouter.of(navigationContext).push(AppRoutes.cprLandingPage);
+        if (kDebugMode) debugPrint('✅ Navigated to corporate landing page (GoRouter.of)');
+        return;
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ GoRouter.of failed: $e');
+      }
+    } else {
+      if (kDebugMode) debugPrint('⚠️ Navigation context not available, retrying... (attempt ${retryCount + 1}/$maxRetries)');
+      // Retry after a short delay
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _navigateToCorporateLandingPage(retryCount + 1);
+      });
+    }
+  }
+
+  /// Handles corporate logout when 401 Unauthorized is received
+  /// Clears all corporate storage, controllers, and navigates to landing page
+  Future<void> _handleCorporateLogout() async {
+    try {
+      if (kDebugMode) debugPrint("🔐 401 Unauthorized - Logging out corporate user");
+
+      // Show session expired message
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please login again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Clear all corporate storage keys
+      final corporateKeys = [
+        'crpKey',
+        'crpId',
+        'branchId',
+        'guestId',
+        'guestName',
+        'email',
+        'crpPassword',
+        'refreshToken',
+        'crpEntityId',
+      ];
+
+      await Future.wait(
+        corporateKeys.map((key) async {
+          try {
+            await StorageServices.instance.delete(key);
+            if (kDebugMode) debugPrint('✅ Deleted storage key: $key');
+          } catch (e) {
+            if (kDebugMode) debugPrint('⚠️ Error deleting $key: $e');
+          }
+        }),
+        eagerError: false,
+      );
+
+      // Clear SharedPreferences corporate keys
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        for (final key in corporateKeys) {
+          await prefs.remove(key);
+        }
+        await prefs.remove('crpPassword');
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Error clearing SharedPreferences: $e');
+      }
+
+      // Clear cache
+      try {
+        await CacheHelper.clearAllCache();
+        if (kDebugMode) debugPrint('✅ Cache cleared');
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Error clearing cache: $e');
+      }
+
+      // Clear all corporate controllers
+      try {
+        // Reset LoginInfoController
+        if (Get.isRegistered<LoginInfoController>()) {
+          try {
+            final loginController = Get.find<LoginInfoController>();
+            loginController.crpLoginInfo.value = null;
+            Get.delete<LoginInfoController>(force: true);
+            if (kDebugMode) debugPrint('✅ LoginInfoController cleared');
+          } catch (e) {
+            if (kDebugMode) debugPrint('⚠️ Error clearing LoginInfoController: $e');
+          }
+        }
+
+        // Try to delete other corporate controllers by attempting to find and delete them
+        // Using Get.reset() would be too aggressive, so we'll delete specific ones we can safely import
+        // For controllers we can't import, they'll be cleared when the app navigates away
+        
+        if (kDebugMode) debugPrint('✅ Corporate controllers cleared');
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Error clearing controllers: $e');
+      }
+
+      // Navigate to corporate landing page
+      // Schedule navigation on the next frame to ensure context is available
+      Future.microtask(() {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _navigateToCorporateLandingPage();
+        });
+      });
+
+      if (kDebugMode) debugPrint('✅ Corporate logout completed');
+    } catch (e, st) {
+      debugPrint('❌ Error during corporate logout: $e');
+      debugPrint('📄 Stacktrace: $st');
+    }
   }
 
   // ===================== 🟢 GET =====================
