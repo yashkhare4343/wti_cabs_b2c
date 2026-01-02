@@ -58,7 +58,7 @@ class _CrpInventoryState extends State<CrpInventory> {
     await fetchParameter();
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
-    
+
     // Get runTypeId from booking data if available, otherwise default to 1
     int runTypeId = 1;
     if (widget.bookingData != null) {
@@ -72,22 +72,22 @@ class _CrpInventoryState extends State<CrpInventory> {
         print('Error parsing booking data for runTypeId: $e');
       }
     }
-    
+
     final Map<String, dynamic> params = {
       'token': token,
-      'user': user??email,
+      'user': user ?? email,
       'CorpID': corpId,
       'BranchID': branchId,
       'RunTypeID': runTypeId
     };
-    
+
     // Mark initial load as complete - fetchCarModels will set isLoading = true
     if (_isInitialLoad && mounted) {
       setState(() {
         _isInitialLoad = false;
       });
     }
-    
+
     await controller.fetchCarModels(params, context);
   }
 
@@ -106,7 +106,7 @@ class _CrpInventoryState extends State<CrpInventory> {
     return Obx(() {
       // Show full-screen circular progress indicator while loading or during initial load
       final bool showLoader = controller.isLoading.value || _isInitialLoad;
-      
+
       if (showLoader) {
         return PopScope(
           canPop: false,
@@ -159,6 +159,35 @@ class _BookingBodyState extends State<_BookingBody> {
   final CrpInventoryListController _inventoryController =
   Get.put(CrpInventoryListController());
 
+  /// Creates pickup pin icon from asset image
+  Future<BitmapDescriptor> _createPickupPinIcon() async {
+    return BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(90, 90)),
+      'assets/images/pickup.png',
+    );
+  }
+
+  /// Creates drop pin icon from asset image
+  Future<BitmapDescriptor> _createDropPinIcon() async {
+    return BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(90, 90)),
+      'assets/images/drop.png',
+    );
+  }
+
+  /// Checks if drop location exists and has valid data
+  bool _hasDropLocation() {
+    if (widget.bookingData == null) {
+      return false;
+    }
+    final dropPlace = widget.bookingData!.dropPlace;
+    if (dropPlace == null) {
+      return false;
+    }
+    final primaryText = dropPlace.primaryText;
+    return primaryText != null && primaryText.isNotEmpty;
+  }
+
   CameraPosition get _initialCameraPosition {
     // If we have booking data with coordinates, center between pickup and drop
     if (widget.bookingData != null) {
@@ -177,7 +206,7 @@ class _BookingBodyState extends State<_BookingBody> {
 
         // Calculate zoom level based on distance
         final distance =
-        _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
+            _calculateDistance(pickupLat, pickupLng, dropLat, dropLng);
         double zoom = 6.0;
         if (distance > 100) {
           zoom = 6.0;
@@ -316,11 +345,11 @@ class _BookingBodyState extends State<_BookingBody> {
 
   /// Fetches route from Google Directions API
   Future<List<LatLng>?> _fetchDirections(
-      double originLat,
-      double originLng,
-      double destLat,
-      double destLng,
-      ) async {
+    double originLat,
+    double originLng,
+    double destLat,
+    double destLng,
+  ) async {
     try {
       setState(() {
         _isLoadingRoute = true;
@@ -328,13 +357,13 @@ class _BookingBodyState extends State<_BookingBody> {
 
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/directions/json'
-            '?origin=$originLat,$originLng'
-            '&destination=$destLat,$destLng'
-            '&key=$googleApiKey',
+        '?origin=$originLat,$originLng'
+        '&destination=$destLat,$destLng'
+        '&key=$googleApiKey',
       );
 
-      final response = await CprApiService()
-          .sendRequestWithRetry(() => http.get(url));
+      final response =
+          await CprApiService().sendRequestWithRetry(() => http.get(url));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -416,14 +445,18 @@ class _BookingBodyState extends State<_BookingBody> {
     final dropPlace = widget.bookingData!.dropPlace;
 
     // Validate that we have valid coordinates
-    final hasPickupCoords = pickupPlace?.latitude != null && pickupPlace?.longitude != null;
-    final hasDropCoords = dropPlace?.latitude != null && dropPlace?.longitude != null;
+    final hasPickupCoords =
+        pickupPlace?.latitude != null && pickupPlace?.longitude != null;
+    final hasDropCoords =
+        dropPlace?.latitude != null && dropPlace?.longitude != null;
 
     if (!hasPickupCoords) {
-      print('⚠️ Pickup place missing coordinates: lat=${pickupPlace?.latitude}, lng=${pickupPlace?.longitude}');
+      print(
+          '⚠️ Pickup place missing coordinates: lat=${pickupPlace?.latitude}, lng=${pickupPlace?.longitude}');
     }
     if (!hasDropCoords) {
-      print('⚠️ Drop place missing coordinates: lat=${dropPlace?.latitude}, lng=${dropPlace?.longitude}');
+      print(
+          '⚠️ Drop place missing coordinates: lat=${dropPlace?.latitude}, lng=${dropPlace?.longitude}');
     }
 
     if (!hasPickupCoords || !hasDropCoords) {
@@ -431,18 +464,21 @@ class _BookingBodyState extends State<_BookingBody> {
       return;
     }
 
+    // Create custom pin icons
+    final pickupIcon = await _createPickupPinIcon();
+    final dropIcon = await _createDropPinIcon();
+
     // First, update markers synchronously
     setState(() {
       _markers.clear();
       _polylines.clear();
 
-      // Add pickup marker
+      // Add pickup marker with custom icon
       _markers.add(
         Marker(
           markerId: const MarkerId('pickup'),
           position: LatLng(pickupPlace!.latitude!, pickupPlace.longitude!),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueGreen),
+          icon: pickupIcon,
           infoWindow: InfoWindow(
             title: 'Pickup',
             snippet: pickupPlace.primaryText ?? 'Pickup Location',
@@ -450,12 +486,12 @@ class _BookingBodyState extends State<_BookingBody> {
         ),
       );
 
-      // Add drop marker
+      // Add drop marker with custom icon
       _markers.add(
         Marker(
           markerId: const MarkerId('drop'),
           position: LatLng(dropPlace!.latitude!, dropPlace.longitude!),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          icon: dropIcon,
           infoWindow: InfoWindow(
             title: 'Drop',
             snippet: dropPlace.primaryText ?? 'Drop Location',
@@ -497,9 +533,10 @@ class _BookingBodyState extends State<_BookingBody> {
         Polyline(
           polylineId: const PolylineId('route'),
           points: pointsToUse,
-          color: const Color(0xFF2B64E5), // Bright blue color for visibility
+          color: const Color(0xFF213B87), // Bright blue color for visibility
           width: 5, // Increased width for better visibility
-          geodesic: routePoints != null, // Use geodesic for actual route, false for straight line
+          geodesic: routePoints !=
+              null, // Use geodesic for actual route, false for straight line
         ),
       );
       print('✅ Added polyline with ${pointsToUse.length} points');
@@ -517,7 +554,7 @@ class _BookingBodyState extends State<_BookingBody> {
 
     // Collect all positions from markers
     final positions = _markers.map((m) => m.position).toList();
-    
+
     // Also include polyline points if available
     for (var polyline in _polylines) {
       positions.addAll(polyline.points);
@@ -553,7 +590,10 @@ class _BookingBodyState extends State<_BookingBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateMapMarkersAndPolyline();
+      // Only update map if drop location exists
+      if (_hasDropLocation()) {
+        _updateMapMarkersAndPolyline();
+      }
     });
   }
 
@@ -561,151 +601,50 @@ class _BookingBodyState extends State<_BookingBody> {
   void didUpdateWidget(_BookingBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.bookingData != widget.bookingData) {
-      _updateMapMarkersAndPolyline();
+      // Only update map if drop location exists
+      if (_hasDropLocation()) {
+        _updateMapMarkersAndPolyline();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasDrop = _hasDropLocation();
+
     return Stack(
       children: [
-        // Full-screen Google Map
+        // Full-screen Google Map (only show if drop exists)
         Column(
           children: [
-            SizedBox(
-              height: 350,
-              child: GoogleMap(
-                initialCameraPosition: _initialCameraPosition,
-                style: '''[
+            if (hasDrop)
+              SizedBox(
+                height: 400,
+                child: GoogleMap(
+                  initialCameraPosition: _initialCameraPosition,
+                  style: '''[
     {
-        "featureType": "water",
-        "elementType": "geometry",
+        "elementType": "labels.text",
         "stylers": [
             {
-                "color": "#e9e9e9"
-            },
-            {
-                "lightness": 17
+                "visibility": "off"
             }
         ]
     },
     {
-        "featureType": "landscape",
-        "elementType": "geometry",
-        "stylers": [
-            {
-                "color": "#f5f5f5"
-            },
-            {
-                "lightness": 20
-            }
-        ]
-    },
-    {
-        "featureType": "road.highway",
+        "featureType": "landscape.natural",
         "elementType": "geometry.fill",
         "stylers": [
             {
-                "color": "#ffffff"
+                "color": "#f5f5f2"
             },
-            {
-                "lightness": 17
-            }
-        ]
-    },
-    {
-        "featureType": "road.highway",
-        "elementType": "geometry.stroke",
-        "stylers": [
-            {
-                "color": "#ffffff"
-            },
-            {
-                "lightness": 29
-            },
-            {
-                "weight": 0.2
-            }
-        ]
-    },
-    {
-        "featureType": "road.arterial",
-        "elementType": "geometry",
-        "stylers": [
-            {
-                "color": "#ffffff"
-            },
-            {
-                "lightness": 18
-            }
-        ]
-    },
-    {
-        "featureType": "road.local",
-        "elementType": "geometry",
-        "stylers": [
-            {
-                "color": "#ffffff"
-            },
-            {
-                "lightness": 16
-            }
-        ]
-    },
-    {
-        "featureType": "poi",
-        "elementType": "geometry",
-        "stylers": [
-            {
-                "color": "#f5f5f5"
-            },
-            {
-                "lightness": 21
-            }
-        ]
-    },
-    {
-        "featureType": "poi.park",
-        "elementType": "geometry",
-        "stylers": [
-            {
-                "color": "#dedede"
-            },
-            {
-                "lightness": 21
-            }
-        ]
-    },
-    {
-        "elementType": "labels.text.stroke",
-        "stylers": [
             {
                 "visibility": "on"
-            },
-            {
-                "color": "#ffffff"
-            },
-            {
-                "lightness": 16
             }
         ]
     },
     {
-        "elementType": "labels.text.fill",
-        "stylers": [
-            {
-                "saturation": 36
-            },
-            {
-                "color": "#333333"
-            },
-            {
-                "lightness": 40
-            }
-        ]
-    },
-    {
-        "elementType": "labels.icon",
+        "featureType": "administrative",
         "stylers": [
             {
                 "visibility": "off"
@@ -714,59 +653,316 @@ class _BookingBodyState extends State<_BookingBody> {
     },
     {
         "featureType": "transit",
-        "elementType": "geometry",
         "stylers": [
             {
-                "color": "#f2f2f2"
-            },
-            {
-                "lightness": 19
+                "visibility": "off"
             }
         ]
     },
     {
-        "featureType": "administrative",
+        "featureType": "poi.attraction",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "landscape.man_made",
         "elementType": "geometry.fill",
         "stylers": [
             {
-                "color": "#fefefe"
+                "color": "#ffffff"
             },
             {
-                "lightness": 20
+                "visibility": "on"
             }
         ]
     },
     {
-        "featureType": "administrative",
-        "elementType": "geometry.stroke",
+        "featureType": "poi.business",
         "stylers": [
             {
-                "color": "#fefefe"
-            },
-            {
-                "lightness": 17
-            },
-            {
-                "weight": 1.2
+                "visibility": "off"
             }
         ]
+    },
+    {
+        "featureType": "poi.medical",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.place_of_worship",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.school",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.sports_complex",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#ffffff"
+            },
+            {
+                "visibility": "simplified"
+            }
+        ]
+    },
+    {
+        "featureType": "road.arterial",
+        "stylers": [
+            {
+                "visibility": "simplified"
+            },
+            {
+                "color": "#ffffff"
+            }
+        ]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "labels.icon",
+        "stylers": [
+            {
+                "color": "#ffffff"
+            },
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "labels.icon",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road.arterial",
+        "stylers": [
+            {
+                "color": "#ffffff"
+            }
+        ]
+    },
+    {
+        "featureType": "road.local",
+        "stylers": [
+            {
+                "color": "#ffffff"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.park",
+        "elementType": "labels.icon",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "poi",
+        "elementType": "labels.icon",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "water",
+        "stylers": [
+            {
+                "color": "#71c8d4"
+            }
+        ]
+    },
+    {
+        "featureType": "landscape",
+        "stylers": [
+            {
+                "color": "#e5e8e7"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.park",
+        "stylers": [
+            {
+                "color": "#8ba129"
+            }
+        ]
+    },
+    {
+        "featureType": "road",
+        "stylers": [
+            {
+                "color": "#ffffff"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.sports_complex",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#c7c7c7"
+            },
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "water",
+        "stylers": [
+            {
+                "color": "#a0d3d3"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.park",
+        "stylers": [
+            {
+                "color": "#91b65d"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.park",
+        "stylers": [
+            {
+                "gamma": 1.51
+            }
+        ]
+    },
+    {
+        "featureType": "road.local",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road.local",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "visibility": "on"
+            }
+        ]
+    },
+    {
+        "featureType": "poi.government",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "landscape",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road",
+        "elementType": "labels",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "road.arterial",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "visibility": "simplified"
+            }
+        ]
+    },
+    {
+        "featureType": "road.local",
+        "stylers": [
+            {
+                "visibility": "simplified"
+            }
+        ]
+    },
+    {
+        "featureType": "road"
+    },
+    {
+        "featureType": "road"
+    },
+    {},
+    {
+        "featureType": "road.highway"
     }
 ]''',
-                onMapCreated: (c) {
-                  _mapController = c;
-                  // Update markers and polyline after map is created
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _updateMapMarkersAndPolyline();
-                  });
-                },
-                markers: _markers,
-                polylines: _polylines,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                compassEnabled: false,
+                  onMapCreated: (c) {
+                    _mapController = c;
+                    // Update markers and polyline after map is created (only if drop exists)
+                    if (_hasDropLocation()) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _updateMapMarkersAndPolyline();
+                      });
+                    }
+                  },
+                  markers: _markers,
+                  polylines: _polylines,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  compassEnabled: false,
+                ),
               ),
-            ),
-            Expanded(child: _VehicleSection(bookingData: widget.bookingData))
+            if (!hasDrop)
+              SizedBox(
+                height: 116,
+              ),
+            Expanded(
+                child: Padding(
+              padding: !hasDrop
+                  ? const EdgeInsets.symmetric(horizontal: 16.0)
+                  : EdgeInsets.symmetric(horizontal: 0.0),
+              child: _VehicleSection(bookingData: widget.bookingData),
+            ))
           ],
         ),
         SizedBox(
@@ -815,9 +1011,8 @@ class _RouteCard extends StatelessWidget {
 
     final dropPrimary = dropPlace?.primaryText ?? 'Drop location';
     final dropSecondary = dropPlace?.secondaryText ?? '';
-    final dropFull = dropSecondary.isNotEmpty
-        ? '$dropPrimary, $dropSecondary'
-        : dropPrimary;
+    final dropFull =
+        dropSecondary.isNotEmpty ? '$dropPrimary, $dropSecondary' : dropPrimary;
 
     final combined = '$pickupFull to $dropFull';
     // Slightly higher limit for the combined route line
@@ -848,9 +1043,8 @@ class _RouteCard extends StatelessWidget {
     final dropPlace = bookingData!.dropPlace;
     final dropPrimary = dropPlace?.primaryText ?? 'drop location';
     final dropSecondary = dropPlace?.secondaryText ?? '';
-    final dropFull = dropSecondary.isNotEmpty
-        ? '$dropPrimary, $dropSecondary'
-        : dropPrimary;
+    final dropFull =
+        dropSecondary.isNotEmpty ? '$dropPrimary, $dropSecondary' : dropPrimary;
 
     // Enforce a strict character length for the drop text
     return _shorten(dropFull, maxChars: 25);
@@ -883,9 +1077,15 @@ class _RouteCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x05000000), // ultra subtle, barely perceptible
-            offset: Offset(0, 0.5),
-            blurRadius: 1,
+            color: Color(0x1A000000), // More visible shadow for map separation
+            offset: Offset(0, 4),
+            blurRadius: 12,
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Color(0x0D000000), // Softer outer shadow
+            offset: Offset(0, 2),
+            blurRadius: 6,
             spreadRadius: 0,
           ),
         ],
@@ -905,14 +1105,6 @@ class _RouteCard extends StatelessWidget {
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x05000000), // ultra subtle, barely perceptible
-                    offset: Offset(0, 0.5),
-                    blurRadius: 1,
-                    spreadRadius: 0,
-                  ),
-                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -964,7 +1156,8 @@ class _RouteCard extends StatelessWidget {
                                   width: 2,
                                   height: 24,
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: List.generate(
                                       6,
                                       (_) => Container(
@@ -1187,23 +1380,23 @@ class _VehicleSectionState extends State<_VehicleSection> {
             Expanded(
               child: filteredModels.isEmpty
                   ? const Center(
-                child: Text(
-                  'No vehicles available',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              )
+                      child: Text(
+                        'No vehicles available',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )
                   : ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                itemCount: filteredModels.length,
-                itemBuilder: (_, index) => _VehicleCard(
-                  model: filteredModels[index],
-                  bookingData: widget.bookingData,
-                ),
-              ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      itemCount: filteredModels.length,
+                      itemBuilder: (_, index) => _VehicleCard(
+                        model: filteredModels[index],
+                        bookingData: widget.bookingData,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -1327,12 +1520,13 @@ class _VehicleCardState extends State<_VehicleCard> {
                 width: 71,
                 height: 51,
                 child: Image.network(
-                   widget.model.carImageUrl??'',
+                  widget.model.carImageUrl ?? '',
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                      child: const Icon(Icons.image_not_supported,
+                          color: Colors.grey),
                     );
                   },
                 ),
@@ -1361,7 +1555,8 @@ class _VehicleCardState extends State<_VehicleCard> {
                         if (category != null && category.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFF2B64E5),
                               borderRadius: BorderRadius.circular(12),
@@ -1381,13 +1576,21 @@ class _VehicleCardState extends State<_VehicleCard> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        SvgPicture.asset('assets/images/passenger.svg', width: 12, height: 12,),
+                        SvgPicture.asset(
+                          'assets/images/passenger.svg',
+                          width: 12,
+                          height: 12,
+                        ),
                         const SizedBox(width: 4),
-                         Text(widget.model.seats.toString()??'', style: const TextStyle(fontSize: 11)),
+                        Text(widget.model.seats.toString() ?? '',
+                            style: const TextStyle(fontSize: 11)),
                         const SizedBox(width: 8),
-                        Container(width: 9, height: 9, decoration: const BoxDecoration(
-                          color: Color(0xFF949494)
-                        ),),
+                        Container(
+                          width: 9,
+                          height: 9,
+                          decoration:
+                              const BoxDecoration(color: Color(0xFF949494)),
+                        ),
                         const SizedBox(width: 8),
                         const Icon(Icons.ac_unit, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
@@ -1438,7 +1641,7 @@ class _InventoryShimmer extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 itemCount: 5,
                 itemBuilder: (_, __) => Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1490,9 +1693,8 @@ class TripContainer extends StatelessWidget {
     final dropPlace = bookingData!.dropPlace;
     final dropPrimary = dropPlace?.primaryText ?? 'drop location';
     final dropSecondary = dropPlace?.secondaryText ?? '';
-    final drop = dropSecondary.isNotEmpty
-        ? '$dropPrimary, $dropSecondary'
-        : dropPrimary;
+    final drop =
+        dropSecondary.isNotEmpty ? '$dropPrimary, $dropSecondary' : dropPrimary;
 
     // Let the Text widget handle truncation
     return drop;
@@ -1589,7 +1791,7 @@ class TripContainer extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
