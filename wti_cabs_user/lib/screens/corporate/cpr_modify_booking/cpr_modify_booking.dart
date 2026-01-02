@@ -2018,9 +2018,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
       if (bStatus) {
         /// ✅ NAVIGATE AFTER FRAME (SAFE WITH GOROUTER)
+        /// Pop with result true to trigger refresh in parent screen
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            GoRouter.of(context).pop();
+            GoRouter.of(context).pop(true);
           }
         });
       }
@@ -2155,11 +2156,11 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           cancelReasonController.clear();
           
           // Navigate back after success - use microtask to ensure dialog is fully closed
+          // Pop with result true to trigger refresh in parent screen
           Future.microtask(() {
             if (context.mounted) {
-              GoRouter.of(context).pop();
-              GoRouter.of(context).pop();
-
+              // Pop modify screen with result true to trigger refresh
+              GoRouter.of(context).pop(true);
             }
           });
         } else {

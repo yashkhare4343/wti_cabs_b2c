@@ -39,12 +39,20 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       }
     });
   }
-  void fetchBookingDetails() async{
+  Future<void> fetchBookingDetails() async{
     final token = await StorageServices.instance.read('crpKey');
     final userEmail = await StorageServices.instance.read('email');
     final orderId = widget.booking.bookingId.toString();
     await crpBookingDetailsController.fetchBookingData(orderId, token??'', userEmail??'');
     await crpBookingDetailsController.fetchDriverDetails(orderId, token??'', userEmail??'');
+  }
+
+  /// Refresh booking details when returning from modify screen
+  Future<void> _refreshBookingDetails() async {
+    await fetchBookingDetails();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   // Helper method to check if status is dispatched
@@ -489,19 +497,25 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         Expanded(
                           child: _buildActionButton(
                             'Edit Booking',
-                            () {
+                            () async {
                               // Navigate to modify booking screen with booking ID and car model
                               final orderId = widget.booking.bookingId?.toString() ??
                                   widget.booking.bookingNo ??
                                   '';
                               if (orderId.isNotEmpty) {
-                                GoRouter.of(context).push(
+                                final result = await GoRouter.of(context).push<bool>(
                                   AppRoutes.cprModifyBooking,
                                   extra: {
                                     'orderId': orderId,
                                     'carModelName': widget.booking.model,
                                   },
                                 );
+                                // If modification/cancellation was successful, refresh booking details
+                                if (result == true && mounted) {
+                                  await _refreshBookingDetails();
+                                  // Pop with result true to refresh booking list in parent screen
+                                  GoRouter.of(context).pop(true);
+                                }
                               }
                             },
                           ),

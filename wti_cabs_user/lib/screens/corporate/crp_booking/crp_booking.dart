@@ -949,11 +949,15 @@ class _CrpBookingState extends State<CrpBooking> {
                   Expanded(
                     child: _buildActionButton(
                       'Booking Detail',
-                      () {
-                        context.push(
+                      () async {
+                        final result = await context.push<bool>(
                           AppRoutes.cprBookingDetails,
                           extra: booking,
                         );
+                        // If booking was modified or cancelled, refresh the booking list
+                        if (result == true && mounted) {
+                          await _loadAndFetchBookings();
+                        }
                       },
                     ),
                   ),
