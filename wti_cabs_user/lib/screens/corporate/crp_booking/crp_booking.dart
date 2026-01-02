@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -5,6 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:another_flushbar/flushbar.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../../../common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -44,15 +51,15 @@ class BookingStatus {
   static const String allocatedStr = 'Allocated';
 
   // Tab-to-Status Mapping
-  // Confirmed Tab → Status IN (0, 1, 2) - Pending, Confirmed, Dispatched
+  // Confirmed Tab → Status IN (0, 1) - Pending, Confirmed
   static const List<String> confirmedTabStatuses = [
     pendingStr,
     confirmedStr,
-    dispatchedStr,
   ];
 
-  // Completed Tab → Status = 6 - Allocated
+  // Completed Tab → Status IN (2, 6) - Dispatched, Allocated
   static const List<String> completedTabStatuses = [
+    dispatchedStr,
     allocatedStr,
   ];
 
@@ -328,6 +335,157 @@ class _CrpBookingState extends State<CrpBooking> {
       }
     } catch (e) {
       debugPrint('❌ Error ensuring email persistence: $e');
+    }
+  }
+
+  /// Extract numeric booking ID from booking number
+  /// Example: "WTI-DEL20260102-3518818" -> "3518818"
+  String? _extractNumericBookingId(CrpBookingHistoryItem booking) {
+    // Try bookingNo first (e.g., "WTI-DEL20260102-3518818")
+    if (booking.bookingNo != null && booking.bookingNo!.isNotEmpty) {
+      final parts = booking.bookingNo!.split('-');
+      if (parts.isNotEmpty) {
+        // Get the last part after the last hyphen
+        final lastPart = parts.last;
+        // Check if it's numeric
+        if (RegExp(r'^\d+$').hasMatch(lastPart)) {
+          return lastPart;
+        }
+      }
+    }
+    
+    // Fallback to bookingId or id if available
+    if (booking.bookingId != null) {
+      return booking.bookingId.toString();
+    }
+    if (booking.id != null) {
+      return booking.id.toString();
+    }
+    
+    return null;
+  }
+
+  /// Download invoice PDF and open it directly in PDF viewer
+  Future<void> _downloadInvoice(CrpBookingHistoryItem booking) async {
+    try {
+      // Extract numeric booking ID from booking number
+      final numericBookingId = _extractNumericBookingId(booking);
+      
+      if (numericBookingId == null || numericBookingId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Booking ID not found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopupLoader(message: 'Downloading Invoice...'),
+      );
+
+      // Construct invoice URL with extracted numeric booking ID
+      final invoiceUrl = 'http://office.aaveg.co.in/Mt/PrintFullDS_Digital?BookingID=$numericBookingId';
+
+      // Request storage permissions (for Android)
+      if (Platform.isAndroid) {
+        // Android 13+ → use these new permissions
+        if (await Permission.photos.isDenied) {
+          await Permission.photos.request();
+        }
+        if (await Permission.videos.isDenied) {
+          await Permission.videos.request();
+        }
+        // Older Android (for writing to /storage/emulated/0/Download)
+        if (await Permission.storage.isDenied) {
+          await Permission.storage.request();
+        }
+      }
+
+      // Determine download directory
+      Directory? dir;
+      if (Platform.isAndroid) {
+        if (await Directory("/storage/emulated/0/Download").exists()) {
+          dir = Directory("/storage/emulated/0/Download");
+        } else {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      if (dir == null) {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not access download directory'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Download the PDF
+      final uri = Uri.parse(invoiceUrl);
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        // Save the PDF file
+        final fileName = 'invoice_$numericBookingId.pdf';
+        final filePath = '${dir.path}/$fileName';
+        final file = File(filePath);
+        
+        // Ensure directory exists
+        if (!await file.parent.exists()) {
+          await file.parent.create(recursive: true);
+        }
+        
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Close loader dialog
+        if (mounted) {
+          GoRouter.of(context).pop();
+        }
+
+        // Open the PDF file directly in PDF viewer
+        final result = await OpenFile.open(filePath);
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF saved to ${dir.path}. Opening...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to download invoice. Status: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        GoRouter.of(context).pop(); // Close loader
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading invoice: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -909,6 +1067,42 @@ class _CrpBookingState extends State<CrpBooking> {
                           fontFamily: 'Montserrat',
                         ),
                       ),
+                      // Show Download Invoice button for completed statuses (Dispatched and Allocated)
+                      if ((booking.status?.toLowerCase().trim() == 'allocated') || 
+                          (booking.status?.toLowerCase().trim() == 'dispatched')) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 24,
+                          child: ElevatedButton(
+                            onPressed: () => _downloadInvoice(booking),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDCEAFD), // bg color
+                              elevation: 0,
+                              padding: const EdgeInsets.all(5), // padding
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15), // border-radius
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset('assets/images/bookmark.png', width: 12, height: 12,),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Download Invoice',
+                                  style: const TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                    color: Color(0xFF7B7B7B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

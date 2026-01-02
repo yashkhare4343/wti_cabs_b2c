@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +6,13 @@ import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_detail/crp_booking_detail_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
+import '../../../common_widget/loader/popup_loader.dart';
 import '../../../core/services/storage_services.dart';
 
 class CrpBookingDetails extends StatefulWidget {
@@ -61,6 +67,157 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     final statusLower = status.toLowerCase().trim();
     return statusLower == '2' || statusLower == 'dispatched';
   }
+
+  /// Extract numeric booking ID from booking number
+  /// Example: "WTI-DEL20260102-3518818" -> "3518818"
+  String? _extractNumericBookingId(CrpBookingHistoryItem booking) {
+    // Try bookingNo first (e.g., "WTI-DEL20260102-3518818")
+    if (booking.bookingNo != null && booking.bookingNo!.isNotEmpty) {
+      final parts = booking.bookingNo!.split('-');
+      if (parts.isNotEmpty) {
+        // Get the last part after the last hyphen
+        final lastPart = parts.last;
+        // Check if it's numeric
+        if (RegExp(r'^\d+$').hasMatch(lastPart)) {
+          return lastPart;
+        }
+      }
+    }
+    
+    // Fallback to bookingId or id if available
+    if (booking.bookingId != null) {
+      return booking.bookingId.toString();
+    }
+    if (booking.id != null) {
+      return booking.id.toString();
+    }
+    
+    return null;
+  }
+
+  Future<void> _downloadInvoice(CrpBookingHistoryItem booking) async {
+    try {
+      // Extract numeric booking ID from booking number
+      final numericBookingId = _extractNumericBookingId(booking);
+      
+      if (numericBookingId == null || numericBookingId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Booking ID not found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopupLoader(message: 'Downloading Invoice...'),
+      );
+
+      // Construct invoice URL with extracted numeric booking ID
+      final invoiceUrl = 'http://office.aaveg.co.in/Mt/PrintFullDS_Digital?BookingID=$numericBookingId';
+
+      // Request storage permissions (for Android)
+      if (Platform.isAndroid) {
+        // Android 13+ → use these new permissions
+        if (await Permission.photos.isDenied) {
+          await Permission.photos.request();
+        }
+        if (await Permission.videos.isDenied) {
+          await Permission.videos.request();
+        }
+        // Older Android (for writing to /storage/emulated/0/Download)
+        if (await Permission.storage.isDenied) {
+          await Permission.storage.request();
+        }
+      }
+
+      // Determine download directory
+      Directory? dir;
+      if (Platform.isAndroid) {
+        if (await Directory("/storage/emulated/0/Download").exists()) {
+          dir = Directory("/storage/emulated/0/Download");
+        } else {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      if (dir == null) {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not access download directory'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Download the PDF
+      final uri = Uri.parse(invoiceUrl);
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        // Save the PDF file
+        final fileName = 'invoice_$numericBookingId.pdf';
+        final filePath = '${dir.path}/$fileName';
+        final file = File(filePath);
+
+        // Ensure directory exists
+        if (!await file.parent.exists()) {
+          await file.parent.create(recursive: true);
+        }
+
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Close loader dialog
+        if (mounted) {
+          GoRouter.of(context).pop();
+        }
+
+        // Open the PDF file directly in PDF viewer
+        final result = await OpenFile.open(filePath);
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF saved to ${dir.path}. Opening...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to download invoice. Status: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        GoRouter.of(context).pop(); // Close loader
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading invoice: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
 
   // Helper method to get status icon and color based on status
   Map<String, dynamic> _getStatusIconAndColor(String? status) {
@@ -489,7 +646,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   );
                 }),
                   const SizedBox(height: 20),
-                  // Edit Booking and Track Cab Buttons
+                  // Edit Booking, Track Cab, and Download Invoice Buttons
                   Row(
                     children: [
                       // Only show Edit Booking button if status is not dispatched or cancelled
@@ -523,36 +680,48 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         const SizedBox(width: 8),
                       ],
                       if(statusInfo['text'] != 'Cancelled')...[
-                      Expanded(
-                        child: _buildActionButton(
-                          'Track Cab',
-                          () {
-                            // Navigate to tracking screen with booking ID and details
-                            final bookingId = widget.booking.bookingId?.toString() ??
-                                widget.booking.bookingNo ??
-                                '';
-                            if (bookingId.isNotEmpty) {
-                              // Get driver details from controller
-                              final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
-                              final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
-                              
-                              GoRouter.of(context).push(
-                                AppRoutes.cprCabTracking,
-                                extra: {
-                                  'bookingId': bookingId,
-                                  'carModel': widget.booking.model ?? '',
-                                  'carNo': driverDetails?.carNo ?? '',
-                                  'driverName': driverDetails?.chauffeur ?? '',
-                                  'driverMobile': driverDetails?.mobile ?? '',
-                                  'bookingNo': widget.booking.bookingNo ?? widget.booking.bookingId?.toString() ?? '',
-                                  'cabRequiredOn': widget.booking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
-                                },
-                              );
-                            }
-                          },
+                        Expanded(
+                          child: _buildActionButton(
+                            'Track Cab',
+                            () {
+                              // Navigate to tracking screen with booking ID and details
+                              final bookingId = widget.booking.bookingId?.toString() ??
+                                  widget.booking.bookingNo ??
+                                  '';
+                              if (bookingId.isNotEmpty) {
+                                // Get driver details from controller
+                                final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
+                                final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+                                
+                                GoRouter.of(context).push(
+                                  AppRoutes.cprCabTracking,
+                                  extra: {
+                                    'bookingId': bookingId,
+                                    'carModel': widget.booking.model ?? '',
+                                    'carNo': driverDetails?.carNo ?? '',
+                                    'driverName': driverDetails?.chauffeur ?? '',
+                                    'driverMobile': driverDetails?.mobile ?? '',
+                                    'bookingNo': widget.booking.bookingNo ?? widget.booking.bookingId?.toString() ?? '',
+                                    'cabRequiredOn': widget.booking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
+                                  },
+                                );
+                              }
+                            },
+                          ),
                         ),
-                      )
-            ],
+                      ],
+                      // Show Download Invoice button for completed statuses (Dispatched and Allocated)
+                      if ((widget.booking.status?.toLowerCase().trim() == 'allocated') || 
+                          (widget.booking.status?.toLowerCase().trim() == 'dispatched')) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildActionButton(
+                            'Download Invoice',
+                            () => _downloadInvoice(widget.booking),
+                          ),
+                        ),
+                      ],
+                    ],
                       // Vertical Divider
                       // Container(
                       //   width: 8,
@@ -567,7 +736,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       //     },
                       //   ),
                       // ),
-                    ],
                   ),
                 ],
               ),
