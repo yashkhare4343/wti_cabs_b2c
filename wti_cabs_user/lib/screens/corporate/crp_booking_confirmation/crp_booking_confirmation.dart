@@ -928,8 +928,8 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                       isReadOnly: true,
                     ),
                   ),
-                  if (widget.sourceController.text.isNotEmpty)
-                    _addressTag(widget.sourceController.text),
+                  // if (widget.sourceController.text.isNotEmpty)
+                  //   _addressTag(widget.sourceController.text),
                   _customTextField(
                     label: 'Dropping Address',
                     hint: 'Enter Dropping Address',
@@ -938,8 +938,8 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                     showBottom: false,
                     isReadOnly: true,
                   ),
-                  if (widget.destinationController.text.isNotEmpty)
-                    _addressTag(widget.destinationController.text),
+                  // if (widget.destinationController.text.isNotEmpty)
+                  //   _addressTag(widget.destinationController.text),
                 ],
               ),
             ),

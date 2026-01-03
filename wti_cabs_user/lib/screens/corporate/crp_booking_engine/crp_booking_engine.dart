@@ -484,15 +484,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     }
 
     // Always set pickup datetime using advancedHourToConfirm from login info
-    final int hoursOffset = _getAdvancedHourToConfirm();
+    final int minutesOffset = _getAdvancedHourToConfirm();
     if (selectedPickupDateTime == null) {
       setState(() {
-        selectedPickupDateTime = DateTime.now().add(Duration(minutes: hoursOffset*60));
+        selectedPickupDateTime = DateTime.now().add(Duration(minutes: minutesOffset));
       });
     } else {
       // Ensure existing selection is at least advancedHourToConfirm hours from now
       final DateTime now = DateTime.now();
-      final DateTime minDateTime = now.add(Duration(minutes: hoursOffset*60));
+      final DateTime minDateTime = now.add(Duration(minutes: minutesOffset));
       if (selectedPickupDateTime!.isBefore(minDateTime)) {
         setState(() {
           selectedPickupDateTime = minDateTime;
@@ -1008,13 +1008,14 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
   // final TextEditingController pickupController = TextEditingController();
   // final TextEditingController dropController = TextEditingController();
 
-  /// Get the minimum hours offset for pickup datetime from login info
-  /// Falls back to 4 hours if not available or if value is 0
+  /// Get the minimum minutes offset for pickup datetime from login info
+  /// Falls back to 0 if not available or if value is 0
+  /// Adds 15 minutes to the configured hours
   int _getAdvancedHourToConfirm() {
     final loginInfo = loginInfoController.crpLoginInfo.value;
     final hours = loginInfo?.advancedHourToConfirm ?? 0;
-    // Use the value from API if it's greater than 0, otherwise default to 4 hours
-    return hours > 0 ? hours : 0;
+    // Convert hours to minutes and add 15 minutes
+    return (hours > 0 ? hours : 0) * 60 + 15;
   }
 
   /// Safely check if pickup and drop refer to the same location.
@@ -2794,11 +2795,11 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       {required bool isPickup}) {
     final DateTime now = DateTime.now();
     // For pickup, minimum date uses advancedHourToConfirm from login info
-    final int hoursOffset = _getAdvancedHourToConfirm();
-    // Calculate minimum date properly - for pickup, it's now + hoursOffset
+    final int minutesOffset = _getAdvancedHourToConfirm();
+    // Calculate minimum date properly - for pickup, it's now + minutesOffset
     // The picker will automatically disable dates/times before this minimum
     final DateTime minimumDate = isPickup
-        ? now.add(Duration(minutes: hoursOffset * 60))
+        ? now.add(Duration(minutes: minutesOffset))
         : (selectedPickupDateTime ?? now);
 
     // Use selected date if it exists and is valid (after minimum), otherwise use minimum date

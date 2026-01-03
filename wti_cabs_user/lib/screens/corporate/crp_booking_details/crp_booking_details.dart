@@ -486,7 +486,10 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   // Route Visualization
                   Obx(() {
                     final dropAddress = crpBookingDetailsController.crpBookingDetailResponse.value?.dropAddress;
-                    final hasDropAddress = dropAddress != null && dropAddress.isNotEmpty;
+                    // Only show drop if it's not null, not empty (trimmed), and not the string "null"
+                    final hasDropAddress = dropAddress != null && 
+                        dropAddress.trim().isNotEmpty && 
+                        dropAddress.trim().toLowerCase() != 'null';
                     
                     return IntrinsicHeight(
                       child: Row(
@@ -518,7 +521,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                       ),
                                     ),
                                   ),
-                                  // Vertical line (only show if drop exists)
+                                  // Vertical line (only show if drop exists and is not null)
                                   if (hasDropAddress)
                                     SizedBox(
                                       width: 2,
@@ -538,7 +541,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                         ),
                                       ),
                                     ),
-                                  // Square end (drop icon) - only show if drop exists
+                                  // Square end (drop icon) - only show if drop exists and is not null
                                   if (hasDropAddress)
                                     Container(
                                       width: 15,
@@ -581,11 +584,11 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                // Drop Location - only show if drop exists
-                                if (hasDropAddress) ...[
+                                // Drop Location - only show if drop exists and is not null or "null"
+                                if (hasDropAddress && dropAddress != null) ...[
                                   const SizedBox(height: 16),
                                   Text(
-                                    dropAddress!,
+                                    dropAddress.trim(),
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,

@@ -223,6 +223,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     }
   }
 
+  /// Get the minimum minutes offset for pickup datetime from login info
+  /// Falls back to 0 if not available or if value is 0
+  /// Adds 15 minutes to the configured hours
+  int _getAdvancedHourToConfirm() {
+    final loginInfo = loginInfoController.crpLoginInfo.value;
+    final hours = loginInfo?.advancedHourToConfirm ?? 0;
+    // Convert hours to minutes and add 15 minutes
+    return (hours > 0 ? hours : 0) * 60 + 15;
+  }
+
   SuggestionPlacesResponse? _buildPlaceFromAddress(String? address) {
     if (address == null || address.isEmpty) return null;
     return SuggestionPlacesResponse(
@@ -360,10 +370,22 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       crpSelectPickupController.searchController.text = pickupPlace.primaryText;
     }
 
-    final dropPlace = _buildPlaceFromAddress(data.dropAddress);
-    if (dropPlace != null) {
-      crpSelectDropController.selectedPlace.value = dropPlace;
-      crpSelectDropController.searchController.text = dropPlace.primaryText;
+    // Handle drop address - clear if null, empty, or "null" string
+    final dropAddress = data.dropAddress;
+    final hasValidDropAddress = dropAddress != null && 
+        dropAddress.trim().isNotEmpty && 
+        dropAddress.trim().toLowerCase() != 'null';
+    
+    if (hasValidDropAddress) {
+      final dropPlace = _buildPlaceFromAddress(dropAddress);
+      if (dropPlace != null) {
+        crpSelectDropController.selectedPlace.value = dropPlace;
+        crpSelectDropController.searchController.text = dropPlace.primaryText;
+      }
+    } else {
+      // Clear drop selection if address is null, empty, or "null"
+      crpSelectDropController.selectedPlace.value = null;
+      crpSelectDropController.searchController.text = '';
     }
 
     // Prefill pickup date/time from booking details
@@ -1641,8 +1663,13 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   void _showCupertinoDateTimePicker(BuildContext context,
       {required bool isPickup}) {
     final DateTime now = DateTime.now();
-    final DateTime minimumDate =
-        isPickup ? now : (selectedPickupDateTime ?? now);
+    // For pickup, minimum date uses advancedHourToConfirm from login info
+    final int minutesOffset = _getAdvancedHourToConfirm();
+    // Calculate minimum date properly - for pickup, it's now + minutesOffset
+    // The picker will automatically disable dates/times before this minimum
+    final DateTime minimumDate = isPickup
+        ? now.add(Duration(minutes: minutesOffset))
+        : (selectedPickupDateTime ?? now);
 
     // Use selected date if it exists and is not in the past, otherwise use minimum date
     DateTime? currentSelectedDateTime =
