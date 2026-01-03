@@ -128,7 +128,7 @@ class _CrpInventoryState extends State<CrpInventory> {
           }
         },
         child: Scaffold(
-          backgroundColor: AppColors.scaffoldBgPrimary1,
+          backgroundColor: Colors.white,
           body: SafeArea(
             child: _BookingBody(bookingData: parsedBookingData),
           ),
@@ -956,13 +956,12 @@ class _BookingBodyState extends State<_BookingBody> {
               SizedBox(
                 height: 116,
               ),
+            if(!hasDrop)
+              Image.asset('assets/images/crp_inventory_usp.png', height: 163, width: double.infinity, ),
+            if(!hasDrop)
+              SizedBox(height: 16,),
             Expanded(
-                child: Padding(
-              padding: !hasDrop
-                  ? const EdgeInsets.symmetric(horizontal: 16.0)
-                  : EdgeInsets.symmetric(horizontal: 0.0),
-              child: _VehicleSection(bookingData: widget.bookingData),
-            ))
+                child: _VehicleSection(bookingData: widget.bookingData)),
           ],
         ),
         SizedBox(
@@ -1074,135 +1073,142 @@ class _RouteCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 16, left: 14, right: 14),
       decoration: BoxDecoration(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1A000000), // More visible shadow for map separation
-            offset: Offset(0, 4),
-            blurRadius: 12,
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Color(0x0D000000), // Softer outer shadow
+            color: Color(0x0A000000),
             offset: Offset(0, 2),
-            blurRadius: 6,
+            blurRadius: 8,
             spreadRadius: 0,
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias, // ✅ IMPORTANT
 
       // Ensures all child corners are clipped properly
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            /// TOP CARD
-            Container(
-              padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
+      child: Column(
+        children: [
+          /// TOP CARD
+          Container(
+            padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Back button
-                      InkWell(
-                        onTap: () {
-                          context.push(AppRoutes.cprBookingEngine);
-                        },
-                        child: SvgPicture.asset(
-                          'assets/images/back.svg',
-                          width: 18,
-                          height: 18,
-                        ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Back button
+                    InkWell(
+                      onTap: () {
+                        context.push(AppRoutes.cprBookingEngine);
+                      },
+                      child: SvgPicture.asset(
+                        'assets/images/back.svg',
+                        width: 18,
+                        height: 18,
                       ),
-                      const SizedBox(width: 16),
-                      // Left: vertical icon line (pickup and drop icons)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: SizedBox(
-                          width: 28,
-                          child: Column(
-                            children: [
-                              // Circle with dot (pickup icon)
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFA4FF59),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Left: vertical icon line (pickup and drop icons)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: SizedBox(
+                        width: 28,
+                        child: Column(
+                          children: [
+                            // Circle with dot (pickup icon)
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFA4FF59),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
                               ),
-                              // Vertical line (only show if drop exists)
-                              if (_hasDropLocation())
-                                SizedBox(
-                                  width: 2,
-                                  height: 24,
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: List.generate(
-                                      6,
-                                      (_) => Container(
-                                        width: 2,
-                                        height: 3,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF7B7B7B),
-                                          shape: BoxShape.circle,
-                                        ),
+                            ),
+                            // Vertical line (only show if drop exists)
+                            if (_hasDropLocation())
+                              SizedBox(
+                                width: 2,
+                                height: 24,
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: List.generate(
+                                    6,
+                                    (_) => Container(
+                                      width: 2,
+                                      height: 3,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF7B7B7B),
+                                        shape: BoxShape.circle,
                                       ),
                                     ),
                                   ),
                                 ),
-                              // Square end (drop icon) - only show if drop exists
-                              if (_hasDropLocation())
-                                Container(
-                                  width: 15,
-                                  height: 15,
-                                  padding: EdgeInsets.all(4.0),
+                              ),
+                            // Square end (drop icon) - only show if drop exists
+                            if (_hasDropLocation())
+                              Container(
+                                width: 15,
+                                height: 15,
+                                padding: EdgeInsets.all(4.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFB179),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Container(
+                                  width: 6,
+                                  height: 6,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFFB179),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child: Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFFFFF),
-                                      borderRadius: BorderRadius.circular(0.5),
-                                    ),
+                                    color: const Color(0xFFFFFFFF),
+                                    borderRadius: BorderRadius.circular(0.5),
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Center: locations fields/text, expanded
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Pickup location
+                    ),
+                    const SizedBox(width: 16),
+                    // Center: locations fields/text, expanded
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Pickup location
+                          Text(
+                            _getPickupRouteText(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4F4F4F),
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          // Drop location (only show if drop exists)
+                          if (_hasDropLocation()) ...[
+                            const SizedBox(height: 16),
                             Text(
-                              _getPickupRouteText(),
+                              _getDropRouteText(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF4F4F4F),
@@ -1211,72 +1217,58 @@ class _RouteCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            // Drop location (only show if drop exists)
-                            if (_hasDropLocation()) ...[
-                              const SizedBox(height: 16),
-                              Text(
-                                _getDropRouteText(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4F4F4F),
-                                  fontSize: 14,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            /// WHITE SPACER
-            Container(height: 10, color: Colors.white),
-
-            /// BOTTOM SECTION
-            Container(
-              padding: const EdgeInsets.only(
-                  left: 16, top: 10, bottom: 10, right: 20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDateTime(bookingData?.pickupDateTime),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF717171),
-                    ),
-                  ),
-                  if (_getPickupTypeText().isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      child: Text(
-                        _getPickupTypeText(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4082F1),
-                        ),
+                        ],
                       ),
                     ),
                   ],
-                ],
+                ),
+              ],
+            ),
+          ),
+
+          /// WHITE SPACER
+          Container(height: 10, color: Colors.white),
+
+          /// BOTTOM SECTION
+          Container(
+            padding: const EdgeInsets.only(
+                left: 16, top: 10, bottom: 10, right: 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
             ),
-          ],
-        ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDateTime(bookingData?.pickupDateTime),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF717171),
+                  ),
+                ),
+                if (_getPickupTypeText().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    child: Text(
+                      _getPickupTypeText(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF4082F1),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1351,11 +1343,11 @@ class _VehicleSectionState extends State<_VehicleSection> {
 
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(12),
-            topRight: Radius.circular(12),
-          ),
+          color: Color(0xFFFDF8F8),
+          // borderRadius: const BorderRadius.only(
+          //   topLeft: Radius.circular(12),
+          //   topRight: Radius.circular(12),
+          // ),
           boxShadow: [
             BoxShadow(
               color: const Color(0x402B64E5),
@@ -1438,8 +1430,12 @@ class _VehicleFilterTabs extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2B64E5) : Color(0xFFE2E2E2),
+                color: isSelected ? const Color(0xFF2B64E5) : Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.circular(17),
+                border: Border.all(
+                  color: const Color(0xFFC1C1C1),
+                  width: 0.5,
+                ),
               ),
               child: Text(
                 category,
@@ -1504,12 +1500,12 @@ class _VehicleCardState extends State<_VehicleCard> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: const Color(0x402B64E5), // #2B64E540
-                offset: const Offset(0, 1), // 0px 1px
-                blurRadius: 3, // 3px blur
-                spreadRadius: 0, // 0px spread
+                color: Color(0x40000000), // #00000040
+                offset: Offset(0, 0),     // x: 0, y: 0
+                blurRadius: 4,
+                spreadRadius: 0,
               ),
             ],
           ),
@@ -1558,7 +1554,7 @@ class _VehicleCardState extends State<_VehicleCard> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2B64E5),
+                              color: const Color(0xFFDCEAFD),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -1566,7 +1562,7 @@ class _VehicleCardState extends State<_VehicleCard> {
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: Color(0xFF484848),
                               ),
                             ),
                           ),
@@ -1586,10 +1582,12 @@ class _VehicleCardState extends State<_VehicleCard> {
                             style: const TextStyle(fontSize: 11)),
                         const SizedBox(width: 8),
                         Container(
-                          width: 9,
-                          height: 9,
-                          decoration:
-                              const BoxDecoration(color: Color(0xFF949494)),
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF949494),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         const Icon(Icons.ac_unit, size: 14, color: Colors.grey),

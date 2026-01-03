@@ -16,6 +16,7 @@ import '../../core/controller/drop_location_controller/drop_location_controller.
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../bottom_nav/bottom_nav.dart';
+import '../booking_ride/booking_ride.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 
 class SelectDrop extends StatefulWidget {
@@ -89,15 +90,16 @@ class _SelectDropState extends State<SelectDrop> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
+        if (didPop) return; // Already popped, nothing to do
+        
         bookingRideController.selectedIndex.value = 0;
-        final tabName = bookingRideController.currentTabName;
-
-        final route = tabName == 'rental'
-            ? '${AppRoutes.bookingRide}?tab=airport'
-            : '${AppRoutes.bookingRide}?tab=airport';
-
-        GoRouter.of(context).push(AppRoutes.bookingRide);
-
+        bookingRideController.fromHomePage.value = false;
+        
+        // Navigate back to bottomNav
+        Future.microtask(() {
+          if (!mounted) return;
+          GoRouter.of(context).push(AppRoutes.bookingRide);
+        });
       },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
@@ -122,7 +124,8 @@ class _SelectDropState extends State<SelectDrop> {
                     dropController.text = newSuggestion.primaryText;
                     bookingRideController.prefilledDrop.value = newSuggestion.primaryText;
                     FocusScope.of(context).unfocus();
-                    Navigator.of(context).pop();
+                    // Navigate to BookingRide after place selection
+                    _handlePlaceSelection(context, newSuggestion);
                   },
                 ),
               ),
@@ -193,34 +196,17 @@ class _SelectDropState extends State<SelectDrop> {
     print('fromInventoryPage = ${widget.fromInventoryScreen}');
     FocusScope.of(context).unfocus();
 
-    // Navigation
+    // Always navigate to BookingRide after place selection
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (bookingRideController.fromHomePage.value == true) {
-        // ✅ Coming from Home → go directly to bookingRide
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          GoRouter.of(context).go(AppRoutes.bookingRide);
-        });
-      }
-      else if (widget.fromInventoryScreen == true) {
-        // ✅ Coming from Inventory → safely pop or fallback
-        if (GoRouter.of(context).canPop()) {
-          GoRouter.of(context).pop();
-        } else {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            GoRouter.of(context).go(AppRoutes.bookingRide);
-          });
-        }
-      }
-      else {
-        // ✅ Default fallback → try pop, else go to bookingRide
-        if (GoRouter.of(context).canPop()) {
-          GoRouter.of(context).pop();
-        } else {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            GoRouter.of(context).go(AppRoutes.bookingRide);
-          });
-        }
-      }
+      Navigator.of(context).push(
+        Platform.isIOS
+            ? CupertinoPageRoute(
+          builder: (context) => const BookingRide(),
+        )
+            : MaterialPageRoute(
+          builder: (context) => const BookingRide(),
+        ),
+      );
     });
 
     // Background tasks

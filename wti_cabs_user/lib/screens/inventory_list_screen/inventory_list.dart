@@ -1580,7 +1580,9 @@ class _BookingTopBarState extends State<BookingTopBar> {
         await StorageServices.instance.read('previousTripCode');
     previousCode =
         await StorageServices.instance.read('previousTripCode') ?? '';
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   String trimAfterTwoSpaces(String input) {

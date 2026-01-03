@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/route_management/app_routes.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
+import '../../../core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
+import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../corporate_landing_page/corporate_landing_page.dart';
 import '../../../main.dart';
@@ -58,6 +60,29 @@ class _CrpLogoutConfirmationState extends State<CrpLogoutConfirmation> {
 
     // Reset LoginInfoController
     loginInfoController.crpLoginInfo.value = null;
+
+    // Reset CprProfileController to clear old profile data
+    try {
+      final profileController = Get.find<CprProfileController>();
+      profileController.crpProfileInfo.value = null;
+      profileController.isLoading.value = false;
+      debugPrint('✅ CprProfileController reset');
+    } catch (e) {
+      debugPrint('⚠️ CprProfileController not found during logout: $e');
+    }
+
+    // Reset CrpBranchListController to clear old branch data
+    try {
+      final branchController = Get.find<CrpBranchListController>();
+      branchController.selectedBranchId.value = null;
+      branchController.selectedBranchName.value = null;
+      branchController.branches.clear();
+      branchController.branchNames.clear();
+      branchController.isLoading.value = false;
+      debugPrint('✅ CrpBranchListController reset');
+    } catch (e) {
+      debugPrint('⚠️ CrpBranchListController not found during logout: $e');
+    }
 
     debugPrint('✅ Corporate logout data cleared');
 

@@ -11,6 +11,7 @@ import 'package:get/get.dart';
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
+import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
@@ -116,7 +117,29 @@ class _CrpProfileState extends State<CrpProfile> {
       ),
     );
 
+    // Reset LoginInfoController
     loginInfoController.crpLoginInfo.value = null;
+
+    // Reset CprProfileController to clear old profile data
+    try {
+      final profileController = Get.find<CprProfileController>();
+      profileController.crpProfileInfo.value = null;
+      profileController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ CprProfileController not found during logout: $e');
+    }
+
+    // Reset CrpBranchListController to clear old branch data
+    try {
+      final branchController = Get.find<CrpBranchListController>();
+      branchController.selectedBranchId.value = null;
+      branchController.selectedBranchName.value = null;
+      branchController.branches.clear();
+      branchController.branchNames.clear();
+      branchController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ CrpBranchListController not found during logout: $e');
+    }
 
     /// 🔑 Store logout flag
     final prefs = await SharedPreferences.getInstance();

@@ -221,7 +221,7 @@ class _BookingRideState extends State<BookingRide> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).go(AppRoutes.bottomNav);
+        GoRouter.of(context).push(AppRoutes.bottomNav);
       },
 
       child: Scaffold(
@@ -240,6 +240,7 @@ class _BookingRideState extends State<BookingRide> {
                   children: [
                     GestureDetector(
                       onTap: () {
+                        // Navigate back to bottomNav
                         GoRouter.of(context).push(AppRoutes.bottomNav);
                       },
                       child:
