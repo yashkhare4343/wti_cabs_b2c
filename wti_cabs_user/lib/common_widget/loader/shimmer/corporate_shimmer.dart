@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 
-/// Generic full-page shimmer widget for corporate screens
-/// This widget provides a full-screen shimmer effect that matches
-/// the general structure of corporate screens
-class CorporateShimmer extends StatelessWidget {
+/// Modern pulse/skeleton loader for corporate screens
+/// Uses pulse animation instead of shimmer effect
+class CorporateShimmer extends StatefulWidget {
   final bool showAppBar;
   final Widget? customAppBar;
   final bool isDetailsPage;
@@ -17,49 +15,86 @@ class CorporateShimmer extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final baseColor = Colors.grey.shade300;
-    final highlightColor = Colors.grey.shade100;
+  State<CorporateShimmer> createState() => _CorporateShimmerState();
+}
 
-    Widget shimmerContent = Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      period: const Duration(milliseconds: 1200),
-      child: isDetailsPage ? _buildDetailsShimmer(context, baseColor) : _buildHomeShimmer(context, baseColor),
+class _CorporateShimmerState extends State<CorporateShimmer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _animation = Tween<double>(begin: 0.5, end: 0.9).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+  }
 
-    if (customAppBar != null) {
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.customAppBar != null) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: customAppBar as PreferredSizeWidget?,
-        body: SafeArea(child: shimmerContent),
+        backgroundColor: const Color(0xFFFAFAFA),
+        appBar: widget.customAppBar as PreferredSizeWidget?,
+        body: SafeArea(
+          child: AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return widget.isDetailsPage 
+                  ? _buildDetailsLoader(context, _animation.value) 
+                  : _buildHomeLoader(context, _animation.value);
+            },
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(child: shimmerContent),
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, child) {
+            return widget.isDetailsPage 
+                ? _buildDetailsLoader(context, _animation.value) 
+                : _buildHomeLoader(context, _animation.value);
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildHomeShimmer(BuildContext context, Color baseColor) {
+  Widget _buildHomeLoader(BuildContext context, double opacity) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Top Banner Section
           Container(
-            height: 290,
+            height: 300,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: baseColor,
+              color: Colors.grey[200],
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -67,210 +102,150 @@ class CorporateShimmer extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Logo placeholder
-                      Container(
+                      _buildPulseContainer(
                         height: 50,
-                        width: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        width: 190,
+                        borderRadius: 12,
+                        opacity: opacity,
                       ),
-                      // Home button placeholder
-                      Container(
-                        height: 35,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
+                      _buildPulseContainer(
+                        height: 40,
+                        width: 90,
+                        borderRadius: 22,
+                        opacity: opacity,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // Search bar placeholder
-                  Container(
-                    height: 48,
+                  const SizedBox(height: 24),
+                  // Search bar
+                  _buildPulseContainer(
+                    height: 56,
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(35),
-                    ),
+                    borderRadius: 30,
+                    opacity: opacity,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          // Branch selector tile placeholder
+          const SizedBox(height: 28),
+          // Branch selector tile
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Container(
-              height: 60,
+              height: 72,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: baseColor,
-                borderRadius: BorderRadius.circular(30),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                 child: Row(
                   children: [
-                    // Icon placeholder
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
+                    _buildPulseContainer(
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      opacity: opacity,
                     ),
-                    const SizedBox(width: 12),
-                    // Text placeholders
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            height: 14,
-                            width: 120,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                          _buildPulseContainer(
+                            height: 16,
+                            width: 140,
+                            borderRadius: 8,
+                            opacity: opacity,
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            height: 12,
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                          const SizedBox(height: 10),
+                          _buildPulseContainer(
+                            height: 14,
+                            width: 170,
+                            borderRadius: 8,
+                            opacity: opacity,
                           ),
                         ],
                       ),
                     ),
-                    // Arrow icon placeholder
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+                    _buildPulseContainer(
+                      width: 20,
+                      height: 20,
+                      borderRadius: 6,
+                      opacity: opacity,
                     ),
                   ],
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
           // Services section header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              height: 18,
-              width: 80,
-              decoration: BoxDecoration(
-                color: baseColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
+            child: _buildPulseContainer(
+              height: 22,
+              width: 120,
+              borderRadius: 8,
+              opacity: opacity,
             ),
           ),
-          const SizedBox(height: 10),
-          // Services grid placeholder (3 columns)
+          const SizedBox(height: 20),
+          // Services grid
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
-                // First row - 3 items
                 Row(
                   children: [
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
+                    Expanded(child: _buildServiceCard(opacity)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildServiceCard(opacity)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildServiceCard(opacity)),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Second row - 3 items
+                const SizedBox(height: 18),
                 Row(
                   children: [
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
+                    Expanded(child: _buildServiceCard(opacity)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildServiceCard(opacity)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildServiceCard(opacity)),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Third row - 2 items (matching the 4-item special case)
+                const SizedBox(height: 18),
                 Row(
                   children: [
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildServiceCardPlaceholder(baseColor)),
+                    Expanded(child: _buildServiceCard(opacity)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildServiceCard(opacity)),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 48),
         ],
       ),
     );
   }
 
-  Widget _buildServiceCardPlaceholder(Color baseColor) {
-    return Container(
-      height: 110,
-      decoration: BoxDecoration(
-        color: baseColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Image placeholder
-            Container(
-              height: 60,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Text placeholder
-            Container(
-              height: 12,
-              width: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsShimmer(BuildContext context, Color baseColor) {
+  Widget _buildDetailsLoader(BuildContext context, double opacity) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -278,281 +253,285 @@ class CorporateShimmer extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 1,
-              ),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 4,
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPulseContainer(
+                        width: 70,
+                        height: 54,
+                        borderRadius: 12,
+                        opacity: opacity,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPulseContainer(
+                              height: 20,
+                              width: 160,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildPulseContainer(
+                              height: 16,
+                              width: 120,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildPulseContainer(
+                            width: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            opacity: opacity,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPulseContainer(
+                            height: 16,
+                            width: 80,
+                            borderRadius: 8,
+                            opacity: opacity,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  // Divider
+                  Container(
+                    height: 1,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 24),
+                  // Route visualization
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        children: [
+                          _buildPulseContainer(
+                            width: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            opacity: opacity,
+                          ),
+                          Container(
+                            width: 3,
+                            height: 50,
+                            color: Colors.grey[300],
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                          ),
+                          _buildPulseContainer(
+                            width: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            opacity: opacity,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPulseContainer(
+                              height: 18,
+                              width: double.infinity,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildPulseContainer(
+                              height: 16,
+                              width: 240,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                            const SizedBox(height: 24),
+                            _buildPulseContainer(
+                              height: 18,
+                              width: double.infinity,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildPulseContainer(
+                              height: 16,
+                              width: 220,
+                              borderRadius: 8,
+                              opacity: opacity,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  // Divider
+                  Container(
+                    height: 1,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 24),
+                  // Booking ID and date
+                  _buildPulseContainer(
+                    height: 15,
+                    width: 200,
+                    borderRadius: 8,
+                    opacity: opacity,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPulseContainer(
+                    height: 15,
+                    width: 170,
+                    borderRadius: 8,
+                    opacity: opacity,
+                  ),
+                  const SizedBox(height: 28),
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPulseContainer(
+                          height: 44,
+                          borderRadius: 12,
+                          opacity: opacity,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _buildPulseContainer(
+                          height: 44,
+                          borderRadius: 12,
+                          opacity: opacity,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Need Help section
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row with car icon, booking info, and status
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Car icon placeholder
-                      Container(
-                        width: 63,
-                        height: 47,
-                        decoration: BoxDecoration(
-                          color: baseColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Booking info placeholders
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 18,
-                              width: 140,
-                              decoration: BoxDecoration(
-                                color: baseColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              height: 14,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                color: baseColor.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Status placeholder
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: baseColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                height: 14,
-                                width: 70,
-                                decoration: BoxDecoration(
-                                  color: baseColor,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Dotted line placeholder
-                  Container(
-                    height: 1,
-                    width: double.infinity,
-                    color: baseColor.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  // Route visualization placeholder
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Vertical line with circles
-                      Column(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: baseColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          Container(
-                            width: 2,
-                            height: 40,
-                            color: baseColor,
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                          ),
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: baseColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      // Location text placeholders
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 16,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: baseColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              height: 16,
-                              width: 200,
-                              decoration: BoxDecoration(
-                                color: baseColor.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              height: 16,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: baseColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              height: 16,
-                              width: 180,
-                              decoration: BoxDecoration(
-                                color: baseColor.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Dotted line placeholder
-                  Container(
-                    height: 1,
-                    width: double.infinity,
-                    color: baseColor.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  // Booking ID and date placeholders
-                  Container(
-                    height: 13,
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: baseColor.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 13,
-                    width: 150,
-                    decoration: BoxDecoration(
-                      color: baseColor.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Action buttons placeholder
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: baseColor.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: baseColor.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: baseColor.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: baseColor.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Need Help section placeholder
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: baseColor.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: baseColor.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               child: Row(
                 children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: baseColor,
-                      shape: BoxShape.circle,
-                    ),
+                  _buildPulseContainer(
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    opacity: opacity,
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    height: 16,
-                    width: 100,
-                    decoration: BoxDecoration(
-                      color: baseColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                  const SizedBox(width: 16),
+                  _buildPulseContainer(
+                    height: 18,
+                    width: 120,
+                    borderRadius: 8,
+                    opacity: opacity,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 48),
         ],
       ),
     );
   }
-}
 
+  Widget _buildServiceCard(double opacity) {
+    return Container(
+      height: 130,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildPulseContainer(
+              height: 70,
+              width: double.infinity,
+              borderRadius: 12,
+              opacity: opacity,
+            ),
+            const SizedBox(height: 12),
+            _buildPulseContainer(
+              height: 14,
+              width: 70,
+              borderRadius: 8,
+              opacity: opacity,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPulseContainer({
+    required double height,
+    double? width,
+    required double borderRadius,
+    required double opacity,
+  }) {
+    // Create a smooth pulse effect by interpolating opacity
+    final pulseOpacity = 0.5 + (opacity * 0.4);
+    
+    return Container(
+      height: height,
+      width: width ?? double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[300]!.withOpacity(pulseOpacity),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+}

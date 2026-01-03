@@ -157,7 +157,7 @@ class _BookingBodyState extends State<_BookingBody> {
   final String googleApiKey = "AIzaSyCWbmCiquOta1iF6um7_5_NFh6YM5wPL30";
 
   final CrpInventoryListController _inventoryController =
-  Get.put(CrpInventoryListController());
+      Get.put(CrpInventoryListController());
 
   /// Creates pickup pin icon from asset image
   Future<BitmapDescriptor> _createPickupPinIcon() async {
@@ -956,12 +956,17 @@ class _BookingBodyState extends State<_BookingBody> {
               SizedBox(
                 height: 116,
               ),
-            if(!hasDrop)
-              Image.asset('assets/images/crp_inventory_usp.png', height: 163, width: double.infinity, ),
-            if(!hasDrop)
-              SizedBox(height: 16,),
-            Expanded(
-                child: _VehicleSection(bookingData: widget.bookingData)),
+            if (!hasDrop)
+              Image.asset(
+                'assets/images/crp_inventory_usp.png',
+                height: 163,
+                width: double.infinity,
+              ),
+            if (!hasDrop)
+              SizedBox(
+                height: 16,
+              ),
+            Expanded(child: _VehicleSection(bookingData: widget.bookingData)),
           ],
         ),
         SizedBox(
@@ -1232,8 +1237,8 @@ class _RouteCard extends StatelessWidget {
 
           /// BOTTOM SECTION
           Container(
-            padding: const EdgeInsets.only(
-                left: 16, top: 10, bottom: 10, right: 20),
+            padding:
+                const EdgeInsets.only(left: 16, top: 10, bottom: 10, right: 20),
             decoration: const BoxDecoration(
               color: Color(0xFFEFF6FF),
               borderRadius: BorderRadius.only(
@@ -1503,7 +1508,7 @@ class _VehicleCardState extends State<_VehicleCard> {
             boxShadow: const [
               BoxShadow(
                 color: Color(0x40000000), // #00000040
-                offset: Offset(0, 0),     // x: 0, y: 0
+                offset: Offset(0, 0), // x: 0, y: 0
                 blurRadius: 4,
                 spreadRadius: 0,
               ),
