@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
-import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
@@ -29,11 +27,6 @@ class CrpBookingResultPage extends StatelessWidget {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          GoRouter.of(context).go(AppRoutes.cprBottomNav);
-        }
-      },
       child: Scaffold(
         backgroundColor: Colors.grey.shade100,
         body: SafeArea(

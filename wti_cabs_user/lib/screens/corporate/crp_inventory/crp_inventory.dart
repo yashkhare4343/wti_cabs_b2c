@@ -1577,24 +1577,27 @@ class _VehicleCardState extends State<_VehicleCard> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        SvgPicture.asset(
-                          'assets/images/passenger.svg',
-                          width: 12,
-                          height: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(widget.model.seats.toString() ?? '',
-                            style: const TextStyle(fontSize: 11)),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF949494),
-                            shape: BoxShape.circle,
+                        if (widget.model.seats != null) ...[
+                          SvgPicture.asset(
+                            'assets/images/passenger.svg',
+                            width: 12,
+                            height: 12,
                           ),
-                        ),
-                        const SizedBox(width: 8),
+                          const SizedBox(width: 4),
+                          Text(widget.model.seats.toString(),
+                              style: const TextStyle(fontSize: 11)),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF949494),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+
                         const Icon(Icons.ac_unit, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
                         const Text('AC', style: TextStyle(fontSize: 11)),

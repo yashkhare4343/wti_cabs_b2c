@@ -180,6 +180,11 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
         if (result.type != ResultType.done && mounted) {
           CustomSuccessSnackbar.show(context, 'PDF saved to ${dir.path}. Opening...');
         }
+      } else if (response.statusCode == 500) {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          CustomFailureSnackbar.show(context, 'The booking is still in progress. The invoice will be available once the trip is completed.');
+        }
       } else {
         if (mounted) {
           GoRouter.of(context).pop(); // Close loader
