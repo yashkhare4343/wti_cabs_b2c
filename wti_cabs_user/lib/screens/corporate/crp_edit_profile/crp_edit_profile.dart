@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../core/route_management/app_routes.dart';
@@ -525,12 +526,7 @@ class _CrpEditProfileState extends State<CrpEditProfile> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile details not loaded yet'),
-        backgroundColor: Colors.red,
-      ),
-    );
+    CustomFailureSnackbar.show(context, 'Profile details not loaded yet');
   }
 }
 

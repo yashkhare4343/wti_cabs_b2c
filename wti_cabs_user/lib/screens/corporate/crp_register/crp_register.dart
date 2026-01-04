@@ -13,6 +13,7 @@ import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_
 
 import '../../../common_widget/dropdown/cpr_select_box.dart';
 import '../../../common_widget/textformfield/crp_text_form_field.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../core/api/corporate/cpr_api_services.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/model/corporate/get_entity_list/get_entity_list_response.dart';
@@ -225,23 +226,20 @@ class _CprRegisterState extends State<CprRegister> {
           _entityFieldError = msg.substring(3).trim();
         });
       } else {
-        // Success
+        // Success - Extract message between commas (e.g., "2324, Register Successfully, true" -> "Register Successfully")
         FocusScope.of(context).unfocus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Colors.green,
-          ),
-        );
+        String displayMsg = msg;
+        if (msg.contains(',')) {
+          final parts = msg.split(',');
+          if (parts.length >= 2) {
+            displayMsg = parts[1].trim();
+          }
+        }
+        CustomSuccessSnackbar.show(context, displayMsg);
         context.push(AppRoutes.cprLandingPage);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration failed. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Registration failed. Please try again.');
     }
   }
 

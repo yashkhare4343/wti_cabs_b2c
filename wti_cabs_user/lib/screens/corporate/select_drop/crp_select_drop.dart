@@ -6,6 +6,7 @@ import 'package:wti_cabs_user/core/controller/corporate/crp_select_pickup_contro
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/route_management/corporate_page_transitions.dart';
+import 'package:wti_cabs_user/common_widget/snackbar/custom_snackbar.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import 'crp_drop_map_screen.dart';
@@ -186,12 +187,7 @@ class _CrpSelectDropScreenState extends State<CrpSelectDropScreen> {
                 onPressed: () {
                   final text = controller.searchController.text.trim();
                   if (text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter a drop location'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
+                    CustomFailureSnackbar.show(context, 'Please enter a drop location', duration: const Duration(seconds: 2));
                     return;
                   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_login_response/crp_login_response.dart';
+import 'package:wti_cabs_user/common_widget/snackbar/custom_snackbar.dart';
 import '../../../api/corporate/cpr_api_services.dart';
 import '../../../services/storage_services.dart';
 
@@ -63,22 +64,11 @@ class LoginInfoController extends GetxController {
         }
       }
 
-      // // Show SnackBar based on status
-      // if (crpLoginInfo.value?.bStatus == true) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //       content: Text('Successfully Login!' ?? ''),
-      //       backgroundColor: Colors.green,
-      //     ),
-      //   );
-      // } else
-        if (crpLoginInfo.value?.bStatus == false) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Oops Login Failed!' ?? ''),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // Show SnackBar based on status
+      if (crpLoginInfo.value?.bStatus == true) {
+        CustomSuccessSnackbar.show(context, 'Successfully Login!');
+      } else if (crpLoginInfo.value?.bStatus == false) {
+        CustomFailureSnackbar.show(context, 'Oops Login Failed!');
       }
     } catch (e, st) {
       debugPrint('❌ Error fetching LoginInfo: $e');

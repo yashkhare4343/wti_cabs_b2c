@@ -20,6 +20,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/route_management/corporate_page_transitions.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 import 'package:wti_cabs_user/common_widget/loader/shimmer/corporate_shimmer.dart';
+import 'package:wti_cabs_user/common_widget/snackbar/custom_snackbar.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_inventory/crp_inventory.dart';
 import 'package:wti_cabs_user/screens/corporate/crp_booking_confirmation/crp_booking_result.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -1181,12 +1182,11 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
 
     final bool isSuccess = isSuccessByCode || isSuccessByMessage;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isSuccess ? Colors.green : Colors.red,
-      ),
-    );
+    if (isSuccess) {
+      CustomSuccessSnackbar.show(context, message);
+    } else {
+      CustomFailureSnackbar.show(context, message);
+    }
     Navigator.of(context).push(
       CorporatePageTransitions.pushRoute(
         context,
@@ -1296,7 +1296,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           'uID': uID,
           'runTypeID': runTypeID?.toString() ?? '2',
           // 'costCode': costCode,
-          'costCode': null,
+          'costCode': '1',
           'packageID': "",
           'transNo': transNo,
           'providerID': providerID.toString(),
@@ -1324,12 +1324,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
       } catch (e) {
         debugPrint('❌ Booking error: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Booking failed: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Booking failed: ${e.toString()}');
         }
       } finally {
         if (mounted) {

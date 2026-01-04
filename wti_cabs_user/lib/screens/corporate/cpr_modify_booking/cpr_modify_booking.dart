@@ -16,6 +16,7 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/select_location/select_drop.dart';
 import '../../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../../common_widget/textformfield/booking_textformfield.dart';
+import '../../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
 import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
@@ -716,12 +717,6 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black87, size: 20),
-            onPressed: () => _showCancelBookingDialog(),
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -1763,7 +1758,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                           elevation: 0,
                         ),
                         child: const Text(
-                          'Cancel',
+                          'Cancel Booking',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1897,60 +1892,76 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Widget _buildModifyBookButton() {
-    return Container(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          _handleModifyBooking();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4082F1),
-          padding:
-              const EdgeInsets.only(top: 14, right: 16, bottom: 14, left: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(39),
-            side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Confirm Booking',
+    return Row(
+      children: [
+        // Cancel Button
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () {
+              _showCancelBookingDialog();
+            },
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF4082F1),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(39),
+                side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Cancel',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFF4082F1),
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(width: 12),
+        // Confirm Booking Button
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () {
+              _handleModifyBooking();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4082F1),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(39),
+                side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Confirm Booking',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Future<void> _handleModifyBooking() async {
     final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Booking details not available'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Booking details not available');
       return;
     }
 
     await fetchParameter();
     if (token == null || user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Session expired. Please login again'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Session expired. Please login again');
       return;
     }
 
@@ -2036,12 +2047,11 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(sMessage),
-          backgroundColor: bStatus ? Colors.green : Colors.red,
-        ),
-      );
+      if (bStatus) {
+        CustomSuccessSnackbar.show(context, sMessage);
+      } else {
+        CustomFailureSnackbar.show(context, sMessage);
+      }
 
       if (bStatus) {
         /// ✅ NAVIGATE AFTER FRAME (SAFE WITH GOROUTER)
@@ -2055,12 +2065,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     } catch (e) {
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Error: $e');
       }
     }
   }
@@ -2069,36 +2074,21 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     // Get booking details
     final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Booking details not available'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Booking details not available');
       return;
     }
 
     // Ensure we have token and user
     await fetchParameter();
     if (token == null || user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Session expired. Please login again'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Session expired. Please login again');
       return;
     }
 
     // Get cancel reason
     final cancelReason = cancelReasonController.text.trim();
     if (cancelReason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a reason for cancellation'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation');
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -2171,13 +2161,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       if (context.mounted) {
         if (bStatus == true) {
           // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(sMessage),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          CustomSuccessSnackbar.show(context, sMessage, duration: const Duration(seconds: 2));
+
           
           // Clear cancel reason controller
           cancelReasonController.clear();
@@ -2192,13 +2177,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           });
         } else {
           // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(sMessage),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          CustomFailureSnackbar.show(context, sMessage, duration: const Duration(seconds: 3));
         }
       }
     } catch (e) {
@@ -2212,13 +2191,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
       // Show error message
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Error: ${e.toString()}', duration: const Duration(seconds: 3));
       }
 
       debugPrint('❌ Error canceling booking: $e');
@@ -2255,7 +2228,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               children: [
                 // Title
                 const Text(
-                  'Reason for Cancellation',
+                  'Cancel This Booking?',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -2267,7 +2240,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                 TextField(
                   controller: cancelReasonController,
                   decoration: InputDecoration(
-                    hintText: 'Enter reason for cancellation',
+                    hintText: 'Tell us why you’re cancelling',
                     hintStyle: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade400,
@@ -2296,19 +2269,41 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                 // Buttons
                 Row(
                   children: [
-                    // Cancel button (left, blue background, white text)
+                    // Cancel button (left, outlined style like Cancel button at bottom)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF4082F1),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(39),
+                            side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Back',
+                          style: TextStyle(
+                            color: Color(0xFF4082F1),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Cancel Booking button (right, filled style like Confirm Booking button)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
                           // Validate cancel reason
                           if (cancelReasonController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter a reason for cancellation'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                            CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation', duration: const Duration(seconds: 2));
                             return;
                           }
                           // Close dialog first
@@ -2317,47 +2312,21 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                           _handleCancelBooking();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.mainButtonBg,
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF4082F1),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(39),
+                            side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
                           ),
                           elevation: 0,
                         ),
                         child: const Text(
-                          'Cancel',
+                          'Confirm',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Back button (right, white background, gray border, blue text)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.mainButtonBg,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          side: BorderSide(
-                            color: Colors.grey.shade300,
-                            width: 1,
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../common_widget/textformfield/crp_text_form_field.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../core/route_management/app_routes.dart';
 import '../../../core/api/corporate/cpr_api_services.dart';
 import '../../../core/services/storage_services.dart';
@@ -43,12 +44,7 @@ class _CprChangePasswordState extends State<CprChangePassword> {
         final email = await StorageServices.instance.read('email');
         if (email == null || email.isEmpty) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Email not found. Please login again.'),
-                backgroundColor: Colors.red,
-              ),
-            );
+            CustomFailureSnackbar.show(context, 'Email not found. Please login again.');
           }
           return;
         }
@@ -104,32 +100,17 @@ class _CprChangePasswordState extends State<CprChangePassword> {
         if (context.mounted) {
           if (bStatus) {
             // Success
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(sMessage.isNotEmpty ? sMessage : 'Password changed successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            CustomSuccessSnackbar.show(context, sMessage.isNotEmpty ? sMessage : 'Password changed successfully');
             // Navigate back after successful password change
             context.pop();
           } else {
             // Failure
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(sMessage),
-                backgroundColor: Colors.red,
-              ),
-            );
+            CustomFailureSnackbar.show(context, sMessage);
           }
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Error: ${e.toString()}');
         }
       } finally {
         if (mounted) {

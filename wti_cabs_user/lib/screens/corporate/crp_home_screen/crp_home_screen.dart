@@ -10,6 +10,7 @@ import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_
 import 'package:wti_cabs_user/core/controller/corporate/crp_select_drop_controller/crp_select_drop_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
+import 'package:wti_cabs_user/common_widget/snackbar/custom_snackbar.dart';
 
 import '../../../../common_widget/textformfield/read_only_textformfield.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
@@ -116,8 +117,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     final selected = crpGetBranchListController.selectedBranchName.value ?? '';
 
     if (items.isEmpty) {
-      Get.snackbar("No Branches", "No branches found for this corporate ID",
-          snackPosition: SnackPosition.BOTTOM);
+      CustomFailureSnackbar.show(context, "No branches found for this corporate ID");
       return;
     }
 
@@ -517,11 +517,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
     final selected = crpGetBranchListController.selectedBranchName.value ?? '';
 
     if (items.isEmpty) {
-      Get.snackbar(
-        "No Branches",
-        "No branches found for this corporate ID",
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      CustomFailureSnackbar.show(context, "No branches found for this corporate ID");
       return;
     }
 
@@ -810,8 +806,7 @@ class _TopBannerState extends State<TopBanner> {
     final selected = crpGetBranchListController.selectedBranchName.value ?? '';
 
     if (items.isEmpty) {
-      Get.snackbar("No Branches", "No branches found for this corporate ID",
-          snackPosition: SnackPosition.BOTTOM);
+      CustomFailureSnackbar.show(context, "No branches found for this corporate ID");
       return;
     }
 

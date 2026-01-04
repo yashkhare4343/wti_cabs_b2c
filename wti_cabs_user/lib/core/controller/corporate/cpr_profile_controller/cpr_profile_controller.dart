@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_login_response/crp_login_response.dart';
 import 'package:wti_cabs_user/screens/corporate/cpr_profile_response/cpr_profile_response.dart';
+import 'package:wti_cabs_user/common_widget/snackbar/custom_snackbar.dart';
 import '../../../api/corporate/cpr_api_services.dart';
 
 class CprProfileController extends GetxController {
@@ -48,22 +49,9 @@ class CprProfileController extends GetxController {
 
       crpProfileInfo.value = result;
 
-      // // Show SnackBar based on status
-      // if (crpLoginInfo.value?.bStatus == true) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //       content: Text('Successfully Login!' ?? ''),
-      //       backgroundColor: Colors.green,
-      //     ),
-      //   );
-      // } else
+      // Show SnackBar based on status
       if (crpProfileInfo.value?.bStatus == false) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Something went wrong!' ?? ''),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Something went wrong!');
       }
     } catch (e, st) {
       debugPrint('❌ Error fetching LoginInfo: $e');

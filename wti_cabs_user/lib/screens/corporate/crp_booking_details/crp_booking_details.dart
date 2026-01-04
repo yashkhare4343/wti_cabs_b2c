@@ -13,6 +13,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../common_widget/loader/popup_loader.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../core/services/storage_services.dart';
 
 class CrpBookingDetails extends StatefulWidget {
@@ -102,12 +103,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       
       if (numericBookingId == null || numericBookingId.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Booking ID not found'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Booking ID not found');
         }
         return;
       }
@@ -152,12 +148,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       if (dir == null) {
         if (mounted) {
           GoRouter.of(context).pop(); // Close loader
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not access download directory'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Could not access download directory');
         }
         return;
       }
@@ -187,33 +178,18 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
         // Open the PDF file directly in PDF viewer
         final result = await OpenFile.open(filePath);
         if (result.type != ResultType.done && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('PDF saved to ${dir.path}. Opening...'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          CustomSuccessSnackbar.show(context, 'PDF saved to ${dir.path}. Opening...');
         }
       } else {
         if (mounted) {
           GoRouter.of(context).pop(); // Close loader
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to download invoice. Status: ${response.statusCode}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Failed to download invoice. Status: ${response.statusCode}');
         }
       }
     } catch (e) {
       if (mounted) {
         GoRouter.of(context).pop(); // Close loader
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error downloading invoice: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Error downloading invoice: ${e.toString()}');
       }
     }
   }
@@ -358,7 +334,12 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
             // Main Booking Card
           Obx(() {
             if(crpBookingDetailsController.isLoading.value){
-              return CircularProgressIndicator();
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
             }
             return Container(
             decoration: BoxDecoration(
@@ -635,7 +616,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                     return const SizedBox();
                   }
 
-                  final formattedDate = DateFormat('dd MMM yyyy')
+                  final formattedDate = DateFormat('dd MMM yyyy, hh:mm a')
                       .format(DateTime.parse(raw));
 
                   return Text(

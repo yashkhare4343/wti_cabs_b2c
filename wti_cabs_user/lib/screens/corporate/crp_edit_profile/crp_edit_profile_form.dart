@@ -14,6 +14,7 @@ import 'package:wti_cabs_user/screens/corporate/cpr_profile_response/cpr_profile
 
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/services/storage_services.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 
 class CrpEditProfileForm extends StatefulWidget {
   final CprProfileResponse? profile;
@@ -508,12 +509,7 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
   void _showCorporateBottomSheet() {
     final entities = _entityController.getAllEntityList.value?.getEntityList ?? [];
     if (entities.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No corporate entities found'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'No corporate entities found');
       return;
     }
 
@@ -574,12 +570,7 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
   void _showBranchBottomSheet() {
     final branches = _branchController.branchNames;
     if (branches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No branches found. Please select a corporate first.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'No branches found. Please select a corporate first.');
       return;
     }
 
@@ -664,12 +655,7 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
 
       if (email.isEmpty || token.isEmpty) {
         debugPrint('❌ [Edit Profile] Missing required authentication data');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Missing required authentication data'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Missing required authentication data');
         setState(() {
           _isLoading = false;
         });
@@ -771,12 +757,7 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
       // Show message based on bStatus
       if (response.bStatus == true) {
         debugPrint('✅ [Edit Profile] Update successful');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.sMessage ?? 'Profile updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        CustomSuccessSnackbar.show(context, response.sMessage ?? 'Profile updated successfully');
         
         // Fetch updated profile data
         debugPrint('🔄 [Edit Profile] Fetching updated profile data...');
@@ -807,23 +788,13 @@ class _CrpEditProfileFormState extends State<CrpEditProfileForm> {
         });
       } else {
         debugPrint('❌ [Edit Profile] Update failed');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.sMessage ?? 'Failed to update profile'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, response.sMessage ?? 'Failed to update profile');
       }
     } catch (e, stackTrace) {
       debugPrint('❌ [Edit Profile] Exception occurred:');
       debugPrint('   - Error: $e');
       debugPrint('   - StackTrace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Error: ${e.toString()}');
     } finally {
       if (mounted) {
         debugPrint('🔄 [Edit Profile] Resetting loading state');

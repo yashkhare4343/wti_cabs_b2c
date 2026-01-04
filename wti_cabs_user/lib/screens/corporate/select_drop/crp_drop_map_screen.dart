@@ -13,6 +13,7 @@ import '../../../core/route_management/corporate_page_transitions.dart';
 import '../../../utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../../common_widget/loader/popup_loader.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import 'crp_drop_search_screen.dart';
 
 class CrpDropMapScreen extends StatefulWidget {
@@ -181,12 +182,7 @@ class _CrpDropMapScreenState extends State<CrpDropMapScreen> {
       if (formattedAddress.isEmpty ||
           formattedAddress == 'Fetching address...' ||
           formattedAddress == 'Error fetching address') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to get address for selected location'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Unable to get address for selected location', duration: const Duration(seconds: 2));
         return;
       }
 

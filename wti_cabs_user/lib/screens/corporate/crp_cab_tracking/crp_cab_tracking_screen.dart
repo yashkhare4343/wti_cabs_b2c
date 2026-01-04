@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_cab_tracking/crp_cab_tracking_controller.dart';
 
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../core/model/corporate/crp_cab_tracking/crp_cab_tracking_response.dart';
 
 class CrpCabTrackingScreen extends StatefulWidget {
@@ -521,23 +522,13 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
         await launchUrl(uri);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Unable to make phone call'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Unable to make phone call');
         }
       }
     } catch (e) {
       debugPrint('Error launching phone call: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Error: ${e.toString()}');
       }
     }
   }

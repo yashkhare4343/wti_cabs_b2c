@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../common_widget/loader/popup_loader.dart';
+import '../../../common_widget/snackbar/custom_snackbar.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -373,12 +374,7 @@ class _CrpBookingState extends State<CrpBooking> {
       
       if (numericBookingId == null || numericBookingId.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Booking ID not found'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Booking ID not found');
         }
         return;
       }
@@ -423,12 +419,7 @@ class _CrpBookingState extends State<CrpBooking> {
       if (dir == null) {
         if (mounted) {
           GoRouter.of(context).pop(); // Close loader
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not access download directory'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Could not access download directory');
         }
         return;
       }
@@ -458,33 +449,18 @@ class _CrpBookingState extends State<CrpBooking> {
         // Open the PDF file directly in PDF viewer
         final result = await OpenFile.open(filePath);
         if (result.type != ResultType.done && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('PDF saved to ${dir.path}. Opening...'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          CustomSuccessSnackbar.show(context, 'PDF saved to ${dir.path}. Opening...');
         }
       } else {
         if (mounted) {
           GoRouter.of(context).pop(); // Close loader
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to download invoice. Status: ${response.statusCode}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomFailureSnackbar.show(context, 'Failed to download invoice. Status: ${response.statusCode}');
         }
       }
     } catch (e) {
       if (mounted) {
         GoRouter.of(context).pop(); // Close loader
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error downloading invoice: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomFailureSnackbar.show(context, 'Error downloading invoice: ${e.toString()}');
       }
     }
   }
@@ -1653,24 +1629,12 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
             _feedbackController.feedbackQuestions.length;
 
     if (guestId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Guest ID not found'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Guest ID not found', duration: const Duration(seconds: 2));
       return;
     }
 
     if (orderId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order ID not found'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      CustomFailureSnackbar.show(context, 'Order ID not found', duration: const Duration(seconds: 2));
       return;
     }
 
