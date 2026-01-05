@@ -52,15 +52,15 @@ class BookingStatus {
   static const String allocatedStr = 'Allocated';
 
   // Tab-to-Status Mapping
-  // Confirmed Tab → Status IN (0, 1) - Pending, Confirmed
+  // Upcoming Tab → Status IN (0, 1, 2) - Pending, Confirmed, Dispatched
   static const List<String> confirmedTabStatuses = [
     pendingStr,
     confirmedStr,
+    dispatchedStr,
   ];
 
-  // Completed Tab → Status IN (2, 6) - Dispatched, Allocated
+  // Completed Tab → Status IN (6) - Allocated
   static const List<String> completedTabStatuses = [
-    dispatchedStr,
     allocatedStr,
   ];
 
@@ -298,7 +298,7 @@ class _CrpBookingState extends State<CrpBooking> {
   String _getEmptyStateMessage() {
     switch (_selectedTab.value) {
       case BookingTab.confirmed:
-        return 'No confirmed bookings found';
+        return 'No upcoming bookings found';
       case BookingTab.completed:
         return 'No completed bookings found';
       case BookingTab.cancelled:
@@ -600,7 +600,7 @@ class _CrpBookingState extends State<CrpBooking> {
           children: [
             Expanded(
               child: Obx(() => _buildTabItem(
-                    'Confirmed',
+                    'Upcoming',
                     BookingTab.confirmed,
                     _selectedTab.value == BookingTab.confirmed,
                   )),
@@ -777,7 +777,7 @@ class _CrpBookingState extends State<CrpBooking> {
       backgroundColor = const Color(0xFFF3E5F5); // Light purple
       textColor = const Color(0xFF9C27B0); // Dark purple
       iconColor = const Color(0xFF9C27B0);
-      icon = Icons.local_shipping;
+      icon = Icons.check_circle;
     } else if (normalizedStatus == 'missed') {
       backgroundColor = const Color(0xFFE0E0E0); // Light grey
       textColor = const Color(0xFF757575); // Dark grey
