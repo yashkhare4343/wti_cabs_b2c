@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wti_cabs_user/core/model/version_check/version_check_response.dart';
 
 import '../core/controller/version_check/version_check_controller.dart';
+import '../core/controller/fetch_country/fetch_country_controller.dart';
 import '../core/route_management/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   final VersionCheckController versionCheckController = Get.put(VersionCheckController());
+  final FetchCountryController fetchCountryController = Get.put(FetchCountryController());
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   DateTime? _startTime;
@@ -95,10 +97,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
       if (versionCheckController.versionCheckResponse.value?.isCompatible == true) {
         if (isFirstTime) {
-          await prefs.setBool("isFirstTime", false);
+          // Don't set isFirstTime to false here - let walkthrough handle it
+          // Navigate to walkthrough, which will then navigate to show_app_module
           GoRouter.of(context).go(AppRoutes.walkthrough);
         } else {
-          GoRouter.of(context).go(AppRoutes.bottomNav);
+          // Not first time - check if user has seen app module
+          final hasSeenAppModule = prefs.getBool("hasSeenAppModule") ?? false;
+          if (!hasSeenAppModule) {
+            // User has seen walkthrough but not app module - show it
+            GoRouter.of(context).go(AppRoutes.showAppModule);
+          } else {
+            // User has seen both - go to main screen
+            if (fetchCountryController.currentCountry.value == 'United Arab Emirates') {
+              GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
+            } else {
+              GoRouter.of(context).go(AppRoutes.bottomNav);
+            }
+          }
         }
       } else {
         final Uri uri = Uri.parse(Platform.isAndroid ? 'https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share':'https://apps.apple.com/in/app/wti-cabs/id1634737888');

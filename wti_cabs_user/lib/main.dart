@@ -217,51 +217,10 @@ class _MyAppState extends State<MyApp> {
     fetchCountryController.fetchCurrentCountry();
   }
 
-  // ✅ Determine initial route dynamically using context
+  // ✅ Determine initial route - Always start with splash screen
   Future<String> _getInitialRoute(BuildContext context) async {
-    final versionCheckController = Get.put(VersionCheckController());
-    final prefs = await SharedPreferences.getInstance();
-
-    // Step 1: Version check (with context)
-    await versionCheckController.verifyAppCompatibity(context: context);
-    final isCompatible =
-        versionCheckController.versionCheckResponse.value?.isCompatible ?? true;
-
-    // Step 2: First-time check
-    final isFirstTime = prefs.getBool("isFirstTime") ?? true;
-    print('isFirstTime: $isFirstTime');
-
-    String initialRoute;
-    if (!isCompatible) {
-      final Uri uri = Uri.parse(
-        Platform.isAndroid
-            ? 'https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share'
-            : 'https://apps.apple.com/in/app/wti-cabs/id1634737888',
-      );
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (fetchCountryController.currentCountry.value ==
-          'United Arab Emirates') {
-        initialRoute = AppRoutes.selfDriveBottomSheet;
-      } else {
-        initialRoute = AppRoutes.bottomNav; // fallback
-      }
-    } else if (isFirstTime) {
-      await prefs.setBool("isFirstTime", false);
-      initialRoute = AppRoutes.walkthrough;
-    } else {
-      if (fetchCountryController.currentCountry.value ==
-          'United Arab Emirates') {
-        initialRoute = AppRoutes.selfDriveBottomSheet;
-      } else {
-        initialRoute = AppRoutes.bottomNav; // fallback
-      }
-    }
-
-    return initialRoute;
+    // Always start with splash screen, it will handle navigation
+    return AppRoutes.splash;
   }
 
   void homeApiLoading() async {
@@ -473,14 +432,25 @@ class _MyAppState extends State<MyApp> {
     return FutureBuilder<String>(
       future: _getInitialRoute(context),
       builder: (context, snapshot) {
-        // Always use GoRouter, even during loading
-        // Use a default route while waiting for the actual initial route
-        final initialRoute = snapshot.hasData 
-            ? snapshot.data! 
-            : (fetchCountryController.currentCountry.value == 'United Arab Emirates'
-                ? AppRoutes.selfDriveBottomSheet
-                : AppRoutes.bottomNav);
+        // Show loading screen while determining initial route
+        if (!snapshot.hasData) {
+          return GetMaterialApp(
+            title: "WTI Cabs",
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              fontFamily: "Montserrat",
+            ),
+            home: Scaffold(
+              backgroundColor: Colors.white,
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          );
+        }
         
+        // Once we have the initial route, initialize the router
+        final initialRoute = snapshot.data!;
         final router = AppPages.routerWithInitial(initialRoute);
 
         return GetMaterialApp.router(

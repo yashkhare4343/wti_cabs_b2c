@@ -31,6 +31,8 @@ import 'package:wti_cabs_user/screens/self_drive/self_drive_final_page_st1/self_
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_payment_status/self_drive_payment_success.dart';
 import 'package:wti_cabs_user/screens/walkthrough/walkthrough.dart';
+import 'package:wti_cabs_user/screens/show_app_module/show_app_module.dart';
+import 'package:wti_cabs_user/screens/splash_screen.dart';
 import '../../main.dart';
 import '../../screens/cancel_screen/cancel_booking_screen.dart';
 import '../../screens/cancel_screen/cancelled booking.dart';
@@ -66,8 +68,16 @@ class AppPages {
   // ✅ All app routes
   static final List<GoRoute> routeList = [
     GoRoute(
+      path: AppRoutes.splash,
+      pageBuilder: (context, state) => _platformPage(const SplashScreen()),
+    ),
+    GoRoute(
       path: AppRoutes.walkthrough,
       pageBuilder: (context, state) => _platformPage(Walkthrough()),
+    ),
+    GoRoute(
+      path: AppRoutes.showAppModule,
+      pageBuilder: (context, state) => _platformPage(const ShowAppModule()),
     ),
     GoRoute(
       path: AppRoutes.bottomNav,
