@@ -66,7 +66,7 @@ class LoginInfoController extends GetxController {
 
       // Show SnackBar based on status
       if (crpLoginInfo.value?.bStatus == true) {
-        CustomSuccessSnackbar.show(context, 'Successfully Login!');
+        // CustomSuccessSnackbar.show(context, 'Successfully Login!');
       } else if (crpLoginInfo.value?.bStatus == false) {
         CustomFailureSnackbar.show(context, 'Oops Login Failed!');
       }

@@ -405,12 +405,13 @@ class _CrpBookingState extends State<CrpBooking> {
       }
 
       // Determine download directory
+      // Use app's external storage directory (works on all Android versions including 13+)
       Directory? dir;
       if (Platform.isAndroid) {
-        if (await Directory("/storage/emulated/0/Download").exists()) {
-          dir = Directory("/storage/emulated/0/Download");
-        } else {
-          dir = await getExternalStorageDirectory();
+        dir = await getExternalStorageDirectory();
+        if (dir != null) {
+          // Create Downloads subfolder in app's external storage for better organization
+          dir = Directory('${dir.path}/Download');
         }
       } else {
         dir = await getApplicationDocumentsDirectory();
@@ -429,15 +430,15 @@ class _CrpBookingState extends State<CrpBooking> {
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
+        // Ensure directory exists before saving
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        
         // Save the PDF file
         final fileName = 'invoice_$numericBookingId.pdf';
         final filePath = '${dir.path}/$fileName';
         final file = File(filePath);
-        
-        // Ensure directory exists
-        if (!await file.parent.exists()) {
-          await file.parent.create(recursive: true);
-        }
         
         await file.writeAsBytes(response.bodyBytes);
 

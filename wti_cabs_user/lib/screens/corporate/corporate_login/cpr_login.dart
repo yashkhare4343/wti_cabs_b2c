@@ -230,7 +230,7 @@ class _CprLoginState extends State<CprLogin> {
                                   controller: passwordController,
                                   hintText: "Enter your password",
                                   labelText: "Password",
-                                  isPassword: false,
+                                  isPassword: true,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
                                       return "Password is required";

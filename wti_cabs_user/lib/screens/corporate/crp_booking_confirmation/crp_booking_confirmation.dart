@@ -1103,6 +1103,16 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
     
     return null;
   }
+
+  /// Extracts URL from HTML anchor tag in the message
+  /// Example: "Please <a href='https://example.com'> Click Here </a> to clear payments."
+  /// Returns the URL or null if not found
+  String? _extractPaymentUrl(String message) {
+    final regex = RegExp("<a\\s+href=[\"']([^\"']+)[\"']", caseSensitive: false);
+    final match = regex.firstMatch(message);
+    return match?.group(1);
+  }
+
   // show snackbar based on success / failure
   void showApiSnackBar(BuildContext context, dynamic response) {
     debugPrint("Parsed Response: $response");
@@ -1182,6 +1192,12 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
 
     final bool isSuccess = isSuccessByCode || isSuccessByMessage;
 
+    // Extract payment URL from message if response is 0 (failure due to pending payment)
+    String? paymentUrl;
+    if (!isSuccess && (codeStr == '0' || codeStr == '00')) {
+      paymentUrl = _extractPaymentUrl(message);
+    }
+
     if (isSuccess) {
       CustomSuccessSnackbar.show(context, message);
     } else {
@@ -1195,6 +1211,7 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           message: message,
           bookingData: widget.bookingData,
           selectedCar: widget.selectedCar,
+          paymentUrl: paymentUrl,
         ),
         transitionType: TransitionType.scaleFade,
       ),

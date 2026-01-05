@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -9,6 +10,7 @@ class CrpBookingResultPage extends StatelessWidget {
   final String message;
   final CrpBookingData? bookingData;
   final CrpCarModel? selectedCar;
+  final String? paymentUrl;
 
   const CrpBookingResultPage({
     super.key,
@@ -16,6 +18,7 @@ class CrpBookingResultPage extends StatelessWidget {
     required this.message,
     this.bookingData,
     this.selectedCar,
+    this.paymentUrl,
   });
 
   @override
@@ -80,6 +83,34 @@ class CrpBookingResultPage extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 20),
+
+                    // Show Pay Pending Payment button if paymentUrl is provided
+                    if (paymentUrl != null && paymentUrl!.isNotEmpty) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.mainButtonBg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          onPressed: () {
+                            _launchPaymentUrl(context, paymentUrl!);
+                          },
+                          child: const Text(
+                            'Pay Pending Payment',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     SizedBox(
                       width: double.infinity,
@@ -187,6 +218,31 @@ class CrpBookingResultPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _launchPaymentUrl(BuildContext context, String url) async {
+    try {
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not launch payment URL'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening payment link: $e'),
+          ),
+        );
+      }
+    }
   }
 }
 

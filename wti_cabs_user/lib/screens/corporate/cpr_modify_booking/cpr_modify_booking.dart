@@ -839,6 +839,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               TextFormField(
                 controller: alternativeMobileNoController,
                 keyboardType: TextInputType.phone,
+                maxLength: 10,
                 decoration: InputDecoration(
                   hintText: '',
                   hintStyle: const TextStyle(
@@ -1911,10 +1912,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               elevation: 0,
             ),
             child: const Text(
-              'Cancel',
+              'Cancel Booking',
               style: TextStyle(
                 color: Color(0xFF4082F1),
-                fontSize: 17,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
               ),
