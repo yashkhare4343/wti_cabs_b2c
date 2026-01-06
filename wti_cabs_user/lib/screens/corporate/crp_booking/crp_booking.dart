@@ -936,75 +936,131 @@ class _CrpBookingState extends State<CrpBooking> {
               ],
             ),
             const SizedBox(height: 16),
-            // // Middle Section: Route Visualization
-            // Row(
-            //   crossAxisAlignment: CrossAxisAlignment.start,
-            //   children: [
-            //     // Vertical Line with Circle and Square
-            //     Column(
-            //       children: [
-            //         // Circle at top
-            //         Container(
-            //           width: 12,
-            //           height: 12,
-            //           decoration: const BoxDecoration(
-            //             color: Color(0xFF4082F1),
-            //             shape: BoxShape.circle,
-            //           ),
-            //         ),
-            //         // Vertical Line
-            //         Container(
-            //           width: 2,
-            //           height: 36,
-            //           color: const Color(0xFF4082F1),
-            //         ),
-            //         // Square at bottom
-            //         Container(
-            //           width: 12,
-            //           height: 12,
-            //           decoration: const BoxDecoration(
-            //             color: Color(0xFF4082F1),
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //     const SizedBox(width: 12),
-            //     // Pickup and Drop Locations
-            //     Expanded(
-            //       child: Column(
-            //         crossAxisAlignment: CrossAxisAlignment.start,
-            //         children: [
-            //           // Pickup Location
-            //           Text(
-            //             booking.passenger ?? 'Pickup location',
-            //             style: TextStyle(
-            //               fontSize: 13,
-            //               color: Colors.grey.shade700,
-            //               fontFamily: 'Montserrat',
-            //               height: 1.3,
-            //             ),
-            //             maxLines: 2,
-            //             overflow: TextOverflow.ellipsis,
-            //           ),
-            //           const SizedBox(height: 14),
-            //           // Drop Location
-            //           Text(
-            //             'Drop location',
-            //             style: TextStyle(
-            //               fontSize: 13,
-            //               color: Colors.grey.shade700,
-            //               fontFamily: 'Montserrat',
-            //               height: 1.3,
-            //             ),
-            //             maxLines: 2,
-            //             overflow: TextOverflow.ellipsis,
-            //           ),
-            //         ],
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            // const SizedBox(height: 16),
+            // Middle Section: Route Visualization
+            Builder(
+              builder: (context) {
+                final pickupAddress = booking.pickupAddress;
+                final dropAddress = booking.dropAddress;
+                // Only show pickup if it's not null, not empty (trimmed), and not the string "null"
+                final hasPickupAddress = pickupAddress != null && 
+                    pickupAddress.trim().isNotEmpty && 
+                    pickupAddress.trim().toLowerCase() != 'null';
+                // Only show drop if it's not null, not empty (trimmed), and not the string "null"
+                final hasDropAddress = dropAddress != null && 
+                    dropAddress.trim().isNotEmpty && 
+                    dropAddress.trim().toLowerCase() != 'null';
+                
+                // Only show route visualization if at least one address exists
+                if (!hasPickupAddress && !hasDropAddress) {
+                  return const SizedBox.shrink();
+                }
+                
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Vertical Line with Circle and Square
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: SizedBox(
+                          width: 28,
+                          child: Column(
+                            children: [
+                              // Circle with dot (pickup icon) - only show if pickup exists
+                              if (hasPickupAddress)
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFA4FF59),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Vertical line (only show if both pickup and drop exist)
+                              if (hasPickupAddress && hasDropAddress)
+                                Expanded(
+                                  child: CustomPaint(
+                                    painter: VerticalDashedLinePainter(),
+                                    child: const SizedBox(width: 2),
+                                  ),
+                                ),
+                              // Square end (drop icon) - only show if drop exists and is not null
+                              if (hasDropAddress)
+                                Container(
+                                  width: 15,
+                                  height: 15,
+                                  padding: EdgeInsets.all(4.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFB179),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFFFF),
+                                      borderRadius: BorderRadius.circular(0.5),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Pickup and Drop Locations
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Pickup Location - only show if pickup exists
+                            if (hasPickupAddress && pickupAddress != null)
+                              Text(
+                                pickupAddress.trim(),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontFamily: 'Montserrat',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            // Drop Location - only show if drop exists and is not null or "null"
+                            if (hasDropAddress && dropAddress != null) ...[
+                              if (hasPickupAddress) const SizedBox(height: 16),
+                              Text(
+                                dropAddress.trim(),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontFamily: 'Montserrat',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
             // Dashed Line Separator
             CustomPaint(
               painter: DashedLinePainter(),
@@ -1214,6 +1270,41 @@ class DashedLinePainter extends CustomPainter {
         paint,
       );
       startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// Custom painter for vertical dashed line with dots
+class VerticalDashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF7B7B7B)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.fill;
+
+    const dotHeight = 3.0;
+    const dotSpacing = 4.0;
+    final totalDotHeight = dotHeight + dotSpacing;
+    
+    // Calculate number of dots based on available height
+    final numberOfDots = (size.height / totalDotHeight).floor().clamp(3, 50);
+    
+    // Center the dots vertically
+    final totalDotsHeight = numberOfDots * totalDotHeight - dotSpacing;
+    final startY = (size.height - totalDotsHeight) / 2;
+    
+    // Draw dots
+    for (int i = 0; i < numberOfDots; i++) {
+      final y = startY + (i * totalDotHeight);
+      canvas.drawCircle(
+        Offset(size.width / 2, y),
+        dotHeight / 2,
+        paint,
+      );
     }
   }
 

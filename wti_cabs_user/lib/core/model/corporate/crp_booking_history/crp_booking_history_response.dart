@@ -48,6 +48,8 @@ class CrpBookingHistoryItem {
   final String? model;
   final String? run;
   final int? isReviewed;
+  final String? pickupAddress;
+  final String? dropAddress;
   final dynamic extraPaxCount;
   final dynamic multipax;
 
@@ -62,6 +64,8 @@ class CrpBookingHistoryItem {
     this.model,
     this.run,
     this.isReviewed,
+    this.pickupAddress,
+    this.dropAddress,
     this.extraPaxCount,
     this.multipax,
   });
@@ -78,6 +82,8 @@ class CrpBookingHistoryItem {
       model: json['Model'] as String?,
       run: json['Run'] as String?,
       isReviewed: json['IsReviewed'] as int?,
+      pickupAddress: json['PickupAddress'] as String?,
+      dropAddress: json['DropAddress'] as String?,
       extraPaxCount: json['ExtraPaxCount'],
       multipax: json['Multipax'],
     );
