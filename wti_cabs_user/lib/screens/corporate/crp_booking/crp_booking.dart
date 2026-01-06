@@ -201,6 +201,7 @@ class _CrpBookingState extends State<CrpBooking> {
     if (branchId != '0') {
       await StorageServices.instance.save('branchId', branchId);
     }
+    await StorageServices.instance.save('branchId', branchId);
 
     // Fetch booking history with filters (status = -1 to get ALL, then filter on frontend)
     final criteria = _filterSearchController.text.trim();
@@ -1182,12 +1183,17 @@ class _CrpBookingState extends State<CrpBooking> {
                     child: _buildActionButton(
                       'Booking Detail',
                       () async {
-                        final result = await context.push<bool>(
+                        // Navigate to booking details screen
+                        final result = await GoRouter.of(context).push<bool>(
                           AppRoutes.cprBookingDetails,
                           extra: booking,
                         );
                         // If booking was modified or cancelled, refresh the booking list
+                        // This ensures we fetch updated booking data after modification
                         if (result == true && mounted) {
+                          // Add a small delay to ensure navigation is complete
+                          await Future.delayed(const Duration(milliseconds: 100));
+                          // Refresh booking data to show updated information
                           await _loadAndFetchBookings();
                         }
                       },

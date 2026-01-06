@@ -19,6 +19,7 @@ import '../../../../common_widget/textformfield/booking_textformfield.dart';
 import '../../../../common_widget/snackbar/custom_snackbar.dart';
 import '../../../../utility/constants/colors/app_colors.dart';
 import '../../../../utility/constants/fonts/common_fonts.dart';
+import '../../../core/controller/corporate/crp_booking_history_controller/crp_booking_history_controller.dart';
 import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
 import '../../../core/controller/corporate/crp_booking_detail/crp_booking_detail_controller.dart';
 import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
@@ -1954,6 +1955,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Future<void> _handleModifyBooking() async {
+    final CrpBookingHistoryController crpBookingHistoryController = Get.put(CrpBookingHistoryController());
     final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
       CustomFailureSnackbar.show(context, 'Booking details not available');
@@ -2055,11 +2057,18 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       }
 
       if (bStatus) {
-        /// ✅ NAVIGATE AFTER FRAME (SAFE WITH GOROUTER)
-        /// Pop with result true to trigger refresh in parent screen
+        /// ✅ NAVIGATE BACK TO BOOKING SCREEN AND REFRESH DATA
+        /// Navigate to bottom nav with booking tab (index 1) selected
+        /// This ensures we're on the booking screen and data will be refreshed
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            GoRouter.of(context).pop(true);
+            // Navigate to bottom nav with booking tab selected (index 1)
+            GoRouter.of(context).push(
+              AppRoutes.cprBottomNav,
+              extra: {
+                'initialIndex': 1, // Booking tab index
+              },
+            );
           }
         });
       }
@@ -2168,12 +2177,18 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           // Clear cancel reason controller
           cancelReasonController.clear();
           
-          // Navigate back after success - use microtask to ensure dialog is fully closed
-          // Pop with result true to trigger refresh in parent screen
+          // Navigate back to booking screen and refresh data after success
+          // Navigate to bottom nav with booking tab (index 1) selected
+          // This ensures we're on the booking screen and data will be refreshed
           Future.microtask(() {
             if (context.mounted) {
-              // Pop modify screen with result true to trigger refresh
-              GoRouter.of(context).pop(true);
+              // Navigate to bottom nav with booking tab selected (index 1)
+              GoRouter.of(context).push(
+                AppRoutes.cprBottomNav,
+                extra: {
+                  'initialIndex': 1, // Booking tab index
+                },
+              );
             }
           });
         } else {

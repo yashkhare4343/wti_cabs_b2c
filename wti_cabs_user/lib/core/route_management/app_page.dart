@@ -341,7 +341,21 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprBottomNav,
-      pageBuilder: (context, state) => CorporatePageTransitions.fadeTransition(CorporateBottomNavScreen()),
+      pageBuilder: (context, state) {
+        // Extract initialIndex from extra if provided
+        int? initialIndex;
+        if (state.extra is Map) {
+          final extra = state.extra as Map;
+          if (extra['initialIndex'] != null) {
+            initialIndex = extra['initialIndex'] is int 
+                ? extra['initialIndex'] as int
+                : int.tryParse(extra['initialIndex'].toString());
+          }
+        }
+        return CorporatePageTransitions.fadeTransition(
+          CorporateBottomNavScreen(initialIndex: initialIndex),
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.cprLandingPage,
