@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -868,6 +871,78 @@ class _TopBannerState extends State<TopBanner> {
   final CrpSelectDropController crpSelectDropController =
   Get.put(CrpSelectDropController());
   String? dropLocationError;
+  
+  /// Full-screen horizontal progress UI used when switching back to personal
+  Future<void> _goToPersonal(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Go To Personal',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF192653),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: 220,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Colors.grey.shade300,
+                    color: AppColors.mainButtonBg,
+                    minHeight: 6,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+
+    // Close the dialog
+    Navigator.of(context).pop();
+
+    // Navigate to personal bottom nav with smooth transition
+    Navigator.of(context).push(
+      _buildSmoothPageRoute(const BottomNavScreen()),
+    );
+  }
+  
+  /// Creates a subtle, smooth transition back to the retail module
+  PageRouteBuilder _buildSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _showBranchSelectorBottomSheet() async {
     // Fetch branches if not already loaded
@@ -1226,8 +1301,8 @@ class _TopBannerState extends State<TopBanner> {
                           ),
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors
-                                  .transparent, // transparent to show gradient
+                              backgroundColor:
+                                  Colors.transparent, // transparent to show gradient
                               shadowColor:
                                   Colors.transparent, // remove default shadow
                               shape: RoundedRectangleBorder(
@@ -1237,11 +1312,7 @@ class _TopBannerState extends State<TopBanner> {
                                   vertical: 4, horizontal: 8),
                             ),
                             onPressed: () async {
-                              Navigator.of(context).push(
-                                PlatformFlipPageRoute(
-                                  builder: (context) => const BottomNavScreen(),
-                                ),
-                              );
+                              await _goToPersonal(context);
                             },
                             child: const Text(
                               "Retail",

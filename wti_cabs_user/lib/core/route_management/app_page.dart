@@ -185,7 +185,7 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.selfDriveBottomSheet,
-      builder: (context, state) => SelfDriveBottomNavScreen(),
+      pageBuilder: (context, state) => _platformPage(const SelfDriveBottomNavScreen()),
     ),
     GoRoute(
       path: AppRoutes.selfDriveCancelBooking,

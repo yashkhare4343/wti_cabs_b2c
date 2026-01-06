@@ -12,6 +12,7 @@ import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_lis
 import '../../../core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 import '../../../main.dart';
 import '../../../utility/constants/colors/app_colors.dart';
+import '../../bottom_nav/bottom_nav.dart';
 
 class CorporateLandingPage extends StatefulWidget {
   const CorporateLandingPage({super.key});
@@ -96,13 +97,39 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
   static const _icon1 = 'assets/images/sp_offers.png';
   static const _icon2 = 'assets/images/currency_rupee_circle.png';
   static const _icon3 = 'assets/images/invoice.png';
+  
+  /// Smooth transition back to the retail bottom nav
+  PageRouteBuilder _buildSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          GoRouter.of(context).push(AppRoutes.bottomNav);
+          // Use a smooth transition back to the retail bottom nav
+          Navigator.of(context).push(
+            _buildSmoothPageRoute(const BottomNavScreen()),
+          );
         }
       },
       child: Scaffold(

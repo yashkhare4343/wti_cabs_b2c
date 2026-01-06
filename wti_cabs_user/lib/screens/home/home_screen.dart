@@ -224,11 +224,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     setState(() => _isCorporateLoading = true);
     try {
-      await Navigator.of(context).push(
-        PlatformFlipPageRoute(
-          builder: (_) => const CprRedirectScreen(),
-        ),
-      );
+      // Navigate to corporate redirect screen with a smooth fade + slide transition
+      await Navigator.of(context).push(_buildSmoothPageRoute(
+        const CprRedirectScreen(),
+      ));
     } finally {
       if (mounted) {
         setState(() => _isCorporateLoading = false);
@@ -238,6 +237,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // corporte page transitiion loader
   bool _isCorporateLoading = false;
+
+  /// Creates a subtle, platform-friendly smooth transition
+  PageRouteBuilder _buildSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 
 
   @override
@@ -2173,7 +2195,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   children: [
                                     Expanded(
                                       child: Image.asset(
-                                        'assets/images/airport.png',
+                                        'assets/images/airport1.png',
                                         fit: BoxFit.contain,
                                       ),
                                     ),
@@ -2264,7 +2286,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                                         Expanded(
                                           child: Image.asset(
-                                            'assets/images/outstation.png',
+                                            'assets/images/outstation1.png',
                                             fit: BoxFit.contain,
                                           ),
                                         ),
@@ -2324,7 +2346,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   children: [
                                     Expanded(
                                       child: Image.asset(
-                                        'assets/images/rental.png',
+                                        'assets/images/rental1.png',
                                         fit: BoxFit.contain,
                                       ),
                                     ),

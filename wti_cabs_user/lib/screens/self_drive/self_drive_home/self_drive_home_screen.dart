@@ -1320,7 +1320,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                               children: [
                                 Expanded(
                                   child: Image.asset(
-                                    'assets/images/airport.png',
+                                    'assets/images/airport1.png',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -1414,7 +1414,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                   children: [
                                     Expanded(
                                       child: Image.asset(
-                                        'assets/images/outstation.png',
+                                        'assets/images/outstation1.png',
                                         fit: BoxFit.contain,
                                       ),
                                     ),
@@ -1483,7 +1483,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                               children: [
                                 Expanded(
                                   child: Image.asset(
-                                    'assets/images/rental.png',
+                                    'assets/images/rental1.png',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
