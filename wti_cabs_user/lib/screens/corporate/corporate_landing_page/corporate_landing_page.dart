@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
@@ -24,12 +25,18 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    _saveModulePreference(); // Track that user is accessing corporate module
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _redirectIfAlreadyLoggedIn();
       appPrefs.remove('force_logout');
 
       // _showBottomSheet();
     });  }
+
+  Future<void> _saveModulePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("lastSelectedModule", "corporate");
+  }
 
 
   final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());

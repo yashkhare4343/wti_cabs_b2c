@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
-import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
@@ -12,6 +11,11 @@ import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
+import '../../../core/controller/corporate/crp_gender/crp_gender_controller.dart';
+import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
+import '../../../core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
+import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payment_mode_controller.dart';
+import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
@@ -24,14 +28,16 @@ class CrpProfile extends StatefulWidget {
 }
 
 class _CrpProfileState extends State<CrpProfile> {
-  final CurrencyController currencyController = Get.find<CurrencyController>();
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   final CprProfileController cprProfileController = Get.put(CprProfileController());
   bool _showShimmer = true;
+  String _storedGuestName = 'Guest';
 
   @override
   void initState() {
     super.initState();
+    // Load guestName from storage as fallback
+    _loadGuestNameFromStorage();
     // Fetch profile data to get gender and other info
     _loadProfileData();
     // Show shimmer for 0.5 seconds
@@ -42,6 +48,15 @@ class _CrpProfileState extends State<CrpProfile> {
         });
       }
     });
+  }
+
+  Future<void> _loadGuestNameFromStorage() async {
+    final nameFromStorage = await StorageServices.instance.read('guestName');
+    if (nameFromStorage != null && nameFromStorage.isNotEmpty && mounted) {
+      setState(() {
+        _storedGuestName = nameFromStorage;
+      });
+    }
   }
 
   void _loadProfileData() async {
@@ -108,6 +123,12 @@ class _CrpProfileState extends State<CrpProfile> {
       'guestId',
       'guestName',
       'email',
+      'selectedBranchName',
+      'selectedBranchId',
+      // Corporate prefill / cached metadata used in booking engine
+      'crpGenderId',
+      'crpEntityId',
+      'cprSelectedRunTypeId',
     ];
 
     // Clear stored session data
@@ -141,6 +162,53 @@ class _CrpProfileState extends State<CrpProfile> {
       debugPrint('⚠️ CrpBranchListController not found during logout: $e');
     }
 
+    // Reset GenderController so gender list & selection are not reused
+    try {
+      final genderController = Get.find<GenderController>();
+      genderController.genderList.clear();
+      genderController.selectedGender.value = null;
+    } catch (e) {
+      debugPrint('⚠️ GenderController not found during logout: $e');
+    }
+
+    // Reset CarProviderController so provider list & selection are not reused
+    try {
+      final carProviderController = Get.find<CarProviderController>();
+      carProviderController.carProviderList.clear();
+      carProviderController.selectedCarProvider.value = null;
+      carProviderController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ CarProviderController not found during logout: $e');
+    }
+
+    // Reset corporate entity list controller so entities are refetched for next login
+    try {
+      final entityListController = Get.find<CrpGetEntityListController>();
+      entityListController.getAllEntityList.value = null;
+      entityListController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ CrpGetEntityListController not found during logout: $e');
+    }
+
+    // Reset payment mode controller so modes & selection are refetched
+    try {
+      final paymentModeController = Get.find<PaymentModeController>();
+      paymentModeController.modes.clear();
+      paymentModeController.selectedMode.value = null;
+      paymentModeController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ PaymentModeController not found during logout: $e');
+    }
+
+    // Reset services controller so run types are refetched
+    try {
+      final servicesController = Get.find<CrpServicesController>();
+      servicesController.runTypes.value = null;
+      servicesController.isLoading.value = false;
+    } catch (e) {
+      debugPrint('⚠️ CrpServicesController not found during logout: $e');
+    }
+
     /// 🔑 Store logout flag
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('force_logout', true);
@@ -153,7 +221,7 @@ class _CrpProfileState extends State<CrpProfile> {
 
     /// Warm navigation (cold start handled by redirect)
     if (ctx != null) {
-      GoRouter.of(ctx).push(AppRoutes.bottomNav);
+      GoRouter.of(ctx).push(AppRoutes.cprLandingPage);
     }
   }
 
@@ -322,9 +390,9 @@ class _CrpProfileState extends State<CrpProfile> {
                   ),
                   const SizedBox(height: 16),
                   // Name
-                  Obx(()=>Text(
-                    loginInfoController.crpLoginInfo.value?.guestName??'Guest',
-                    style: TextStyle(
+                  Obx(() => Text(
+                    loginInfoController.crpLoginInfo.value?.guestName ?? _storedGuestName,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,

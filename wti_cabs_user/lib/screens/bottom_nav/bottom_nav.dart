@@ -9,6 +9,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:wti_cabs_user/common_widget/buttons/main_button.dart';
 import 'package:wti_cabs_user/core/controller/auth/mobile_controller.dart';
@@ -79,6 +80,12 @@ class _BottomNavScreenState extends State<BottomNavScreen>
     WidgetsBinding.instance.addObserver(this);
     // Fetch location and show bottom sheet
     _setStatusBarColor();
+    _saveModulePreference(); // Track that user is accessing personal/retail module
+  }
+
+  Future<void> _saveModulePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("lastSelectedModule", "personal");
   }
 
   void homeApiLoading() async {

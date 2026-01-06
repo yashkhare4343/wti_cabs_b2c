@@ -200,77 +200,100 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   }
 
 
-  // Helper method to get status icon and color based on status
-  Map<String, dynamic> _getStatusIconAndColor(String? status) {
-    if (status == null) {
-      return {
-        'icon': Icons.pending,
-        'color': Colors.orange,
-        'text': 'Pending',
-      };
+  /// Build status badge with pill design and different colors/icons for each status
+  Widget _buildStatusBadge(String? status) {
+    // Normalize status to handle case variations
+    final normalizedStatus = (status ?? 'Pending').trim().toLowerCase();
+
+    // Define colors and icons for each status
+    Color backgroundColor;
+    Color textColor;
+    Color iconColor;
+    IconData icon;
+    String statusText;
+
+    if (normalizedStatus == 'confirmed' || normalizedStatus == '1') {
+      backgroundColor = const Color(0xFFECFDD7); // Light green
+      textColor = const Color(0xFF7CC521); // Dark green
+      iconColor = const Color(0xFF7CC521);
+      icon = Icons.check_circle_outline;
+      statusText = 'Confirmed';
+    } else if (normalizedStatus == 'allocated' ||
+        normalizedStatus == 'completed' || normalizedStatus == '6') {
+      backgroundColor = const Color(0xFFE3F2FD); // Light blue
+      textColor = const Color(0xFF2196F3); // Dark blue
+      iconColor = const Color(0xFF2196F3);
+      icon = Icons.check_circle;
+      statusText = normalizedStatus == '6' ? 'Allocated' : 'Allocated';
+    } else if (normalizedStatus == 'cancelled' ||
+        normalizedStatus == 'canceled' || normalizedStatus == '4') {
+      backgroundColor = const Color(0xFFFFEBEE); // Light red/pink
+      textColor = const Color(0xFFE91E63); // Dark pink/red
+      iconColor = const Color(0xFFE91E63);
+      icon = Icons.cancel;
+      statusText = 'Cancelled';
+    } else if (normalizedStatus == 'pending' || normalizedStatus == '0') {
+      backgroundColor = const Color(0xFFFFF3E0); // Light orange
+      textColor = const Color(0xFFFF9800); // Dark orange
+      iconColor = const Color(0xFFFF9800);
+      icon = Icons.access_time;
+      statusText = 'Pending';
+    } else if (normalizedStatus == 'dispatched' || normalizedStatus == '2') {
+      backgroundColor = const Color(0xFFF3E5F5); // Light purple
+      textColor = const Color(0xFF9C27B0); // Dark purple
+      iconColor = const Color(0xFF9C27B0);
+      icon = Icons.check_circle;
+      statusText = 'Dispatched';
+    } else if (normalizedStatus == 'missed' || normalizedStatus == '3') {
+      backgroundColor = const Color(0xFFE0E0E0); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.warning;
+      statusText = 'Missed';
+    } else if (normalizedStatus == 'void' || normalizedStatus == '5') {
+      backgroundColor = const Color(0xFFE0E0E0); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.block;
+      statusText = 'Void';
+    } else {
+      // Default for unknown statuses
+      backgroundColor = const Color(0xFFF5F5F5); // Light grey
+      textColor = const Color(0xFF757575); // Dark grey
+      iconColor = const Color(0xFF757575);
+      icon = Icons.help_outline;
+      statusText = status ?? 'Pending';
     }
 
-    final statusLower = status.toLowerCase().trim();
-    
-    // Handle numeric status codes
-    switch (statusLower) {
-      case '0':
-      case 'pending':
-        return {
-          'icon': Icons.pending,
-          'color': Colors.orange,
-          'text': 'Pending',
-        };
-      case '1':
-      case 'confirmed':
-        return {
-          'icon': Icons.check_circle,
-          'color': Colors.green,
-          'text': 'Confirmed',
-        };
-      case '2':
-      case 'dispatched':
-        return {
-          'icon': Icons.local_shipping,
-          'color': Colors.blue,
-          'text': 'Dispatched',
-        };
-      case '3':
-      case 'missed':
-        return {
-          'icon': Icons.error_outline,
-          'color': Colors.orange,
-          'text': 'Missed',
-        };
-      case '4':
-      case 'cancelled':
-        return {
-          'icon': Icons.cancel,
-          'color': Colors.red,
-          'text': 'Cancelled',
-        };
-      case '5':
-      case 'void':
-        return {
-          'icon': Icons.block,
-          'color': Colors.grey,
-          'text': 'Void',
-        };
-      case '6':
-      case 'allocated':
-        return {
-          'icon': Icons.assignment,
-          'color': Colors.blue.shade700,
-          'text': 'Allocated',
-        };
-      default:
-        // Default case for unknown statuses
-        return {
-          'icon': Icons.help_outline,
-          'color': Colors.grey,
-          'text': status,
-        };
-    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20), // Pill shape
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            statusText,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          const SizedBox(width: 6),
+          Center(
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -301,8 +324,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
         ),
       );
     }
-
-    final statusInfo = _getStatusIconAndColor(widget.booking.status);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -431,33 +452,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                           ],
                         ),
                       ),
-                      // Car Icon and Status
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Status with Icon
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                statusInfo['icon'] as IconData,
-                                size: 16,
-                                color: statusInfo['color'] as Color,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                statusInfo['text'] as String,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: statusInfo['color'] as Color,
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                      // Status Badge
+                      _buildStatusBadge(widget.booking.status),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -636,10 +632,14 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                 }),
                   const SizedBox(height: 20),
                   // Edit Booking, Track Cab, and Download Invoice Buttons
-                  Row(
-                    children: [
-                      // Only show Edit Booking button if status is not dispatched or cancelled
-                      if (statusInfo['text'] != 'Dispatched' && statusInfo['text'] != 'Cancelled') ...[
+                  Builder(
+                    builder: (context) {
+                      final bookingStatus = (widget.booking.status ?? '').toLowerCase().trim();
+                      return Row(
+                        children: [
+                          // Only show Edit Booking button if status is not dispatched or cancelled
+                          if (bookingStatus != 'dispatched' && bookingStatus != '2' && 
+                              bookingStatus != 'cancelled' && bookingStatus != 'canceled' && bookingStatus != '4') ...[
                         Expanded(
                           child: _buildActionButton(
                             'Edit Booking',
@@ -668,7 +668,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         ),
                         const SizedBox(width: 8),
                       ],
-                      if(statusInfo['text'] != 'Cancelled')...[
+                      if(bookingStatus == 'dispatched' || bookingStatus == '2')...[
                         Expanded(
                           child: _buildActionButton(
                             'Track Cab',
@@ -725,6 +725,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       //     },
                       //   ),
                       // ),
+                      );
+                    },
                   ),
                 ],
               ),

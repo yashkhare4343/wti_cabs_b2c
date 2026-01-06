@@ -93,17 +93,55 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     // Fetch branches
     await crpGetBranchListController.fetchBranches(corpId ?? '');
 
-    // Show bottom sheet after a short delay to ensure screen is fully built
-    // Always show on screen load if no branch is selected (mandatory requirement)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            _showBranchSelectorBottomSheet(forceShow: false); // Will show if no branch selected
-          }
-        });
+    // Try to restore branch from login response if not already selected
+    await _restoreBranchFromLoginResponse();
+
+    // Check if branch is already selected (from storage or login response)
+    final hasSelectedBranch = crpGetBranchListController.selectedBranchName.value != null && 
+                             crpGetBranchListController.selectedBranchName.value!.isNotEmpty;
+
+    // Only show bottom sheet if no branch is selected
+    if (!hasSelectedBranch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _showBranchSelectorBottomSheet(forceShow: false);
+            }
+          });
+        }
+      });
+    } else {
+      print('✅ Branch already selected: ${crpGetBranchListController.selectedBranchName.value}');
+    }
+  }
+
+  /// Restore branch from login response if available and not already selected
+  Future<void> _restoreBranchFromLoginResponse() async {
+    // Check if branch is already selected
+    final hasSelectedBranch = crpGetBranchListController.selectedBranchName.value != null && 
+                             crpGetBranchListController.selectedBranchName.value!.isNotEmpty;
+    
+    if (hasSelectedBranch) {
+      return; // Already have a branch selected
+    }
+
+    // Try to get branch from login response
+    final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
+    
+    if (loginBranchId != null && loginBranchId.isNotEmpty && loginBranchId != '0') {
+      // Find the branch name from the fetched branches list
+      final branch = crpGetBranchListController.branches.firstWhere(
+        (b) => b['BranchID'].toString() == loginBranchId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (branch.isNotEmpty && branch['BranchName'] != null) {
+        final branchName = branch['BranchName'].toString();
+        crpGetBranchListController.selectBranch(branchName);
+        print('✅ Restored branch from login response: $branchName');
       }
-    });
+    }
   }
 
   Future<void> _showBranchSelectorBottomSheet({bool forceShow = false}) async {
@@ -422,7 +460,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
 
               const maxPerRow = 3;
               const spacing = 12.0;
-              const double tileHeight = 110;
+              const double tileHeight = 80;
               const horizontalPadding = 40.0;
 
               final screenWidth = MediaQuery.of(context).size.width;
@@ -744,7 +782,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
 
   @override
   Widget build(BuildContext context) {
-    const fixedHeight = 110.0;
+    const fixedHeight = 80.0;
     final item = widget.item;
     final index = widget.index;
 
@@ -772,39 +810,45 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
       },
       child: Container(
         height: fixedHeight,
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1F192653),
-              offset: Offset(0, 3),
-              blurRadius: 12,
+              color: Color(0x40000000), // #00000040
+              offset: Offset(0, 0),     // x: 0, y: 0
+              blurRadius: 2,
+              spreadRadius: 0,
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+        child: Row(
           children: [
+            Expanded( // ✅ gives width constraint
+              child: Text(
+                item.run ?? "",
+                style: const TextStyle(
+                  fontFamily: 'Urbanist',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700, // Bold
+                  height: 1.2, // line-height: 120%
+                  letterSpacing: 0,
+                  color: Color(0xFF1A2F6C)
+                ),
+                maxLines: 2,
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
             SizedBox(
               height: 60,
+              width: 60,
               child: Image.asset(
                 _getImageForService(item.runTypeID ?? 0),
                 fit: BoxFit.contain,
               ),
-            ),
-            Text(
-              item.run ?? "",
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF192653),
-                fontFamily: 'Montserrat',
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1019,12 +1063,18 @@ class _TopBannerState extends State<TopBanner> {
     return Stack(
       children: [
         // Gradient Sky Background
-        Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(
-                  'assets/images/crp_home_banner.png'), // Use your image path here
-              fit: BoxFit.cover, // Choose fit as per your layout
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage(
+                    'assets/images/crp_home_banner.png'), // Use your image path here
+                fit: BoxFit.cover, // Choose fit as per your layout
+              ),
             ),
           ),
         ),

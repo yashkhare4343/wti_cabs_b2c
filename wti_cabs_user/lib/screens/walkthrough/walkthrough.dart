@@ -96,12 +96,21 @@ class _WalkthroughState extends State<Walkthrough> {
   }
 
   void _finishOnboarding() async {
-    // Mark that user has completed walkthrough
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool("isFirstTime", false);
-    
-    // Navigate to Show App Module screen after walkthrough
-    GoRouter.of(context).go(AppRoutes.showAppModule);
+  // Mark that user has completed walkthrough
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool("isFirstTime", false);
+
+  // Since we no longer show the module selection screen for first-time users,
+  // mark the app module as "seen" and default to the personal module.
+  await prefs.setBool("hasSeenAppModule", true);
+  await prefs.setString("lastSelectedModule", "personal");
+
+  // Navigate directly to the appropriate personal module entry point
+  if (fetchCountryController.currentCountry.value == 'United Arab Emirates') {
+    GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
+  } else {
+    GoRouter.of(context).go(AppRoutes.bottomNav);
+  }
   }
 
   @override

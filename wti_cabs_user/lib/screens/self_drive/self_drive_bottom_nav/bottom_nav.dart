@@ -19,6 +19,7 @@ import 'package:wti_cabs_user/screens/contact/contact.dart';
 import 'package:wti_cabs_user/screens/home/home_screen.dart';
 import 'package:wti_cabs_user/screens/manage_bookings/manage_bookings.dart';
 import 'package:wti_cabs_user/screens/offers/offers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_contact/self_drive_contact.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_home/self_drive_home_screen.dart';
 import 'package:wti_cabs_user/screens/self_drive/self_drive_manage_bookings/manage_bookings.dart';
@@ -58,6 +59,12 @@ class _SelfDriveBottomNavScreenState extends State<SelfDriveBottomNavScreen>
     _selectedIndex = widget.initialIndex ?? 0;
     WidgetsBinding.instance.addObserver(this);
     _setStatusBarColor();
+    _saveModulePreference(); // Track that user is accessing personal/retail module (UAE)
+  }
+
+  Future<void> _saveModulePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("lastSelectedModule", "personal");
   }
 
   void homeApiLoading() async {

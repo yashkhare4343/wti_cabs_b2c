@@ -73,7 +73,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
   Future<void> fetchParameter() async {
     final storage = StorageServices.instance;
-    guestId = await storage.read('branchId');
+    // GuestID should be read from its own key, not from branchId
+    guestId = await storage.read('guestId');
     token = loginInfoController.crpLoginInfo.value?.key ?? await storage.read('crpKey');
     user = await storage.read('email');
   }

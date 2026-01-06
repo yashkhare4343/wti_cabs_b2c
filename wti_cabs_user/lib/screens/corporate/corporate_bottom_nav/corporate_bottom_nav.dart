@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../../main.dart';
@@ -27,6 +28,12 @@ class _CorporateBottomNavScreenState extends State<CorporateBottomNavScreen>
     _selectedIndex = widget.initialIndex ?? 0;
     WidgetsBinding.instance.addObserver(this);
     _setStatusBarColor();
+    _saveModulePreference(); // Track that user is accessing corporate module
+  }
+
+  Future<void> _saveModulePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("lastSelectedModule", "corporate");
   }
 
   @override

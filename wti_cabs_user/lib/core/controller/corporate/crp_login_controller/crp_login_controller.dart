@@ -11,6 +11,56 @@ class LoginInfoController extends GetxController {
   Rx<CrpLoginResponse?> crpLoginInfo = Rx<CrpLoginResponse?>(null);
   RxBool isLoading = false.obs;
 
+  @override
+  void onInit() {
+    super.onInit();
+    _restoreLoginInfoFromStorage();
+  }
+
+  /// Restore login info from storage after app restart
+  Future<void> _restoreLoginInfoFromStorage() async {
+    try {
+      final storage = StorageServices.instance;
+      final crpKey = await storage.read('crpKey');
+      
+      // Only restore if we have a valid token
+      if (crpKey != null && crpKey.isNotEmpty) {
+        final guestId = await storage.read('guestId');
+        final guestName = await storage.read('guestName') ?? '';
+        final branchId = await storage.read('branchId') ?? '0';
+        final corpId = await storage.read('crpId') ?? '0';
+        final genderIdStr = await storage.read('crpGenderId') ?? '1';
+        final entityIdStr = await storage.read('crpEntityId') ?? '1';
+        final payModeId = await storage.read('crpPayModeId') ?? '0';
+        final carProviders = await storage.read('crpCarProviders') ?? '0';
+        final advancedHourStr = await storage.read('crpAdvancedHourToConfirm') ?? '4';
+
+        // Reconstruct CrpLoginResponse from stored data
+        crpLoginInfo.value = CrpLoginResponse(
+          key: crpKey,
+          bStatus: true,
+          sMessage: '',
+          guestID: int.tryParse(guestId ?? '0') ?? 0,
+          guestName: guestName,
+          branchID: branchId,
+          subbranchID: 0,
+          lastRideBookingRatingFlag: false,
+          corpID: corpId,
+          payModeID: payModeId,
+          carProviders: carProviders,
+          logoPath: '',
+          genderId: int.tryParse(genderIdStr) ?? 1,
+          entityId: int.tryParse(entityIdStr) ?? 1,
+          advancedHourToConfirm: int.tryParse(advancedHourStr) ?? 4,
+        );
+        
+        debugPrint('✅ Restored crpLoginInfo from storage: guestName=${crpLoginInfo.value?.guestName}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error restoring login info from storage: $e');
+    }
+  }
+
   Future<void> fetchLoginInfo(
       Map<String, dynamic> params,
       BuildContext context

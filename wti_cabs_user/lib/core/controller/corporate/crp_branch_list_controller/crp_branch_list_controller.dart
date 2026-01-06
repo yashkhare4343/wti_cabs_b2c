@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
 
 import '../../../api/corporate/cpr_api_services.dart';
+import '../../../services/storage_services.dart';
 
 class CrpBranchListController extends GetxController {
   var isLoading = false.obs;
@@ -13,6 +14,30 @@ class CrpBranchListController extends GetxController {
   var selectedBranchId = RxnString();
   var count = 0.obs;
   final VerifyCorporateController verifyCorporateController = Get.put(VerifyCorporateController());
+
+  @override
+  void onInit() {
+    super.onInit();
+    _restoreSelectedBranch();
+  }
+
+  /// Restore selected branch from storage
+  Future<void> _restoreSelectedBranch() async {
+    try {
+      final storedBranchName = await StorageServices.instance.read('selectedBranchName');
+      final storedBranchId = await StorageServices.instance.read('selectedBranchId');
+      
+      if (storedBranchName != null && storedBranchName.isNotEmpty) {
+        selectedBranchName.value = storedBranchName;
+        if (storedBranchId != null && storedBranchId.isNotEmpty) {
+          selectedBranchId.value = storedBranchId;
+        }
+        print('✅ Restored selected branch from storage: $storedBranchName');
+      }
+    } catch (e) {
+      print('⚠️ Error restoring branch from storage: $e');
+    }
+  }
 
   Future<void> fetchBranches(String corpId) async {
     isLoading.value = true;
@@ -73,8 +98,36 @@ class CrpBranchListController extends GetxController {
 
       selectedBranchId.value = branch['BranchID'].toString();
 
+      // Persist to storage
+      _saveSelectedBranch(branchName, selectedBranchId.value);
+
       print("✅ Selected Branch: $branchName");
       print("🏢 Branch ID: ${selectedBranchId.value}");
+    } else {
+      // Clear storage if branch is deselected
+      _clearSelectedBranch();
+    }
+  }
+
+  /// Save selected branch to storage
+  Future<void> _saveSelectedBranch(String branchName, String? branchId) async {
+    try {
+      await StorageServices.instance.save('selectedBranchName', branchName);
+      if (branchId != null) {
+        await StorageServices.instance.save('selectedBranchId', branchId);
+      }
+    } catch (e) {
+      print('⚠️ Error saving branch to storage: $e');
+    }
+  }
+
+  /// Clear selected branch from storage
+  Future<void> _clearSelectedBranch() async {
+    try {
+      await StorageServices.instance.delete('selectedBranchName');
+      await StorageServices.instance.delete('selectedBranchId');
+    } catch (e) {
+      print('⚠️ Error clearing branch from storage: $e');
     }
   }
 }

@@ -22,9 +22,10 @@ class _ShowAppModuleState extends State<ShowAppModule> {
   }
 
   Future<void> _navigateToPersonal() async {
-    // Mark that user has seen this screen
+    // Mark that user has seen this screen and save module preference
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("hasSeenAppModule", true);
+    await prefs.setString("lastSelectedModule", "personal"); // Save module preference
 
     // Navigate based on country
     if (fetchCountryController.currentCountry.value == 'United Arab Emirates') {
@@ -35,9 +36,10 @@ class _ShowAppModuleState extends State<ShowAppModule> {
   }
 
   Future<void> _navigateToBusiness() async {
-    // Mark that user has seen this screen
+    // Mark that user has seen this screen and save module preference
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("hasSeenAppModule", true);
+    await prefs.setString("lastSelectedModule", "corporate"); // Save module preference
 
     // Navigate to corporate landing page or login
     GoRouter.of(context).go(AppRoutes.cprLandingPage);
