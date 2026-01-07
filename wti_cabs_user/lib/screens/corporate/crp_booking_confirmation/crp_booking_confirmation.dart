@@ -1412,10 +1412,20 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
   }
 }
 
-class RouteCard extends StatelessWidget {
+class RouteCard extends StatefulWidget {
   final CrpBookingData? bookingData;
 
   const RouteCard({this.bookingData});
+
+  @override
+  State<RouteCard> createState() => _RouteCardState();
+}
+
+class _RouteCardState extends State<RouteCard> {
+  final GlobalKey pickupLocationKey = GlobalKey();
+  final GlobalKey dropLocationKey = GlobalKey();
+
+  CrpBookingData? get bookingData => widget.bookingData;
 
   @override
   Widget build(BuildContext context) {
@@ -1553,21 +1563,17 @@ class RouteCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Pickup location
-                            Text(
-                              _getPickupRouteText(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF4F4F4F),
-                                fontSize: 14,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            // Drop location (only show if drop exists)
-                            if (_hasDropLocation()) ...[
-                              const SizedBox(height: 16),
-                              Text(
-                                _getDropRouteText(),
+                            InkWell(
+                              onTap: () {
+                                _showTooltipOnTap(
+                                  context,
+                                  _getFullPickupRouteText(),
+                                  pickupLocationKey,
+                                );
+                              },
+                              child: Text(
+                                _getPickupRouteText(),
+                                key: pickupLocationKey,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF4F4F4F),
@@ -1575,6 +1581,30 @@ class RouteCard extends StatelessWidget {
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            // Drop location (only show if drop exists)
+                            if (_hasDropLocation()) ...[
+                              const SizedBox(height: 16),
+                              InkWell(
+                                onTap: () {
+                                  _showTooltipOnTap(
+                                    context,
+                                    _getFullDropRouteText(),
+                                    dropLocationKey,
+                                  );
+                                },
+                                child: Text(
+                                  _getDropRouteText(),
+                                  key: dropLocationKey,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4F4F4F),
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ],
@@ -1677,11 +1707,105 @@ class RouteCard extends StatelessWidget {
     return _shorten(dropFull, maxChars: 25);
   }
 
+  String _getFullPickupRouteText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    final pickupFull = pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
+
+    return pickupFull;
+  }
+
+  String _getFullDropRouteText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    final dropFull = dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
+
+    return dropFull;
+  }
+
   String _getPickupTypeText() {
     if (bookingData == null || bookingData!.pickupType == null) {
       return '';
     }
     return bookingData!.pickupType ?? '';
+  }
+
+  void _showTooltipOnTap(BuildContext context, String message, GlobalKey key) {
+    final RenderBox? renderBox = key.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final Offset position = renderBox.localToGlobal(Offset.zero);
+    final Size size = renderBox.size;
+
+    // Calculate tooltip position - center it horizontally above the text
+    final double tooltipWidth = (message.length * 7.0).clamp(100.0, MediaQuery.of(context).size.width - 32);
+    final double leftPosition = (position.dx + (size.width / 2) - (tooltipWidth / 2)).clamp(8.0, MediaQuery.of(context).size.width - tooltipWidth - 8);
+    final double topPosition = position.dy - 45;
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          GestureDetector(
+            onTap: () => overlayEntry.remove(),
+            behavior: HitTestBehavior.translucent,
+            child: Container(
+              color: Colors.transparent,
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+            ),
+          ),
+          Positioned(
+            left: leftPosition,
+            top: topPosition,
+            child: Material(
+              elevation: 2,
+              color: const Color(0xFF616161),
+              borderRadius: BorderRadius.circular(4),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width - 16,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+
+    // Remove tooltip after 3 seconds or on tap outside
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 
   bool _hasDropLocation() {

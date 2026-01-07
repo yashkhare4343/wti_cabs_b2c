@@ -1061,6 +1061,30 @@ class _RouteCard extends StatelessWidget {
     return bookingData!.pickupType ?? '';
   }
 
+  String _getFullPickupText() {
+    if (bookingData == null) {
+      return 'Please select pickup locations';
+    }
+    final pickupPlace = bookingData!.pickupPlace;
+    final pickupPrimary = pickupPlace?.primaryText ?? 'Pickup location';
+    final pickupSecondary = pickupPlace?.secondaryText ?? '';
+    return pickupSecondary.isNotEmpty
+        ? '$pickupPrimary, $pickupSecondary'
+        : pickupPrimary;
+  }
+
+  String _getFullDropText() {
+    if (bookingData == null) {
+      return 'Please select drop locations';
+    }
+    final dropPlace = bookingData!.dropPlace;
+    final dropPrimary = dropPlace?.primaryText ?? 'Drop location';
+    final dropSecondary = dropPlace?.secondaryText ?? '';
+    return dropSecondary.isNotEmpty
+        ? '$dropPrimary, $dropSecondary'
+        : dropPrimary;
+  }
+
   bool _hasDropLocation() {
     if (bookingData == null) {
       return false;
@@ -1214,21 +1238,10 @@ class _RouteCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Pickup location
-                          Text(
-                            _getPickupRouteText(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF4F4F4F),
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          // Drop location (only show if drop exists)
-                          if (_hasDropLocation()) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              _getDropRouteText(),
+                          Tooltip(
+                            message: _getFullPickupText(),
+                            child: Text(
+                              _getPickupRouteText(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF4F4F4F),
@@ -1236,6 +1249,23 @@ class _RouteCard extends StatelessWidget {
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Drop location (only show if drop exists)
+                          if (_hasDropLocation()) ...[
+                            const SizedBox(height: 16),
+                            Tooltip(
+                              message: _getFullDropText(),
+                              child: Text(
+                                _getDropRouteText(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4F4F4F),
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ],
