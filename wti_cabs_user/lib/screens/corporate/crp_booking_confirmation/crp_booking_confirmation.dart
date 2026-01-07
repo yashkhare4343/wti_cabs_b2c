@@ -1422,7 +1422,11 @@ class RouteCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 16, left: 0, right: 0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFC1C1C1),
+          width: 0.5,
+        ),
         boxShadow: const [
           BoxShadow(
             color: Color(0x05000000), // ultra subtle, barely perceptible

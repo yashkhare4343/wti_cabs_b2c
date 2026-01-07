@@ -1076,34 +1076,49 @@ class _RouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 16, left: 14, right: 14),
+      margin: const EdgeInsets.only(top: 16, left: 16, right: 16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            offset: Offset(0, 2),
-            blurRadius: 8,
-            spreadRadius: 0,
-          ),
-        ],
+        boxShadow: _hasDropLocation()
+            ? const [
+                BoxShadow(
+                  color: Color(0x05000000), // ultra subtle, barely perceptible
+                  offset: Offset(0, 0.5),
+                  blurRadius: 1,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
       ),
-      clipBehavior: Clip.antiAlias, // ✅ IMPORTANT
 
       // Ensures all child corners are clipped properly
-      child: Column(
-        children: [
-          /// TOP CARD
-          Container(
-            padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            /// TOP CARD
+            Container(
+              padding: const EdgeInsets.only(top: 14, right: 14, left: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                border: const Border(
+                  top: BorderSide(color: Color(0xFFC1C1C1), width: 0.5),
+                  right: BorderSide(color: Color(0xFFC1C1C1), width: 0.5),
+                  left: BorderSide(color: Color(0xFFC1C1C1), width: 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x05000000), // ultra subtle, barely perceptible
+                    offset: Offset(0, 0.5),
+                    blurRadius: 1,
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1233,7 +1248,19 @@ class _RouteCard extends StatelessWidget {
           ),
 
           /// WHITE SPACER
-          Container(height: 10, color: Colors.white),
+          Container(height: 10, decoration: BoxDecoration(
+              color: Colors.white,
+            border: const Border(
+              left: BorderSide(
+                color: Color(0xFFC1C1C1),
+                width: 0.5,
+              ),
+              right: BorderSide(
+                color: Color(0xFFC1C1C1),
+                width: 0.5,
+              ),
+            ),
+          ),),
 
           /// BOTTOM SECTION
           Container(
@@ -1241,6 +1268,20 @@ class _RouteCard extends StatelessWidget {
                 const EdgeInsets.only(left: 16, top: 10, bottom: 10, right: 20),
             decoration: const BoxDecoration(
               color: Color(0xFFEFF6FF),
+              border: const Border(
+                left: BorderSide(
+                  color: Color(0xFFC1C1C1),
+                  width: 0.5,
+                ),
+                right: BorderSide(
+                  color: Color(0xFFC1C1C1),
+                  width: 0.5,
+                ),
+                bottom: BorderSide(
+                  color: Color(0xFFC1C1C1),
+                  width: 0.5,
+                ),
+              ),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
@@ -1251,16 +1292,15 @@ class _RouteCard extends StatelessWidget {
               children: [
                 Text(
                   _formatDateTime(bookingData?.pickupDateTime),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF717171),
                   ),
                 ),
-                if (_getPickupTypeText().isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    child: Text(
+                  if (_getPickupTypeText().isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
                       _getPickupTypeText(),
                       style: const TextStyle(
                         fontSize: 12,
@@ -1268,12 +1308,12 @@ class _RouteCard extends StatelessWidget {
                         color: Color(0xFF4082F1),
                       ),
                     ),
-                  ),
-                ],
+                  ],
               ],
             ),
           ),
         ],
+      ),
       ),
     );
   }
