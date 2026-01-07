@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_data/crp_booking_data.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_car_models/crp_car_models_response.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
+import '../../../core/route_management/app_routes.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
 class CrpBookingResultPage extends StatelessWidget {
@@ -129,14 +131,20 @@ class CrpBookingResultPage extends StatelessWidget {
                         onPressed: () {
                           // Replace entire navigation stack with corporate bottom nav
                           // Use rootNavigator to ensure we replace everything including GoRouter routes
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const CorporateBottomNavScreen(initialIndex: 0),
-                            ),
-                          );
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (context.mounted) {
+                              // Navigate to bottom nav with booking tab selected (index 1)
+                              GoRouter.of(context).push(
+                                AppRoutes.cprBottomNav,
+                                extra: {
+                                  'initialIndex': 1, // Booking tab index
+                                },
+                              );
+                            }
+                          });
                         },
                         child: const Text(
-                          'Go to Home',
+                          'Go to Bookings',
                           style: TextStyle(
                             color: AppColors.mainButtonBg,
                             fontWeight: FontWeight.w600,

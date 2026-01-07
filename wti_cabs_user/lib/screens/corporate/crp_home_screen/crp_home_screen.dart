@@ -1228,7 +1228,7 @@ class _TopBannerState extends State<TopBanner> {
                           // ),
                           // const SizedBox(width: 12),
                           Transform.translate(
-                            offset: Offset(0.0, -2.0),
+                            offset: Offset(0.0, -4.0),
                             child: SizedBox(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1288,44 +1288,49 @@ class _TopBannerState extends State<TopBanner> {
                         SizedBox(
                           width: 12,
                         ),
-                        Container(
-                          height: 35,
-                          decoration: BoxDecoration(
-                            /*gradient: const LinearGradient(
-                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),*/
-                            color: AppColors.mainButtonBg,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  Colors.transparent, // transparent to show gradient
-                              shadowColor:
-                                  Colors.transparent, // remove default shadow
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 8),
-                            ),
-                            onPressed: () async {
-                              await _goToPersonal(context);
-                            },
-                            child: const Text(
-                              "Retail",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Montserrat',
-                              ),
-                            ),
-                          ),
-                        )
-
+                        // Container(
+                        //   height: 35,
+                        //   decoration: BoxDecoration(
+                        //     /*gradient: const LinearGradient(
+                        //                   colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                        //                   begin: Alignment.centerLeft,
+                        //                   end: Alignment.centerRight,
+                        //                 ),*/
+                        //     color: AppColors.mainButtonBg,
+                        //     borderRadius: BorderRadius.circular(24),
+                        //   ),
+                        //   child: ElevatedButton(
+                        //     style: ElevatedButton.styleFrom(
+                        //       backgroundColor:
+                        //           Colors.transparent, // transparent to show gradient
+                        //       shadowColor:
+                        //           Colors.transparent, // remove default shadow
+                        //       shape: RoundedRectangleBorder(
+                        //         borderRadius: BorderRadius.circular(16),
+                        //       ),
+                        //       padding: const EdgeInsets.symmetric(
+                        //           vertical: 4, horizontal: 8),
+                        //     ),
+                        //     onPressed: () async {
+                        //       await _goToPersonal(context);
+                        //     },
+                        //     child: const Text(
+                        //       "Retail",
+                        //       style: TextStyle(
+                        //         color: Colors.white,
+                        //         fontSize: 12,
+                        //         fontWeight: FontWeight.w600,
+                        //         fontFamily: 'Montserrat',
+                        //       ),
+                        //     ),
+                        //   ),
+                        // )
+                        InkWell(
+                          onTap: ()async{
+                            await _goToPersonal(context);
+                          },
+                            child: Image.asset('assets/images/goRetail.png', width: 120, height: 36,   fit: BoxFit.contain,
+                            ),)
                         // upcomingBookingController
                         //             .isLoggedIn.value ==
                         //         true
