@@ -147,10 +147,10 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                   ),
                 ),
                 Transform.translate(
-                  offset: const Offset(0.0, -20.0),
+                  offset: const Offset(0.0, -30.0),
                   child: Container(
                     width: double.infinity,
-                    height: MediaQuery.of(context).size.height*0.3,
+                    // height: MediaQuery.of(context).size.height*0.2,
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.only(
@@ -166,7 +166,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 20),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _PromoItem(
@@ -190,45 +190,76 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       const SizedBox(height: 6),
 
                       // Sign-in button with rounded top corners and no overlay
-                      GestureDetector(
-                        onTap: () {
-                          // your sign in action
+
+                      // GestureDetector(
+                      //   onTap: () {
+                      //     // your sign in action
+                      //   },
+                      //   child: Padding(
+                      //     padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      //     child: Container(
+                      //       height: 40,
+                      //       width: double.infinity,
+                      //       decoration: const BoxDecoration(
+                      //         // subtle gradient similar to screenshot
+                      //         color: Color(0xFF01ACF2),
+                      //         borderRadius: BorderRadius.vertical(
+                      //           top: Radius.circular(10),
+                      //           bottom: Radius.circular(10),
+                      //         ),
+                      //         boxShadow: [
+                      //           BoxShadow(
+                      //             color: Color(0x2203A9F4),
+                      //             blurRadius: 8,
+                      //             offset: Offset(0, 4),
+                      //           )
+                      //         ],
+                      //       ),
+                      //       alignment: Alignment.center,
+                      //       child: const Text(
+                      //         'SIGN IN',
+                      //         style: TextStyle(
+                      //           color: Colors.white,
+                      //           fontSize: 14,
+                      //           fontWeight: FontWeight.w700,
+                      //           letterSpacing: 1.0,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
                           GoRouter.of(context).push(AppRoutes.cprLogin);
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Container(
-                            height: 40,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              // subtle gradient similar to screenshot
-                              color: Color(0xFF01ACF2),
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(10),
-                                bottom: Radius.circular(10),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x2203A9F4),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
-                                )
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'SIGN IN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0, // no default Material shadow
+                          backgroundColor: const Color(0xFF2563EB), // change if needed
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(39),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                        ),
+                        child: Text(
+                          'Sign In',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w900, // Black
+                            fontSize: 16,
+                            color: Colors.white,
+                            letterSpacing: 0,
                           ),
                         ),
                       ),
-                      SizedBox(height: 10,),
+                      ),
+                    ),
+
+                  SizedBox(height: 10,),
                       InkWell(
                         splashColor: Colors.transparent,
                         onTap: (){
@@ -272,44 +303,10 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                  SvgPicture.asset(
-                    'assets/images/wti_logo.svg',
-                    height: 17,
-                    width: 15,
-                  ),
-                    SizedBox(width: 8,),
-                    Container(
-                      height: 30,
-                      decoration: BoxDecoration(
-                        /*gradient: const LinearGradient(
-                                            colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                            begin: Alignment.centerLeft,
-                                            end: Alignment.centerRight,
-                                          ),*/
-                        color: AppColors.mainButtonBg,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent, // transparent to show gradient
-                          shadowColor: Colors.transparent, // remove default shadow
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        ),
-                        onPressed: (){
-                           GoRouter.of(context).push(AppRoutes.cprEditProfile);
-                        },
-                        child: const Text(
-                          "Corporate",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
+                    Image.asset(
+                      'assets/images/wti_crp.png',
+                      height: 50,
+                      width: 180,
                     )
                 ],))
 
@@ -336,8 +333,8 @@ class _PromoItem extends StatelessWidget {
         children: [
           // icon container
           Container(
-            width: 44,
-            height: 44,
+            width: 59,
+            height: 59,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.transparent,
@@ -349,14 +346,17 @@ class _PromoItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF192653), // dark bluish text
-              fontSize: 12,
-              height: 1.05,
-              fontWeight: FontWeight.w600,
+          SizedBox(
+            height: 40, // Fixed height to accommodate 2-3 lines of text
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFA5A5A5), // dark bluish text
+                fontSize: 12,
+                height: 1.05,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           )
         ],

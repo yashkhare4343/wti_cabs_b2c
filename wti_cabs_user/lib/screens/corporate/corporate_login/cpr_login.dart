@@ -248,12 +248,25 @@ class _CprLoginState extends State<CprLogin> {
                                     onPressed: () {
                                       GoRouter.of(context).push(AppRoutes.cprForgotPassword);
                                     },
-                                    child: const Text(
-                                      'Forgot password',
-                                      style: TextStyle(
-                                        color: Color(0xFF01ACF2),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Colors.black,
+                                        ),
+                                        children: [
+                                          const TextSpan(text: ""),
+                                          TextSpan(
+                                            text: "Forgot Password",
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                                color: Colors.black,
+                                                decoration: TextDecoration.underline
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -268,60 +281,59 @@ class _CprLoginState extends State<CprLogin> {
 
                         // Sign-in button with rounded top corners and no overlay
 
-                       Obx(()=>GestureDetector(
-                         onTap: () async{
-                           FocusScope.of(context).unfocus();
-                           // your sign in action
-                           final Map<String, dynamic> params = {
-                             "password": passwordController.text.trim(),
-                             "android_gcm": "", // replace with actual GCM token if available
-                             "ios_token": "",   // replace with actual iOS token if available
-                             "email": emailController.text.trim(), // decoded %40 → @
-                           };
-                           // final Map<String, dynamic> params = {
-                           //   "password": 'Test@123',
-                           //   "android_gcm": "", // replace with actual GCM token if available
-                           //   "ios_token": "",   // replace with actual iOS token if available
-                           //   "email": 'developer14@aaveg.co.in', // decoded %40 → @
-                           // };
-                           await StorageServices.instance.save('email', emailController.text.trim());
-                           final prefs = await SharedPreferences.getInstance();
-                           await prefs.setString('email', emailController.text.trim());
-                           _validateAndSubmit(params);
-                         },
-                         child: Padding(
-                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                           child: Container(
-                             height: 48,
-                             width: double.infinity,
-                             decoration: const BoxDecoration(
-                               // subtle gradient similar to screenshot
-                               color: Color(0xFF01ACF2),
-                               borderRadius: BorderRadius.vertical(
-                                 top: Radius.circular(10),
-                                 bottom: Radius.circular(10),
+                       Obx(()=>Padding(
+                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                         child: SizedBox(
+                           width: double.infinity,
+                           child: ElevatedButton(
+                             style: ElevatedButton.styleFrom(
+                               elevation: 0, // no default Material shadow
+                               backgroundColor: const Color(0xFF2563EB), // change if needed
+                               shape: RoundedRectangleBorder(
+                                 borderRadius: BorderRadius.circular(39),
                                ),
-                               boxShadow: [
-                                 BoxShadow(
-                                   color: Color(0x2203A9F4),
-                                   blurRadius: 8,
-                                   offset: Offset(0, 4),
-                                 )
-                               ],
+                               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                              ),
-                             alignment: Alignment.center,
-                             child: loginInfoController.isLoading.value? SizedBox(
-                                 width: 10,
-                                 height: 10,
-                                 child: CircularProgressIndicator(color: Colors.white,)) : const Text(
-                               'SIGN IN',
-                               style: TextStyle(
-                                 color: Colors.white,
-                                 fontSize: 14,
-                                 fontWeight: FontWeight.w700,
-                                 letterSpacing: 1.0,
-                               ),
-                             ),
+                             onPressed: () async{
+                               FocusScope.of(context).unfocus();
+                               // your sign in action
+                               final Map<String, dynamic> params = {
+                                 "password": passwordController.text.trim(),
+                                 "android_gcm": "", // replace with actual GCM token if available
+                                 "ios_token": "",   // replace with actual iOS token if available
+                                 "email": emailController.text.trim(), // decoded %40 → @
+                               };
+                               // final Map<String, dynamic> params = {
+                               //   "password": 'Test@123',
+                               //   "android_gcm": "", // replace with actual GCM token if available
+                               //   "ios_token": "",   // replace with actual iOS token if available
+                               //   "email": 'developer14@aaveg.co.in', // decoded %40 → @
+                               // };
+                               await StorageServices.instance.save('email', emailController.text.trim());
+                               final prefs = await SharedPreferences.getInstance();
+                               await prefs.setString('email', emailController.text.trim());
+                               _validateAndSubmit(params);
+                             },
+                             child: loginInfoController.isLoading.value
+                                 ? const SizedBox(
+                                     width: 20,
+                                     height: 20,
+                                     child: CircularProgressIndicator(
+                                       color: Colors.white,
+                                       strokeWidth: 2,
+                                     ),
+                                   )
+                                 : const Text(
+                                     'Sign In',
+                                     textAlign: TextAlign.center,
+                                     style: TextStyle(
+                                       fontFamily: 'Montserrat',
+                                       fontWeight: FontWeight.w900, // Black
+                                       fontSize: 16,
+                                       color: Colors.white,
+                                       letterSpacing: 0,
+                                     ),
+                                   ),
                            ),
                          ),
                        )),
