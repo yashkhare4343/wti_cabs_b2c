@@ -554,6 +554,46 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
     if (!mounted) return;
 
+    // Fetch payment modes if null and list is empty
+    if (paymentModeController.selectedMode.value == null && 
+        paymentModeController.modes.isEmpty &&
+        !paymentModeController.isLoading.value) {
+      debugPrint('🔄 Payment mode is null and list is empty, fetching payment modes...');
+      
+      // Get required parameters for fetching payment modes
+      await fetchParameter();
+      final prefs = await SharedPreferences.getInstance();
+      String? email = prefs.getString('email');
+      
+      // Get token - prioritize login info, then storage, then fallback
+      String? resolvedToken = loginInfoController.crpLoginInfo.value?.key;
+      if (resolvedToken == null || resolvedToken.isEmpty) {
+        resolvedToken = token ?? await StorageServices.instance.read('crpKey');
+      }
+      
+      if (resolvedToken != null && resolvedToken.isNotEmpty) {
+        final Map<String, dynamic> paymentParams = {
+          'GuestID': int.tryParse(guestId ?? '') ?? 0,
+          'token': resolvedToken ?? '',
+          'user': user ?? email ?? ''
+        };
+        
+        // Fetch payment modes and wait for completion
+        await paymentModeController.fetchPaymentModes(paymentParams, context);
+        
+        // Wait a bit for the list to populate
+        int retryCount = 0;
+        while (paymentModeController.modes.isEmpty && retryCount < 20) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          retryCount++;
+        }
+        
+        debugPrint('✅ Payment modes fetched. List size: ${paymentModeController.modes.length}');
+      } else {
+        debugPrint('⚠️ Cannot fetch payment modes: Token not available');
+      }
+    }
+
     setState(() {
       // Booking Type – default to "Corporate" if nothing is selected (first element)
       if (selectedBookingFor == null && bookingForList.isNotEmpty) {
@@ -621,7 +661,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         debugPrint('⚠️ Corporate Entity already selected: ${selectedCorporate?.entityName}');
       }
 
-      // Payment Mode – match using PayModeID from login info
+      // Payment Mode – match using PayModeID from login info, or prefill first if null
       if (paymentModeController.modes.isNotEmpty) {
         final String payModeIdStr = loginInfo?.payModeID??'';
         final int? payModeId = int.tryParse(payModeIdStr);
@@ -644,6 +684,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                   ? paymentModeController.modes.first
                   : null),
         );
+        
+        if (paymentModeController.selectedMode.value != null) {
+          debugPrint('✅ Prefilled Payment Mode: ${paymentModeController.selectedMode.value?.mode}');
+        }
+      } else if (paymentModeController.selectedMode.value == null) {
+        debugPrint('⚠️ Payment modes list is empty and no selection available');
       }
 
       // Car Provider – use first element from the list (as per requirement)

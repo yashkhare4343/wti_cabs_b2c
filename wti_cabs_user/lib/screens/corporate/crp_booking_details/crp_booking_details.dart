@@ -220,8 +220,10 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
 
   /// Build status badge with pill design and different colors/icons for each status
   Widget _buildStatusBadge(String? status) {
+    // Use effective status (handles Dispatched + currentDispatchStatusId == 6 -> Completed)
+    final effectiveStatus = _getEffectiveStatus();
     // Normalize status to handle case variations
-    final normalizedStatus = (status ?? 'Pending').trim().toLowerCase();
+    final normalizedStatus = effectiveStatus.trim().toLowerCase();
 
     // Define colors and icons for each status
     Color backgroundColor;
@@ -236,13 +238,18 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       iconColor = const Color(0xFF7CC521);
       icon = Icons.check_circle_outline;
       statusText = 'Confirmed';
-    } else if (normalizedStatus == 'allocated' ||
-        normalizedStatus == 'completed' || normalizedStatus == '6') {
+    } else if (normalizedStatus == 'allocated' || normalizedStatus == '6') {
       backgroundColor = const Color(0xFFE3F2FD); // Light blue
       textColor = const Color(0xFF2196F3); // Dark blue
       iconColor = const Color(0xFF2196F3);
       icon = Icons.check_circle;
-      statusText = normalizedStatus == '6' ? 'Allocated' : 'Allocated';
+      statusText = 'Allocated';
+    } else if (normalizedStatus == 'completed') {
+      backgroundColor = const Color(0xFFE3F2FD); // Light blue
+      textColor = const Color(0xFF2196F3); // Dark blue
+      iconColor = const Color(0xFF2196F3);
+      icon = Icons.check_circle;
+      statusText = 'Completed';
     } else if (normalizedStatus == 'cancelled' ||
         normalizedStatus == 'canceled' || normalizedStatus == '4') {
       backgroundColor = const Color(0xFFFFEBEE); // Light red/pink
@@ -606,9 +613,121 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       ),
                     );
                   }),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 4),
+                  // OTP Display Section
+                  Obx(() {
+                    final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+
+                    // Get OTP values, handling null cases
+                    final pickupOtpRaw = bookingDetails?.pickupOtp;
+                    final dropOtpRaw = bookingDetails?.dropOtp;
+
+                    // Convert to string and handle null/empty cases
+                    final pickupOtpStr = pickupOtpRaw?.toString().trim() ?? "0";
+                    final dropOtpStr = dropOtpRaw?.toString().trim() ?? "0";
+
+                    // Debug: Print OTP values
+                    print('🔍 OTP Debug - PickupOtp: "$pickupOtpStr", DropOtp: "$dropOtpStr"');
+                    print('🔍 OTP Raw - PickupOtpRaw: $pickupOtpRaw, DropOtpRaw: $dropOtpRaw');
+
+                    // Parse OTPs to check if they're greater than 0
+                    // Handle both string "0" and numeric 0 cases
+                    final pickupOtpInt = int.tryParse(pickupOtpStr) ?? 0;
+                    final dropOtpInt = int.tryParse(dropOtpStr) ?? 0;
+
+                    print('🔍 OTP Parsed - PickupOtpInt: $pickupOtpInt, DropOtpInt: $dropOtpInt');
+                    print('🔍 OTP Condition - Both > 0: ${pickupOtpInt > 0 && dropOtpInt > 0}');
+
+                    // Only show if at least one OTP is greater than 0
+                    if (pickupOtpInt > 0 || dropOtpInt > 0) {
+                      return Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Container(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Start OTP Section
+                                  pickupOtpInt > 0 ?  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Start OTP',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF7B7B7B), // Light gray
+                                            fontFamily: 'Montserrat',
+                                          ),
+                                        ),
+                                        Text(
+                                          pickupOtpInt > 0 ? pickupOtpStr : '---',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                            color: pickupOtpInt > 0
+                                                ? const Color(0xFF7CC521) // Vibrant lime green
+                                                : Colors.grey.shade600,
+                                            fontFamily: 'Montserrat',
+                                            letterSpacing: 2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ) : SizedBox.shrink(),
+                                  // Horizontal Line
+                                  dropOtpInt > 0 ?  Container(
+                                    width: MediaQuery.of(context).size.width*0.2,
+                                    height: 1,
+                                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                                    color: Color(0xFFC1C1C1), // Light gray line
+                                  ) : SizedBox.shrink(),
+                                  // End OTP Section
+                                  dropOtpInt > 0 ?   Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'End OTP',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF7B7B7B), // Light gray
+                                            fontFamily: 'Montserrat',
+                                          ),
+                                        ),
+                                        Text(
+                                          dropOtpInt > 0 ? dropOtpStr : '---',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                            color: dropOtpInt > 0
+                                                ? const Color(0xFFFF8935) // Bright orange
+                                                : Colors.grey.shade600,
+                                            fontFamily: 'Montserrat',
+                                            letterSpacing: 2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ) : SizedBox.shrink(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  const SizedBox(height: 12),
+
                   // Booking Status Timeline
                   _buildStatusTimeline(),
+
                   const SizedBox(height: 20),
                   // Dotted Divider
                   CustomPaint(
@@ -656,6 +775,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   Builder(
                     builder: (context) {
                       final bookingStatus = (widget.booking.status ?? '').toLowerCase().trim();
+                      final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
                       return Row(
                         children: [
                           // Only show Edit Booking button if status is not dispatched or cancelled
@@ -720,9 +840,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                           ),
                         ),
                       ],
-                      // Show Download Invoice button for completed statuses (Dispatched and Allocated)
-                      if ((widget.booking.status?.toLowerCase().trim() == 'allocated') || 
-                          (widget.booking.status?.toLowerCase().trim() == 'dispatched')) ...[
+                      // Show Download Invoice button only for completed status (Dispatched with Close status)
+                      if (effectiveStatus == 'completed') ...[
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildActionButton(
@@ -1000,7 +1119,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       stages.add(_TimelineStage(
         label: 'On Going',
         icon: Icons.directions_car,
-        isActive: status == 'dispatched' || status == '2',
+        isActive: (status == 'dispatched' || status == '2') && effectiveStatus != 'completed',
         isCompleted: effectiveStatus == 'completed' || status == 'allocated' || status == '6',
         isError: status == 'missed' || status == '3',
       ));
