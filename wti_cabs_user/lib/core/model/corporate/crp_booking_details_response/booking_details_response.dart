@@ -31,6 +31,8 @@ class CrpBookingDetailsResponse {
   final int? bookingStatus;
   final int? bookingBy;
   final int? cardID;
+  final String? pickupOtp;
+  final String? dropOtp;
 
   CrpBookingDetailsResponse({
     this.bookingID,
@@ -65,6 +67,8 @@ class CrpBookingDetailsResponse {
     this.bookingStatus,
     this.bookingBy,
     this.cardID,
+    this.pickupOtp,
+    this.dropOtp,
   });
 
   /// Factory: Convert JSON → Model
@@ -102,6 +106,8 @@ class CrpBookingDetailsResponse {
       bookingStatus: json['BookingStatus'],
       bookingBy: json['BookingBy'],
       cardID: json['CardID'],
+      pickupOtp: json['PickupOtp'] ?? "0",
+      dropOtp: json['DropOtp'] ?? "0",
     );
   }
 
@@ -140,6 +146,8 @@ class CrpBookingDetailsResponse {
       'BookingStatus': bookingStatus,
       'BookingBy': bookingBy,
       'CardID': cardID,
+      'PickupOtp': pickupOtp ?? "0",
+      'DropOtp': dropOtp ?? "0",
     };
   }
 }

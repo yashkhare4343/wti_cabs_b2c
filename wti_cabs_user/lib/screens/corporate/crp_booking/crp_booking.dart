@@ -69,23 +69,48 @@ class BookingStatus {
     cancelledStr,
   ];
 
-  /// Check if a booking status belongs to a specific tab
+  /// Check if a booking belongs to a specific tab
   /// Handles case-insensitive matching for robustness
-  static bool belongsToTab(String? status, BookingTab tab) {
+  /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), treat as completed
+  static bool belongsToTab(CrpBookingHistoryItem booking, BookingTab tab) {
+    final status = booking.status;
     if (status == null || status.isEmpty) return false;
-    final normalizedStatus = status.trim();
+    final normalizedStatus = status.trim().toLowerCase();
+    
+    // Get effective status: If Dispatched with currentDispatchStatusId == 6 (Close), treat as Completed
+    final effectiveStatus = getEffectiveStatus(booking);
+    final effectiveStatusLower = effectiveStatus.toLowerCase();
 
     switch (tab) {
       case BookingTab.confirmed:
+        // Exclude completed bookings from confirmed tab
+        if (effectiveStatusLower == 'completed') return false;
         return confirmedTabStatuses
-            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+            .any((s) => s.toLowerCase() == normalizedStatus);
       case BookingTab.completed:
+        // Include bookings that are effectively completed (Dispatched with Close status)
+        if (effectiveStatusLower == 'completed') return true;
         return completedTabStatuses
-            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+            .any((s) => s.toLowerCase() == normalizedStatus);
       case BookingTab.cancelled:
         return cancelledTabStatuses
-            .any((s) => s.toLowerCase() == normalizedStatus.toLowerCase());
+            .any((s) => s.toLowerCase() == normalizedStatus);
     }
+  }
+  
+  /// Get effective status for a booking
+  /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), return "Completed"
+  static String getEffectiveStatus(CrpBookingHistoryItem booking) {
+    final status = booking.status;
+    if (status == null || status.isEmpty) return status ?? 'Pending';
+    
+    final normalizedStatus = status.trim().toLowerCase();
+    // If status is "Dispatched" and currentDispatchStatusId is 6 (Close), treat as "Completed"
+    if (normalizedStatus == 'dispatched' && booking.currentDispatchStatusId == 6) {
+      return 'Completed';
+    }
+    
+    return status;
   }
 }
 
@@ -129,7 +154,7 @@ class _CrpBookingState extends State<CrpBooking> {
   // Filtered bookings based on selected tab (reactive)
   List<CrpBookingHistoryItem> get _filteredBookings {
     return _allBookings.where((booking) {
-      return BookingStatus.belongsToTab(booking.status, _selectedTab.value);
+      return BookingStatus.belongsToTab(booking, _selectedTab.value);
     }).toList();
   }
 
@@ -742,9 +767,11 @@ class _CrpBookingState extends State<CrpBooking> {
   }
 
   /// Build status badge with pill design and different colors/icons for each status
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(CrpBookingHistoryItem booking) {
+    // Get effective status (handles Dispatched + Close -> Completed)
+    final effectiveStatus = BookingStatus.getEffectiveStatus(booking);
     // Normalize status to handle case variations
-    final normalizedStatus = status.trim().toLowerCase();
+    final normalizedStatus = effectiveStatus.trim().toLowerCase();
 
     // Define colors and icons for each status
     Color backgroundColor;
@@ -807,7 +834,7 @@ class _CrpBookingState extends State<CrpBooking> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            status,
+            effectiveStatus,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -933,7 +960,7 @@ class _CrpBookingState extends State<CrpBooking> {
                 ),
                 const SizedBox(width: 8),
                 // Status Badge with pill design
-                _buildStatusBadge(booking.status ?? 'Pending'),
+                _buildStatusBadge(booking),
               ],
             ),
             const SizedBox(height: 16),
@@ -1106,42 +1133,52 @@ class _CrpBookingState extends State<CrpBooking> {
                           fontFamily: 'Montserrat',
                         ),
                       ),
-                      // Show Download Invoice button for completed statuses (Dispatched and Allocated)
-                      if ((booking.status?.toLowerCase().trim() == 'allocated') || 
-                          (booking.status?.toLowerCase().trim() == 'dispatched')) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 24,
-                          child: ElevatedButton(
-                            onPressed: () => _downloadInvoice(booking),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDCEAFD), // bg color
-                              elevation: 0,
-                              padding: const EdgeInsets.all(5), // padding
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15), // border-radius
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                      // Show Download Invoice button for completed statuses (Allocated, or Dispatched with Close status)
+                      Builder(
+                        builder: (context) {
+                          final effectiveStatus = BookingStatus.getEffectiveStatus(booking).toLowerCase().trim();
+                          if (effectiveStatus == 'allocated' || effectiveStatus == 'completed') {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Image.asset('assets/images/bookmark.png', width: 12, height: 12,),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Download Invoice',
-                                  style: const TextStyle(
-                                    fontFamily: 'Montserrat',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 10,
-                                    color: Color(0xFF7B7B7B),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 24,
+                                  child: ElevatedButton(
+                                    onPressed: () => _downloadInvoice(booking),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFDCEAFD), // bg color
+                                      elevation: 0,
+                                      padding: const EdgeInsets.all(5), // padding
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15), // border-radius
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Image.asset('assets/images/bookmark.png', width: 12, height: 12,),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Download Invoice',
+                                          style: const TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 10,
+                                            color: Color(0xFF7B7B7B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -1173,6 +1210,8 @@ class _CrpBookingState extends State<CrpBooking> {
             const SizedBox(height: 16),
             // Edit Booking and Feedback Buttons
             Obx(() {
+              // Show feedback button for Dispatched bookings (regardless of currentDispatchStatusId)
+              final effectiveStatus = BookingStatus.getEffectiveStatus(booking).toLowerCase().trim();
               final showFeedbackButton = _feedbackController
                       .feedbackQuestionsResponse.value?.bStatus ==
                   true && (booking.status?.toLowerCase().trim() == 'dispatched');
@@ -1184,6 +1223,7 @@ class _CrpBookingState extends State<CrpBooking> {
                       'Booking Detail',
                       () async {
                         // Navigate to booking details screen
+                        // Passes booking object which includes currentDispatchStatusId
                         final result = await GoRouter.of(context).push<bool>(
                           AppRoutes.cprBookingDetails,
                           extra: booking,

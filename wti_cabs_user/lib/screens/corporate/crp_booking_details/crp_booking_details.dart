@@ -31,6 +31,24 @@ class CrpBookingDetails extends StatefulWidget {
 class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
   bool _showShimmer = true;
+  
+  // Access currentDispatchStatusId from booking
+  int? get currentDispatchStatusId => widget.booking.currentDispatchStatusId;
+
+  /// Get effective status for a booking
+  /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), return "Completed"
+  String _getEffectiveStatus() {
+    final status = widget.booking.status;
+    if (status == null || status.isEmpty) return status ?? 'Pending';
+    
+    final normalizedStatus = status.trim().toLowerCase();
+    // If status is "Dispatched" and currentDispatchStatusId is 6 (Close), treat as "Completed"
+    if (normalizedStatus == 'dispatched' && widget.booking.currentDispatchStatusId == 6) {
+      return 'Completed';
+    }
+    
+    return status;
+  }
 
   @override
   void initState() {
@@ -734,6 +752,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           );
           }),
             const SizedBox(height: 16),
+            // Booking Status Timeline
+            _buildStatusTimeline(),
+            const SizedBox(height: 16),
             // Chauffeur Details Card
             Obx(() {
               final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
@@ -930,6 +951,222 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       ],
     );
   }
+
+  /// Build horizontal status timeline
+  Widget _buildStatusTimeline() {
+    final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
+    final status = (widget.booking.status ?? 'Pending').toLowerCase().trim();
+    
+    // Define timeline stages based on status
+    final stages = <_TimelineStage>[];
+    
+    // Always show Pending (completed)
+    stages.add(_TimelineStage(
+      label: 'Pending',
+      icon: Icons.access_time,
+      isCompleted: true,
+    ));
+    
+    // Show Confirmed if status is Confirmed or beyond
+    if (status == 'confirmed' || status == '1' || 
+        status == 'dispatched' || status == '2' ||
+        status == 'allocated' || status == '6' ||
+        effectiveStatus == 'completed' ||
+        status == 'missed' || status == '3' ||
+        status == 'cancelled' || status == 'canceled' || status == '4') {
+      stages.add(_TimelineStage(
+        label: 'Confirmed',
+        icon: Icons.directions_car,
+        isActive: status == 'confirmed' || status == '1',
+        isCompleted: status != 'confirmed' && status != '1',
+      ));
+    }
+    
+    // Handle Cancelled - show after Confirmed only
+    if (status == 'cancelled' || status == 'canceled' || status == '4') {
+      stages.add(_TimelineStage(
+        label: 'Cancelled',
+        icon: Icons.cancel,
+        isActive: true,
+        isError: true,
+      ));
+    } 
+    // Handle Dispatched, Allocated, Completed, or Missed
+    else if (status == 'dispatched' || status == '2' ||
+             status == 'allocated' || status == '6' ||
+             effectiveStatus == 'completed' ||
+             status == 'missed' || status == '3') {
+      // Show Dispatched/On Going stage
+      stages.add(_TimelineStage(
+        label: 'On Going',
+        icon: Icons.directions_car,
+        isActive: status == 'dispatched' || status == '2',
+        isCompleted: effectiveStatus == 'completed' || status == 'allocated' || status == '6',
+        isError: status == 'missed' || status == '3',
+      ));
+      
+      // Show final stage: Allocated or Completed
+      if (status == 'allocated' || status == '6') {
+        stages.add(_TimelineStage(
+          label: 'Allocated',
+          icon: Icons.check_circle,
+          isActive: true,
+          isCompleted: true,
+        ));
+      } else if (effectiveStatus == 'completed') {
+        stages.add(_TimelineStage(
+          label: 'Completed',
+          icon: Icons.check_circle,
+          isActive: true,
+          isCompleted: true,
+        ));
+      } else if (status == 'missed' || status == '3') {
+        // Missed is already shown in the "On Going" stage with error
+        // No additional stage needed
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(stages.length, (index) {
+            final stage = stages[index];
+            final isLast = index == stages.length - 1;
+            
+            return Expanded(
+              child: Row(
+                children: [
+                  // Stage Circle
+                  Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: stage.isError
+                              ? const Color(0xFFE91E63)
+                              : (stage.isCompleted || stage.isActive
+                                  ? const Color(0xFF4082F1)
+                                  : const Color(0xFFE0E0E0)),
+                          shape: BoxShape.circle,
+                        ),
+                        child: stage.label == 'Confirmed'
+                            ? Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.directions_car,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  Positioned(
+                                    top: 2,
+                                    right: 2,
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check,
+                                        color: Color(0xFF4082F1),
+                                        size: 8,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Icon(
+                                stage.icon,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        stage.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: stage.isError
+                              ? const Color(0xFFE91E63)
+                              : (stage.isCompleted || stage.isActive
+                                  ? const Color(0xFF4082F1)
+                                  : const Color(0xFF939393)),
+                          fontFamily: 'Montserrat',
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                  // Connecting Line
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        margin: const EdgeInsets.only(bottom: 28),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: stage.isCompleted && !stage.isError
+                                ? [
+                                    const Color(0xFF4082F1),
+                                    stages[index + 1].isCompleted || stages[index + 1].isActive
+                                        ? const Color(0xFF4082F1)
+                                        : const Color(0xFFE0E0E0),
+                                  ]
+                                : [
+                                    const Color(0xFFE0E0E0),
+                                    const Color(0xFFE0E0E0),
+                                  ],
+                            stops: const [0.0, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+/// Timeline stage model
+class _TimelineStage {
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final bool isCompleted;
+  final bool isError;
+
+  _TimelineStage({
+    required this.label,
+    required this.icon,
+    this.isActive = false,
+    this.isCompleted = false,
+    this.isError = false,
+  });
 }
 
 // Custom Painter for Dotted Line
