@@ -397,6 +397,11 @@ class AppPages {
         String bookingId = '';
         Map<String, String>? bookingDetails;
         
+        bool? bStatus;
+        String? bookingStatus;
+        String? pickupOtp;
+        String? dropOtp;
+        
         if (extra is String) {
           bookingId = extra;
         } else if (extra is Map<String, dynamic>) {
@@ -409,6 +414,11 @@ class AppPages {
             'bookingNo': extra['bookingNo']?.toString() ?? '',
             'cabRequiredOn': extra['cabRequiredOn']?.toString() ?? '',
           };
+          // Extract new parameters
+          bStatus = extra['bStatus'] as bool?;
+          bookingStatus = extra['bookingStatus']?.toString();
+          pickupOtp = extra['pickupOtp']?.toString();
+          dropOtp = extra['dropOtp']?.toString();
         } else {
           bookingId = state.uri.queryParameters['bookingId'] ?? '';
         }
@@ -417,6 +427,10 @@ class AppPages {
           CrpCabTrackingScreen(
             bookingId: bookingId,
             bookingDetails: bookingDetails,
+            bStatus: bStatus,
+            bookingStatus: bookingStatus,
+            pickupOtp: pickupOtp,
+            dropOtp: dropOtp,
           ),
         );
       },

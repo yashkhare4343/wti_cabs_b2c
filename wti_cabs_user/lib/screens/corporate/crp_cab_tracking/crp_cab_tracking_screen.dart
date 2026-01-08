@@ -15,11 +15,19 @@ import '../../../core/model/corporate/crp_cab_tracking/crp_cab_tracking_response
 class CrpCabTrackingScreen extends StatefulWidget {
   final String bookingId;
   final Map<String, String>? bookingDetails;
+  final bool? bStatus;
+  final String? bookingStatus;
+  final String? pickupOtp;
+  final String? dropOtp;
 
   const CrpCabTrackingScreen({
     super.key,
     required this.bookingId,
     this.bookingDetails,
+    this.bStatus,
+    this.bookingStatus,
+    this.pickupOtp,
+    this.dropOtp,
   });
 
   @override
@@ -97,7 +105,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
   }
 
   /// Build bottom details card with car, booking, and chauffeur info
-  Widget _buildBottomDetailsCard() {
+  Widget _buildBottomDetailsCard({String? message}) {
     final details = widget.bookingDetails!;
     final carModel = details['carModel'] ?? '';
     final carNo = details['carNo'] ?? '';
@@ -115,6 +123,48 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
       } catch (e) {
         formattedDate = cabRequiredOn;
       }
+    }
+
+    // If message is provided, show message card instead of normal details
+    if (message != null && message.isNotEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(23),
+            topRight: Radius.circular(23),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF192653),
+                    fontFamily: 'Montserrat',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Container(
@@ -296,6 +346,114 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              // OTP Display Section
+              Obx(() {
+                // Get current status from tracking response or use passed parameters
+                final response = _controller.trackingResponse.value;
+                final currentBStatus = response?.bStatus ?? widget.bStatus ?? false;
+                final currentBookingStatus = (response?.bookingStatus ?? widget.bookingStatus ?? '').toLowerCase().trim();
+                
+                // Get OTP values
+                final pickupOtpRaw = widget.pickupOtp ?? '0';
+                final dropOtpRaw = widget.dropOtp ?? '0';
+                final pickupOtpStr = pickupOtpRaw.trim();
+                final dropOtpStr = dropOtpRaw.trim();
+                
+                // Parse OTPs to check if they're greater than 0
+                final pickupOtpInt = int.tryParse(pickupOtpStr) ?? 0;
+                final dropOtpInt = int.tryParse(dropOtpStr) ?? 0;
+                
+                // Show Start OTP if status is Start or Pick
+                final showStartOtp = currentBStatus && 
+                    (currentBookingStatus == 'start' || currentBookingStatus == 'pick') && 
+                    pickupOtpInt > 0;
+                
+                // Show Drop OTP if status is Drop
+                final showDropOtp = currentBStatus && 
+                    currentBookingStatus == 'drop' && 
+                    dropOtpInt > 0;
+                
+                if (showStartOtp || showDropOtp) {
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Container(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Start OTP Section
+                              showStartOtp ? Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Start OTP',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF7B7B7B),
+                                        fontFamily: 'Montserrat',
+                                      ),
+                                    ),
+                                    Text(
+                                      pickupOtpStr,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF7CC521),
+                                        fontFamily: 'Montserrat',
+                                        letterSpacing: 2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ) : const SizedBox.shrink(),
+                              // Horizontal Line
+                              if (showStartOtp && showDropOtp)
+                                Container(
+                                  width: MediaQuery.of(context).size.width * 0.2,
+                                  height: 1,
+                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  color: const Color(0xFFC1C1C1),
+                                ),
+                              // Drop OTP Section
+                              showDropOtp ? Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'End OTP',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF7B7B7B),
+                                        fontFamily: 'Montserrat',
+                                      ),
+                                    ),
+                                    Text(
+                                      dropOtpStr,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFFF8935),
+                                        fontFamily: 'Montserrat',
+                                        letterSpacing: 2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ) : const SizedBox.shrink(),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
               // Chauffeur Details Bar
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -563,6 +721,11 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
         centerTitle: false,
       ),
       body: Obx(() {
+        // Get current status from tracking response or use passed parameters
+        final response = _controller.trackingResponse.value;
+        final currentBStatus = response?.bStatus ?? widget.bStatus ?? false;
+        final currentBookingStatus = (response?.bookingStatus ?? widget.bookingStatus ?? '').toLowerCase().trim();
+
         // Show loader until first successful response
         if (_controller.isLoading.value &&
             _controller.trackingResponse.value == null) {
@@ -572,8 +735,6 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
             ),
           );
         }
-
-        final response = _controller.trackingResponse.value;
 
         // Show error if no response and not loading
         if (response == null && !_controller.isLoading.value) {
@@ -619,66 +780,137 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
           );
         }
 
-        // Show completion message if ride is completed
-        if (response?.isRideActive != true) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/images/no_tracking.png', width: 248, height: 223,),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Live Cab tracking is currently \n unavailable for this booking',
-                      maxLines: 2,
-                      overflow: TextOverflow.clip,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF192653),
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  ],
+        // Case 1: bStatus is true and BookingStatus is "Pending" -> show message
+        if (currentBStatus && currentBookingStatus == 'pending') {
+          return Stack(
+            children: [
+              // Show map in background (optional, or show empty)
+              GoogleMap(
+                initialCameraPosition: _getInitialCameraPosition(),
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                markers: _markers,
+                polylines: _polylines,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                mapType: MapType.normal,
+                zoomControlsEnabled: true,
+                compassEnabled: true,
+              ),
+              // Bottom message card
+              if (widget.bookingDetails != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildBottomDetailsCard(message: 'Booking is not starting yet.'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  response?.sMessage ?? '',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontFamily: 'Montserrat',
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+            ],
           );
         }
 
-        // Show tracking map
-        return Stack(
-          children: [
-            // Google Map
-            GoogleMap(
-              initialCameraPosition: _getInitialCameraPosition(),
-              onMapCreated: (controller) {
-                _mapController = controller;
-                // Update markers after map is created
-                if (response != null) {
-                  _updateMapMarkers(response);
-                }
-              },
-              markers: _markers,
-              polylines: _polylines,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              mapType: MapType.normal,
-              zoomControlsEnabled: true,
-              compassEnabled: true,
-              style: '''[
+        // Case 2: bStatus is true and BookingStatus is "Close" -> show message
+        if (currentBStatus && currentBookingStatus == 'close') {
+          return Stack(
+            children: [
+              // Show map in background (optional, or show empty)
+              GoogleMap(
+                initialCameraPosition: _getInitialCameraPosition(),
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                markers: _markers,
+                polylines: _polylines,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                mapType: MapType.normal,
+                zoomControlsEnabled: true,
+                compassEnabled: true,
+              ),
+              // Bottom message card
+              if (widget.bookingDetails != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildBottomDetailsCard(message: 'Booking has been completed'),
+                ),
+            ],
+          );
+        }
+
+        // Case 3 & 4: bStatus is true and BookingStatus is "Start", "Pick", or "Drop" -> show tracking map
+        if (currentBStatus && 
+            (currentBookingStatus == 'start' || 
+             currentBookingStatus == 'pick' || 
+             currentBookingStatus == 'drop')) {
+          // Show tracking map with bottom UI (OTP will be shown in bottom card)
+          return _buildTrackingMap(response);
+        }
+
+        // Default: Show completion message if ride is not active
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/no_tracking.png', width: 248, height: 223,),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Live Cab tracking is currently \n unavailable for this booking',
+                    maxLines: 2,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF192653),
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                response?.sMessage ?? '',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontFamily: 'Montserrat',
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Build tracking map widget
+  Widget _buildTrackingMap(CrpCabTrackingResponse? response) {
+    return Stack(
+      children: [
+        // Google Map
+        GoogleMap(
+          initialCameraPosition: _getInitialCameraPosition(),
+          onMapCreated: (controller) {
+            _mapController = controller;
+            // Update markers after map is created
+            if (response != null) {
+              _updateMapMarkers(response);
+            }
+          },
+          markers: _markers,
+          polylines: _polylines,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: true,
+          mapType: MapType.normal,
+          zoomControlsEnabled: true,
+          compassEnabled: true,
+          style: '''[
     {
         "elementType": "labels.text",
         "stylers": [
@@ -1090,7 +1322,5 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
               ),
           ],
         );
-      }),
-    );
   }
 }
