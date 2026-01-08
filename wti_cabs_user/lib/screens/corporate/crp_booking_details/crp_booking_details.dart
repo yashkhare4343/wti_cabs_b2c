@@ -607,6 +607,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                     );
                   }),
                   const SizedBox(height: 20),
+                  // Booking Status Timeline
+                  _buildStatusTimeline(),
+                  const SizedBox(height: 20),
                   // Dotted Divider
                   CustomPaint(
                     painter: DottedLinePainter(),
@@ -751,9 +754,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
             ),
           );
           }),
-            const SizedBox(height: 16),
-            // Booking Status Timeline
-            _buildStatusTimeline(),
             const SizedBox(height: 16),
             // Chauffeur Details Card
             Obx(() {
@@ -1027,23 +1027,23 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     }
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      // decoration: BoxDecoration(
+      //   color: Colors.white,
+      //   borderRadius: BorderRadius.circular(12),
+      //   border: Border.all(
+      //     color: Colors.grey.shade300,
+      //     width: 1,
+      //   ),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: Colors.grey.shade200,
+      //       blurRadius: 4,
+      //       offset: const Offset(0, 2),
+      //     ),
+      //   ],
+      // ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(stages.length, (index) {
