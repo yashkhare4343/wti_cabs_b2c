@@ -1,5 +1,75 @@
 import 'package:flutter/material.dart';
 
+/// Helper widget for animated snackbar overlay
+class _AnimatedSnackbarOverlay extends StatefulWidget {
+  final Widget Function(VoidCallback closeHandler) childBuilder;
+  final VoidCallback? onClose;
+  final Duration duration;
+
+  const _AnimatedSnackbarOverlay({
+    required this.childBuilder,
+    this.onClose,
+    required this.duration,
+  });
+
+  @override
+  State<_AnimatedSnackbarOverlay> createState() => _AnimatedSnackbarOverlayState();
+}
+
+class _AnimatedSnackbarOverlayState extends State<_AnimatedSnackbarOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    ));
+
+    _controller.forward();
+
+    // Auto remove after duration
+    Future.delayed(widget.duration, () {
+      if (mounted) {
+        _handleClose();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleClose() {
+    _controller.reverse().then((_) {
+      widget.onClose?.call();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SlideTransition(
+      position: _slideAnimation,
+      child: widget.childBuilder(_handleClose),
+    );
+  }
+}
+
 /// Custom Success Snackbar matching the design
 /// - Light green background
 /// - Dark green circle with white checkmark on the left
@@ -73,22 +143,35 @@ class CustomSuccessSnackbar extends StatelessWidget {
     String message, {
     Duration duration = const Duration(seconds: 3),
   }) {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    scaffoldMessenger.hideCurrentSnackBar();
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: CustomSuccessSnackbar(
-          message: message,
-          onClose: () => scaffoldMessenger.hideCurrentSnackBar(),
+    final overlay = Overlay.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    
+    OverlayEntry? overlayEntryRef;
+    
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: mediaQuery.padding.top + 16,
+        left: 16,
+        right: 16,
+        child: _AnimatedSnackbarOverlay(
+          duration: duration,
+          onClose: () {
+            overlayEntryRef?.remove();
+            overlayEntryRef = null;
+          },
+          childBuilder: (closeHandler) => Material(
+            color: Colors.transparent,
+            child: CustomSuccessSnackbar(
+              message: message,
+              onClose: closeHandler,
+            ),
+          ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
       ),
     );
+    
+    overlayEntryRef = overlayEntry;
+    overlay.insert(overlayEntry);
   }
 }
 
@@ -165,22 +248,35 @@ class CustomFailureSnackbar extends StatelessWidget {
     String message, {
     Duration duration = const Duration(seconds: 3),
   }) {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    scaffoldMessenger.hideCurrentSnackBar();
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: CustomFailureSnackbar(
-          message: message,
-          onClose: () => scaffoldMessenger.hideCurrentSnackBar(),
+    final overlay = Overlay.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    
+    OverlayEntry? overlayEntryRef;
+    
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: mediaQuery.padding.top + 16,
+        left: 16,
+        right: 16,
+        child: _AnimatedSnackbarOverlay(
+          duration: duration,
+          onClose: () {
+            overlayEntryRef?.remove();
+            overlayEntryRef = null;
+          },
+          childBuilder: (closeHandler) => Material(
+            color: Colors.transparent,
+            child: CustomFailureSnackbar(
+              message: message,
+              onClose: closeHandler,
+            ),
+          ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
       ),
     );
+    
+    overlayEntryRef = overlayEntry;
+    overlay.insert(overlayEntry);
   }
 }
 

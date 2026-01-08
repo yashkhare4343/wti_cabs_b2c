@@ -319,7 +319,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                           children: [
                             Expanded(
                               child: Text(
-                                item.carType ?? '',
+                                _removeBracketText(item.carType),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: isSelected
@@ -801,9 +801,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                             /// Selected Value
                             Expanded(
                               child: Text(
-                                crpInventoryListController
-                                        .selectedModel.value?.carType ??
-                                    'Select Car Model',
+                                _removeBracketText(
+                                  crpInventoryListController
+                                      .selectedModel.value?.carType,
+                                ) ?? 'Select Car Model',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
@@ -832,50 +833,50 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                   ],
                 );
               }),
-              SizedBox(
-                height: 16,
-              ),
-              _buildSectionLabel('Alternate Number '),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: alternativeMobileNoController,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: InputDecoration(
-                  hintText: '',
-                  hintStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF333333),
-                  ),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-                    child: Text('+91', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF585858)),),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 17),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(35),
-                    borderSide:
-                    const BorderSide(color: Color(0xFFE2E2E2), width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(35),
-                    borderSide:
-                    const BorderSide(color: Color(0xFFE2E2E2), width: 1),
-                  ),
-                ),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Divider(
-                height: 1,
-                color: Color(0xFFE6E6E6),
-              ),
+              // SizedBox(
+              //   height: 16,
+              // ),
+              // _buildSectionLabel('Alternate Number '),
+              // const SizedBox(height: 10),
+              // TextFormField(
+              //   controller: alternativeMobileNoController,
+              //   keyboardType: TextInputType.phone,
+              //   maxLength: 10,
+              //   decoration: InputDecoration(
+              //     hintText: '',
+              //     hintStyle: const TextStyle(
+              //       fontSize: 14,
+              //       fontWeight: FontWeight.w400,
+              //       color: Color(0xFF333333),
+              //     ),
+              //     prefixIcon: Padding(
+              //       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+              //       child: Text('+91', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF585858)),),
+              //     ),
+              //     contentPadding: const EdgeInsets.symmetric(
+              //         horizontal: 20, vertical: 17),
+              //     enabledBorder: OutlineInputBorder(
+              //       borderRadius: BorderRadius.circular(35),
+              //       borderSide:
+              //       const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+              //     ),
+              //     focusedBorder: OutlineInputBorder(
+              //       borderRadius: BorderRadius.circular(35),
+              //       borderSide:
+              //       const BorderSide(color: Color(0xFFE2E2E2), width: 1),
+              //     ),
+              //   ),
+              //   style: const TextStyle(
+              //     fontSize: 14,
+              //     fontWeight: FontWeight.w400,
+              //     color: Color(0xFF333333),
+              //   ),
+              // ),
+              // const SizedBox(height: 20),
+              // Divider(
+              //   height: 1,
+              //   color: Color(0xFFE6E6E6),
+              // ),
 
               const SizedBox(height: 40),
 
@@ -1357,13 +1358,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                           Row(
                             children: [
                               Text(
-                                selectedPickupType ??
-                                    crpBookingDetailsController
-                                        .crpBookingDetailResponse
-                                        .value
-                                        ?.runTypeID
-                                        .toString() ??
-                                    '',
+                                selectedPickupType ?? 'Select Pick Up Type',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -1815,6 +1810,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     // Format: 2016-05-16 15:39:05.277
     // return DateFormat('yyyy MM dd HH:mm:ss.SSS').format(dateTime);
     return DateFormat('dd MMM yyyy, hh:mm a zz').format(dateTime);
+  }
+
+  /// Removes bracket text from car type (e.g., "Hyundai Accent[Intermediate]" -> "Hyundai Accent")
+  String _removeBracketText(String? carType) {
+    if (carType == null || carType.isEmpty) return carType ?? '';
+    final bracketIndex = carType.indexOf('[');
+    if (bracketIndex == -1) return carType;
+    return carType.substring(0, bracketIndex).trim();
   }
 
   Widget _buildActionButton({

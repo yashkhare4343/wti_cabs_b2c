@@ -28,7 +28,7 @@ class CrpBookingResultPage extends StatelessWidget {
     final pickup = bookingData?.pickupPlace?.primaryText ?? '';
     final drop = bookingData?.dropPlace?.primaryText ?? '';
     final tripType = bookingData?.pickupType ?? '';
-    final carType = selectedCar?.carType ?? '';
+    final carType = (selectedCar?.carType ?? '').replaceAll(RegExp(r'[\[\]]'), '');
 
     return PopScope(
       canPop: false,

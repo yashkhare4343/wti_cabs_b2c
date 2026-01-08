@@ -44,8 +44,10 @@ import '../../../core/model/self_drive/get_all_cities/get_all_cities_response.da
 import '../../../core/route_management/app_routes.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
+import '../../../utility/constants/colors/app_colors.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../bottom_nav/bottom_nav.dart';
+import '../../corporate/cpr_redirect_screen/cpr_redirect_screen.dart';
 import '../../map_picker/map_picker.dart';
 import '../../user_fill_details/user_fill_details.dart';
 import 'package:location/location.dart' as location;
@@ -65,6 +67,7 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   late final FetchAllCitiesController fetchAllCitiesController;
   final CurrencyController currencyController = Get.put(CurrencyController());
   String? city = "Dubai"; // default selected
+  bool _isCorporateLoading = false;
 
   @override
   void initState() {
@@ -201,6 +204,45 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
   //fake price
   num getFakePriceWithPercent(num baseFare, num percent) =>
       (baseFare * 100) / (100 - percent);
+
+  Future<void> _handleCorporateEntry(BuildContext context) async {
+    if (!mounted) return;
+
+    setState(() => _isCorporateLoading = true);
+    try {
+      // Navigate to corporate redirect screen with a smooth fade + slide transition
+      await Navigator.of(context).push(_buildSmoothPageRoute(
+        const CprRedirectScreen(),
+      ));
+    } finally {
+      if (mounted) {
+        setState(() => _isCorporateLoading = false);
+      }
+    }
+  }
+
+  /// Creates a subtle, platform-friendly smooth transition
+  PageRouteBuilder _buildSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> signInWithApple() async {
     try {
@@ -1081,89 +1123,39 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     ],
                                   ),
                                 ),
-                                Obx(() {
-                                  return Row(
-                                    children: [
-                                      // Transform.translate(
-                                      //     offset: Offset(0.0, -4.0),
-                                      //     child: Image.asset(
-                                      //       'assets/images/wallet.png',
-                                      //       height: 31,
-                                      //       width: 28,
-                                      //     )),
-                                      SizedBox(
-                                        width: 12,
+                                Container(
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                    /*gradient: const LinearGradient(
+                                      colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),*/
+                                    color: AppColors.mainButtonBg,
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent, // transparent to show gradient
+                                      shadowColor: Colors.transparent, // remove default shadow
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      upcomingBookingController
-                                                  .isLoggedIn.value ==
-                                              true
-                                          ? InkWell(
-                                              splashColor: Colors.transparent,
-                                              onTap: () async {
-                                                print(
-                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') ==
-                                                    null) {
-                                                  _showAuthBottomSheet();
-                                                }
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') !=
-                                                    null) {
-                                                  GoRouter.of(context)
-                                                      .push(AppRoutes.profile);
-                                                }
-                                              },
-                                              child: SizedBox(
-                                                width: 30,
-                                                height: 30,
-                                                child: NameInitialHomeCircle(
-                                                    name: profileController
-                                                            .profileResponse
-                                                            .value
-                                                            ?.result
-                                                            ?.firstName ??
-                                                        ''),
-                                              ),
-                                            )
-                                          : InkWell(
-                                              splashColor: Colors.transparent,
-                                              onTap: () async {
-                                                print(
-                                                    'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') ==
-                                                    null) {
-                                                  _showAuthBottomSheet();
-                                                }
-                                                if (await StorageServices
-                                                        .instance
-                                                        .read('token') !=
-                                                    null) {
-                                                  GoRouter.of(context)
-                                                      .push(AppRoutes.profile);
-                                                }
-                                              },
-                                              child: Transform.translate(
-                                                offset: Offset(0.0, -4.0),
-                                                child: const CircleAvatar(
-                                                  foregroundColor:
-                                                      Colors.transparent,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  radius: 14,
-                                                  backgroundImage: AssetImage(
-                                                    'assets/images/user.png',
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                    ],
-                                  );
-                                })
+                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    ),
+                                    onPressed: _isCorporateLoading ? null : () async {
+                                      await _handleCorporateEntry(context);
+                                    },
+                                    child: const Text(
+                                      "Go Corporate",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                )
                               ],
                             ),
                           ),

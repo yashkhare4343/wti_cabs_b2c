@@ -153,9 +153,80 @@ class _CrpBookingState extends State<CrpBooking> {
 
   // Filtered bookings based on selected tab (reactive)
   List<CrpBookingHistoryItem> get _filteredBookings {
-    return _allBookings.where((booking) {
+    final filtered = _allBookings.where((booking) {
       return BookingStatus.belongsToTab(booking, _selectedTab.value);
     }).toList();
+    
+    // Sort based on selected tab
+    // Upcoming: Nearest booking date → farthest (ascending)
+    // Completed: Most recent → oldest (descending)
+    // Cancelled: Most recent → oldest (descending)
+    final isAscending = _selectedTab.value == BookingTab.confirmed;
+    
+    filtered.sort((a, b) {
+      final dateA = _parseBookingDate(a.cabRequiredOn);
+      final dateB = _parseBookingDate(b.cabRequiredOn);
+      
+      // Handle null dates - put them at the end, but sort by string as fallback
+      if (dateA == null && dateB == null) {
+        // Both null - sort by string comparison as fallback
+        final strA = a.cabRequiredOn ?? '';
+        final strB = b.cabRequiredOn ?? '';
+        return isAscending ? strA.compareTo(strB) : strB.compareTo(strA);
+      }
+      if (dateA == null) return 1; // Put null dates at the end
+      if (dateB == null) return -1; // Put null dates at the end
+      
+      // Sort based on tab: ascending for Upcoming, descending for Completed/Cancelled
+      return isAscending 
+          ? dateA.compareTo(dateB)  // Nearest → farthest
+          : dateB.compareTo(dateA); // Most recent → oldest
+    });
+    
+    return filtered;
+  }
+  
+  /// Parse booking date from string, handling multiple formats
+  /// Matches the parsing logic used in _buildBookingCard for consistency
+  DateTime? _parseBookingDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty || dateString.trim().toLowerCase() == 'null') {
+      return null;
+    }
+    
+    final trimmed = dateString.trim();
+    
+    // Try standard DateTime.parse first (handles ISO 8601 and most standard formats)
+    try {
+      return DateTime.parse(trimmed);
+    } catch (e) {
+      // Try other common formats
+      final formats = [
+        'dd/MM/yyyy HH:mm:ss',
+        'dd/MM/yyyy HH:mm',
+        'dd/MM/yyyy',
+        'yyyy-MM-dd HH:mm:ss',
+        'yyyy-MM-dd HH:mm',
+        'yyyy-MM-dd',
+        'MM/dd/yyyy HH:mm:ss',
+        'MM/dd/yyyy HH:mm',
+        'MM/dd/yyyy',
+        'dd-MM-yyyy HH:mm:ss',
+        'dd-MM-yyyy HH:mm',
+        'dd-MM-yyyy',
+      ];
+      
+      for (final format in formats) {
+        try {
+          return DateFormat(format).parse(trimmed);
+        } catch (e) {
+          // Continue to next format
+        }
+      }
+      
+      // If all parsing fails, return null
+      debugPrint('⚠️ Could not parse date: $dateString');
+      return null;
+    }
   }
 
   // Filter state
@@ -260,6 +331,26 @@ class _CrpBookingState extends State<CrpBooking> {
 
     // Update _allBookings with fetched data
     _allBookings.assignAll(_controller.bookings);
+    
+    // Sort all bookings by date in ascending order immediately after assignment
+    _allBookings.sort((a, b) {
+      final dateA = _parseBookingDate(a.cabRequiredOn);
+      final dateB = _parseBookingDate(b.cabRequiredOn);
+      
+      // Handle null dates - put them at the end, but sort by string as fallback
+      if (dateA == null && dateB == null) {
+        // Both null - sort by string comparison as fallback
+        final strA = a.cabRequiredOn ?? '';
+        final strB = b.cabRequiredOn ?? '';
+        return strA.compareTo(strB);
+      }
+      if (dateA == null) return 1; // Put null dates at the end
+      if (dateB == null) return -1; // Put null dates at the end
+      
+      // Sort in ascending order (earliest first)
+      return dateA.compareTo(dateB);
+    });
+    
     // Mark that data has been loaded
     _hasLoadedData = true;
   }
