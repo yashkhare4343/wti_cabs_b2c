@@ -312,8 +312,25 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBookingDetails,
       pageBuilder: (context, state) {
-        final booking = state.extra as CrpBookingHistoryItem;
-        return CorporatePageTransitions.defaultTransition(CrpBookingDetails(booking: booking));
+        // Handle both direct booking object and Map with booking + callbacks
+        if (state.extra is Map) {
+          final extra = state.extra as Map<String, dynamic>;
+          final booking = extra['booking'] as CrpBookingHistoryItem;
+          final onRefreshParent = extra['onRefreshParent'] as VoidCallback?;
+          final getUpdatedBooking = extra['getUpdatedBooking'] as Future<CrpBookingHistoryItem?> Function()?;
+          return CorporatePageTransitions.defaultTransition(
+            CrpBookingDetails(
+              booking: booking,
+              onRefreshParent: onRefreshParent,
+              getUpdatedBooking: getUpdatedBooking,
+            ),
+          );
+        } else {
+          final booking = state.extra as CrpBookingHistoryItem;
+          return CorporatePageTransitions.defaultTransition(
+            CrpBookingDetails(booking: booking),
+          );
+        }
       },
     ),
     GoRoute(

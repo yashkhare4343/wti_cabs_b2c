@@ -18,10 +18,14 @@ import '../../../core/services/storage_services.dart';
 
 class CrpBookingDetails extends StatefulWidget {
   final CrpBookingHistoryItem booking;
+  final VoidCallback? onRefreshParent;
+  final Future<CrpBookingHistoryItem?> Function()? getUpdatedBooking;
 
   const CrpBookingDetails({
     super.key,
     required this.booking,
+    this.onRefreshParent,
+    this.getUpdatedBooking,
   });
 
   @override
@@ -32,18 +36,21 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   final CrpBookingDetailsController crpBookingDetailsController = Get.put(CrpBookingDetailsController());
   bool _showShimmer = true;
   
-  // Access currentDispatchStatusId from booking
-  int? get currentDispatchStatusId => widget.booking.currentDispatchStatusId;
+  // Local state to hold current booking (can be updated after refresh)
+  late CrpBookingHistoryItem _currentBooking;
+  
+  // Access currentDispatchStatusId from current booking
+  int? get currentDispatchStatusId => _currentBooking.currentDispatchStatusId;
 
   /// Get effective status for a booking
   /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), return "Completed"
   String _getEffectiveStatus() {
-    final status = widget.booking.status;
+    final status = _currentBooking.status;
     if (status == null || status.isEmpty) return status ?? 'Pending';
     
     final normalizedStatus = status.trim().toLowerCase();
     // If status is "Dispatched" and currentDispatchStatusId is 6 (Close), treat as "Completed"
-    if (normalizedStatus == 'dispatched' && widget.booking.currentDispatchStatusId == 6) {
+    if (normalizedStatus == 'dispatched' && _currentBooking.currentDispatchStatusId == 6) {
       return 'Completed';
     }
     
@@ -54,6 +61,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    // Initialize current booking with widget booking
+    _currentBooking = widget.booking;
     fetchBookingDetails();
     // Show shimmer for 0.5 seconds
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -67,7 +76,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   Future<void> fetchBookingDetails() async{
     final token = await StorageServices.instance.read('crpKey');
     final userEmail = await StorageServices.instance.read('email');
-    final orderId = widget.booking.bookingId.toString();
+    final orderId = _currentBooking.bookingId.toString();
     await crpBookingDetailsController.fetchBookingData(orderId, token??'', userEmail??'');
     await crpBookingDetailsController.fetchDriverDetails(orderId, token??'', userEmail??'');
   }
@@ -75,6 +84,19 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   /// Refresh booking details when returning from modify screen
   Future<void> _refreshBookingDetails() async {
     await fetchBookingDetails();
+    // Also refresh the parent booking list if callback is provided
+    if (widget.onRefreshParent != null) {
+      widget.onRefreshParent!();
+    }
+    // Get updated booking from parent if callback is provided
+    if (widget.getUpdatedBooking != null) {
+      final updatedBooking = await widget.getUpdatedBooking!();
+      if (updatedBooking != null && mounted) {
+        setState(() {
+          _currentBooking = updatedBooking;
+        });
+      }
+    }
     if (mounted) {
       setState(() {});
     }
@@ -377,8 +399,22 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.refresh,
+              color: Color(0xFF000000),
+            ),
+            onPressed: () async {
+              await _refreshBookingDetails();
+            },
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: _refreshBookingDetails,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +476,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                           children: [
                             // Booking Type
                             Text(
-                              widget.booking.run ?? 'Airport Drop',
+                              _currentBooking.run ?? 'Airport Drop',
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
@@ -451,7 +487,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             const SizedBox(height: 4),
                             // Car Model
                             Text(
-                              widget.booking.model ?? 'Swift Dzire',
+                              _currentBooking.model ?? 'Swift Dzire',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -479,7 +515,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         ),
                       ),
                       // Status Badge
-                      _buildStatusBadge(widget.booking.status),
+                      _buildStatusBadge(_currentBooking.status),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -581,7 +617,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                 // Pickup Location
                                 Text(
                                   crpBookingDetailsController.crpBookingDetailResponse.value?.pickupAddress ?? 
-                                  widget.booking.passenger ?? 
+                                  _currentBooking.passenger ?? 
                                   'Pickup location',
                                   style: const TextStyle(
                                     fontSize: 15,
@@ -741,7 +777,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   const SizedBox(height: 16),
                   // Booking ID and Date
                   Text(
-                    'Booking ID:- ${widget.booking.bookingNo ?? widget.booking.bookingId ?? '432411'}',
+                    'Booking ID:- ${_currentBooking.bookingNo ?? _currentBooking.bookingId ?? '432411'}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
@@ -775,7 +811,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   // Edit Booking, Track Cab, and Download Invoice Buttons
                   Builder(
                     builder: (context) {
-                      final bookingStatus = (widget.booking.status ?? '').toLowerCase().trim();
+                      final bookingStatus = (_currentBooking.status ?? '').toLowerCase().trim();
                       final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
                       return Row(
                         children: [
@@ -787,15 +823,15 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             'Edit Booking',
                             () async {
                               // Navigate to modify booking screen with booking ID and car model
-                              final orderId = widget.booking.bookingId?.toString() ??
-                                  widget.booking.bookingNo ??
+                              final orderId = _currentBooking.bookingId?.toString() ??
+                                  _currentBooking.bookingNo ??
                                   '';
                               if (orderId.isNotEmpty) {
                                 final result = await GoRouter.of(context).push<bool>(
                                   AppRoutes.cprModifyBooking,
                                   extra: {
                                     'orderId': orderId,
-                                    'carModelName': widget.booking.model,
+                                    'carModelName': _currentBooking.model,
                                   },
                                 );
                                 // If modification/cancellation was successful, refresh booking details
@@ -816,8 +852,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             'Track Cab',
                             () {
                               // Navigate to tracking screen with booking ID and details
-                              final bookingId = widget.booking.bookingId?.toString() ??
-                                  widget.booking.bookingNo ??
+                              final bookingId = _currentBooking.bookingId?.toString() ??
+                                  _currentBooking.bookingNo ??
                                   '';
                               if (bookingId.isNotEmpty) {
                                 // Get driver details from controller
@@ -840,12 +876,12 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                   AppRoutes.cprCabTracking,
                                   extra: {
                                     'bookingId': bookingId,
-                                    'carModel': widget.booking.model ?? '',
+                                    'carModel': _currentBooking.model ?? '',
                                     'carNo': driverDetails?.carNo ?? '',
                                     'driverName': driverDetails?.chauffeur ?? '',
                                     'driverMobile': driverDetails?.mobile ?? '',
-                                    'bookingNo': widget.booking.bookingNo ?? widget.booking.bookingId?.toString() ?? '',
-                                    'cabRequiredOn': widget.booking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
+                                    'bookingNo': _currentBooking.bookingNo ?? _currentBooking.bookingId?.toString() ?? '',
+                                    'cabRequiredOn': _currentBooking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
                                     'bStatus': bStatus,
                                     'bookingStatus': bookingStatusStr,
                                     'pickupOtp': pickupOtpStr,
@@ -863,7 +899,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         Expanded(
                           child: _buildActionButton(
                             'Download Invoice',
-                            () => _downloadInvoice(widget.booking),
+                            () => _downloadInvoice(_currentBooking),
                           ),
                         ),
                       ],
@@ -948,7 +984,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       // Car Model
                       _buildDetailRow(
                         'Car Model',
-                        widget.booking.model ?? 'N/A',
+                        _currentBooking.model ?? 'N/A',
                         Icons.directions_car,
                       ),
                       const SizedBox(height: 12),
@@ -1013,6 +1049,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           ],
         ),
       ),
+        ),
     );
   }
 
@@ -1091,7 +1128,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   /// Build horizontal status timeline
   Widget _buildStatusTimeline() {
     final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
-    final status = (widget.booking.status ?? 'Pending').toLowerCase().trim();
+    final status = (_currentBooking.status ?? 'Pending').toLowerCase().trim();
     
     // Define timeline stages based on status
     final stages = <_TimelineStage>[];
@@ -1211,23 +1248,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                     Icons.directions_car,
                                     color: Colors.white,
                                     size: 18,
-                                  ),
-                                  Positioned(
-                                    top: 2,
-                                    right: 2,
-                                    child: Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check,
-                                        color: Color(0xFF4082F1),
-                                        size: 8,
-                                      ),
-                                    ),
                                   ),
                                 ],
                               )

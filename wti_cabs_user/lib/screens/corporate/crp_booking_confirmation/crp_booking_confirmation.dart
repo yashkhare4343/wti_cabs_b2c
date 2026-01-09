@@ -449,8 +449,8 @@ class _CarDetailsCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      width: 9,
-                      height: 9,
+                      width: 1,
+                      height: 1,
                       decoration: const BoxDecoration(
                         color: Color(0xFF949494),
                       ),
@@ -769,39 +769,31 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                       final String title = entry.value;
                       final bool isSelected = widget.selectedTitle == title;
                       return Padding(
-                        padding: EdgeInsets.only(right: i < widget.titles.length - 1 ? 4.0 : 0),
-                        child: ChoiceChip(
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          label: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              title,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isSelected ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.w600,
+                        padding: EdgeInsets.only(right: i < widget.titles.length - 1 ? 12.0 : 0),
+                        child: isSelected
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF64A4F6),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF192653),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: const Color(0xFF64A4F6),
-                          backgroundColor: Colors.white,
-                          labelStyle: TextStyle(
-                            fontSize: 13,
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? Colors.transparent
-                                  : Colors.transparent,
-                            ),
-                          ),
-                          showCheckmark: false,
-                          onSelected: null, // Disabled - read-only
-                        ),
                       );
                     }).toList(),
                   ),

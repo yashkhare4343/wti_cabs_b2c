@@ -1313,11 +1313,36 @@ class _CrpBookingState extends State<CrpBooking> {
                     child: _buildActionButton(
                       'Booking Detail',
                       () async {
+                        // Store original booking ID for finding updated booking
+                        final originalBookingId = booking.bookingId;
+                        final originalBookingNo = booking.bookingNo;
+                        
                         // Navigate to booking details screen
                         // Passes booking object which includes currentDispatchStatusId
+                        // Also passes refresh callback to update parent list when refreshing
                         final result = await GoRouter.of(context).push<bool>(
                           AppRoutes.cprBookingDetails,
-                          extra: booking,
+                          extra: {
+                            'booking': booking,
+                            'onRefreshParent': () async {
+                              // Refresh booking list when details screen refreshes
+                              await _loadAndFetchBookings();
+                            },
+                            'getUpdatedBooking': () async {
+                              // Find and return the updated booking from the refreshed list
+                              try {
+                                final updatedBooking = _allBookings.firstWhere(
+                                  (b) => 
+                                    (originalBookingId != null && b.bookingId == originalBookingId) ||
+                                    (originalBookingNo != null && b.bookingNo == originalBookingNo),
+                                  orElse: () => booking, // Fallback to original booking if not found
+                                );
+                                return updatedBooking;
+                              } catch (e) {
+                                return booking; // Fallback to original booking on error
+                              }
+                            },
+                          },
                         );
                         // If booking was modified or cancelled, refresh the booking list
                         // This ensures we fetch updated booking data after modification

@@ -550,6 +550,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   final TextEditingController alternativeMobileNoController = TextEditingController();
   final TextEditingController cancelReasonController = TextEditingController();
+  String? selectedCancelReason; // Track selected radio option
 
   // final TextEditingController pickupController = TextEditingController();
   // final TextEditingController dropController = TextEditingController();
@@ -2098,10 +2099,18 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       return;
     }
 
-    // Get cancel reason
-    final cancelReason = cancelReasonController.text.trim();
-    if (cancelReason.isEmpty) {
-      CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation');
+    // Get cancel reason - use selected reason or custom text for "others"
+    String cancelReason;
+    if (selectedCancelReason == 'others') {
+      cancelReason = cancelReasonController.text.trim();
+      if (cancelReason.isEmpty) {
+        CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation');
+        return;
+      }
+    } else if (selectedCancelReason != null) {
+      cancelReason = selectedCancelReason!;
+    } else {
+      CustomFailureSnackbar.show(context, 'Please select a reason for cancellation');
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -2217,143 +2226,368 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     }
   }
 
+  Widget _buildRadioOption({
+    required BuildContext context,
+    required String title,
+    required String value,
+    required String? selectedValue,
+    required Function(String?) onChanged,
+  }) {
+    final isSelected = selectedValue == value;
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4082F1).withOpacity(0.08) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF4082F1) : Colors.grey.shade200,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Custom Radio Button
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF4082F1) : Colors.grey.shade400,
+                  width: isSelected ? 2 : 1.5,
+                ),
+                color: Colors.white,
+              ),
+              child: isSelected
+                  ? Center(
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF4082F1),
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isSelected ? const Color(0xFF1A1A1A) : Colors.grey.shade700,
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCancelBookingDialog() {
+    // Use local variables for dialog state
+    String? localSelectedReason;
+    final TextEditingController localCancelReasonController = TextEditingController();
+    
     showDialog(
       context: context,
       barrierColor: Colors.black54,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 8,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            constraints: const BoxConstraints(maxWidth: 400),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return WillPopScope(
+          onWillPop: () async {
+            // Dispose controller after frame to ensure widget tree is cleaned up
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              localCancelReasonController.dispose();
+            });
+            return true;
+          },
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                const Text(
-                  'Cancel This Booking?',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF000000),
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: 400,
+                    maxHeight: MediaQuery.of(context).size.height * 0.75,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Section
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Cancel Booking',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1A1A1A),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Please select a reason for cancellation',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close, color: Colors.grey.shade600, size: 22),
+                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Content Section - Scrollable
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.only(
+                            left: 24,
+                            right: 24,
+                            top: 20,
+                            bottom:20,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Custom Radio Options
+                              _buildRadioOption(
+                                context: context,
+                                title: 'Driver is taking too long to arrive',
+                                value: 'Driver is taking too long to arrive',
+                                selectedValue: localSelectedReason,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    localSelectedReason = value;
+                                    if (value != 'others') {
+                                      localCancelReasonController.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildRadioOption(
+                                context: context,
+                                title: 'Change of travel plans',
+                                value: 'Change of travel plans',
+                                selectedValue: localSelectedReason,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    localSelectedReason = value;
+                                    if (value != 'others') {
+                                      localCancelReasonController.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildRadioOption(
+                                context: context,
+                                title: 'Booked by mistake',
+                                value: 'Booked by mistake',
+                                selectedValue: localSelectedReason,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    localSelectedReason = value;
+                                    if (value != 'others') {
+                                      localCancelReasonController.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildRadioOption(
+                                context: context,
+                                title: 'Others',
+                                value: 'others',
+                                selectedValue: localSelectedReason,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    localSelectedReason = value;
+                                  });
+                                },
+                              ),
+                              // Text input field - only show when "others" is selected
+                              if (localSelectedReason == 'others') ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: localCancelReasonController,
+                                    autofocus: true,
+                                    maxLines: 3,
+                                    decoration: InputDecoration(
+                                      hintText: "Please specify your reason...",
+                                      hintStyle: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade400,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      contentPadding: const EdgeInsets.all(16),
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF1A1A1A),
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Footer Section with Buttons
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: const Color(0xFF4082F1),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  'Back',
+                                  style: TextStyle(
+                                    color: Color(0xFF4082F1),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  // Validate cancel reason
+                                  if (localSelectedReason == null) {
+                                    CustomFailureSnackbar.show(context, 'Please select a reason for cancellation', duration: const Duration(seconds: 2));
+                                    return;
+                                  }
+                                  if (localSelectedReason == 'others' && localCancelReasonController.text.trim().isEmpty) {
+                                    CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation', duration: const Duration(seconds: 2));
+                                    return;
+                                  }
+                                  // Save the values before closing
+                                  final savedReason = localSelectedReason;
+                                  final savedCustomText = localSelectedReason == 'others' 
+                                      ? localCancelReasonController.text 
+                                      : '';
+                                  // Close dialog first
+                                  Navigator.of(dialogContext).pop();
+                                  // Update parent state after dialog closes using microtask
+                                  Future.microtask(() {
+                                    if (mounted) {
+                                      setState(() {
+                                        selectedCancelReason = savedReason;
+                                        if (savedReason == 'others') {
+                                          cancelReasonController.text = savedCustomText;
+                                        } else {
+                                          cancelReasonController.clear();
+                                        }
+                                      });
+                                      // Call cancel booking API
+                                      _handleCancelBooking();
+                                    }
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4082F1),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  'Confirm',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Text input field
-                TextField(
-                  controller: cancelReasonController,
-                  decoration: InputDecoration(
-                    hintText: 'Tell us why you’re cancelling',
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade400,
-                    ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.grey.shade400,
-                        width: 1,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF000000),
-                  ),
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 24),
-                // Buttons
-                Row(
-                  children: [
-                    // Cancel button (left, outlined style like Cancel button at bottom)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF4082F1),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(39),
-                            side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            color: Color(0xFF4082F1),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Cancel Booking button (right, filled style like Confirm Booking button)
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Validate cancel reason
-                          if (cancelReasonController.text.trim().isEmpty) {
-                            CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation', duration: const Duration(seconds: 2));
-                            return;
-                          }
-                          // Close dialog first
-                          Navigator.of(context).pop();
-                          // Call cancel booking API
-                          _handleCancelBooking();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4082F1),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(39),
-                            side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
