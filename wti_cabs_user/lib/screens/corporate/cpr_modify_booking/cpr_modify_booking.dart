@@ -1428,6 +1428,30 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
   }
 
+  /// Reloads car models when run type changes
+  Future<void> _reloadCarModelsOnRunTypeChange() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
+    final Map<String, dynamic> inventoryParams = {
+      'token': token,
+      'user': user ?? email,
+      'CorpID': crpBookingDetailsController
+          .crpBookingDetailResponse
+          .value
+          ?.corporateID,
+      'BranchID': crpBookingDetailsController
+          .crpBookingDetailResponse
+          .value
+          ?.branchID,
+      'RunTypeID': runTypeIdForInventory()
+    };
+    
+    crpInventoryListController.fetchCarModels(
+        inventoryParams, context, skipAutoSelection: true);
+    // Reset prefill flag so it can reapply after models reload
+    _hasAppliedCarModelPrefill = false;
+  }
+
   void _showPickupTypeBottomSheet(List<String> pickupTypes) async{
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
@@ -1556,12 +1580,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                             color: Colors.transparent,
                             child: InkWell(
                               splashColor: Colors.transparent,
-                              onTap: () {
+                              onTap: () async {
                                 setState(() {
                                   selectedPickupType = pickupType;
                                   pickupTypeError = null;
                                   _isPickupTypeExpanded = false;
                                 });
+                                
+                                // Reload car models when run type changes
+                                await _reloadCarModelsOnRunTypeChange();
+                                
                                 Navigator.pop(context);
                               },
                               child: Container(
@@ -1575,37 +1603,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                     Radio<String>(
                                       value: pickupType,
                                       groupValue: selectedPickupType,
-                                      onChanged: (value) {
+                                      onChanged: (value) async {
                                         setState(() {
                                           selectedPickupType = value;
                                           pickupTypeError = null;
                                           _isPickupTypeExpanded = false;
-
-
-
-                                          final Map<String, dynamic>
-                                              inventoryParams = {
-                                            'token': token,
-                                            'user': user??email,
-                                            'CorpID':
-                                                crpBookingDetailsController
-                                                    .crpBookingDetailResponse
-                                                    .value
-                                                    ?.corporateID,
-                                            'BranchID':
-                                                crpBookingDetailsController
-                                                    .crpBookingDetailResponse
-                                                    .value
-                                                    ?.branchID,
-                                            'RunTypeID': runTypeIdForInventory()
-                                          };
-
-                                          crpInventoryListController
-                                              .fetchCarModels(
-                                                  inventoryParams, context, skipAutoSelection: true);
-                                          // Reset prefill flag so it can reapply after models reload
-                                          _hasAppliedCarModelPrefill = false;
                                         });
+                                        
+                                        // Reload car models when run type changes
+                                        await _reloadCarModelsOnRunTypeChange();
+                                        
                                         Navigator.pop(context);
                                       },
                                       activeColor: const Color(0xFF1C1B1F),

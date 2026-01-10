@@ -1130,73 +1130,84 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
     final status = (_currentBooking.status ?? 'Pending').toLowerCase().trim();
     
-    // Define timeline stages based on status
+    // Determine which stages are completed based on status
+    // Pending is always completed
+    final isPendingCompleted = true;
+    
+    // Confirmed is completed if status is Confirmed or beyond
+    final isConfirmedCompleted = status == 'confirmed' || status == '1' || 
+                                 status == 'dispatched' || status == '2' ||
+                                 status == 'allocated' || status == '6' ||
+                                 effectiveStatus == 'completed' ||
+                                 status == 'missed' || status == '3' ||
+                                 status == 'cancelled' || status == 'canceled' || status == '4';
+    
+    // On Going is completed if status is Dispatched or beyond (but not Cancelled)
+    final isCancelled = status == 'cancelled' || status == 'canceled' || status == '4';
+    final isOnGoingCompleted = !isCancelled && (status == 'dispatched' || status == '2' ||
+                                                status == 'allocated' || status == '6' ||
+                                                effectiveStatus == 'completed' ||
+                                                status == 'missed' || status == '3');
+    
+    // Determine final stage type
+    final isMissed = status == 'missed' || status == '3';
+    final isAllocated = status == 'allocated' || status == '6';
+    final isCompleted = effectiveStatus == 'completed';
+    
+    // Always show all 4 stages
     final stages = <_TimelineStage>[];
     
-    // Always show Pending (completed)
+    // Stage 1: Pending (always completed/blue)
     stages.add(_TimelineStage(
       label: 'Pending',
       icon: Icons.access_time,
-      isCompleted: true,
+      isCompleted: isPendingCompleted,
     ));
     
-    // Show Confirmed if status is Confirmed or beyond
-    if (status == 'confirmed' || status == '1' || 
-        status == 'dispatched' || status == '2' ||
-        status == 'allocated' || status == '6' ||
-        effectiveStatus == 'completed' ||
-        status == 'missed' || status == '3' ||
-        status == 'cancelled' || status == 'canceled' || status == '4') {
-      stages.add(_TimelineStage(
-        label: 'Confirmed',
-        icon: Icons.directions_car,
-        isActive: status == 'confirmed' || status == '1',
-        isCompleted: status != 'confirmed' && status != '1',
-      ));
-    }
+    // Stage 2: Confirmed
+    stages.add(_TimelineStage(
+      label: 'Confirmed',
+      icon: Icons.directions_car,
+      isCompleted: isConfirmedCompleted,
+    ));
     
-    // Handle Cancelled - show after Confirmed only
-    if (status == 'cancelled' || status == 'canceled' || status == '4') {
-      stages.add(_TimelineStage(
-        label: 'Cancelled',
-        icon: Icons.cancel,
-        isActive: true,
-        isError: true,
-      ));
-    } 
-    // Handle Dispatched, Allocated, Completed, or Missed
-    else if (status == 'dispatched' || status == '2' ||
-             status == 'allocated' || status == '6' ||
-             effectiveStatus == 'completed' ||
-             status == 'missed' || status == '3') {
-      // Show Dispatched/On Going stage
+    // Stage 3: On Going
+    // For cancelled status, we SKIP \"On Going\" so the flow is:
+    // Pending → Confirmed → Cancelled
+    if (!isCancelled) {
       stages.add(_TimelineStage(
         label: 'On Going',
         icon: Icons.directions_car,
-        isActive: (status == 'dispatched' || status == '2') && effectiveStatus != 'completed',
-        isCompleted: effectiveStatus == 'completed' || status == 'allocated' || status == '6',
-        isError: status == 'missed' || status == '3',
+        isCompleted: isOnGoingCompleted,
       ));
-      
-      // Show final stage: Allocated or Completed
-      if (status == 'allocated' || status == '6') {
-        stages.add(_TimelineStage(
-          label: 'Allocated',
-          icon: Icons.check_circle,
-          isActive: true,
-          isCompleted: true,
-        ));
-      } else if (effectiveStatus == 'completed') {
-        stages.add(_TimelineStage(
-          label: 'Completed',
-          icon: Icons.check_circle,
-          isActive: true,
-          isCompleted: true,
-        ));
-      } else if (status == 'missed' || status == '3') {
-        // Missed is already shown in the "On Going" stage with error
-        // No additional stage needed
-      }
+    }
+    
+    // Stage 3 or 4: Final stage (Completed, Allocated, Cancelled, or Missed)
+    if (isCancelled) {
+      stages.add(_TimelineStage(
+        label: 'Cancelled',
+        icon: Icons.cancel,
+        isError: true,
+      ));
+    } else if (isMissed) {
+      stages.add(_TimelineStage(
+        label: 'Missed',
+        icon: Icons.error_outline,
+        isError: true,
+      ));
+    } else if (isAllocated) {
+      stages.add(_TimelineStage(
+        label: 'Allocated',
+        icon: Icons.check_circle,
+        isCompleted: true,
+      ));
+    } else {
+      // Default to Completed
+      stages.add(_TimelineStage(
+        label: 'Completed',
+        icon: Icons.check_circle,
+        isCompleted: isCompleted,
+      ));
     }
 
     return Container(
