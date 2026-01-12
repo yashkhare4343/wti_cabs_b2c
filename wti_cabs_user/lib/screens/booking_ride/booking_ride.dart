@@ -221,7 +221,7 @@ class _BookingRideState extends State<BookingRide> {
       canPop: false, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        GoRouter.of(context).push(AppRoutes.bottomNav);
+        GoRouter.of(context).go(AppRoutes.bottomNav);
       },
 
       child: Scaffold(
@@ -240,7 +240,6 @@ class _BookingRideState extends State<BookingRide> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // Navigate back to bottomNav
                         GoRouter.of(context).push(AppRoutes.bottomNav);
                       },
                       child:
@@ -842,46 +841,59 @@ class _OutStationState extends State<OutStation> {
           const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                text: 'Search Now',
-                onPressed: () async {
-                  try {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
-                      try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
-                    
-                    // Ensure destination APIs are called if placeId exists
-                    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                        dropPlaceSearchController.dropLatLng.value == null) {
-                      try {
-                        await dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceSearchController.dropPlaceId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching destination lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
+            child: Obx(() {
+              final pickupId = placeSearchController.placeId.value;
+              final dropId = dropPlaceSearchController.dropPlaceId.value;
+              final findCntryResponse =
+                  placeSearchController.findCntryDateTimeResponse.value;
+              final dropResponse =
+                  dropPlaceSearchController.dropDateTimeResponse.value;
 
-                    final requestData =
+              final isInputValid = pickupController.text.isNotEmpty &&
+                  dropController.text.isNotEmpty;
+              // Check if drop place is empty (from navigation or user input)
+              final isDropPlaceEmpty = dropId.isEmpty || 
+                  bookingRideController.prefilledDrop.value.isEmpty ||
+                  dropController.text.isEmpty;
+              final isPlaceMissing = pickupId.isEmpty || isDropPlaceEmpty;
+              final isSamePlace = pickupId.isNotEmpty && pickupId == dropId;
+              final hasSourceError =
+                  (findCntryResponse?.sourceInput ?? false) ||
+                      (dropResponse?.sourceInput ?? false);
+              final hasDestinationError =
+                  (findCntryResponse?.destinationInputFalse ?? false) ||
+                      (dropResponse?.destinationInputFalse ?? false);
+              final goNext = (findCntryResponse?.goToNextPage ?? false) ||
+                  (findCntryResponse?.sameCountry ?? false) ||
+                  (dropResponse?.sameCountry ?? false) ||
+                  (dropResponse?.goToNextPage ?? false);
+              final isEnabled = isInputValid &&
+                  !isSamePlace &&
+                  !hasSourceError &&
+                  !hasDestinationError &&
+                  !isPlaceMissing &&
+                  goNext &&
+                  !bookingRideController.isInvalidTime.value;
+
+              return Opacity(
+                opacity: isEnabled ? 1.0 : 0.6,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    text: 'Search Now',
+                    onPressed: isEnabled
+                        ? () async {
+                      try {
+                        final requestData =
                         await _buildOutstationRequestData(context);
-                    await searchCabInventoryController
-                        .fetchBookingData(
-                      country: placeSearchController
-                          .getPlacesLatLng.value?.country ??
-                          '',
-                      requestData: requestData,
-                      context: context,
-                    );
+                        await searchCabInventoryController
+                            .fetchBookingData(
+                          country: placeSearchController
+                              .getPlacesLatLng.value?.country ??
+                              '',
+                          requestData: requestData,
+                          context: context,
+                        );
 
 
 
@@ -925,27 +937,30 @@ class _OutStationState extends State<OutStation> {
                           updateLocalEndTime(defaultEndTime);
                         }
 
-                    bookingRideController.localEndTime.refresh();
+                        bookingRideController.localEndTime.refresh();
 
-                    Navigator.push(
-                      context,
-                      Platform.isIOS
-                          ? CupertinoPageRoute(
-                        builder: (context) => InventoryList(
-                            requestData: requestData),
-                      )
-                          : MaterialPageRoute(
-                        builder: (context) => InventoryList(
-                            requestData: requestData),
-                      ),
-                    );
-                    // Navigator.of(context).pop();
-                  } catch (e) {
-                    debugPrint('[SearchNow] Error: $e');
-                  }
-                },
-              ),
-            ),
+                        Navigator.push(
+                          context,
+                          Platform.isIOS
+                              ? CupertinoPageRoute(
+                            builder: (context) => InventoryList(
+                                requestData: requestData),
+                          )
+                              : MaterialPageRoute(
+                            builder: (context) => InventoryList(
+                                requestData: requestData),
+                          ),
+                        );
+                        // Navigator.of(context).pop();
+                      } catch (e) {
+                        debugPrint('[SearchNow] Error: $e');
+                      }
+                    }
+                        : () {},
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -993,7 +1008,7 @@ class _OutStationState extends State<OutStation> {
     return null;
   }
 
-  void _handleLocationTap(BuildContext context, {required bool isPickup}) async {
+  void _handleLocationTap(BuildContext context, {required bool isPickup}) {
     final startTime = bookingRideController.localStartTime.value;
     if (startTime.isAfter(DateTime.now().subtract(const Duration(days: 1)))) {
       final resetEndTime = startTime.add(defaultTripDuration);
@@ -1004,7 +1019,7 @@ class _OutStationState extends State<OutStation> {
     }
 
     if (isPickup) {
-      final result = await Navigator.push(
+      Navigator.push(
         context,
         Platform.isIOS
             ? CupertinoPageRoute(
@@ -1014,19 +1029,8 @@ class _OutStationState extends State<OutStation> {
           builder: (context) => const SelectPickup(),
         ),
       );
-      
-      // Ensure all three APIs are called after returning from SelectPickup
-      if (placeSearchController.placeId.value.isNotEmpty) {
-        try {
-          await placeSearchController.getLatLngDetails(
-              placeSearchController.placeId.value, context);
-        } catch (e) {
-          debugPrint('Error fetching source details after navigation: $e');
-          // Continue even if API fails
-        }
-      }
     } else {
-      final result = await Navigator.push(
+      Navigator.push(
         context,
         Platform.isIOS
             ? CupertinoPageRoute(
@@ -1036,17 +1040,6 @@ class _OutStationState extends State<OutStation> {
           builder: (context) => const SelectDrop(fromInventoryScreen: false,),
         ),
       );
-      
-      // Ensure all three APIs are called after returning from SelectDrop
-      if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-        try {
-          await dropPlaceSearchController.getLatLngForDrop(
-              dropPlaceSearchController.dropPlaceId.value, context);
-        } catch (e) {
-          debugPrint('Error fetching destination details after navigation: $e');
-          // Continue even if API fails
-        }
-      }
     }
   }
 
@@ -1118,110 +1111,72 @@ class _OutStationState extends State<OutStation> {
     // ========================================
 
 
-    // Get fallback values from controllers if storage is null
-    final sourceTitle = data['sourceTitle'] ?? 
-        bookingRideController.prefilled.value ?? 
-        placeSearchController.suggestions.firstOrNull?.primaryText ?? '';
-    final actualOffset = data['actualOffset'] ?? 
-        placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
-        offset.toString();
-    final timeZone = data['timeZone'] ?? 
-        placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
-        placeSearchController.getCurrentTimeZoneName();
-    final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
-        (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
-            ? placeSearchController.convertToIsoWithOffset(
-                placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
-                -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
-            : DateTime.now().toIso8601String());
-    final userTimeWithOffset = data['userTimeWithOffset'] ?? 
-        (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
-            ? placeSearchController.convertToIsoWithOffset(
-                placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
-                -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
-            : DateTime.now().toIso8601String());
-    final userOffset = data['userOffset'] ?? 
-        placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
-        offset.toString();
-
-    // Get source terms from suggestion if available
-    List<Map<String, dynamic>> sourceTerms = _parseList<Map<String, dynamic>>(data['sourceTerms']);
-    if (sourceTerms.isEmpty && placeSearchController.suggestions.isNotEmpty) {
-      final suggestion = placeSearchController.suggestions.first;
-      if (suggestion.terms.isNotEmpty) {
-        sourceTerms = suggestion.terms.map((term) => {
-          'offset': term.offset,
-          'value': term.value,
-        }).toList();
-      }
-    }
-
     return {
       "timeOffSet": -offset,
-      "countryName": data['country'] ?? 'India',
+      "countryName": data['country'],
       "searchDate": searchDate,
       "searchTime": searchTime,
-      "offset": int.parse(userOffset),
+      "offset": int.parse(data['userOffset'] ?? '0'),
       "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
       "returnDateAndTime": isRoundTrip
           ? bookingRideController.localEndTime.value.toUtc().toIso8601String()
           : "",
       "tripCode": isRoundTrip ? "1" : "0",
       "source": {
-        "sourceTitle": sourceTitle,
-        "sourcePlaceId": data['sourcePlaceId'] ?? placeSearchController.placeId.value,
+        "sourceTitle": data['sourceTitle'],
+        "sourcePlaceId": data['sourcePlaceId'],
         "sourceCity":
-        placeSearchController.getPlacesLatLng.value?.city.toString() ?? '',
+        placeSearchController.getPlacesLatLng.value?.city.toString(),
         "sourceState":
-        placeSearchController.getPlacesLatLng.value?.state.toString() ?? '',
+        placeSearchController.getPlacesLatLng.value?.state.toString(),
         "sourceCountry":
-        placeSearchController.getPlacesLatLng.value?.country.toString() ?? 'India',
+        placeSearchController.getPlacesLatLng.value?.country.toString(),
         "sourceType": _parseList<String>(data['sourceTypes']),
         "sourceLat":
-        placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+        placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
         "sourceLng":
-        placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
-        "terms": sourceTerms,
+        placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+        "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
       },
       "destination": {
-        "destinationTitle": data['destinationTitle'] ?? bookingRideController.prefilledDrop.value ?? '',
-        "destinationPlaceId": data['destinationPlaceId'] ?? dropPlaceSearchController.dropPlaceId.value,
+        "destinationTitle": data['destinationTitle'],
+        "destinationPlaceId": data['destinationPlaceId'],
         "destinationCity":
-        dropPlaceSearchController.dropLatLng.value?.city.toString() ?? '',
+        dropPlaceSearchController.dropLatLng.value!.city.toString(),
         "destinationState":
-        dropPlaceSearchController.dropLatLng.value?.state.toString() ?? '',
+        dropPlaceSearchController.dropLatLng.value!.state.toString(),
         "destinationCountry":
-        dropPlaceSearchController.dropLatLng.value?.country.toString() ?? 'India',
+        dropPlaceSearchController.dropLatLng.value!.country.toString(),
         "destinationType": _parseList<String>(data['destinationTypes']),
         "destinationLat":
-        dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString() ?? '',
+        dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
         "destinationLng":
-        dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString() ?? '',
+        dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
         "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
       },
       "packageSelected": {"km": "", "hours": ""},
       "stopsArray": [],
       "pickUpTime": {
-        "time": actualTimeWithOffset,
-        "offset": actualOffset,
-        "timeZone": timeZone
+        "time": data['actualTimeWithOffset'],
+        "offset": data['actualOffset'],
+        "timeZone": data['timeZone']
       },
       "dropTime": isRoundTrip
           ? {
         "time": bookingRideController.localEndTime.value
             .toUtc()
             .toIso8601String(),
-        "offset": actualOffset,
-        "timeZone": timeZone
+        "offset": data['actualOffset'],
+        "timeZone": data['timeZone']
       }
           : {},
       "mindate": {
-        "date": userTimeWithOffset,
-        "time": userTimeWithOffset,
-        "offset": userOffset,
-        "timeZone": timeZone
+        "date": data['userTimeWithOffset'],
+        "time": data['userTimeWithOffset'],
+        "offset": data['userOffset'],
+        "timeZone": data['timeZone']
       },
-      "isGlobal": (data['country']?.toLowerCase() ?? 'india') == 'india' ? false : true,
+      "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
     };
   }
 
@@ -1583,7 +1538,7 @@ class _RidesState extends State<Rides> {
                                 bookingRideController.prefilledDrop.value;
                           });
                           bookingRideController.isInvalidTime.value = false;
-                          final result = await Navigator.push(
+                          Navigator.push(
                             context,
                             Platform.isIOS
                                 ? CupertinoPageRoute(
@@ -1595,12 +1550,6 @@ class _RidesState extends State<Rides> {
                               const SelectPickup(),
                             ),
                           );
-                          
-                          // Ensure all three APIs are called after returning from SelectPickup
-                          if (placeSearchController.placeId.value.isNotEmpty) {
-                            await placeSearchController.getLatLngDetails(
-                                placeSearchController.placeId.value, context);
-                          }
                         },
                       ),
                       const SizedBox(height: 12),
@@ -1638,9 +1587,10 @@ class _RidesState extends State<Rides> {
 
                             return null;
                           })(),
-                          onTap: () async {
-                            bookingRideController.isInvalidTime.value = false;
-                            final result = await Navigator.push(
+                          onTap: () {
+                            bookingRideController.isInvalidTime.value =
+                            false;
+                            Navigator.push(
                               context,
                               Platform.isIOS
                                   ? CupertinoPageRoute(
@@ -1652,12 +1602,6 @@ class _RidesState extends State<Rides> {
                                 const SelectDrop(fromInventoryScreen: false,),
                               ),
                             );
-                            
-                            // Ensure all three APIs are called after returning from SelectDrop
-                            if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty) {
-                              await dropPlaceSearchController.getLatLngForDrop(
-                                  dropPlaceSearchController.dropPlaceId.value, context);
-                            }
                           }),
                     ],
                   )),
@@ -1847,46 +1791,42 @@ class _RidesState extends State<Rides> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () async {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
-                      try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
-                    
-                    // Ensure destination APIs are called if placeId exists
-                    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                        dropPlaceSearchController.dropLatLng.value == null) {
-                      try {
-                        await dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceSearchController.dropPlaceId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching destination lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
+                child: Obx(() {
+                  // Check if drop place is empty
+                  final isDropPlaceEmpty = dropPlaceSearchController.dropPlaceId.value.isEmpty ||
+                      bookingRideController.prefilledDrop.value.isEmpty ||
+                      rideDropController.text.isEmpty;
+                  final isEnabled = buttonStateController.isEnabled.value &&
+                      ridePickupController.text.isNotEmpty &&
+                      rideDropController.text.isNotEmpty &&
+                      !isDropPlaceEmpty;
 
-                    final requestData = await _buildRequestData(context);
-                    // bookingRideController.isInventoryPage.value = false;
-                    //
-                    // if (bookingRideController.isInventoryPage.value == true){
-                    //   GoRouter.of(context).pop();
-                    // }
+                  return Opacity(
+                    opacity: isEnabled ? 1.0 : 0.6,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: PrimaryButton(
+                        text: 'Search Now',
+                        onPressed: isEnabled
+                            ? () async {
+                          final requestData =
+                          await _buildRequestData(context);
+                          // bookingRideController.isInventoryPage.value = false;
+                          //
+                          // if (bookingRideController.isInventoryPage.value == true){
+                          //   GoRouter.of(context).pop();
+                          // }
 
-                    GoRouter.of(context).push(
-                      AppRoutes.inventoryList,
-                      extra: requestData,
-                    );
-                  },
-                ),
+                          GoRouter.of(context).push(
+                            AppRoutes.inventoryList,
+                            extra: requestData,
+                          );
+                        }
+                            : () {}, //  null = properly disabled
+                      ),
+                    ),
+                  );
+                }),
               ),
             ),
           ],
@@ -1965,100 +1905,63 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
       'yash 22aug local start time : ${bookingRideController.localStartTime.value}');
   print(
       'yash 22aug local selected time : ${bookingRideController.selectedDateTime.value}');
-  // Get fallback values from controllers if storage is null
-  final sourceTitle = data['sourceTitle'] ?? 
-      bookingRideController.prefilled.value ?? 
-      (placeSearchController.suggestions.isNotEmpty 
-          ? placeSearchController.suggestions.first.primaryText 
-          : '');
-  final actualOffset = data['actualOffset'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
-      offset.toString();
-  final timeZone = data['timeZone'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
-      placeSearchController.getCurrentTimeZoneName();
-  final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
-      (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
-          ? placeSearchController.convertToIsoWithOffset(
-              placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
-              -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
-          : DateTime.now().toIso8601String());
-  final userTimeWithOffset = data['userTimeWithOffset'] ?? 
-      (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
-          ? placeSearchController.convertToIsoWithOffset(
-              placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
-              -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
-          : DateTime.now().toIso8601String());
-  final userOffset = data['userOffset'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
-      offset.toString();
-
-  // Get source terms from suggestion if available
-  List<Map<String, dynamic>> sourceTerms = _parseList<Map<String, dynamic>>(data['sourceTerms']);
-  if (sourceTerms.isEmpty && placeSearchController.suggestions.isNotEmpty) {
-    final suggestion = placeSearchController.suggestions.first;
-    if (suggestion.terms.isNotEmpty) {
-      sourceTerms = suggestion.terms.map((term) => term.toJson()).toList();
-    }
-  }
-
   return {
     "timeOffSet": -offset,
-    "countryName": data['country'] ?? 'India',
+    "countryName": data['country'],
     "searchDate": searchDate,
     "searchTime": searchTime,
-    "offset": int.parse(userOffset),
+    "offset": int.parse(data['userOffset'] ?? '0'),
     // "pickupDateAndTime": data['userDateTime'],
     "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
     "returnDateAndTime": "",
     "tripCode": "2",
     "source": {
-      "sourceTitle": sourceTitle,
-      "sourcePlaceId": data['sourcePlaceId'] ?? placeSearchController.placeId.value,
+      "sourceTitle": data['sourceTitle'],
+      "sourcePlaceId": data['sourcePlaceId'],
       "sourceCity":
-      placeSearchController.getPlacesLatLng.value?.city.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.city.toString(),
       "sourceState":
-      placeSearchController.getPlacesLatLng.value?.state.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.state.toString(),
       "sourceCountry":
-      placeSearchController.getPlacesLatLng.value?.country.toString() ?? 'India',
+      placeSearchController.getPlacesLatLng.value?.country.toString(),
       "sourceType": _parseList<String>(data['sourceTypes']),
       "sourceLat":
-      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
       "sourceLng":
-      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
-      "terms": sourceTerms,
+      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {
-      "destinationTitle": data['destinationTitle'] ?? bookingRideController.prefilledDrop.value ?? '',
-      "destinationPlaceId": data['destinationPlaceId'] ?? dropPlaceSearchController.dropPlaceId.value,
+      "destinationTitle": data['destinationTitle'],
+      "destinationPlaceId": data['destinationPlaceId'],
       "destinationCity":
-      dropPlaceSearchController.dropLatLng.value?.city.toString() ?? '',
+      dropPlaceSearchController.dropLatLng.value!.city.toString(),
       "destinationState":
-      dropPlaceSearchController.dropLatLng.value?.state.toString() ?? '',
+      dropPlaceSearchController.dropLatLng.value!.state.toString(),
       "destinationCountry":
-      dropPlaceSearchController.dropLatLng.value?.country.toString() ?? 'India',
+      dropPlaceSearchController.dropLatLng.value!.country.toString(),
       "destinationType": _parseList<String>(data['destinationTypes']),
       "destinationLat":
-      dropPlaceSearchController.dropLatLng.value?.latLong.lat.toString() ?? '',
+      dropPlaceSearchController.dropLatLng.value!.latLong.lat.toString(),
       "destinationLng":
-      dropPlaceSearchController.dropLatLng.value?.latLong.lng.toString() ?? '',
+      dropPlaceSearchController.dropLatLng.value!.latLong.lng.toString(),
       "terms": _parseList<Map<String, dynamic>>(data['destinationTerms']),
     },
     "packageSelected": {"km": "", "hours": ""},
     "stopsArray": [],
     "pickUpTime": {
-      "time": actualTimeWithOffset,
-      "offset": actualOffset,
-      "timeZone": timeZone
+      "time": data['actualTimeWithOffset'],
+      "offset": data['actualOffset'],
+      "timeZone": data['timeZone']
     },
     "dropTime": {},
     "mindate": {
-      "date": userTimeWithOffset,
-      "time": userTimeWithOffset,
-      "offset": userOffset,
-      "timeZone": timeZone
+      "date": data['userTimeWithOffset'],
+      "time": data['userTimeWithOffset'],
+      "offset": data['userOffset'],
+      "timeZone": data['timeZone']
     },
-    "isGlobal": (data['country']?.toLowerCase() ?? 'india') == 'india' ? false : true,
+    "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
   };
 }
 
@@ -2298,12 +2201,6 @@ class _RentalState extends State<Rental> {
                             bookingRideController.isInvalidTime.value = false;
                             await GoRouter.of(context)
                                 .push(AppRoutes.choosePickup);
-                            
-                            // Ensure all three APIs are called after returning from choosePickup
-                            if (placeSearchController.placeId.value.isNotEmpty) {
-                              await placeSearchController.getLatLngDetails(
-                                  placeSearchController.placeId.value, context);
-                            }
                           },
                         ),
                       ],
@@ -2603,62 +2500,74 @@ class _RentalState extends State<Rental> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () async {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
-                      try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
+                child: Obx(() {
+                  final pickupId = placeSearchController.placeId.value;
 
-                    final requestData = await _buildRentalRequestData(context);
+                  final hasSourceError = placeSearchController
+                      .findCntryDateTimeResponse.value?.sourceInput ==
+                      true;
 
-                    setState(() => _isLoading = true);
+                  final isPlaceMissing = pickupId.isEmpty;
+                  // Check if drop place is empty (rental might not need drop, but we'll check anyway)
+                  final isDropPlaceEmpty = dropPlaceSearchController.dropPlaceId.value.isEmpty ||
+                      bookingRideController.prefilledDrop.value.isEmpty;
 
-                    try {
-                      await searchCabInventoryController
-                          .fetchBookingData(
-                        country: requestData['countryName'],
-                        requestData: requestData,
-                        context: context,
-                        isSecondPage: true,
-                      );
+                  final canProceed = !hasSourceError &&
+                      !isPlaceMissing &&
+                      !isDropPlaceEmpty &&
+                      (placeSearchController
+                          .findCntryDateTimeResponse.value?.goToNextPage ==
+                          true);
 
-                      bookingRideController.isInventoryPage.value = false;
+                  // 🚨 force disable conditions
+                  final forceDisable = hasSourceError ||
+                      bookingRideController.isInvalidTime.value;
 
-                      if (bookingRideController.isInventoryPage.value == true) {
+                  //  final flag
+                  final isEnabled = canProceed && !forceDisable;
+
+                  return Opacity(
+                    opacity: isEnabled ? 1.0 : 0.6,
+                    child: PrimaryButton(
+                      text: 'Search Now',
+                      onPressed: isEnabled
+                          ? () async {
+                        final requestData =
+                        await _buildRentalRequestData(context);
+
+                        setState(() => _isLoading = true);
+
+                        await searchCabInventoryController
+                            .fetchBookingData(
+                          country: requestData['countryName'],
+                          requestData: requestData,
+                          context: context,
+                          isSecondPage: true,
+                        )
+                            .then((_) {
+                          bookingRideController.isInventoryPage.value =
+                          false;
+
+                          if (bookingRideController
+                              .isInventoryPage.value ==
+                              true) {
+                            GoRouter.of(context).pop();
+                          } else {
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: requestData,
+                            );
+                          }
+                        });
+
+                        if (!mounted) return;
+                        setState(() => _isLoading = false);
                         GoRouter.of(context).pop();
-                      } else {
-                        GoRouter.of(context).push(
-                          AppRoutes.inventoryList,
-                          extra: requestData,
-                        );
                       }
-                    } catch (e) {
-                      debugPrint('Error fetching booking data: $e');
-                      // Show error to user but don't block
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Network error. Please try again.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } finally {
-                      if (!mounted) return;
-                      setState(() => _isLoading = false);
-                      GoRouter.of(context).pop();
-                    }
-                  },
-                ),
+                          : () {}, //  null disables the button properly
+                    ),
+                  );
+                }),
               ),
             )
           ],
@@ -2733,67 +2642,30 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     },
   );
 
-  // Get fallback values from controllers if storage is null
-  final sourceTitle = data['sourceTitle'] ?? 
-      bookingRideController.prefilled.value ?? 
-      (placeSearchController.suggestions.isNotEmpty 
-          ? placeSearchController.suggestions.first.primaryText 
-          : '');
-  final actualOffset = data['actualOffset'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
-      offset.toString();
-  final timeZone = data['timeZone'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
-      placeSearchController.getCurrentTimeZoneName();
-  final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
-      (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
-          ? placeSearchController.convertToIsoWithOffset(
-              placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
-              -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
-          : DateTime.now().toIso8601String());
-  final userTimeWithOffset = data['userTimeWithOffset'] ?? 
-      (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
-          ? placeSearchController.convertToIsoWithOffset(
-              placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
-              -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
-          : DateTime.now().toIso8601String());
-  final userOffset = data['userOffset'] ?? 
-      placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
-      offset.toString();
-
-  // Get source terms from suggestion if available
-  List<Map<String, dynamic>> sourceTerms = _parseList<Map<String, dynamic>>(data['sourceTerms']);
-  if (sourceTerms.isEmpty && placeSearchController.suggestions.isNotEmpty) {
-    final suggestion = placeSearchController.suggestions.first;
-    if (suggestion.terms.isNotEmpty) {
-      sourceTerms = suggestion.terms.map((term) => term.toJson()).toList();
-    }
-  }
-
   return {
     "timeOffSet": -offset,
-    "countryName": data['country'] ?? 'India',
+    "countryName": data['country'],
     "searchDate": searchDate,
     "searchTime": searchTime,
-    "offset": int.parse(userOffset),
+    "offset": int.parse(data['userOffset'] ?? '0'),
     "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
     "returnDateAndTime": "",
     "tripCode": "3",
     "source": {
-      "sourceTitle": sourceTitle,
-      "sourcePlaceId": data['sourcePlaceId'] ?? placeSearchController.placeId.value,
+      "sourceTitle": data['sourceTitle'],
+      "sourcePlaceId": data['sourcePlaceId'],
       "sourceCity":
-      placeSearchController.getPlacesLatLng.value?.city.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.city.toString(),
       "sourceState":
-      placeSearchController.getPlacesLatLng.value?.state.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.state.toString(),
       "sourceCountry":
-      placeSearchController.getPlacesLatLng.value?.country.toString() ?? 'India',
+      placeSearchController.getPlacesLatLng.value?.country.toString(),
       "sourceType": _parseList<String>(data['sourceTypes']),
       "sourceLat":
-      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString() ?? '',
+      placeSearchController.getPlacesLatLng.value?.latLong.lat.toString(),
       "sourceLng":
-      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString() ?? '',
-      "terms": sourceTerms,
+      placeSearchController.getPlacesLatLng.value?.latLong.lng.toString(),
+      "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
     },
     "destination": {},
     // "packageSelected": {
@@ -2806,18 +2678,18 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     },
     "stopsArray": [],
     "pickUpTime": {
-      "time": actualTimeWithOffset,
-      "offset": actualOffset,
-      "timeZone": timeZone
+      "time": data['actualTimeWithOffset'],
+      "offset": data['actualOffset'],
+      "timeZone": data['timeZone']
     },
     "dropTime": {},
     "mindate": {
-      "date": userTimeWithOffset,
-      "time": userTimeWithOffset,
-      "offset": userOffset,
-      "timeZone": timeZone
+      "date": data['userTimeWithOffset'],
+      "time": data['userTimeWithOffset'],
+      "offset": data['userOffset'],
+      "timeZone": data['timeZone']
     },
-    "isGlobal": (data['country']?.toLowerCase() ?? 'india') == 'india' ? false : true,
+    "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
   };
 }
 

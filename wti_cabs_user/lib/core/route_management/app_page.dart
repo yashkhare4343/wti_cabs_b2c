@@ -312,25 +312,8 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBookingDetails,
       pageBuilder: (context, state) {
-        // Handle both direct booking object and Map with booking + callbacks
-        if (state.extra is Map) {
-          final extra = state.extra as Map<String, dynamic>;
-          final booking = extra['booking'] as CrpBookingHistoryItem;
-          final onRefreshParent = extra['onRefreshParent'] as VoidCallback?;
-          final getUpdatedBooking = extra['getUpdatedBooking'] as Future<CrpBookingHistoryItem?> Function()?;
-          return CorporatePageTransitions.defaultTransition(
-            CrpBookingDetails(
-              booking: booking,
-              onRefreshParent: onRefreshParent,
-              getUpdatedBooking: getUpdatedBooking,
-            ),
-          );
-        } else {
-          final booking = state.extra as CrpBookingHistoryItem;
-          return CorporatePageTransitions.defaultTransition(
-            CrpBookingDetails(booking: booking),
-          );
-        }
+        final booking = state.extra as CrpBookingHistoryItem;
+        return CorporatePageTransitions.defaultTransition(CrpBookingDetails(booking: booking));
       },
     ),
     GoRoute(
@@ -358,21 +341,7 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.cprBottomNav,
-      pageBuilder: (context, state) {
-        // Extract initialIndex from extra if provided
-        int? initialIndex;
-        if (state.extra is Map) {
-          final extra = state.extra as Map;
-          if (extra['initialIndex'] != null) {
-            initialIndex = extra['initialIndex'] is int 
-                ? extra['initialIndex'] as int
-                : int.tryParse(extra['initialIndex'].toString());
-          }
-        }
-        return CorporatePageTransitions.fadeTransition(
-          CorporateBottomNavScreen(initialIndex: initialIndex),
-        );
-      },
+      pageBuilder: (context, state) => CorporatePageTransitions.fadeTransition(CorporateBottomNavScreen()),
     ),
     GoRoute(
       path: AppRoutes.cprLandingPage,
@@ -414,11 +383,6 @@ class AppPages {
         String bookingId = '';
         Map<String, String>? bookingDetails;
         
-        bool? bStatus;
-        String? bookingStatus;
-        String? pickupOtp;
-        String? dropOtp;
-        
         if (extra is String) {
           bookingId = extra;
         } else if (extra is Map<String, dynamic>) {
@@ -431,11 +395,6 @@ class AppPages {
             'bookingNo': extra['bookingNo']?.toString() ?? '',
             'cabRequiredOn': extra['cabRequiredOn']?.toString() ?? '',
           };
-          // Extract new parameters
-          bStatus = extra['bStatus'] as bool?;
-          bookingStatus = extra['bookingStatus']?.toString();
-          pickupOtp = extra['pickupOtp']?.toString();
-          dropOtp = extra['dropOtp']?.toString();
         } else {
           bookingId = state.uri.queryParameters['bookingId'] ?? '';
         }
@@ -444,10 +403,6 @@ class AppPages {
           CrpCabTrackingScreen(
             bookingId: bookingId,
             bookingDetails: bookingDetails,
-            bStatus: bStatus,
-            bookingStatus: bookingStatus,
-            pickupOtp: pickupOtp,
-            dropOtp: dropOtp,
           ),
         );
       },

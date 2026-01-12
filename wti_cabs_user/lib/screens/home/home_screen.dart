@@ -9,6 +9,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -111,6 +112,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ✅ Use single instance to avoid conflicts
   final PlaceSearchController placeSearchController =
       Get.put(PlaceSearchController(), permanent: true);
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.put(DropPlaceSearchController(), permanent: true);
   final SourceLocationController sourceController =
       Get.put(SourceLocationController());
   final DestinationLocationController destinationLocationController =
@@ -290,7 +293,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
 
     // ✅ Fetch location in background, don't block UI
-    fetchCurrentLocationAndAddress().catchError((e) {
+    // App launches first time - fetch GPS
+    fetchCurrentLocationAndAddress(shouldFetchGPS: true).catchError((e) {
       debugPrint("❌ Error fetching location: $e");
     });
 
@@ -329,6 +333,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Reapply status bar color when the app resumes
       _setStatusBarColor();
+      // App resumes after long time (optional) - fetch GPS
+      fetchCurrentLocationAndAddress(shouldFetchGPS: true).catchError((e) {
+        debugPrint("❌ Error fetching location on resume: $e");
+      });
     }
   }
 
@@ -356,7 +364,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  Future<void> fetchCurrentLocationAndAddress() async {
+  Future<void> fetchCurrentLocationAndAddress({bool shouldFetchGPS = true}) async {
+    // ✅ Check if source location already exists - avoid unnecessary API calls
+    final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+    if (existingSourcePlaceId != null && existingSourcePlaceId.isNotEmpty) {
+      // If we have placeId but no lat/lng, try to load it
+      if (placeSearchController.getPlacesLatLng.value == null) {
+        try {
+          await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+        } catch (e) {
+          debugPrint('❌ Error loading lat/lng for existing placeId: $e');
+          // Continue to fetch new location if loading fails
+        }
+      }
+      
+      // If we now have lat/lng, we're good - no need to fetch GPS
+      if (placeSearchController.getPlacesLatLng.value != null) {
+        final existingSourceTitle = await StorageServices.instance.read('sourceTitle');
+        if (existingSourceTitle != null && existingSourceTitle.isNotEmpty) {
+          bookingRideController.prefilled.value = existingSourceTitle;
+          placeSearchController.placeId.value = existingSourcePlaceId;
+          setState(() => address = existingSourceTitle);
+          return; // Source location already exists, no need to fetch
+        }
+      }
+    }
+
+    // ✅ Only fetch GPS if explicitly requested
+    if (!shouldFetchGPS) {
+      return; // Don't fetch GPS for recent/saved destinations or typing
+    }
+
     final loc = location.Location();
 
     // ✅ Ensure service is enabled
@@ -375,10 +413,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     await _getAddressAndPrefillFromLatLng(
       LatLng(locData.latitude!, locData.longitude!),
+      shouldFetchGPS: shouldFetchGPS,
     );
   }
 
-  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng) async {
+  Future<void> _getAddressAndPrefillFromLatLng(LatLng latLng, {bool shouldFetchGPS = true}) async {
     try {
       // 1. Reverse geocode to get human-readable address
       final placemarks = await geocoding.placemarkFromCoordinates(
@@ -405,11 +444,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final fullAddress =
           components.where((s) => s.trim().isNotEmpty).join(', ');
 
+      // Check if address is empty before proceeding
+      if (fullAddress.trim().isEmpty) {
+        setState(() => address = 'Address not found');
+        return;
+      }
+
       // 2. Show address on UI immediately
       setState(() => address = fullAddress);
 
-      // 3. Try searching the place (may fail or return empty)
-      await placeSearchController.searchPlaces(fullAddress, context);
+      // ✅ Only proceed with searchPlaces if shouldFetchGPS is true
+      // For recent/saved destinations or typing, we don't need to search
+      if (!shouldFetchGPS) {
+        return;
+      }
+
+      // ✅ Check if we already have placeId - if yes, skip searchPlaces entirely
+      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+      final existingSourceTitle = await StorageServices.instance.read('sourceTitle');
+      
+      // If we have placeId, try to use it directly without calling searchPlaces
+      if (existingSourcePlaceId != null && existingSourcePlaceId.isNotEmpty) {
+        // Try to load lat/lng if we don't have it
+        if (placeSearchController.getPlacesLatLng.value == null) {
+          try {
+            await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+          } catch (e) {
+            debugPrint('❌ Error loading lat/lng: $e');
+            // If loading fails, continue to searchPlaces below
+          }
+        }
+        
+        // If we now have lat/lng, use existing data and skip searchPlaces
+        if (placeSearchController.getPlacesLatLng.value != null) {
+          if (existingSourceTitle != null && existingSourceTitle.isNotEmpty) {
+            bookingRideController.prefilled.value = existingSourceTitle;
+            placeSearchController.placeId.value = existingSourcePlaceId;
+            // Update UI with stored title instead of reverse geocoded address
+            setState(() => address = existingSourceTitle);
+            return; // Skip searchPlaces - we already have everything we need
+          }
+        }
+      }
+
+      // 3. Try searching the place only if we don't have existing data
+      // Only call if address is not empty
+      if (fullAddress.trim().isNotEmpty) {
+        await placeSearchController.searchPlaces(fullAddress, context);
+      } else {
+        return;
+      }
 
       if (placeSearchController.suggestions.isEmpty) {
         print("No search suggestions found for $fullAddress");
@@ -1228,479 +1312,476 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               maxChildSize: 0.95,
               expand: false,
               builder: (context, scrollController) {
-                return Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(10)),
-                    child: Material(
-                      color: Colors.white,
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Header banner
-                            // Container(
-                            //   width: double.infinity,
-                            //   padding: const EdgeInsets.all(16),
-                            //   decoration: const BoxDecoration(
-                            //     color: Color(0xFFFFF6DD),
-                            //     borderRadius: BorderRadius.only(
-                            //       topLeft: Radius.circular(12),
-                            //       topRight: Radius.circular(12),
-                            //     ),
-                            //   ),
-                            //   child: Row(
-                            //     children: [
-                            //       Expanded(
-                            //         child: Column(
-                            //           crossAxisAlignment:
-                            //               CrossAxisAlignment.start,
-                            //           children: [
-                            //             Text(
-                            //               "Invite & Earn!",
-                            //               style: CommonFonts.heading1Bold,
-                            //             ),
-                            //             const SizedBox(height: 8),
-                            //             Text(
-                            //               "Invite your Friends & Get Up to",
-                            //               style: CommonFonts.bodyText6,
-                            //             ),
-                            //             Text("INR 2000*",
-                            //                 style: CommonFonts.bodyText6Bold),
-                            //           ],
-                            //         ),
-                            //       ),
-                            //       Image.asset('assets/images/offer.png',
-                            //           width: 85, height: 85),
-                            //     ],
-                            //   ),
-                            // ),
+                return ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(10)),
+                  child: Material(
+                    color: Colors.white,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header banner
+                          // Container(
+                          //   width: double.infinity,
+                          //   padding: const EdgeInsets.all(16),
+                          //   decoration: const BoxDecoration(
+                          //     color: Color(0xFFFFF6DD),
+                          //     borderRadius: BorderRadius.only(
+                          //       topLeft: Radius.circular(12),
+                          //       topRight: Radius.circular(12),
+                          //     ),
+                          //   ),
+                          //   child: Row(
+                          //     children: [
+                          //       Expanded(
+                          //         child: Column(
+                          //           crossAxisAlignment:
+                          //               CrossAxisAlignment.start,
+                          //           children: [
+                          //             Text(
+                          //               "Invite & Earn!",
+                          //               style: CommonFonts.heading1Bold,
+                          //             ),
+                          //             const SizedBox(height: 8),
+                          //             Text(
+                          //               "Invite your Friends & Get Up to",
+                          //               style: CommonFonts.bodyText6,
+                          //             ),
+                          //             Text("INR 2000*",
+                          //                 style: CommonFonts.bodyText6Bold),
+                          //           ],
+                          //         ),
+                          //       ),
+                          //       Image.asset('assets/images/offer.png',
+                          //           width: 85, height: 85),
+                          //     ],
+                          //   ),
+                          // ),
 
-                            // Form section
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 24),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Dynamic heading
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                          // Form section
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Dynamic heading
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      showOtpField
+                                          ? "OTP Authentication"
+                                          : "Login or Create an Account",
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const SizedBox(
+                                      width: 40,
+                                      height: 4,
+                                      child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                              color: Color(0xFF3563FF))),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Form body
+                                Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        showOtpField
-                                            ? "OTP Authentication"
-                                            : "Login or Create an Account",
-                                        style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const SizedBox(
-                                        width: 40,
-                                        height: 4,
-                                        child: DecoratedBox(
-                                            decoration: BoxDecoration(
-                                                color: Color(0xFF3563FF))),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-
-                                  // Form body
-                                  Form(
-                                    key: _formKey,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (!showOtpField)
-                                          Container(
-                                            padding: const EdgeInsets.only(
-                                                left: 16.0),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              border: Border.all(
-                                                  color: hasError
-                                                      ? Colors.red
-                                                      : Colors.grey),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                              child:
-                                                  InternationalPhoneNumberInput(
-                                                onInputChanged: (_) =>
-                                                    _validatePhone(
-                                                        phoneController.text
-                                                            .trim()),
-                                                selectorConfig:
-                                                    const SelectorConfig(
-                                                  selectorType:
-                                                      PhoneInputSelectorType
-                                                          .BOTTOM_SHEET,
-                                                  useBottomSheetSafeArea: true,
-                                                  showFlags: true,
-                                                ),
-                                                ignoreBlank: false,
-                                                autoValidateMode:
-                                                    AutovalidateMode.disabled,
-                                                selectorTextStyle:
-                                                    const TextStyle(
-                                                        color: Colors.black),
-                                                initialValue: number,
-                                                textFieldController:
-                                                    phoneController,
-                                                formatInput: false,
-                                                keyboardType:
-                                                    const TextInputType
-                                                        .numberWithOptions(
-                                                        signed: true),
-                                                validator: (_) => null,
-                                                maxLength: 10,
-                                                inputDecoration:
-                                                    InputDecoration(
-                                                  hintText:
-                                                      "Enter Mobile Number",
-                                                  counterText: "",
-                                                  filled: true,
-                                                  fillColor: Colors.white,
-                                                  contentPadding:
-                                                      const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 16,
-                                                          vertical: 14),
-                                                  border: InputBorder.none,
-                                                ),
+                                      if (!showOtpField)
+                                        Container(
+                                          padding: const EdgeInsets.only(
+                                              left: 16.0),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            border: Border.all(
+                                                color: hasError
+                                                    ? Colors.red
+                                                    : Colors.grey),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                            child:
+                                                InternationalPhoneNumberInput(
+                                              onInputChanged: (_) =>
+                                                  _validatePhone(
+                                                      phoneController.text
+                                                          .trim()),
+                                              selectorConfig:
+                                                  const SelectorConfig(
+                                                selectorType:
+                                                    PhoneInputSelectorType
+                                                        .BOTTOM_SHEET,
+                                                useBottomSheetSafeArea: true,
+                                                showFlags: true,
+                                              ),
+                                              ignoreBlank: false,
+                                              autoValidateMode:
+                                                  AutovalidateMode.disabled,
+                                              selectorTextStyle:
+                                                  const TextStyle(
+                                                      color: Colors.black),
+                                              initialValue: number,
+                                              textFieldController:
+                                                  phoneController,
+                                              formatInput: false,
+                                              keyboardType:
+                                                  const TextInputType
+                                                      .numberWithOptions(
+                                                      signed: true),
+                                              validator: (_) => null,
+                                              maxLength: 10,
+                                              inputDecoration:
+                                                  InputDecoration(
+                                                hintText:
+                                                    "Enter Mobile Number",
+                                                counterText: "",
+                                                filled: true,
+                                                fillColor: Colors.white,
+                                                contentPadding:
+                                                    const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 14),
+                                                border: InputBorder.none,
                                               ),
                                             ),
                                           ),
-                                        if (showOtpField)
-                                          OtpTextField(
-                                            otpController:
-                                                otpTextEditingController,
-                                            mobileNo:
-                                                phoneController.text.trim(),
-                                          ),
-                                        if (errorMessage != null) ...[
-                                          const SizedBox(height: 8),
-                                          Text(errorMessage!,
-                                              style: const TextStyle(
-                                                  color: Colors.red,
-                                                  fontSize: 12)),
-                                        ],
+                                        ),
+                                      if (showOtpField)
+                                        OtpTextField(
+                                          otpController:
+                                              otpTextEditingController,
+                                          mobileNo:
+                                              phoneController.text.trim(),
+                                        ),
+                                      if (errorMessage != null) ...[
+                                        const SizedBox(height: 8),
+                                        Text(errorMessage!,
+                                            style: const TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 12)),
                                       ],
-                                    ),
+                                    ],
                                   ),
+                                ),
 
-                                  const SizedBox(height: 28),
+                                const SizedBox(height: 28),
 
-                                  // Button
-                                  Obx(() => SizedBox(
-                                        width: double.infinity,
-                                        height: 48,
-                                        child: Opacity(
-                                          opacity: !showOtpField
-                                              ? isButtonEnabled
-                                                  ? 1.0
-                                                  : 0.4
-                                              : 1.0,
-                                          child: MainButton(
-                                            text: showOtpField
-                                                ? 'Verify OTP'
-                                                : 'Continue',
-                                            isLoading: mobileController
-                                                .isLoading.value,
-                                            onPressed: isButtonEnabled
-                                                ? () async {
-                                                    mobileController
-                                                        .isLoading.value = true;
-                                                    await Future.delayed(
-                                                        const Duration(
-                                                            seconds: 2));
+                                // Button
+                                Obx(() => SizedBox(
+                                      width: double.infinity,
+                                      height: 48,
+                                      child: Opacity(
+                                        opacity: !showOtpField
+                                            ? isButtonEnabled
+                                                ? 1.0
+                                                : 0.4
+                                            : 1.0,
+                                        child: MainButton(
+                                          text: showOtpField
+                                              ? 'Verify OTP'
+                                              : 'Continue',
+                                          isLoading: mobileController
+                                              .isLoading.value,
+                                          onPressed: isButtonEnabled
+                                              ? () async {
+                                                  mobileController
+                                                      .isLoading.value = true;
+                                                  await Future.delayed(
+                                                      const Duration(
+                                                          seconds: 2));
 
-                                                    if (showOtpField) {
-                                                      try {
-                                                        final isVerified =
-                                                            await otpController
-                                                                .verifyOtp(
-                                                          mobile:
-                                                              phoneController
-                                                                  .text
-                                                                  .trim(),
-                                                          otp:
-                                                              otpTextEditingController
-                                                                  .text
-                                                                  .trim(),
-                                                          context: context,
-                                                        );
-
-                                                        otpController.hasError
-                                                                .value =
-                                                            !isVerified;
-
-                                                        if (isVerified) {
-                                                          // Show popup loader
-
-                                                          // Simulate 1-second wait
-                                                          await Future.delayed(
-                                                              const Duration(
-                                                                  seconds: 3));
-                                                          upcomingBookingController
-                                                              .isLoggedIn
-                                                              .value = true;
-                                                          await upcomingBookingController
-                                                              .fetchUpcomingBookingsData();
-                                                          // Mark logged in
-                                                          await profileController
-                                                              .fetchData();
-
-                                                          GoRouter.of(context)
-                                                              .go(AppRoutes
-                                                                  .profile);
-
-                                                          // Navigate
-                                                        }
-                                                      } catch (e) {
-                                                        otpController.hasError
-                                                            .value = true;
-                                                      }
-                                                    } else {
-                                                      await mobileController
-                                                          .verifyMobile(
-                                                        mobile: phoneController
-                                                            .text
-                                                            .trim(),
+                                                  if (showOtpField) {
+                                                    try {
+                                                      final isVerified =
+                                                          await otpController
+                                                              .verifyOtp(
+                                                        mobile:
+                                                            phoneController
+                                                                .text
+                                                                .trim(),
+                                                        otp:
+                                                            otpTextEditingController
+                                                                .text
+                                                                .trim(),
                                                         context: context,
                                                       );
-                                                      if ((mobileController
-                                                                  .mobileData
-                                                                  .value !=
-                                                              null) &&
-                                                          (mobileController
-                                                                  .mobileData
-                                                                  .value
-                                                                  ?.userAssociated ==
-                                                              true)) {
-                                                        showOtpField = true;
-                                                        errorMessage = null;
-                                                        isButtonEnabled = true;
-                                                        otpTextEditingController
-                                                            .clear();
-                                                        setModalState(() {});
+
+                                                      otpController.hasError
+                                                              .value =
+                                                          !isVerified;
+
+                                                      if (isVerified) {
+                                                        // Show popup loader
+
+                                                        // Simulate 1-second wait
+                                                        await Future.delayed(
+                                                            const Duration(
+                                                                seconds: 3));
+                                                        upcomingBookingController
+                                                            .isLoggedIn
+                                                            .value = true;
+                                                        await upcomingBookingController
+                                                            .fetchUpcomingBookingsData();
+                                                        // Mark logged in
+                                                        await profileController
+                                                            .fetchData();
+
+                                                        GoRouter.of(context)
+                                                            .go(AppRoutes
+                                                                .profile);
+
+                                                        // Navigate
                                                       }
+                                                    } catch (e) {
+                                                      otpController.hasError
+                                                          .value = true;
                                                     }
-
-                                                    mobileController.isLoading
-                                                        .value = false;
+                                                  } else {
+                                                    await mobileController
+                                                        .verifyMobile(
+                                                      mobile: phoneController
+                                                          .text
+                                                          .trim(),
+                                                      context: context,
+                                                    );
+                                                    if ((mobileController
+                                                                .mobileData
+                                                                .value !=
+                                                            null) &&
+                                                        (mobileController
+                                                                .mobileData
+                                                                .value
+                                                                ?.userAssociated ==
+                                                            true)) {
+                                                      showOtpField = true;
+                                                      errorMessage = null;
+                                                      isButtonEnabled = true;
+                                                      otpTextEditingController
+                                                          .clear();
+                                                      setModalState(() {});
+                                                    }
                                                   }
-                                                : () {},
-                                          ),
+
+                                                  mobileController.isLoading
+                                                      .value = false;
+                                                }
+                                              : () {},
                                         ),
-                                      )),
+                                      ),
+                                    )),
 
-                                  if (!showOtpField) const SizedBox(height: 8),
+                                if (!showOtpField) const SizedBox(height: 8),
 
-                                  Column(
-                                    children: [
-                                      if (!showOtpField)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 0.0),
-                                          child: Center(
-                                            child: TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // close current sheet
-                                                Navigator.of(context).push(
-                                                  Platform.isIOS
-                                                      ? CupertinoPageRoute(
-                                                          builder: (_) =>
-                                                              const UserFillDetails(
-                                                            name: '',
-                                                            email: '',
-                                                            phone: '',
-                                                          ),
-                                                        )
-                                                      : MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              const UserFillDetails(
-                                                            name: '',
-                                                            email: '',
-                                                            phone: '',
-                                                          ),
+                                Column(
+                                  children: [
+                                    if (!showOtpField)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 0.0),
+                                        child: Center(
+                                          child: TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context)
+                                                  .pop(); // close current sheet
+                                              Navigator.of(context).push(
+                                                Platform.isIOS
+                                                    ? CupertinoPageRoute(
+                                                        builder: (_) =>
+                                                            const UserFillDetails(
+                                                          name: '',
+                                                          email: '',
+                                                          phone: '',
                                                         ),
-                                                ); // open register sheet
-                                              },
-                                              child: Text(
-                                                  "Don't have an account? Register"),
-                                            ),
-                                          ),
-                                        ),
-
-                                      const SizedBox(height: 16),
-
-                                      // Divider with Text
-                                      if (!showOtpField)
-                                        Row(
-                                          children: [
-                                            const Expanded(
-                                                child: Divider(thickness: 1)),
-                                            Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 8.0),
-                                              child: Text("Or Login Via",
-                                                  style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.black54)),
-                                            ),
-                                            const Expanded(
-                                                child: Divider(thickness: 1)),
-                                          ],
-                                        ),
-
-                                      const SizedBox(height: 16),
-
-                                      // Google Login
-                                      if (!showOtpField)
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            GestureDetector(
-                                              onTap: isGoogleLoading
-                                                  ? null
-                                                  : () => _handleGoogleLogin(
-                                                      setModalState),
-                                              child: Center(
-                                                child: Column(
-                                                  children: [
-                                                    Container(
-                                                      width: 48,
-                                                      height: 48,
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              1),
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                              color:
-                                                                  Colors.grey,
-                                                              shape: BoxShape
-                                                                  .circle),
-                                                      child: CircleAvatar(
-                                                        radius: 20,
-                                                        backgroundColor:
-                                                            Colors.white,
-                                                        child: isGoogleLoading
-                                                            ? const SizedBox(
-                                                                width: 20,
-                                                                height: 20,
-                                                                child: CircularProgressIndicator(
-                                                                    strokeWidth:
-                                                                        2),
-                                                              )
-                                                            : Image.asset(
-                                                                'assets/images/google_icon.png',
-                                                                fit: BoxFit
-                                                                    .contain,
-                                                                width: 29,
-                                                                height: 29,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    const Text("Google",
-                                                        style: TextStyle(
-                                                            fontSize: 13)),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: 24,
-                                            ),
-                                            Platform.isIOS
-                                                ? Column(
-                                                    children: [
-                                                      GestureDetector(
-                                                        onTap: signInWithApple,
-                                                        child: Container(
-                                                          height: 45,
-                                                          width: 45,
-                                                          decoration:
-                                                              const BoxDecoration(
-                                                            color: Colors.black,
-                                                            shape:
-                                                                BoxShape.circle,
-                                                          ),
-                                                          child: Center(
-                                                            child: Image.asset(
-                                                              'assets/images/apple.png',
-                                                              height: 48,
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                          ),
+                                                      )
+                                                    : MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            const UserFillDetails(
+                                                          name: '',
+                                                          email: '',
+                                                          phone: '',
                                                         ),
                                                       ),
-                                                      Platform.isIOS
-                                                          ? const SizedBox(
-                                                              height: 4)
-                                                          : SizedBox(),
-                                                      Platform.isIOS
-                                                          ? const Text("Apple",
-                                                              style: TextStyle(
-                                                                  fontSize: 13))
-                                                          : SizedBox()
-                                                    ],
-                                                  )
-                                                : SizedBox()
-                                          ],
+                                              ); // open register sheet
+                                            },
+                                            child: Text(
+                                                "Don't have an account? Register"),
+                                          ),
                                         ),
+                                      ),
 
-                                      const SizedBox(height: 20),
+                                    const SizedBox(height: 16),
 
-                                      // Terms & Conditions
-                                      Column(
+                                    // Divider with Text
+                                    if (!showOtpField)
+                                      Row(
                                         children: [
-                                          Text.rich(
-                                            TextSpan(
-                                                text:
-                                                    "By logging in, I understand & agree to Wise Travel India Limited ",
-                                                style:
-                                                    CommonFonts.bodyText3Medium,
-                                                // children: [
-                                                //   TextSpan(
-                                                //       text: "Terms & Conditions",
-                                                //       style: CommonFonts
-                                                //           .bodyText3MediumBlue),
-                                                //   TextSpan(text: ", "),
-                                                //   TextSpan(
-                                                //       text: "Privacy Policy",
-                                                //       style: CommonFonts
-                                                //           .bodyText3MediumBlue),
-                                                //   TextSpan(
-                                                //       text:
-                                                //           ", and User agreement",
-                                                //       style: CommonFonts
-                                                //           .bodyText3MediumBlue),
-                                                // ],
-                                                children: []),
-                                            textAlign: TextAlign.center,
+                                          const Expanded(
+                                              child: Divider(thickness: 1)),
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8.0),
+                                            child: Text("Or Login Via",
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.black54)),
                                           ),
+                                          const Expanded(
+                                              child: Divider(thickness: 1)),
                                         ],
                                       ),
-                                    ],
-                                  )
-                                ],
-                              ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Google Login
+                                    if (!showOtpField)
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: isGoogleLoading
+                                                ? null
+                                                : () => _handleGoogleLogin(
+                                                    setModalState),
+                                            child: Center(
+                                              child: Column(
+                                                children: [
+                                                  Container(
+                                                    width: 48,
+                                                    height: 48,
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            1),
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                            color:
+                                                                Colors.grey,
+                                                            shape: BoxShape
+                                                                .circle),
+                                                    child: CircleAvatar(
+                                                      radius: 20,
+                                                      backgroundColor:
+                                                          Colors.white,
+                                                      child: isGoogleLoading
+                                                          ? const SizedBox(
+                                                              width: 20,
+                                                              height: 20,
+                                                              child: CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2),
+                                                            )
+                                                          : Image.asset(
+                                                              'assets/images/google_icon.png',
+                                                              fit: BoxFit
+                                                                  .contain,
+                                                              width: 29,
+                                                              height: 29,
+                                                            ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  const Text("Google",
+                                                      style: TextStyle(
+                                                          fontSize: 13)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 24,
+                                          ),
+                                          Platform.isIOS
+                                              ? Column(
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: signInWithApple,
+                                                      child: Container(
+                                                        height: 45,
+                                                        width: 45,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                          color: Colors.black,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                        child: Center(
+                                                          child: Image.asset(
+                                                            'assets/images/apple.png',
+                                                            height: 48,
+                                                            color:
+                                                                Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Platform.isIOS
+                                                        ? const SizedBox(
+                                                            height: 4)
+                                                        : SizedBox(),
+                                                    Platform.isIOS
+                                                        ? const Text("Apple",
+                                                            style: TextStyle(
+                                                                fontSize: 13))
+                                                        : SizedBox()
+                                                  ],
+                                                )
+                                              : SizedBox()
+                                        ],
+                                      ),
+
+                                    const SizedBox(height: 20),
+
+                                    // Terms & Conditions
+                                    Column(
+                                      children: [
+                                        Text.rich(
+                                          TextSpan(
+                                              text:
+                                                  "By logging in, I understand & agree to Wise Travel India Limited ",
+                                              style:
+                                                  CommonFonts.bodyText3Medium,
+                                              // children: [
+                                              //   TextSpan(
+                                              //       text: "Terms & Conditions",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(text: ", "),
+                                              //   TextSpan(
+                                              //       text: "Privacy Policy",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              //   TextSpan(
+                                              //       text:
+                                              //           ", and User agreement",
+                                              //       style: CommonFonts
+                                              //           .bodyText3MediumBlue),
+                                              // ],
+                                              children: []),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -2026,6 +2107,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           GestureDetector(
                             onTap: () async {
                               bookingRideController.fromHomePage.value = true;
+                              
+                              // Clear drop place when navigating from home screen
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
+                              
                               Navigator.push(
                                 context,
                                 Platform.isIOS
@@ -2036,7 +2124,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   builder: (context) => const SelectDrop(fromInventoryScreen: false),
                                 ),
                               );
-                              await fetchCurrentLocationAndAddress();
+                              // User taps "Use Current Location" - fetch GPS
+                              await fetchCurrentLocationAndAddress(shouldFetchGPS: true);
                             },
                             child: Padding(
                               padding:
@@ -2162,9 +2251,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 0;
+                              
+                              // Clear drop place when navigating from home screen
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
 
                               // Start fetching location asynchronously without waiting
-                              fetchCurrentLocationAndAddress();
+                              // Navigation action - don't fetch GPS (typing/search scenario)
+                              fetchCurrentLocationAndAddress(shouldFetchGPS: false);
 
                               // Navigate immediately
                               if (Platform.isAndroid) {
@@ -2224,7 +2320,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             onTap: () {
                               bookingRideController
                                   .selectedIndex.value = 1;
-                              fetchCurrentLocationAndAddress();
+                              
+                              // Clear drop place when navigating from home screen
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
+                              
+                              // Navigation action - don't fetch GPS (typing/search scenario)
+                              fetchCurrentLocationAndAddress(shouldFetchGPS: false);
                               // Navigate immediately
                               if (Platform.isAndroid) {
                                 GoRouter.of(context)
@@ -2315,6 +2419,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 2;
+                              
+                              // Clear drop place when navigating from home screen
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
+                              
                               fetchCurrentLocationAndAddress();
 
                               // Navigate immediately
@@ -3486,7 +3597,7 @@ class _RecentTripListState extends State<RecentTripList> {
   }
 
   /// Ensures source location is available, fetching current location if needed
-  Future<bool> _ensureSourceLocation() async {
+  Future<bool> _ensureSourceLocation({bool shouldFetchGPS = false}) async {
     try {
       final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
       
@@ -3497,16 +3608,31 @@ class _RecentTripListState extends State<RecentTripList> {
         return true;
       }
 
-      // If placeId exists but lat/lng is missing, fetch it
+      // If placeId exists but lat/lng is missing, ALWAYS fetch it (even if shouldFetchGPS is false)
+      // shouldFetchGPS only prevents GPS location fetch, not loading from placeId
       if (existingSourcePlaceId != null && existingSourcePlaceId.isNotEmpty) {
-        await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
-        if (placeSearchController.getPlacesLatLng.value != null) {
-          return true;
+        try {
+          await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+          if (placeSearchController.getPlacesLatLng.value != null) {
+            // Also ensure placeId is set in controller
+            placeSearchController.placeId.value = existingSourcePlaceId;
+            final existingSourceTitle = await StorageServices.instance.read('sourceTitle');
+            if (existingSourceTitle != null && existingSourceTitle.isNotEmpty) {
+              bookingRideController.prefilled.value = existingSourceTitle;
+            }
+            return true;
+          }
+        } catch (e) {
+          debugPrint('❌ Error loading lat/lng from placeId: $e');
+          // Continue to try GPS if shouldFetchGPS is true
         }
       }
 
-      // Otherwise, fetch current location
-      await _fetchCurrentLocation();
+      // Only fetch current location if shouldFetchGPS is true
+      // For recent/saved destinations, we don't fetch GPS
+      if (shouldFetchGPS) {
+        await _fetchCurrentLocation();
+      }
       return placeSearchController.getPlacesLatLng.value != null;
     } catch (e) {
       debugPrint('❌ Error ensuring source location: $e');
@@ -3563,7 +3689,38 @@ class _RecentTripListState extends State<RecentTripList> {
 
       final fullAddress = components.where((s) => s.trim().isNotEmpty).join(', ');
 
-      // Search for place suggestions
+      // Check if address is empty before searching
+      if (fullAddress.trim().isEmpty) {
+        throw Exception('Address is empty for current location');
+      }
+
+      // ✅ Check if we already have placeId - if yes, skip searchPlaces entirely
+      final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
+      final existingSourceTitle = await StorageServices.instance.read('sourceTitle');
+      
+      // If we have placeId, try to use it directly without calling searchPlaces
+      if (existingSourcePlaceId != null && existingSourcePlaceId.isNotEmpty) {
+        // Try to load lat/lng if we don't have it
+        if (placeSearchController.getPlacesLatLng.value == null) {
+          try {
+            await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
+          } catch (e) {
+            debugPrint('❌ Error loading lat/lng: $e');
+            // If loading fails, continue to searchPlaces below
+          }
+        }
+        
+        // If we now have lat/lng, use existing data and skip searchPlaces
+        if (placeSearchController.getPlacesLatLng.value != null) {
+          if (existingSourceTitle != null && existingSourceTitle.isNotEmpty) {
+            bookingRideController.prefilled.value = existingSourceTitle;
+            placeSearchController.placeId.value = existingSourcePlaceId;
+            return; // Skip searchPlaces - we already have everything we need
+          }
+        }
+      }
+
+      // Search for place suggestions only if we don't have existing data
       await placeSearchController.searchPlaces(fullAddress, context);
       
       if (placeSearchController.suggestions.isEmpty) {
@@ -3668,11 +3825,22 @@ class _RecentTripListState extends State<RecentTripList> {
   }
 
   /// Builds request data for inventory search
-  Future<Map<String, dynamic>?> _buildRequestData() async {
+  Future<Map<String, dynamic>?> _buildRequestData(BuildContext context, {bool showLoader = true}) async {
+    if (showLoader) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => FullScreenGifLoader(),
+      );
+    }
+    
     try {
       // Ensure both source and destination lat/lng are available
       if (placeSearchController.getPlacesLatLng.value == null ||
           dropPlaceSearchController.dropLatLng.value == null) {
+        if (showLoader && Navigator.canPop(context)) {
+          GoRouter.of(context).pop();
+        }
         return null;
       }
 
@@ -3700,71 +3868,67 @@ class _RecentTripListState extends State<RecentTripList> {
       ];
 
       final values = await Future.wait(keys.map(StorageServices.instance.read));
-      final data = Map<String, dynamic>.fromIterables(keys, values);
+      final Map<String, dynamic> data = Map.fromIterables(keys, values);
+      
+      final dateFormat = DateFormat('EEEE, dd MMM, yyyy h:mm a');
+      final pickupDateTime = bookingRideController.localStartTime.value.toUtc() != null
+          ? dateFormat.format(bookingRideController.localStartTime.value.toUtc() ?? DateTime.now())
+          : '';
+      final returnDateTime = bookingRideController.localEndTime.value.toUtc().toIso8601String() != null
+          ? dateFormat.format(bookingRideController.localEndTime.value.toUtc() ?? DateTime.now())
+          : '';
+      final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+
+      await _analytics.logSearch(
+        searchTerm: '${data['sourceTitle']} to ${data['destinationTitle']}',
+        numberOfPassengers: 1,
+        origin: placeSearchController.getPlacesLatLng.value?.city.toString(),
+        destination: dropPlaceSearchController.dropLatLng.value!.city.toString(),
+        startDate: pickupDateTime,
+        endDate: returnDateTime,
+        parameters: {
+          'event': 'search',
+          'trip_type': 'Airport',
+          'user_status': 'logged_out',
+          'search_source': 'home_screen',
+        },
+      );
+
+      print('yash pickup utc time : ${data['userDateTime']}');
+      if (showLoader && Navigator.canPop(context)) {
+        GoRouter.of(context).pop();
+      }
+      print(
+          'yash 22aug local start time : ${bookingRideController.localStartTime.value}');
+      print(
+          'yash 22aug local selected time : ${bookingRideController.selectedDateTime.value}');
 
       final sourceLatLng = placeSearchController.getPlacesLatLng.value!;
       final destLatLng = dropPlaceSearchController.dropLatLng.value!;
 
-      // Get fallback values from controllers if storage is null
-      final sourceTitle = data['sourceTitle'] ?? 
-          bookingRideController.prefilled.value ?? 
-          (placeSearchController.suggestions.isNotEmpty 
-              ? placeSearchController.suggestions.first.primaryText 
-              : '');
-      final actualOffset = data['actualOffset'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
-          offset.toString();
-      final timeZone = data['timeZone'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
-          placeSearchController.getCurrentTimeZoneName();
-      final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
-          (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
-              ? placeSearchController.convertToIsoWithOffset(
-                  placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
-                  -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
-              : DateTime.now().toIso8601String());
-      final userTimeWithOffset = data['userTimeWithOffset'] ?? 
-          (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
-              ? placeSearchController.convertToIsoWithOffset(
-                  placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
-                  -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
-              : DateTime.now().toIso8601String());
-      final userOffset = data['userOffset'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
-          offset.toString();
-
-      // Get source terms from suggestion if available
-      List<Map<String, dynamic>> sourceTerms = _parseList<Map<String, dynamic>>(data['sourceTerms']);
-      if (sourceTerms.isEmpty && placeSearchController.suggestions.isNotEmpty) {
-        final suggestion = placeSearchController.suggestions.first;
-        if (suggestion.terms.isNotEmpty) {
-          sourceTerms = suggestion.terms.map((term) => term.toJson()).toList();
-        }
-      }
-
       return {
         "timeOffSet": -offset,
-        "countryName": data['country'] ?? 'India',
+        "countryName": data['country'],
         "searchDate": searchDate,
         "searchTime": searchTime,
-        "offset": int.tryParse(userOffset) ?? 0,
+        "offset": int.parse(data['userOffset'] ?? '0'),
         "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
         "returnDateAndTime": "",
         "tripCode": "2",
         "source": {
-          "sourceTitle": sourceTitle,
-          "sourcePlaceId": data['sourcePlaceId'] ?? placeSearchController.placeId.value,
+          "sourceTitle": data['sourceTitle'],
+          "sourcePlaceId": data['sourcePlaceId'],
           "sourceCity": sourceLatLng.city.toString(),
           "sourceState": sourceLatLng.state.toString(),
           "sourceCountry": sourceLatLng.country.toString(),
           "sourceType": _parseList<String>(data['sourceTypes']),
           "sourceLat": sourceLatLng.latLong.lat.toString(),
           "sourceLng": sourceLatLng.latLong.lng.toString(),
-          "terms": sourceTerms,
+          "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
         },
         "destination": {
-          "destinationTitle": data['destinationTitle'] ?? bookingRideController.prefilledDrop.value ?? '',
-          "destinationPlaceId": data['destinationPlaceId'] ?? dropPlaceSearchController.dropPlaceId.value,
+          "destinationTitle": data['destinationTitle'],
+          "destinationPlaceId": data['destinationPlaceId'],
           "destinationCity": destLatLng.city.toString(),
           "destinationState": destLatLng.state.toString(),
           "destinationCountry": destLatLng.country.toString(),
@@ -3776,21 +3940,24 @@ class _RecentTripListState extends State<RecentTripList> {
         "packageSelected": {"km": "", "hours": ""},
         "stopsArray": [],
         "pickUpTime": {
-          "time": actualTimeWithOffset,
-          "offset": actualOffset,
-          "timeZone": timeZone
+          "time": data['actualTimeWithOffset'],
+          "offset": data['actualOffset'],
+          "timeZone": data['timeZone']
         },
         "dropTime": {},
         "mindate": {
-          "date": userTimeWithOffset,
-          "time": userTimeWithOffset,
-          "offset": userOffset,
-          "timeZone": timeZone
+          "date": data['userTimeWithOffset'],
+          "time": data['userTimeWithOffset'],
+          "offset": data['userOffset'],
+          "timeZone": data['timeZone']
         },
-        "isGlobal": (data['country']?.toString().toLowerCase() ?? 'india') != 'india',
+        "isGlobal": (data['country']?.toLowerCase() == 'india') ? false : true,
       };
     } catch (e) {
       debugPrint('❌ Error building request data: $e');
+      if (showLoader && Navigator.canPop(context)) {
+        GoRouter.of(context).pop();
+      }
       return null;
     }
   }
@@ -3811,8 +3978,7 @@ class _RecentTripListState extends State<RecentTripList> {
     required String dropPlaceId,
     required String dropTitle,
   }) async {
-    // Show loader
-    // if (!mounted) return;
+    // Show loader immediately before any network operations
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -3821,7 +3987,8 @@ class _RecentTripListState extends State<RecentTripList> {
 
     try {
       // Step 1: Ensure source location is available
-      final sourceReady = await _ensureSourceLocation();
+      // User selects Recent Destination or Saved Address - don't fetch GPS
+      final sourceReady = await _ensureSourceLocation(shouldFetchGPS: false);
       // if (!sourceReady) {
       //   if (mounted && Navigator.canPop(context)) {
       //     Navigator.pop(context);
@@ -3855,35 +4022,33 @@ class _RecentTripListState extends State<RecentTripList> {
         );
       }
 
-      // Step 4: Build request data
-      // final requestData = await _buildRequestData();
-      // if (requestData == null) {
-      //   if (mounted && Navigator.canPop(context)) {
-      //     Navigator.pop(context);
-      //   }
-      //   debugPrint('❌ Failed to build request data');
-      //   return;
-      // }
-      //
-      // // Step 5: Navigate to inventory list
-      // if (!mounted) return;
-      // if (Navigator.canPop(context)) {
-      //   Navigator.pop(context);
-      // }
+      // Step 4: Build request data (loader already shown, so don't show again)
+      final requestData = await _buildRequestData(context, showLoader: false);
+      if (requestData == null) {
+        if (mounted && Navigator.canPop(context)) {
+          GoRouter.of(context).pop();
+        }
+        debugPrint('❌ Failed to build request data');
+        debugPrint('Source lat/lng: ${placeSearchController.getPlacesLatLng.value}');
+        debugPrint('Drop lat/lng: ${dropPlaceSearchController.dropLatLng.value}');
+        return;
+      }
 
-      Navigator.of(context).push(
-        Platform.isIOS
-            ? CupertinoPageRoute(
-                builder: (_) => BookingRide(),
-              )
-            : MaterialPageRoute(
-                builder: (_) => BookingRide(),
-              ),
+      // Step 5: Navigate to inventory list
+      if (!mounted) return;
+      if (Navigator.canPop(context)) {
+        GoRouter.of(context).pop();
+      }
+
+      debugPrint('✅ Navigating to inventory list with request data');
+      GoRouter.of(context).push(
+        AppRoutes.inventoryList,
+        extra: requestData,
       );
     } catch (e) {
       debugPrint('❌ Error in trip selection: $e');
       if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
+        GoRouter.of(context).pop();
       }
     }
   }
