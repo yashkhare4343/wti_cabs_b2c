@@ -153,18 +153,26 @@ class DropPlaceSearchController extends GetxController {
       final timeZone = _cachedTimeZone ?? dropDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
 
-      await findCountryDateTimeForDrop(
-        latLng.lat,
-        latLng.lng,
-        dropLatLng.value!.country,
-        convertDateTimeToUtcString(bookingRideController.localStartTime.value),
-        offset,
-        timeZone,
-        2,
-        context,
-      );
+      // Try to call findCountryDateTimeForDrop, but don't block if it fails
+      try {
+        await findCountryDateTimeForDrop(
+          latLng.lat,
+          latLng.lng,
+          dropLatLng.value!.country,
+          convertDateTimeToUtcString(bookingRideController.localStartTime.value),
+          offset,
+          timeZone,
+          2,
+          context,
+        );
+      } catch (e) {
+        // Log error but continue - don't block the app
+        debugPrint("Error calling findCountryDateTimeForDrop in getLatLngForDrop: $e");
+      }
     } catch (e) {
+      // Gracefully handle network errors - don't block the app
       errorMessage.value = e.toString();
+      debugPrint("Error in getLatLngForDrop: $e");
     } finally {
       isLoading.value = false;
     }
@@ -195,7 +203,10 @@ class DropPlaceSearchController extends GetxController {
       "tripCode": tripCode,
     };
     print('yash choose drop request body : $requestData');
-    if (pickupLatLng == null) throw Exception('Pickup LatLng not available for drop time calculation');
+    if (pickupLatLng == null) {
+      debugPrint('Warning: Pickup LatLng not available for drop time calculation');
+      return; // Return gracefully instead of throwing
+    }
     try {
       debugPrint('🚀 Request body for findCountryDateTimeForDrop: $requestData');
 
@@ -215,8 +226,10 @@ class DropPlaceSearchController extends GetxController {
         );
       }
     } catch (e) {
+      // Gracefully handle network errors - don't block the app
       errorMessage.value = 'Drop DateTime API Error: $e';
       debugPrint(errorMessage.value);
+      // Continue execution - don't throw to allow app to function
     }
   }
 

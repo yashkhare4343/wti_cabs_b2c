@@ -180,21 +180,29 @@ class PlaceSearchController extends GetxController {
       final timeZone = _cachedTimeZone ?? findCntryDateTimeResponse.value?.timeZone ?? getCurrentTimeZoneName();
       final offset = getOffsetFromTimeZone(timeZone);
 
-      await findCountryDateTime(
-        latLng.lat,
-        latLng.lng,
-        getPlacesLatLng.value!.country,
-        dropController?.dropLatLng.value?.country ?? getPlacesLatLng.value!.country,
-        dropController?.dropLatLng.value?.latLong.lat ?? latLng.lat,
-        dropController?.dropLatLng.value?.latLong.lng ?? latLng.lng,
-        convertDateTimeToUtcString(bookingRideController.localStartTime.value),
-        offset,
-        timeZone,
-        2,
-        context,
-      );
+      // Try to call findCountryDateTime, but don't block if it fails
+      try {
+        await findCountryDateTime(
+          latLng.lat,
+          latLng.lng,
+          getPlacesLatLng.value!.country,
+          dropController?.dropLatLng.value?.country ?? getPlacesLatLng.value!.country,
+          dropController?.dropLatLng.value?.latLong.lat ?? latLng.lat,
+          dropController?.dropLatLng.value?.latLong.lng ?? latLng.lng,
+          convertDateTimeToUtcString(bookingRideController.localStartTime.value),
+          offset,
+          timeZone,
+          2,
+          context,
+        );
+      } catch (e) {
+        // Log error but continue - don't block the app
+        debugPrint("Error calling findCountryDateTime in getLatLngDetails: $e");
+      }
     } catch (error) {
+      // Gracefully handle network errors - don't block the app
       errorMessage.value = error.toString();
+      debugPrint("Error in getLatLngDetails: $error");
     } finally {
       isLoading.value = false;
     }
@@ -257,7 +265,11 @@ class PlaceSearchController extends GetxController {
       debugPrint('request data: $requestData');
       debugPrint('response data: $responseData');
     } catch (error) {
+      // Gracefully handle network errors - don't block the app
       debugPrint("Error in findCountryDateTime: $error");
+      errorMessage.value = error.toString();
+      // Set a default response to allow the app to continue
+      // The button will still be enabled as per requirements
     } finally {
       isLoading.value = false;
     }

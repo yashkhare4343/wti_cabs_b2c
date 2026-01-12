@@ -3785,26 +3785,26 @@ class _RecentTripListState extends State<RecentTripList> {
     try {
       // Step 1: Ensure source location is available
       final sourceReady = await _ensureSourceLocation();
-      if (!sourceReady) {
-        if (mounted && Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-        debugPrint('❌ Source location not available');
-        return;
-      }
+      // if (!sourceReady) {
+      //   if (mounted && Navigator.canPop(context)) {
+      //     Navigator.pop(context);
+      //   }
+      //   debugPrint('❌ Source location not available');
+      //   return;
+      // }
 
       // Step 2: Setup destination
       final destReady = await _setupDestination(
         placeId: dropPlaceId,
         title: dropTitle,
       );
-      if (!destReady) {
-        if (mounted && Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-        debugPrint('❌ Destination setup failed');
-        return;
-      }
+      // if (!destReady) {
+      //   if (mounted && Navigator.canPop(context)) {
+      //     Navigator.pop(context);
+      //   }
+      //   debugPrint('❌ Destination setup failed');
+      //   return;
+      // }
 
       // Step 3: Record trip
       final sourcePlaceId = placeSearchController.placeId.value;
@@ -3819,34 +3819,28 @@ class _RecentTripListState extends State<RecentTripList> {
       }
 
       // Step 4: Build request data
-      final requestData = await _buildRequestData();
-      if (requestData == null) {
-        if (mounted && Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-        debugPrint('❌ Failed to build request data');
-        return;
-      }
-
-      // Step 5: Navigate to inventory list
-      if (!mounted) return;
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+      // final requestData = await _buildRequestData();
+      // if (requestData == null) {
+      //   if (mounted && Navigator.canPop(context)) {
+      //     Navigator.pop(context);
+      //   }
+      //   debugPrint('❌ Failed to build request data');
+      //   return;
+      // }
+      //
+      // // Step 5: Navigate to inventory list
+      // if (!mounted) return;
+      // if (Navigator.canPop(context)) {
+      //   Navigator.pop(context);
+      // }
 
       Navigator.of(context).push(
         Platform.isIOS
             ? CupertinoPageRoute(
-                builder: (_) => InventoryList(
-                  requestData: requestData,
-                  fromRecentSearch: true,
-                ),
+                builder: (_) => BookingRide(),
               )
             : MaterialPageRoute(
-                builder: (_) => InventoryList(
-                  requestData: requestData,
-                  fromRecentSearch: true,
-                ),
+                builder: (_) => BookingRide(),
               ),
       );
     } catch (e) {
