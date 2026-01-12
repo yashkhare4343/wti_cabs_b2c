@@ -3705,29 +3705,66 @@ class _RecentTripListState extends State<RecentTripList> {
       final sourceLatLng = placeSearchController.getPlacesLatLng.value!;
       final destLatLng = dropPlaceSearchController.dropLatLng.value!;
 
+      // Get fallback values from controllers if storage is null
+      final sourceTitle = data['sourceTitle'] ?? 
+          bookingRideController.prefilled.value ?? 
+          (placeSearchController.suggestions.isNotEmpty 
+              ? placeSearchController.suggestions.first.primaryText 
+              : '');
+      final actualOffset = data['actualOffset'] ?? 
+          placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
+          offset.toString();
+      final timeZone = data['timeZone'] ?? 
+          placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
+          placeSearchController.getCurrentTimeZoneName();
+      final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
+          (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
+              ? placeSearchController.convertToIsoWithOffset(
+                  placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
+                  -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
+              : DateTime.now().toIso8601String());
+      final userTimeWithOffset = data['userTimeWithOffset'] ?? 
+          (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
+              ? placeSearchController.convertToIsoWithOffset(
+                  placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
+                  -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
+              : DateTime.now().toIso8601String());
+      final userOffset = data['userOffset'] ?? 
+          placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
+          offset.toString();
+
+      // Get source terms from suggestion if available
+      List<Map<String, dynamic>> sourceTerms = _parseList<Map<String, dynamic>>(data['sourceTerms']);
+      if (sourceTerms.isEmpty && placeSearchController.suggestions.isNotEmpty) {
+        final suggestion = placeSearchController.suggestions.first;
+        if (suggestion.terms.isNotEmpty) {
+          sourceTerms = suggestion.terms.map((term) => term.toJson()).toList();
+        }
+      }
+
       return {
         "timeOffSet": -offset,
-        "countryName": data['country'] ?? '',
+        "countryName": data['country'] ?? 'India',
         "searchDate": searchDate,
         "searchTime": searchTime,
-        "offset": int.tryParse(data['userOffset'] ?? '0') ?? 0,
+        "offset": int.tryParse(userOffset) ?? 0,
         "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
         "returnDateAndTime": "",
         "tripCode": "2",
         "source": {
-          "sourceTitle": data['sourceTitle'] ?? '',
-          "sourcePlaceId": data['sourcePlaceId'] ?? '',
+          "sourceTitle": sourceTitle,
+          "sourcePlaceId": data['sourcePlaceId'] ?? placeSearchController.placeId.value,
           "sourceCity": sourceLatLng.city.toString(),
           "sourceState": sourceLatLng.state.toString(),
           "sourceCountry": sourceLatLng.country.toString(),
           "sourceType": _parseList<String>(data['sourceTypes']),
           "sourceLat": sourceLatLng.latLong.lat.toString(),
           "sourceLng": sourceLatLng.latLong.lng.toString(),
-          "terms": _parseList<Map<String, dynamic>>(data['sourceTerms']),
+          "terms": sourceTerms,
         },
         "destination": {
-          "destinationTitle": data['destinationTitle'] ?? '',
-          "destinationPlaceId": data['destinationPlaceId'] ?? '',
+          "destinationTitle": data['destinationTitle'] ?? bookingRideController.prefilledDrop.value ?? '',
+          "destinationPlaceId": data['destinationPlaceId'] ?? dropPlaceSearchController.dropPlaceId.value,
           "destinationCity": destLatLng.city.toString(),
           "destinationState": destLatLng.state.toString(),
           "destinationCountry": destLatLng.country.toString(),
@@ -3739,18 +3776,18 @@ class _RecentTripListState extends State<RecentTripList> {
         "packageSelected": {"km": "", "hours": ""},
         "stopsArray": [],
         "pickUpTime": {
-          "time": data['actualTimeWithOffset'] ?? '',
-          "offset": data['actualOffset'] ?? '',
-          "timeZone": data['timeZone'] ?? ''
+          "time": actualTimeWithOffset,
+          "offset": actualOffset,
+          "timeZone": timeZone
         },
         "dropTime": {},
         "mindate": {
-          "date": data['userTimeWithOffset'] ?? '',
-          "time": data['userTimeWithOffset'] ?? '',
-          "offset": data['userOffset'] ?? '',
-          "timeZone": data['timeZone'] ?? ''
+          "date": userTimeWithOffset,
+          "time": userTimeWithOffset,
+          "offset": userOffset,
+          "timeZone": timeZone
         },
-        "isGlobal": (data['country']?.toString().toLowerCase() != 'india'),
+        "isGlobal": (data['country']?.toString().toLowerCase() ?? 'india') != 'india',
       };
     } catch (e) {
       debugPrint('❌ Error building request data: $e');
@@ -3775,7 +3812,7 @@ class _RecentTripListState extends State<RecentTripList> {
     required String dropTitle,
   }) async {
     // Show loader
-    if (!mounted) return;
+    // if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
