@@ -27,10 +27,10 @@ class PrimaryButton extends StatelessWidget {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: isDisabled 
-            ? backgroundColor.withOpacity(0.5) 
+            ? backgroundColor.withOpacity(0.4) 
             : backgroundColor,  // Set background color
         foregroundColor: Colors.white,
-        disabledBackgroundColor: backgroundColor.withOpacity(0.5),
+        disabledBackgroundColor: backgroundColor.withOpacity(0.4),
         disabledForegroundColor: Colors.white.withOpacity(0.7),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),  // Set border radius

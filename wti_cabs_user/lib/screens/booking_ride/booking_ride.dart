@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -857,48 +858,58 @@ class _OutStationState extends State<OutStation> {
                 
                 final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
                 final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
-                final isDisabled = isSourceEmpty && isDropEmpty;
+                final isDisabled = isSourceEmpty || isDropEmpty;
 
                 return PrimaryButton(
                   text: 'Search Now',
-                  onPressed: isDisabled ? null : () async {
-                  try {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
-                      try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
+                  onPressed: isDisabled ? null : () {
+                    // Haptic feedback for smooth tap response
+                    HapticFeedback.lightImpact();
                     
-                    // Ensure destination APIs are called if placeId exists
-                    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                        dropPlaceSearchController.dropLatLng.value == null) {
-                      try {
-                        await dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceSearchController.dropPlaceId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching destination lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
-
-                    final requestData =
-                        await _buildOutstationRequestData(context);
-                    await searchCabInventoryController
-                        .fetchBookingData(
-                      country: placeSearchController
-                          .getPlacesLatLng.value?.country ??
-                          '',
-                      requestData: requestData,
+                    // Show loader immediately on button tap
+                    showDialog(
                       context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const FullScreenGifLoader(),
                     );
+                    
+                    // Defer heavy operations to allow button animation to complete smoothly
+                    SchedulerBinding.instance.addPostFrameCallback((_) async {
+                      try {
+                        // Ensure source APIs are called if placeId exists
+                        if (placeSearchController.placeId.value.isNotEmpty &&
+                            placeSearchController.getPlacesLatLng.value == null) {
+                          try {
+                            await placeSearchController.getLatLngDetails(
+                                placeSearchController.placeId.value, context);
+                          } catch (e) {
+                            debugPrint('Error fetching source lat/lng: $e');
+                            // Continue even if API fails
+                          }
+                        }
+                        
+                        // Ensure destination APIs are called if placeId exists
+                        if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
+                            dropPlaceSearchController.dropLatLng.value == null) {
+                          try {
+                            await dropPlaceSearchController.getLatLngForDrop(
+                                dropPlaceSearchController.dropPlaceId.value, context);
+                          } catch (e) {
+                            debugPrint('Error fetching destination lat/lng: $e');
+                            // Continue even if API fails
+                          }
+                        }
 
-
+                        final requestData =
+                            await _buildOutstationRequestData(context);
+                        await searchCabInventoryController
+                            .fetchBookingData(
+                          country: placeSearchController
+                              .getPlacesLatLng.value?.country ??
+                              '',
+                          requestData: requestData,
+                          context: context,
+                        );
 
                         Duration tripDuration = defaultTripDuration;
                         DateTime? backendEndTime;
@@ -940,25 +951,30 @@ class _OutStationState extends State<OutStation> {
                           updateLocalEndTime(defaultEndTime);
                         }
 
-                    bookingRideController.localEndTime.refresh();
+                        bookingRideController.localEndTime.refresh();
 
-                    Navigator.push(
-                      context,
-                      Platform.isIOS
-                          ? CupertinoPageRoute(
-                        builder: (context) => InventoryList(
-                            requestData: requestData),
-                      )
-                          : MaterialPageRoute(
-                        builder: (context) => InventoryList(
-                            requestData: requestData),
-                      ),
-                    );
-                    // Navigator.of(context).pop();
-                  } catch (e) {
-                    debugPrint('[SearchNow] Error: $e');
-                  }
-                },
+                        Navigator.push(
+                          context,
+                          Platform.isIOS
+                              ? CupertinoPageRoute(
+                            builder: (context) => InventoryList(
+                                requestData: requestData),
+                          )
+                              : MaterialPageRoute(
+                            builder: (context) => InventoryList(
+                                requestData: requestData),
+                          ),
+                        );
+                        // Navigator.of(context).pop();
+                      } catch (e) {
+                        debugPrint('[SearchNow] Error: $e');
+                        // Close FullScreenGifLoader if still open
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    });
+                  },
                 );
               }),
             ),
@@ -1072,10 +1088,7 @@ class _OutStationState extends State<OutStation> {
 
   Future<Map<String, dynamic>> _buildOutstationRequestData(
       BuildContext context) async {
-    showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => FullScreenGifLoader());
+    // Loader is already shown on button tap, no need to show again
 
 
     final now = DateTime.now();
@@ -1871,46 +1884,67 @@ class _RidesState extends State<Rides> {
                   
                   final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
                   final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
-                  final isDisabled = isSourceEmpty && isDropEmpty;
+                  final isDisabled = isSourceEmpty || isDropEmpty;
 
                   return PrimaryButton(
                     text: 'Search Now',
-                    onPressed: isDisabled ? null : () async {
-                      // Ensure source APIs are called if placeId exists
-                      if (placeSearchController.placeId.value.isNotEmpty &&
-                          placeSearchController.getPlacesLatLng.value == null) {
-                        try {
-                          await placeSearchController.getLatLngDetails(
-                              placeSearchController.placeId.value, context);
-                        } catch (e) {
-                          debugPrint('Error fetching source lat/lng: $e');
-                          // Continue even if API fails
-                        }
-                      }
+                    onPressed: isDisabled ? null : () {
+                      // Haptic feedback for smooth tap response
+                      HapticFeedback.lightImpact();
                       
-                      // Ensure destination APIs are called if placeId exists
-                      if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                          dropPlaceSearchController.dropLatLng.value == null) {
-                        try {
-                          await dropPlaceSearchController.getLatLngForDrop(
-                              dropPlaceSearchController.dropPlaceId.value, context);
-                        } catch (e) {
-                          debugPrint('Error fetching destination lat/lng: $e');
-                          // Continue even if API fails
-                        }
-                      }
-
-                      final requestData = await _buildRequestData(context);
-                      // bookingRideController.isInventoryPage.value = false;
-                      //
-                      // if (bookingRideController.isInventoryPage.value == true){
-                      //   GoRouter.of(context).pop();
-                      // }
-
-                      GoRouter.of(context).push(
-                        AppRoutes.inventoryList,
-                        extra: requestData,
+                      // Show loader immediately on button tap
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const FullScreenGifLoader(),
                       );
+                      
+                      // Defer heavy operations to allow button animation to complete smoothly
+                      SchedulerBinding.instance.addPostFrameCallback((_) async {
+                        // Ensure source APIs are called if placeId exists
+                        if (placeSearchController.placeId.value.isNotEmpty &&
+                            placeSearchController.getPlacesLatLng.value == null) {
+                          try {
+                            await placeSearchController.getLatLngDetails(
+                                placeSearchController.placeId.value, context);
+                          } catch (e) {
+                            debugPrint('Error fetching source lat/lng: $e');
+                            // Continue even if API fails
+                          }
+                        }
+                        
+                        // Ensure destination APIs are called if placeId exists
+                        if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
+                            dropPlaceSearchController.dropLatLng.value == null) {
+                          try {
+                            await dropPlaceSearchController.getLatLngForDrop(
+                                dropPlaceSearchController.dropPlaceId.value, context);
+                          } catch (e) {
+                            debugPrint('Error fetching destination lat/lng: $e');
+                            // Continue even if API fails
+                          }
+                        }
+
+                        try {
+                          final requestData = await _buildRequestData(context);
+                        // bookingRideController.isInventoryPage.value = false;
+                        //
+                        // if (bookingRideController.isInventoryPage.value == true){
+                        //   GoRouter.of(context).pop();
+                        // }
+
+                          GoRouter.of(context).push(
+                            AppRoutes.inventoryList,
+                            extra: requestData,
+                          );
+                        } catch (e) {
+                          debugPrint('[SearchNow] Error: $e');
+                          // Close FullScreenGifLoader if still open
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        }
+                      });
                     },
                   );
                 }),
@@ -1930,11 +1964,7 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
   Get.put(PlaceSearchController());
   final BookingRideController bookingRideController =
   Get.put(BookingRideController());
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => FullScreenGifLoader(),
-  );
+  // Loader is already shown on button tap, no need to show again
   final now = DateTime.now();
   final searchDate = now.toIso8601String().split('T').first;
   final searchTime =
@@ -2638,62 +2668,83 @@ class _RentalState extends State<Rental> {
                   
                   final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
                   final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
-                  final isDisabled = isSourceEmpty && isDropEmpty;
+                  final isDisabled = isSourceEmpty || isDropEmpty;
 
                   return PrimaryButton(
                     text: 'Search Now',
-                    onPressed: isDisabled ? null : () async {
-                      // Ensure source APIs are called if placeId exists
-                      if (placeSearchController.placeId.value.isNotEmpty &&
-                          placeSearchController.getPlacesLatLng.value == null) {
+                    onPressed: isDisabled ? null : () {
+                      // Haptic feedback for smooth tap response
+                      HapticFeedback.lightImpact();
+                      
+                      // Show loader immediately on button tap
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const FullScreenGifLoader(),
+                      );
+                      
+                      // Defer heavy operations to allow button animation to complete smoothly
+                      SchedulerBinding.instance.addPostFrameCallback((_) async {
+                        // Ensure source APIs are called if placeId exists
+                        if (placeSearchController.placeId.value.isNotEmpty &&
+                            placeSearchController.getPlacesLatLng.value == null) {
+                          try {
+                            await placeSearchController.getLatLngDetails(
+                                placeSearchController.placeId.value, context);
+                          } catch (e) {
+                            debugPrint('Error fetching source lat/lng: $e');
+                            // Continue even if API fails
+                          }
+                        }
+
                         try {
-                          await placeSearchController.getLatLngDetails(
-                              placeSearchController.placeId.value, context);
+                          final requestData = await _buildRentalRequestData(context);
+
+                        setState(() => _isLoading = true);
+
+                        try {
+                          await searchCabInventoryController
+                              .fetchBookingData(
+                            country: requestData['countryName'],
+                            requestData: requestData,
+                            context: context,
+                            isSecondPage: true,
+                          );
+
+                          bookingRideController.isInventoryPage.value = false;
+
+                          if (bookingRideController.isInventoryPage.value == true) {
+                            GoRouter.of(context).pop();
+                          } else {
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: requestData,
+                            );
+                          }
                         } catch (e) {
-                          debugPrint('Error fetching source lat/lng: $e');
-                          // Continue even if API fails
-                        }
-                      }
-
-                      final requestData = await _buildRentalRequestData(context);
-
-                      setState(() => _isLoading = true);
-
-                      try {
-                        await searchCabInventoryController
-                            .fetchBookingData(
-                          country: requestData['countryName'],
-                          requestData: requestData,
-                          context: context,
-                          isSecondPage: true,
-                        );
-
-                        bookingRideController.isInventoryPage.value = false;
-
-                        if (bookingRideController.isInventoryPage.value == true) {
+                          debugPrint('Error fetching booking data: $e');
+                          // Show error to user but don't block
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Network error. Please try again.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (!mounted) return;
+                          setState(() => _isLoading = false);
                           GoRouter.of(context).pop();
-                        } else {
-                          GoRouter.of(context).push(
-                            AppRoutes.inventoryList,
-                            extra: requestData,
-                          );
                         }
-                      } catch (e) {
-                        debugPrint('Error fetching booking data: $e');
-                        // Show error to user but don't block
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Network error. Please try again.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                        } catch (e) {
+                          debugPrint('[SearchNow] Error: $e');
+                          // Close FullScreenGifLoader if still open
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                          }
                         }
-                      } finally {
-                        if (!mounted) return;
-                        setState(() => _isLoading = false);
-                        GoRouter.of(context).pop();
-                      }
+                      });
                     },
                   );
                 }),
@@ -2715,11 +2766,7 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
   final BookingRideController bookingRideController =
   Get.put(BookingRideController());
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => FullScreenGifLoader(),
-  );
+  // Loader is already shown on button tap, no need to show again
   final now = DateTime.now();
   final searchDate = now.toIso8601String().split('T').first;
   final searchTime =
