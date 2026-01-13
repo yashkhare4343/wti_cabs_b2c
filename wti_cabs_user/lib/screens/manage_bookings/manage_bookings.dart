@@ -1639,7 +1639,8 @@ class _BookingCardState extends State<BookingCard> {
                                 "endTime": booking.endTime,
                                 "timezone": booking.timezone,
                                 "paymentId" : booking.razorpayPaymentId,
-                                "recieptId" : booking.razorpayReceiptId
+                                "recieptId" : booking.razorpayReceiptId,
+                                "orderRefId" : booking.orderReferenceNumber
                               };
 
                               context.push('/cancelBooking', extra: bookingMap);

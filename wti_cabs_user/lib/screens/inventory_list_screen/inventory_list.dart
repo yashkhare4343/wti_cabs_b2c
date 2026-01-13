@@ -101,6 +101,19 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
         }
       });
     });
+
+    // Show error message when navigated here due to inventory fetch failure
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final msg = widget.requestData['noInventoryMessage'];
+      if (msg is String && msg.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
   }
 
   @override

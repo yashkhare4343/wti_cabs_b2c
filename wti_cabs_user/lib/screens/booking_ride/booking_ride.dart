@@ -876,37 +876,91 @@ class _OutStationState extends State<OutStation> {
                     // Defer heavy operations to allow button animation to complete smoothly
                     SchedulerBinding.instance.addPostFrameCallback((_) async {
                       try {
-                        // Ensure source APIs are called if placeId exists
-                        if (placeSearchController.placeId.value.isNotEmpty &&
-                            placeSearchController.getPlacesLatLng.value == null) {
-                          try {
-                            await placeSearchController.getLatLngDetails(
-                                placeSearchController.placeId.value, context);
-                          } catch (e) {
-                            debugPrint('Error fetching source lat/lng: $e');
-                            // Continue even if API fails
-                          }
-                        }
-                        
-                        // Ensure destination APIs are called if placeId exists
-                        if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                            dropPlaceSearchController.dropLatLng.value == null) {
-                          try {
-                            await dropPlaceSearchController.getLatLngForDrop(
-                                dropPlaceSearchController.dropPlaceId.value, context);
-                          } catch (e) {
-                            debugPrint('Error fetching destination lat/lng: $e');
-                            // Continue even if API fails
+                        // ✅ FAST PATH: Check countries immediately if already available
+                        var sourceCountry = placeSearchController
+                                .getPlacesLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
+                        var destinationCountry = dropPlaceSearchController
+                                .dropLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
+
+                        // If countries are available, check immediately (fast path)
+                        if (sourceCountry.isNotEmpty && destinationCountry.isNotEmpty) {
+                          if (sourceCountry != destinationCountry) {
+                            if (Navigator.of(context, rootNavigator: true).canPop()) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Pickup and drop countries must be the same.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return; // ✅ Fast return if countries don't match
                           }
                         }
 
+                        // ✅ Fetch lat/lng APIs in parallel only if needed
+                        final futures = <Future>[];
+                        if (placeSearchController.placeId.value.isNotEmpty &&
+                            placeSearchController.getPlacesLatLng.value == null) {
+                          futures.add(placeSearchController.getLatLngDetails(
+                              placeSearchController.placeId.value, context)
+                              .catchError((e) => debugPrint('Error fetching source lat/lng: $e')));
+                        }
+                        if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
+                            dropPlaceSearchController.dropLatLng.value == null) {
+                          futures.add(dropPlaceSearchController.getLatLngForDrop(
+                              dropPlaceSearchController.dropPlaceId.value, context)
+                              .catchError((e) => debugPrint('Error fetching destination lat/lng: $e')));
+                        }
+                        
+                        // Wait for APIs in parallel if needed
+                        if (futures.isNotEmpty) {
+                          await Future.wait(futures);
+                          // Re-check countries after APIs complete
+                          sourceCountry = placeSearchController
+                                  .getPlacesLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
+                          destinationCountry = dropPlaceSearchController
+                                  .dropLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
+                        }
+
+                        // ✅ Final country validation
+                        if (sourceCountry.isEmpty || destinationCountry.isEmpty) {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          return;
+                        }
+
+                        if (sourceCountry != destinationCountry) {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Pickup and drop countries must be the same.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return; // ✅ CRITICAL: Return early, do NOT build request data or call API
+                        }
+
+                        // Only build request data if countries match
                         final requestData =
                             await _buildOutstationRequestData(context);
-                        await searchCabInventoryController
-                            .fetchBookingData(
-                          country: placeSearchController
-                              .getPlacesLatLng.value?.country ??
-                              '',
+
+                        // Only call API if countries match
+                        await searchCabInventoryController.fetchBookingData(
+                          country:
+                              placeSearchController.getPlacesLatLng.value?.country ??
+                                  '',
                           requestData: requestData,
                           context: context,
                         );
@@ -957,13 +1011,13 @@ class _OutStationState extends State<OutStation> {
                           context,
                           Platform.isIOS
                               ? CupertinoPageRoute(
-                            builder: (context) => InventoryList(
-                                requestData: requestData),
-                          )
+                                  builder: (context) =>
+                                      InventoryList(requestData: requestData),
+                                )
                               : MaterialPageRoute(
-                            builder: (context) => InventoryList(
-                                requestData: requestData),
-                          ),
+                                  builder: (context) =>
+                                      InventoryList(requestData: requestData),
+                                ),
                         );
                         // Navigator.of(context).pop();
                       } catch (e) {
@@ -971,6 +1025,25 @@ class _OutStationState extends State<OutStation> {
                         // Close FullScreenGifLoader if still open
                         if (mounted) {
                           Navigator.of(context).pop();
+                          // Navigate to inventory list with error message
+                          Navigator.push(
+                            context,
+                            Platform.isIOS
+                                ? CupertinoPageRoute(
+                                    builder: (context) => InventoryList(
+                                          requestData: const {
+                                            'noInventoryMessage':
+                                                'No Inventory Found, Please try again!',
+                                          },
+                                        ))
+                                : MaterialPageRoute(
+                                    builder: (context) => InventoryList(
+                                          requestData: const {
+                                            'noInventoryMessage':
+                                                'No Inventory Found, Please try again!',
+                                          },
+                                        )),
+                          );
                         }
                       }
                     });
@@ -1901,38 +1974,87 @@ class _RidesState extends State<Rides> {
                       
                       // Defer heavy operations to allow button animation to complete smoothly
                       SchedulerBinding.instance.addPostFrameCallback((_) async {
-                        // Ensure source APIs are called if placeId exists
+                        // ✅ FAST PATH: Check countries immediately if already available
+                        var sourceCountry = placeSearchController
+                                .getPlacesLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
+                        var destinationCountry = dropPlaceSearchController
+                                .dropLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
+
+                        // If countries are available, check immediately (fast path)
+                        if (sourceCountry.isNotEmpty && destinationCountry.isNotEmpty) {
+                          if (sourceCountry != destinationCountry) {
+                            if (Navigator.of(context, rootNavigator: true).canPop()) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Pickup and drop countries must be the same.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return; // ✅ Fast return if countries don't match
+                          }
+                        }
+
+                        // ✅ Fetch lat/lng APIs in parallel only if needed
+                        final futures = <Future>[];
                         if (placeSearchController.placeId.value.isNotEmpty &&
                             placeSearchController.getPlacesLatLng.value == null) {
-                          try {
-                            await placeSearchController.getLatLngDetails(
-                                placeSearchController.placeId.value, context);
-                          } catch (e) {
-                            debugPrint('Error fetching source lat/lng: $e');
-                            // Continue even if API fails
-                          }
+                          futures.add(placeSearchController.getLatLngDetails(
+                              placeSearchController.placeId.value, context)
+                              .catchError((e) => debugPrint('Error fetching source lat/lng: $e')));
                         }
-                        
-                        // Ensure destination APIs are called if placeId exists
                         if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
                             dropPlaceSearchController.dropLatLng.value == null) {
-                          try {
-                            await dropPlaceSearchController.getLatLngForDrop(
-                                dropPlaceSearchController.dropPlaceId.value, context);
-                          } catch (e) {
-                            debugPrint('Error fetching destination lat/lng: $e');
-                            // Continue even if API fails
-                          }
+                          futures.add(dropPlaceSearchController.getLatLngForDrop(
+                              dropPlaceSearchController.dropPlaceId.value, context)
+                              .catchError((e) => debugPrint('Error fetching destination lat/lng: $e')));
+                        }
+                        
+                        // Wait for APIs in parallel if needed
+                        if (futures.isNotEmpty) {
+                          await Future.wait(futures);
+                          // Re-check countries after APIs complete
+                          sourceCountry = placeSearchController
+                                  .getPlacesLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
+                          destinationCountry = dropPlaceSearchController
+                                  .dropLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
                         }
 
+                        // ✅ Final country validation
+                        if (sourceCountry.isEmpty || destinationCountry.isEmpty) {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          return;
+                        }
+
+                        if (sourceCountry != destinationCountry) {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Pickup and drop countries must be the same.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return; // ✅ CRITICAL: Return early, do NOT call _buildRequestData which has GoRouter.pop()
+                        }
+
+                        // Only build request data if countries match
                         try {
                           final requestData = await _buildRequestData(context);
-                        // bookingRideController.isInventoryPage.value = false;
-                        //
-                        // if (bookingRideController.isInventoryPage.value == true){
-                        //   GoRouter.of(context).pop();
-                        // }
 
+                          // Only navigate if countries match (API will be called from inventory list screen)
                           GoRouter.of(context).push(
                             AppRoutes.inventoryList,
                             extra: requestData,
@@ -1942,6 +2064,14 @@ class _RidesState extends State<Rides> {
                           // Close FullScreenGifLoader if still open
                           if (mounted) {
                             Navigator.of(context).pop();
+                            // Navigate to inventory list with error message
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: const {
+                                'noInventoryMessage':
+                                    'No Inventory Found, Please try again!',
+                              },
+                            );
                           }
                         }
                       });
@@ -2685,63 +2815,133 @@ class _RentalState extends State<Rental> {
                       
                       // Defer heavy operations to allow button animation to complete smoothly
                       SchedulerBinding.instance.addPostFrameCallback((_) async {
-                        // Ensure source APIs are called if placeId exists
-                        if (placeSearchController.placeId.value.isNotEmpty &&
-                            placeSearchController.getPlacesLatLng.value == null) {
-                          try {
-                            await placeSearchController.getLatLngDetails(
-                                placeSearchController.placeId.value, context);
-                          } catch (e) {
-                            debugPrint('Error fetching source lat/lng: $e');
-                            // Continue even if API fails
-                          }
-                        }
+                        // ✅ FAST PATH: Check countries immediately if already available
+                        var sourceCountry = placeSearchController
+                                .getPlacesLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
+                        var destinationCountry = dropPlaceSearchController
+                                .dropLatLng.value?.country
+                                ?.toString()
+                                .toLowerCase() ?? '';
 
-                        try {
-                          final requestData = await _buildRentalRequestData(context);
-
-                        setState(() => _isLoading = true);
-
-                        try {
-                          await searchCabInventoryController
-                              .fetchBookingData(
-                            country: requestData['countryName'],
-                            requestData: requestData,
-                            context: context,
-                            isSecondPage: true,
-                          );
-
-                          bookingRideController.isInventoryPage.value = false;
-
-                          if (bookingRideController.isInventoryPage.value == true) {
-                            GoRouter.of(context).pop();
-                          } else {
-                            GoRouter.of(context).push(
-                              AppRoutes.inventoryList,
-                              extra: requestData,
-                            );
-                          }
-                        } catch (e) {
-                          debugPrint('Error fetching booking data: $e');
-                          // Show error to user but don't block
-                          if (mounted) {
+                        // For rental, if destination exists, check immediately (fast path)
+                        if (destinationCountry.isNotEmpty && sourceCountry.isNotEmpty) {
+                          if (sourceCountry != destinationCountry) {
+                            if (Navigator.of(context, rootNavigator: true).canPop()) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Network error. Please try again.'),
+                                content: Text('Pickup and drop countries must be the same.'),
                                 backgroundColor: Colors.red,
                               ),
                             );
+                            return; // ✅ Fast return if countries don't match
                           }
-                        } finally {
-                          if (!mounted) return;
-                          setState(() => _isLoading = false);
-                          GoRouter.of(context).pop();
                         }
+
+                        // ✅ Fetch lat/lng APIs in parallel only if needed
+                        final futures = <Future>[];
+                        if (placeSearchController.placeId.value.isNotEmpty &&
+                            placeSearchController.getPlacesLatLng.value == null) {
+                          futures.add(placeSearchController.getLatLngDetails(
+                              placeSearchController.placeId.value, context)
+                              .catchError((e) => debugPrint('Error fetching source lat/lng: $e')));
+                        }
+                        if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
+                            dropPlaceSearchController.dropLatLng.value == null) {
+                          futures.add(dropPlaceSearchController.getLatLngForDrop(
+                              dropPlaceSearchController.dropPlaceId.value, context)
+                              .catchError((e) => debugPrint('Error fetching destination lat/lng: $e')));
+                        }
+                        
+                        // Wait for APIs in parallel if needed
+                        if (futures.isNotEmpty) {
+                          await Future.wait(futures);
+                          // Re-check countries after APIs complete
+                          sourceCountry = placeSearchController
+                                  .getPlacesLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
+                          destinationCountry = dropPlaceSearchController
+                                  .dropLatLng.value?.country
+                                  ?.toString()
+                                  .toLowerCase() ?? '';
+                        }
+
+                        // ✅ Final country validation for rental
+                        // For rental, if destination exists, both must match
+                        if (destinationCountry.isNotEmpty) {
+                          if (sourceCountry.isEmpty || sourceCountry != destinationCountry) {
+                            if (Navigator.of(context, rootNavigator: true).canPop()) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Pickup and drop countries must be the same.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return; // ✅ CRITICAL: Return early, do NOT build request data or call API
+                          }
+                        }
+
+                        // Only build request data if countries match (or destination is empty for rental)
+                        try {
+                          final requestData = await _buildRentalRequestData(context);
+
+                          setState(() => _isLoading = true);
+
+                          // Only call API if countries match (or destination is empty for rental)
+                          try {
+                            await searchCabInventoryController.fetchBookingData(
+                              country: requestData['countryName'],
+                              requestData: requestData,
+                              context: context,
+                              isSecondPage: true,
+                            );
+
+                            bookingRideController.isInventoryPage.value = false;
+
+                            if (bookingRideController.isInventoryPage.value == true) {
+                              GoRouter.of(context).pop();
+                            } else {
+                              GoRouter.of(context).push(
+                                AppRoutes.inventoryList,
+                                extra: requestData,
+                              );
+                            }
+                          } catch (e) {
+                            debugPrint('Error fetching booking data: $e');
+                            // Show error to user but don't block
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Network error. Please try again.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (!mounted) return;
+                            setState(() => _isLoading = false);
+                            GoRouter.of(context).pop();
+                          }
                         } catch (e) {
                           debugPrint('[SearchNow] Error: $e');
                           // Close FullScreenGifLoader if still open
                           if (mounted) {
                             Navigator.of(context).pop();
+                            // Navigate to inventory list with error message
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: const {
+                                'noInventoryMessage':
+                                    'No Inventory Found, Please try again!',
+                              },
+                            );
                           }
                         }
                       });
