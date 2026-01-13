@@ -75,10 +75,15 @@ class _BookingRideState extends State<BookingRide> {
     Get.put(PlaceSearchController());
     setPickup();
     fetchPackageController.fetchPackages();
-    if (placeSearchController.suggestions.isNotEmpty) {
-      bookingRideController.prefilled.value =
-          placeSearchController.suggestions.first.primaryText ?? '';
-    }
+    
+    // Defer observable updates to after build phase to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (placeSearchController.suggestions.isNotEmpty) {
+        bookingRideController.prefilled.value =
+            placeSearchController.suggestions.first.primaryText ?? '';
+      }
+    });
+    
     loadSeletedPackage();
   }
 
@@ -844,9 +849,19 @@ class _OutStationState extends State<OutStation> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SizedBox(
               width: double.infinity,
-              child: PrimaryButton(
-                text: 'Search Now',
-                onPressed: () async {
+              child: Obx(() {
+                final sourceValue = bookingRideController.prefilled.value.trim();
+                final dropValue = bookingRideController.prefilledDrop.value.trim();
+                final sourcePlaceId = placeSearchController.placeId.value;
+                final dropPlaceId = dropPlaceSearchController.dropPlaceId.value;
+                
+                final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
+                final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
+                final isDisabled = isSourceEmpty && isDropEmpty;
+
+                return PrimaryButton(
+                  text: 'Search Now',
+                  onPressed: isDisabled ? null : () async {
                   try {
                     // Ensure source APIs are called if placeId exists
                     if (placeSearchController.placeId.value.isNotEmpty &&
@@ -944,7 +959,8 @@ class _OutStationState extends State<OutStation> {
                     debugPrint('[SearchNow] Error: $e');
                   }
                 },
-              ),
+                );
+              }),
             ),
           ),
         ],
@@ -1847,46 +1863,57 @@ class _RidesState extends State<Rides> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () async {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
-                      try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
-                    
-                    // Ensure destination APIs are called if placeId exists
-                    if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
-                        dropPlaceSearchController.dropLatLng.value == null) {
-                      try {
-                        await dropPlaceSearchController.getLatLngForDrop(
-                            dropPlaceSearchController.dropPlaceId.value, context);
-                      } catch (e) {
-                        debugPrint('Error fetching destination lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
+                child: Obx(() {
+                  final sourceValue = bookingRideController.prefilled.value.trim();
+                  final dropValue = bookingRideController.prefilledDrop.value.trim();
+                  final sourcePlaceId = placeSearchController.placeId.value;
+                  final dropPlaceId = dropPlaceSearchController.dropPlaceId.value;
+                  
+                  final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
+                  final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
+                  final isDisabled = isSourceEmpty && isDropEmpty;
 
-                    final requestData = await _buildRequestData(context);
-                    // bookingRideController.isInventoryPage.value = false;
-                    //
-                    // if (bookingRideController.isInventoryPage.value == true){
-                    //   GoRouter.of(context).pop();
-                    // }
+                  return PrimaryButton(
+                    text: 'Search Now',
+                    onPressed: isDisabled ? null : () async {
+                      // Ensure source APIs are called if placeId exists
+                      if (placeSearchController.placeId.value.isNotEmpty &&
+                          placeSearchController.getPlacesLatLng.value == null) {
+                        try {
+                          await placeSearchController.getLatLngDetails(
+                              placeSearchController.placeId.value, context);
+                        } catch (e) {
+                          debugPrint('Error fetching source lat/lng: $e');
+                          // Continue even if API fails
+                        }
+                      }
+                      
+                      // Ensure destination APIs are called if placeId exists
+                      if (dropPlaceSearchController.dropPlaceId.value.isNotEmpty &&
+                          dropPlaceSearchController.dropLatLng.value == null) {
+                        try {
+                          await dropPlaceSearchController.getLatLngForDrop(
+                              dropPlaceSearchController.dropPlaceId.value, context);
+                        } catch (e) {
+                          debugPrint('Error fetching destination lat/lng: $e');
+                          // Continue even if API fails
+                        }
+                      }
 
-                    GoRouter.of(context).push(
-                      AppRoutes.inventoryList,
-                      extra: requestData,
-                    );
-                  },
-                ),
+                      final requestData = await _buildRequestData(context);
+                      // bookingRideController.isInventoryPage.value = false;
+                      //
+                      // if (bookingRideController.isInventoryPage.value == true){
+                      //   GoRouter.of(context).pop();
+                      // }
+
+                      GoRouter.of(context).push(
+                        AppRoutes.inventoryList,
+                        extra: requestData,
+                      );
+                    },
+                  );
+                }),
               ),
             ),
           ],
@@ -2603,62 +2630,73 @@ class _RentalState extends State<Rental> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Search Now',
-                  onPressed: () async {
-                    // Ensure source APIs are called if placeId exists
-                    if (placeSearchController.placeId.value.isNotEmpty &&
-                        placeSearchController.getPlacesLatLng.value == null) {
+                child: Obx(() {
+                  final sourceValue = bookingRideController.prefilled.value.trim();
+                  final dropValue = bookingRideController.prefilledDrop.value.trim();
+                  final sourcePlaceId = placeSearchController.placeId.value;
+                  final dropPlaceId = dropPlaceSearchController.dropPlaceId.value;
+                  
+                  final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
+                  final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
+                  final isDisabled = isSourceEmpty && isDropEmpty;
+
+                  return PrimaryButton(
+                    text: 'Search Now',
+                    onPressed: isDisabled ? null : () async {
+                      // Ensure source APIs are called if placeId exists
+                      if (placeSearchController.placeId.value.isNotEmpty &&
+                          placeSearchController.getPlacesLatLng.value == null) {
+                        try {
+                          await placeSearchController.getLatLngDetails(
+                              placeSearchController.placeId.value, context);
+                        } catch (e) {
+                          debugPrint('Error fetching source lat/lng: $e');
+                          // Continue even if API fails
+                        }
+                      }
+
+                      final requestData = await _buildRentalRequestData(context);
+
+                      setState(() => _isLoading = true);
+
                       try {
-                        await placeSearchController.getLatLngDetails(
-                            placeSearchController.placeId.value, context);
+                        await searchCabInventoryController
+                            .fetchBookingData(
+                          country: requestData['countryName'],
+                          requestData: requestData,
+                          context: context,
+                          isSecondPage: true,
+                        );
+
+                        bookingRideController.isInventoryPage.value = false;
+
+                        if (bookingRideController.isInventoryPage.value == true) {
+                          GoRouter.of(context).pop();
+                        } else {
+                          GoRouter.of(context).push(
+                            AppRoutes.inventoryList,
+                            extra: requestData,
+                          );
+                        }
                       } catch (e) {
-                        debugPrint('Error fetching source lat/lng: $e');
-                        // Continue even if API fails
-                      }
-                    }
-
-                    final requestData = await _buildRentalRequestData(context);
-
-                    setState(() => _isLoading = true);
-
-                    try {
-                      await searchCabInventoryController
-                          .fetchBookingData(
-                        country: requestData['countryName'],
-                        requestData: requestData,
-                        context: context,
-                        isSecondPage: true,
-                      );
-
-                      bookingRideController.isInventoryPage.value = false;
-
-                      if (bookingRideController.isInventoryPage.value == true) {
+                        debugPrint('Error fetching booking data: $e');
+                        // Show error to user but don't block
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Network error. Please try again.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (!mounted) return;
+                        setState(() => _isLoading = false);
                         GoRouter.of(context).pop();
-                      } else {
-                        GoRouter.of(context).push(
-                          AppRoutes.inventoryList,
-                          extra: requestData,
-                        );
                       }
-                    } catch (e) {
-                      debugPrint('Error fetching booking data: $e');
-                      // Show error to user but don't block
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Network error. Please try again.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } finally {
-                      if (!mounted) return;
-                      setState(() => _isLoading = false);
-                      GoRouter.of(context).pop();
-                    }
-                  },
-                ),
+                    },
+                  );
+                }),
               ),
             )
           ],

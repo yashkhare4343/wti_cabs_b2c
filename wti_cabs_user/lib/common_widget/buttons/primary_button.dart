@@ -5,7 +5,7 @@ import '../../utility/constants/fonts/common_fonts.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color backgroundColor;
   final bool? isIcon;
   final IconData? icon;
@@ -14,17 +14,24 @@ class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.backgroundColor = AppColors.purple1,  // Default to blue if no color is provided
     this.isIcon, this.icon,  // Default border radius
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = onPressed == null;
+    
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor,  // Set background color
+        backgroundColor: isDisabled 
+            ? backgroundColor.withOpacity(0.5) 
+            : backgroundColor,  // Set background color
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: backgroundColor.withOpacity(0.5),
+        disabledForegroundColor: Colors.white.withOpacity(0.7),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),  // Set border radius
         ),

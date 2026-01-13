@@ -115,6 +115,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Get.put(SourceLocationController());
   final DestinationLocationController destinationLocationController =
       Get.put(DestinationLocationController());
+  final DropPlaceSearchController dropPlaceSearchController =
+      Get.isRegistered<DropPlaceSearchController>()
+          ? Get.find<DropPlaceSearchController>()
+          : Get.put(DropPlaceSearchController());
   final ProfileController profileController = Get.put(ProfileController());
   final UpcomingBookingController upcomingBookingController =
       Get.put(UpcomingBookingController());
@@ -2162,6 +2166,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 0;
+                              // Clear drop field when navigating from home (not from recent destination)
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
 
                               // Start fetching location asynchronously without waiting
                               fetchCurrentLocationAndAddress();
@@ -2224,6 +2233,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             onTap: () {
                               bookingRideController
                                   .selectedIndex.value = 1;
+                              // Clear drop field when navigating from home (not from recent destination)
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
+
                               fetchCurrentLocationAndAddress();
                               // Navigate immediately
                               if (Platform.isAndroid) {
@@ -2315,6 +2330,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             splashColor: Colors.transparent,
                             onTap: () {
                               bookingRideController.selectedIndex.value = 2;
+                              // Clear drop field when navigating from home (not from recent destination)
+                              bookingRideController.prefilledDrop.value = '';
+                              dropPlaceSearchController.dropPlaceId.value = '';
+                              dropPlaceSearchController.dropLatLng.value = null;
+                              dropPlaceSearchController.dropSuggestions.clear();
+
                               fetchCurrentLocationAndAddress();
 
                               // Navigate immediately
@@ -3485,27 +3506,35 @@ class _RecentTripListState extends State<RecentTripList> {
         : Get.put(SourceLocationController());
   }
 
-  /// Ensures source location is available, fetching current location if needed
+  /// Ensures source location is available, using cached data when possible
   Future<bool> _ensureSourceLocation() async {
     try {
+      // Check if we already have complete source location data
       final existingSourcePlaceId = await StorageServices.instance.read('sourcePlaceId');
-      
-      // If source location exists and lat/lng is available, we're good
-      if (existingSourcePlaceId != null && 
-          existingSourcePlaceId.isNotEmpty &&
-          placeSearchController.getPlacesLatLng.value != null) {
-        return true;
-      }
-
-      // If placeId exists but lat/lng is missing, fetch it
       if (existingSourcePlaceId != null && existingSourcePlaceId.isNotEmpty) {
+        // Update controller with stored placeId
+        if (placeSearchController.placeId.value != existingSourcePlaceId) {
+          placeSearchController.placeId.value = existingSourcePlaceId;
+        }
+
+        // If lat/lng is already available in controller, we're done
+        if (placeSearchController.getPlacesLatLng.value != null) {
+          // Ensure controllers are synced with storage
+          final sourceTitle = await StorageServices.instance.read('sourceTitle');
+          if (sourceTitle != null && bookingRideController.prefilled.value != sourceTitle) {
+            bookingRideController.prefilled.value = sourceTitle;
+          }
+          return true;
+        }
+
+        // Only fetch lat/lng if missing
         await placeSearchController.getLatLngDetails(existingSourcePlaceId, context);
         if (placeSearchController.getPlacesLatLng.value != null) {
           return true;
         }
       }
 
-      // Otherwise, fetch current location
+      // Last resort: fetch current location only if no data exists
       await _fetchCurrentLocation();
       return placeSearchController.getPlacesLatLng.value != null;
     } catch (e) {
@@ -3565,13 +3594,13 @@ class _RecentTripListState extends State<RecentTripList> {
 
       // Search for place suggestions
       await placeSearchController.searchPlaces(fullAddress, context);
-      
+
       if (placeSearchController.suggestions.isEmpty) {
         throw Exception('No suggestions found for current location');
       }
 
       final suggestion = placeSearchController.suggestions.first;
-      
+
       // Update controllers
       bookingRideController.prefilled.value = fullAddress;
       placeSearchController.placeId.value = suggestion.placeId;
@@ -3609,7 +3638,7 @@ class _RecentTripListState extends State<RecentTripList> {
     }
   }
 
-  /// Sets up destination location from place data
+  /// Sets up destination location from place data, always fetching fresh data for new placeIds
   Future<bool> _setupDestination({
     required String placeId,
     required String title,
@@ -3620,20 +3649,55 @@ class _RecentTripListState extends State<RecentTripList> {
     List<dynamic>? terms,
   }) async {
     try {
-      // Update controllers
+      // Check current controller state BEFORE updating (to detect stale data)
+      final currentControllerPlaceId = dropPlaceSearchController.dropPlaceId.value;
+      final isNewPlaceId = currentControllerPlaceId != placeId;
+
+      // Update controllers with new placeId immediately
       bookingRideController.prefilledDrop.value = title;
       dropPlaceSearchController.dropPlaceId.value = placeId;
 
-      // Search for drop places to get full details
-      await dropPlaceSearchController.searchDropPlaces(title, context);
-      
-      if (dropPlaceSearchController.dropSuggestions.isEmpty) {
-        return false;
+      // If this is a new placeId, clear ALL old data to prevent stale data issues
+      if (isNewPlaceId) {
+        // Clear old suggestions
+        dropPlaceSearchController.dropSuggestions.clear();
+        // Clear old lat/lng data
+        dropPlaceSearchController.dropLatLng.value = null;
+      }
+
+      // Check if controller already has correct data for this placeId (after clearing)
+      final controllerHasCorrectData = dropPlaceSearchController.dropLatLng.value != null &&
+          dropPlaceSearchController.dropPlaceId.value == placeId;
+
+      // Only skip API calls if controller already has correct data for this exact placeId
+      if (controllerHasCorrectData && !isNewPlaceId) {
+        // Controller already has correct data, just update the destination controller
+        final currentLatLng = dropPlaceSearchController.dropLatLng.value!;
+        dropLocationController.setPlace(
+          placeId: placeId,
+          title: title,
+          city: currentLatLng.city,
+          state: currentLatLng.state,
+          country: currentLatLng.country,
+          types: types,
+          terms: terms?.map((e) => e is Term ? e : Term.fromJson(e as Map<String, dynamic>)).toList(),
+        );
+        return true;
+      }
+
+      // Always fetch fresh data from APIs for new placeIds or when data is missing
+      // Search for drop places to get fresh data
+      if (dropPlaceSearchController.dropSuggestions.isEmpty ||
+          dropPlaceSearchController.dropSuggestions.first.placeId != placeId) {
+        await dropPlaceSearchController.searchDropPlaces(title, context);
+        if (dropPlaceSearchController.dropSuggestions.isEmpty) {
+          return false;
+        }
       }
 
       final dropSuggestion = dropPlaceSearchController.dropSuggestions.first;
 
-      // Get lat/lng for drop
+      // Always fetch fresh lat/lng for the placeId
       await dropPlaceSearchController.getLatLngForDrop(placeId, context);
 
       // Save destination details
@@ -3706,31 +3770,31 @@ class _RecentTripListState extends State<RecentTripList> {
       final destLatLng = dropPlaceSearchController.dropLatLng.value!;
 
       // Get fallback values from controllers if storage is null
-      final sourceTitle = data['sourceTitle'] ?? 
-          bookingRideController.prefilled.value ?? 
-          (placeSearchController.suggestions.isNotEmpty 
-              ? placeSearchController.suggestions.first.primaryText 
+      final sourceTitle = data['sourceTitle'] ??
+          bookingRideController.prefilled.value ??
+          (placeSearchController.suggestions.isNotEmpty
+              ? placeSearchController.suggestions.first.primaryText
               : '');
-      final actualOffset = data['actualOffset'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ?? 
+      final actualOffset = data['actualOffset'] ??
+          placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualOffSet?.toString() ??
           offset.toString();
-      final timeZone = data['timeZone'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? 
+      final timeZone = data['timeZone'] ??
+          placeSearchController.findCntryDateTimeResponse.value?.timeZone ??
           placeSearchController.getCurrentTimeZoneName();
-      final actualTimeWithOffset = data['actualTimeWithOffset'] ?? 
+      final actualTimeWithOffset = data['actualTimeWithOffset'] ??
           (placeSearchController.findCntryDateTimeResponse.value?.actualDateTimeObject?.actualDateTime != null
               ? placeSearchController.convertToIsoWithOffset(
                   placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualDateTime!,
                   -(placeSearchController.findCntryDateTimeResponse.value!.actualDateTimeObject!.actualOffSet ?? 0))
               : DateTime.now().toIso8601String());
-      final userTimeWithOffset = data['userTimeWithOffset'] ?? 
+      final userTimeWithOffset = data['userTimeWithOffset'] ??
           (placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userDateTime != null
               ? placeSearchController.convertToIsoWithOffset(
                   placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userDateTime!,
                   -(placeSearchController.findCntryDateTimeResponse.value!.userDateTimeObject!.userOffSet ?? 0))
               : DateTime.now().toIso8601String());
-      final userOffset = data['userOffset'] ?? 
-          placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ?? 
+      final userOffset = data['userOffset'] ??
+          placeSearchController.findCntryDateTimeResponse.value?.userDateTimeObject?.userOffSet?.toString() ??
           offset.toString();
 
       // Get source terms from suggestion if available
@@ -3806,13 +3870,12 @@ class _RecentTripListState extends State<RecentTripList> {
     return [];
   }
 
-  /// Handles trip selection and navigation to inventory list
+  /// Handles trip selection and navigation to booking screen
   Future<void> _handleTripSelection({
     required String dropPlaceId,
     required String dropTitle,
   }) async {
-    // Show loader
-    // if (!mounted) return;
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -3820,30 +3883,16 @@ class _RecentTripListState extends State<RecentTripList> {
     );
 
     try {
-      // Step 1: Ensure source location is available
-      final sourceReady = await _ensureSourceLocation();
-      // if (!sourceReady) {
-      //   if (mounted && Navigator.canPop(context)) {
-      //     Navigator.pop(context);
-      //   }
-      //   debugPrint('❌ Source location not available');
-      //   return;
-      // }
+      // Step 1: Ensure source location (uses cached data when available)
+      await _ensureSourceLocation();
 
-      // Step 2: Setup destination
-      final destReady = await _setupDestination(
+      // Step 2: Setup destination (uses cached data when available)
+      await _setupDestination(
         placeId: dropPlaceId,
         title: dropTitle,
       );
-      // if (!destReady) {
-      //   if (mounted && Navigator.canPop(context)) {
-      //     Navigator.pop(context);
-      //   }
-      //   debugPrint('❌ Destination setup failed');
-      //   return;
-      // }
 
-      // Step 3: Record trip
+      // Step 3: Record trip for history
       final sourcePlaceId = placeSearchController.placeId.value;
       if (sourcePlaceId.isNotEmpty) {
         tripController.recordTrip(
@@ -3855,30 +3904,16 @@ class _RecentTripListState extends State<RecentTripList> {
         );
       }
 
-      // Step 4: Build request data
-      // final requestData = await _buildRequestData();
-      // if (requestData == null) {
-      //   if (mounted && Navigator.canPop(context)) {
-      //     Navigator.pop(context);
-      //   }
-      //   debugPrint('❌ Failed to build request data');
-      //   return;
-      // }
-      //
-      // // Step 5: Navigate to inventory list
-      // if (!mounted) return;
-      // if (Navigator.canPop(context)) {
-      //   Navigator.pop(context);
-      // }
+      // Step 4: Navigate to booking screen
+      if (!mounted) return;
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
 
       Navigator.of(context).push(
         Platform.isIOS
-            ? CupertinoPageRoute(
-                builder: (_) => BookingRide(),
-              )
-            : MaterialPageRoute(
-                builder: (_) => BookingRide(),
-              ),
+            ? CupertinoPageRoute(builder: (_) => BookingRide())
+            : MaterialPageRoute(builder: (_) => BookingRide()),
       );
     } catch (e) {
       debugPrint('❌ Error in trip selection: $e');
@@ -3966,13 +4001,13 @@ class _RecentTripListState extends State<RecentTripList> {
   @override
   Widget build(BuildContext context) {
     popularDestinationController.fetchPopularDestinations();
-    
+
     return Obx(() {
       // Show recent trips if available
       if (tripController.topRecentTrips.isNotEmpty) {
         final trips = tripController.topRecentTrips;
         final itemCount = trips.length >= 2 ? 2 : trips.length;
-        
+
         return SizedBox(
           height: trips.length != 1 ? 180 : 95,
           child: ListView.builder(
@@ -3983,8 +4018,8 @@ class _RecentTripListState extends State<RecentTripList> {
               final dropPlaceId = trip['drop']['placeId'] ?? '';
               final parts = dropTitle.split(',');
               final mainTitle = parts.first.trim();
-              final subTitle = parts.length > 1 
-                  ? parts.sublist(1).join(',').trim() 
+              final subTitle = parts.length > 1
+                  ? parts.sublist(1).join(',').trim()
                   : '';
 
               return _buildTripItem(
@@ -4015,26 +4050,26 @@ class _RecentTripListState extends State<RecentTripList> {
         children: [
           if (popularAirport != null)
             _buildTripItem(
-              title: popularAirport.primaryText?.split(',').first.trim()??'',
+              title: popularAirport.primaryText?.split(',').first.trim() ?? '',
               subtitle: popularAirport.primaryText!.split(',').length > 1
-                  ? popularAirport.primaryText
-                      !.split(',')
+                  ? popularAirport.primaryText!
+                      .split(',')
                       .sublist(1)
                       .join(',')
                       .trim()
                   : '',
               onTap: () => _handleTripSelection(
-                dropPlaceId: popularAirport.placeId??'',
-                dropTitle: popularAirport.primaryText??'',
+                dropPlaceId: popularAirport.placeId ?? '',
+                dropTitle: popularAirport.primaryText ?? '',
               ),
             ),
           if (popularCity != null)
             _buildTripItem(
-              title: popularCity.primaryText?.split(',').first.trim()??'',
+              title: popularCity.primaryText?.split(',').first.trim() ?? '',
               subtitle: popularCity.city ?? '',
               onTap: () => _handleTripSelection(
-                dropPlaceId: popularCity.placeId??'',
-                dropTitle: popularCity.primaryText??'',
+                dropPlaceId: popularCity.placeId ?? '',
+                dropTitle: popularCity.primaryText ?? '',
               ),
             ),
         ],
