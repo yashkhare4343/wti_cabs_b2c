@@ -1,70 +1,156 @@
 class IndiaCabBooking {
+  final bool? success;
   final Inventory? inventory;
   final OfferObject? offerObject;
   final TripType? tripType;
+  final String? message;
 
   IndiaCabBooking({
+    this.success,
     this.inventory,
     this.offerObject,
     this.tripType,
+    this.message,
   });
 
   factory IndiaCabBooking.fromJson(Map<String, dynamic> json) {
     return IndiaCabBooking(
+      success: json['success'] as bool?,
       inventory: json['inventory'] != null ? Inventory.fromJson(json['inventory']) : null,
       offerObject: json['offerObject'] != null ? OfferObject.fromJson(json['offerObject']) : null,
       tripType: json['tripType'] != null ? TripType.fromJson(json['tripType']) : null,
+      message: json['message'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'success': success,
       'inventory': inventory?.toJson(),
       'offerObject': offerObject?.toJson(),
       'tripType': tripType?.toJson(),
+      'message': message,
     };
   }
 }
 
 class Inventory {
+  final num? distanceBooked;
+  final DateTime? startTime;
+  final String? fleetId;
+  final String? skuId;
+  final Source? source;
+  final String? type;
+  final String? combustionType;
+  final num? baseKm;
+  final String? model;
+  final String? tripType;
+  final List<ExtrasIdArray>? extrasIdArray;
+  final Rating? rating;
+  final num? seats;
+  final String? luggageCapacity;
+  final String? carTagLine;
+  final num? fakePercentageOff;
+  final String? carImageUrl;
+  final List<VehicleAmenity>? vehicleAmenities;
+  final InclusionExclusionCharges? inclusionExclusionCharges;
+  final String? reqResIdVehicleDetails;
   final CarTypes? carTypes;
   final String? communicationType;
-  final num? distanceBooked;
   final bool? isInstantAvailable;
   final bool? isPartPaymentAllowed;
-  final DateTime? startTime;
   final String? verificationType;
 
   Inventory({
+    this.distanceBooked,
+    this.startTime,
+    this.fleetId,
+    this.skuId,
+    this.source,
+    this.type,
+    this.combustionType,
+    this.baseKm,
+    this.model,
+    this.tripType,
+    this.extrasIdArray,
+    this.rating,
+    this.seats,
+    this.luggageCapacity,
+    this.carTagLine,
+    this.fakePercentageOff,
+    this.carImageUrl,
+    this.vehicleAmenities,
+    this.inclusionExclusionCharges,
+    this.reqResIdVehicleDetails,
     this.carTypes,
     this.communicationType,
-    this.distanceBooked,
     this.isInstantAvailable,
     this.isPartPaymentAllowed,
-    this.startTime,
     this.verificationType,
   });
 
   factory Inventory.fromJson(Map<String, dynamic> json) {
     return Inventory(
+      distanceBooked: json['distance_booked'] as num?,
+      startTime: json['start_time'] != null ? DateTime.parse(json['start_time']) : null,
+      fleetId: json['fleet_id'] as String?,
+      skuId: json['sku_id'] as String?,
+      source: json['source'] != null ? Source.fromJson(json['source']) : null,
+      type: json['type'] as String?,
+      combustionType: json['combustion_type'] as String?,
+      baseKm: json['base_km'] as num?,
+      model: json['model'] as String?,
+      tripType: json['trip_type'] as String?,
+      extrasIdArray: json['extrasIdArray'] != null
+          ? (json['extrasIdArray'] as List).map((e) => ExtrasIdArray.fromJson(e)).toList()
+          : null,
+      rating: json['rating'] != null ? Rating.fromJson(json['rating']) : null,
+      seats: json['seats'] as num?,
+      luggageCapacity: json['luggageCapacity'] as String?,
+      carTagLine: json['carTagLine'] as String?,
+      fakePercentageOff: json['fakePercentageOff'] as num?,
+      carImageUrl: json['carImageUrl'] as String?,
+      vehicleAmenities: json['vehicleAmenities'] != null
+          ? (json['vehicleAmenities'] as List).map((e) => VehicleAmenity.fromJson(e)).toList()
+          : null,
+      inclusionExclusionCharges: json['inclusionExclusionCharges'] != null
+          ? InclusionExclusionCharges.fromJson(json['inclusionExclusionCharges'])
+          : null,
+      reqResIdVehicleDetails: json['reqResId_vehicle_details'] as String?,
       carTypes: json['car_types'] != null ? CarTypes.fromJson(json['car_types']) : null,
       communicationType: json['communication_type'] as String?,
-      distanceBooked: json['distance_booked'] as num?,
       isInstantAvailable: json['is_instant_available'] as bool?,
       isPartPaymentAllowed: json['is_part_payment_allowed'] as bool?,
-      startTime: json['start_time'] != null ? DateTime.parse(json['start_time']) : null,
       verificationType: json['verification_type'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'distance_booked': distanceBooked,
+      'start_time': startTime?.toIso8601String(),
+      'fleet_id': fleetId,
+      'sku_id': skuId,
+      'source': source?.toJson(),
+      'type': type,
+      'combustion_type': combustionType,
+      'base_km': baseKm,
+      'model': model,
+      'trip_type': tripType,
+      'extrasIdArray': extrasIdArray?.map((e) => e.toJson()).toList(),
+      'rating': rating?.toJson(),
+      'seats': seats,
+      'luggageCapacity': luggageCapacity,
+      'carTagLine': carTagLine,
+      'fakePercentageOff': fakePercentageOff,
+      'carImageUrl': carImageUrl,
+      'vehicleAmenities': vehicleAmenities?.map((e) => e.toJson()).toList(),
+      'inclusionExclusionCharges': inclusionExclusionCharges?.toJson(),
+      'reqResId_vehicle_details': reqResIdVehicleDetails,
       'car_types': carTypes?.toJson(),
       'communication_type': communicationType,
-      'distance_booked': distanceBooked,
       'is_instant_available': isInstantAvailable,
       'is_part_payment_allowed': isPartPaymentAllowed,
-      'start_time': startTime?.toIso8601String(),
       'verification_type': verificationType,
     };
   }
@@ -235,73 +321,33 @@ class Features {
 }
 
 class ExtrasIdArray {
-  final num? v;
-  final String? id;
-  final String? baseCurrency;
-  final String? countryName;
-  final DateTime? createdAt;
-  final String? description;
-  final String? driveType;
-  final num? idNumber;
-  final String? img;
-  final bool? isActive;
-  final String? name;
   final Price? price;
+  final String? id;
   final String? title;
-  final DateTime? updatedAt;
+  final String? description;
 
   ExtrasIdArray({
-    this.v,
-    this.id,
-    this.baseCurrency,
-    this.countryName,
-    this.createdAt,
-    this.description,
-    this.driveType,
-    this.idNumber,
-    this.img,
-    this.isActive,
-    this.name,
     this.price,
+    this.id,
     this.title,
-    this.updatedAt,
+    this.description,
   });
 
   factory ExtrasIdArray.fromJson(Map<String, dynamic> json) {
     return ExtrasIdArray(
-      v: json['__v'] as num?,
-      id: json['_id'] as String?,
-      baseCurrency: json['baseCurrency'] as String?,
-      countryName: json['countryName'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      description: json['description'] as String?,
-      driveType: json['driveType'] as String?,
-      idNumber: json['id'] as num?,
-      img: json['img'] as String?,
-      isActive: json['isActive'] as bool?,
-      name: json['name'] as String?,
       price: json['price'] != null ? Price.fromJson(json['price']) : null,
+      id: json['_id'] as String?,
       title: json['title'] as String?,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      description: json['description'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      '__v': v,
-      '_id': id,
-      'baseCurrency': baseCurrency,
-      'countryName': countryName,
-      'createdAt': createdAt?.toIso8601String(),
-      'description': description,
-      'driveType': driveType,
-      'id': idNumber,
-      'img': img,
-      'isActive': isActive,
-      'name': name,
       'price': price?.toJson(),
+      '_id': id,
       'title': title,
-      'updatedAt': updatedAt?.toIso8601String(),
+      'description': description,
     };
   }
 }
@@ -627,32 +673,40 @@ class Rating {
 
 class Source {
   final String? address;
-  final String? city;
   final num? latitude;
   final num? longitude;
+  final String? city;
+  final String? state;
+  final String? country;
 
   Source({
     this.address,
-    this.city,
     this.latitude,
     this.longitude,
+    this.city,
+    this.state,
+    this.country,
   });
 
   factory Source.fromJson(Map<String, dynamic> json) {
     return Source(
       address: json['address'] as String?,
-      city: json['city'] as String?,
       latitude: json['latitude'] as num?,
       longitude: json['longitude'] as num?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      country: json['country'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'address': address,
-      'city': city,
       'latitude': latitude,
       'longitude': longitude,
+      'city': city,
+      'state': state,
+      'country': country,
     };
   }
 }
@@ -679,109 +733,121 @@ class OfferObject {
 }
 
 class TripType {
-  final String? country;
-  final String? currentTripCode;
-  final Destination? destination;
-  final DateTime? dropDateTime;
   final bool? isGlobal;
-  final String? packageId;
-  final DateTime? pickUpDateTime;
-  final String? previousTripCode;
+  final String? country;
   final String? routeInventoryId;
-  final Source? source;
-  final num? totalKilometers;
-  final String? tripType;
-  final TripTypeDetails? tripTypeDetails;
-  final String? tripCode;
   final String? vehicleId;
+  final String? tripType;
+  final DateTime? pickUpDateTime;
+  final DateTime? dropDateTime;
+  final num? totalKilometers;
+  final TripTypeDetails? tripTypeDetails;
+  final String? packageId;
+  final Source? source;
+  final Destination? destination;
+  final String? tripCode;
+  final String? comingFrom;
+  final String? previousTripCode;
+  final String? currentTripCode;
 
   TripType({
-    this.country,
-    this.currentTripCode,
-    this.destination,
-    this.dropDateTime,
     this.isGlobal,
-    this.packageId,
-    this.pickUpDateTime,
-    this.previousTripCode,
+    this.country,
     this.routeInventoryId,
-    this.source,
-    this.totalKilometers,
-    this.tripType,
-    this.tripTypeDetails,
-    this.tripCode,
     this.vehicleId,
+    this.tripType,
+    this.pickUpDateTime,
+    this.dropDateTime,
+    this.totalKilometers,
+    this.tripTypeDetails,
+    this.packageId,
+    this.source,
+    this.destination,
+    this.tripCode,
+    this.comingFrom,
+    this.previousTripCode,
+    this.currentTripCode,
   });
 
   factory TripType.fromJson(Map<String, dynamic> json) {
     return TripType(
-      country: json['country'] as String?,
-      currentTripCode: json['currentTripCode'] as String?,
-      destination: json['destination'] != null ? Destination.fromJson(json['destination']) : null,
-      dropDateTime: json['dropDateTime'] != null ? DateTime.parse(json['dropDateTime']) : null,
       isGlobal: json['isGlobal'] as bool?,
-      packageId: json['package_id'] as String?,
-      pickUpDateTime: json['pickUpDateTime'] != null ? DateTime.parse(json['pickUpDateTime']) : null,
-      previousTripCode: json['previousTripCode'] as String?,
+      country: json['country'] as String?,
       routeInventoryId: json['routeInventoryId'] as String?,
-      source: json['source'] != null ? Source.fromJson(json['source']) : null,
-      totalKilometers: json['totalKilometers'] as num?,
-      tripType: json['trip_type'] as String?,
-      tripTypeDetails: json['trip_type_details'] != null ? TripTypeDetails.fromJson(json['trip_type_details']) : null,
-      tripCode: json['tripCode'] as String?,
       vehicleId: json['vehicleId'] as String?,
+      tripType: json['trip_type'] as String?,
+      pickUpDateTime: json['pickUpDateTime'] != null ? DateTime.parse(json['pickUpDateTime']) : null,
+      dropDateTime: json['dropDateTime'] != null ? DateTime.parse(json['dropDateTime']) : null,
+      totalKilometers: json['totalKilometers'] as num?,
+      tripTypeDetails: json['trip_type_details'] != null ? TripTypeDetails.fromJson(json['trip_type_details']) : null,
+      packageId: json['package_id'] as String?,
+      source: json['source'] != null ? Source.fromJson(json['source']) : null,
+      destination: json['destination'] != null ? Destination.fromJson(json['destination']) : null,
+      tripCode: json['tripCode'] as String?,
+      comingFrom: json['comingFrom'] as String?,
+      previousTripCode: json['previousTripCode'] as String?,
+      currentTripCode: json['currentTripCode'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'country': country,
-      'currentTripCode': currentTripCode,
-      'destination': destination?.toJson(),
-      'dropDateTime': dropDateTime?.toIso8601String(),
       'isGlobal': isGlobal,
-      'package_id': packageId,
-      'pickUpDateTime': pickUpDateTime?.toIso8601String(),
-      'previousTripCode': previousTripCode,
+      'country': country,
       'routeInventoryId': routeInventoryId,
-      'source': source?.toJson(),
-      'totalKilometers': totalKilometers,
-      'trip_type': tripType,
-      'trip_type_details': tripTypeDetails?.toJson(),
-      'tripCode': tripCode,
       'vehicleId': vehicleId,
+      'trip_type': tripType,
+      'pickUpDateTime': pickUpDateTime?.toIso8601String(),
+      'dropDateTime': dropDateTime?.toIso8601String(),
+      'totalKilometers': totalKilometers,
+      'trip_type_details': tripTypeDetails?.toJson(),
+      'package_id': packageId,
+      'source': source?.toJson(),
+      'destination': destination?.toJson(),
+      'tripCode': tripCode,
+      'comingFrom': comingFrom,
+      'previousTripCode': previousTripCode,
+      'currentTripCode': currentTripCode,
     };
   }
 }
 
 class Destination {
   final String? address;
-  final String? city;
   final num? latitude;
   final num? longitude;
+  final String? city;
+  final String? state;
+  final String? country;
 
   Destination({
     this.address,
-    this.city,
     this.latitude,
     this.longitude,
+    this.city,
+    this.state,
+    this.country,
   });
 
   factory Destination.fromJson(Map<String, dynamic> json) {
     return Destination(
       address: json['address'] as String?,
-      city: json['city'] as String?,
       latitude: json['latitude'] as num?,
       longitude: json['longitude'] as num?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      country: json['country'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'address': address,
-      'city': city,
       'latitude': latitude,
       'longitude': longitude,
+      'city': city,
+      'state': state,
+      'country': country,
     };
   }
 }
@@ -803,6 +869,179 @@ class TripTypeDetails {
     return {
       'airport_type': airportType,
       'basic_trip_type': basicTripType,
+    };
+  }
+}
+
+class VehicleAmenity {
+  final String? label;
+  final String? icon;
+
+  VehicleAmenity({this.label, this.icon});
+
+  factory VehicleAmenity.fromJson(Map<String, dynamic> json) {
+    return VehicleAmenity(
+      label: json['label'] as String?,
+      icon: json['icon'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'label': label,
+      'icon': icon,
+    };
+  }
+}
+
+class InclusionExclusionCharges {
+  final List<ChargeItem>? includedCharges;
+  final List<ChargeItem>? excludedCharges;
+
+  InclusionExclusionCharges({this.includedCharges, this.excludedCharges});
+
+  factory InclusionExclusionCharges.fromJson(Map<String, dynamic> json) {
+    return InclusionExclusionCharges(
+      includedCharges: json['includedCharges'] != null
+          ? (json['includedCharges'] as List).map((e) => ChargeItem.fromJson(e)).toList()
+          : null,
+      excludedCharges: json['excludedCharges'] != null
+          ? (json['excludedCharges'] as List).map((e) => ChargeItem.fromJson(e)).toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'includedCharges': includedCharges?.map((e) => e.toJson()).toList(),
+      'excludedCharges': excludedCharges?.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class ChargeItem {
+  final String? type;
+  final String? value;
+  final num? amount;
+  final String? prefix;
+  final String? suffix;
+
+  ChargeItem({this.type, this.value, this.amount, this.prefix, this.suffix});
+
+  factory ChargeItem.fromJson(Map<String, dynamic> json) {
+    return ChargeItem(
+      type: json['type'] as String?,
+      value: json['value'] as String?,
+      amount: json['amount'] as num?,
+      prefix: json['prefix'] as String?,
+      suffix: json['suffix'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'value': value,
+      'amount': amount,
+      'prefix': prefix,
+      'suffix': suffix,
+    };
+  }
+}
+
+class IndiaFareDetailsResponse {
+  final bool? success;
+  final FareDetailsResponse? fareDetails;
+  final OfferObject? offerObject;
+
+  IndiaFareDetailsResponse({
+    this.success,
+    this.fareDetails,
+    this.offerObject,
+  });
+
+  factory IndiaFareDetailsResponse.fromJson(Map<String, dynamic> json) {
+    return IndiaFareDetailsResponse(
+      success: json['success'] as bool?,
+      fareDetails: json['fare_details'] != null
+          ? FareDetailsResponse.fromJson(json['fare_details'])
+          : null,
+      offerObject: json['offerObject'] != null
+          ? OfferObject.fromJson(json['offerObject'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'success': success,
+      'fare_details': fareDetails?.toJson(),
+      'offerObject': offerObject?.toJson(),
+    };
+  }
+}
+
+class FareDetailsResponse {
+  final num? baseFare;
+  final num? totalFare;
+  final num? perKmCharge;
+  final num? perKmExtraCharge;
+  final List<ChargeMapping>? chargeMapping;
+  final String? reqResIdFareDetails;
+
+  FareDetailsResponse({
+    this.baseFare,
+    this.totalFare,
+    this.perKmCharge,
+    this.perKmExtraCharge,
+    this.chargeMapping,
+    this.reqResIdFareDetails,
+  });
+
+  factory FareDetailsResponse.fromJson(Map<String, dynamic> json) {
+    return FareDetailsResponse(
+      baseFare: json['base_fare'] as num?,
+      totalFare: json['totalFare'] as num?,
+      perKmCharge: json['per_km_charge'] as num?,
+      perKmExtraCharge: json['per_km_extra_charge'] as num?,
+      chargeMapping: json['chargeMapping'] != null
+          ? (json['chargeMapping'] as List)
+              .map((e) => ChargeMapping.fromJson(e))
+              .toList()
+          : null,
+      reqResIdFareDetails: json['reqResId_fare_details'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'base_fare': baseFare,
+      'totalFare': totalFare,
+      'per_km_charge': perKmCharge,
+      'per_km_extra_charge': perKmExtraCharge,
+      'chargeMapping': chargeMapping?.map((e) => e.toJson()).toList(),
+      'reqResId_fare_details': reqResIdFareDetails,
+    };
+  }
+}
+
+class ChargeMapping {
+  final String? label;
+  final num? amount;
+
+  ChargeMapping({this.label, this.amount});
+
+  factory ChargeMapping.fromJson(Map<String, dynamic> json) {
+    return ChargeMapping(
+      label: json['label'] as String?,
+      amount: json['amount'] as num?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'label': label,
+      'amount': amount,
     };
   }
 }

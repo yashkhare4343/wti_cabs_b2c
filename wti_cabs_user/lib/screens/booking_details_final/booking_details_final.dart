@@ -148,11 +148,13 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
 
     // ✅ Trigger validation once after prefill
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       setState(() {
         // ensure controllers are in sync with UI
       });
       final cabBookingController = Get.find<CabBookingController>();
-      Future.delayed(Duration(milliseconds: 100), () {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) return;
         // small delay to let TextEditingControllers update in the tree
         cabBookingController.validateForm();
       });
@@ -166,22 +168,28 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       canPop: true, // 🚀 Stops the default "pop and close app"
       onPopInvoked: (didPop) {
         // This will be called for hardware back and gesture
-        Navigator.push(
-          context,
-          Platform.isIOS
-              ? CupertinoPageRoute(
-            builder: (context) => InventoryList(
-              requestData: bookingRideController.requestData.value,
-              fromFinalBookingPage: true,
-            ),
-          )
-              : MaterialPageRoute(
-            builder: (context) => InventoryList(
-              requestData: bookingRideController.requestData.value,
-              fromFinalBookingPage: true,
-            ),
-          ),
-        );  // GoRouter.of(context).pop();
+        // Avoid pushing while Navigator is in the middle of a pop (!_debugLocked)
+        if (didPop) return;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            Platform.isIOS
+                ? CupertinoPageRoute(
+                    builder: (context) => InventoryList(
+                      requestData: bookingRideController.requestData.value,
+                      fromFinalBookingPage: true,
+                    ),
+                  )
+                : MaterialPageRoute(
+                    builder: (context) => InventoryList(
+                      requestData: bookingRideController.requestData.value,
+                      fromFinalBookingPage: true,
+                    ),
+                  ),
+          );
+        });  // GoRouter.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -1385,7 +1393,7 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
           indiaExtras = rawIndiaExtras.map((e) {
             return SelectableExtra(
               id: e.id ?? '',
-              label: e.name ?? '',
+              label: e.title ?? '',
               price: e.price?.daily ?? 0,
             );
           }).toList();
@@ -2483,6 +2491,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
     flightNo = await StorageServices.instance.read('flightNo');
     remark = await StorageServices.instance.read('remark');
     gstValue = await StorageServices.instance.read('gstValue');
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -2530,16 +2539,22 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                   );
                 }
 
-                // 🚀 Normal UI after data loaded
+                // For India: Use fare details from new API, otherwise use old way
+                final totalFareValue = isIndia && cabBookingController.indiaFareDetails.value?.fareDetails?.totalFare != null
+                    ? cabBookingController.indiaFareDetails.value!.fareDetails!.totalFare!.toDouble()
+                    : cabBookingController.totalFare.toDouble();
+                
+                final partFareValue = isIndia && cabBookingController.indiaFareDetails.value?.fareDetails?.totalFare != null
+                    ? (cabBookingController.indiaFareDetails.value!.fareDetails!.totalFare!.toDouble() * 0.20)
+                    : cabBookingController.partFare.toDouble();
+                
                 return Row(
                   children: [
                     // 🔹 Part Pay
-                    if (_country?.toLowerCase().trim() == 'india')
+                    if (isIndia)
                       Expanded(
                         child: FutureBuilder<double>(
-                          future: currencyController.convertPrice(
-                            cabBookingController.partFare.toDouble(),
-                          ),
+                          future: currencyController.convertPrice(partFareValue),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState == ConnectionState.waiting) {
                               return SizedBox(
@@ -2564,8 +2579,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                               );
                             }
-                            final convertedValue = snapshot.data ??
-                                cabBookingController.partFare.toDouble();
+                            final convertedValue = snapshot.data ?? partFareValue;
 
                             return _buildRadioOption(
                               index: 0,
@@ -2582,9 +2596,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                     // 🔹 Full Pay
                     Expanded(
                       child: FutureBuilder<double>(
-                        future: currencyController.convertPrice(
-                          cabBookingController.totalFare.toDouble(),
-                        ),
+                        future: currencyController.convertPrice(totalFareValue),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return SizedBox(
@@ -2609,8 +2621,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                             );
                           }
-                          final convertedValue = snapshot.data ??
-                              cabBookingController.totalFare.toDouble();
+                          final convertedValue = snapshot.data ?? totalFareValue;
 
                           return _buildRadioOption(
                             index: 1,
@@ -2980,10 +2991,13 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                       cabBookingController.extraFacilityCharges,
                                   "isOffer": false,
                                   "fare_details": {
-                                    "actual_fare":
-                                        cabBookingController.actualFare,
+                                    "actual_fare": cabBookingController.actualFare,
                                     "seller_discount": 0,
-                                    "per_km_charge": cabBookingController
+                                    // ⬇️ Use new India fareDetails API when available, fallback to old inventory data
+                                    "per_km_charge":
+                                        cabBookingController.indiaFareDetails.value?.fareDetails?.perKmCharge
+                                            ?.toDouble() ??
+                                        cabBookingController
                                             .indiaData
                                             .value
                                             ?.inventory
@@ -2991,7 +3005,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                             ?.fareDetails
                                             ?.perKmCharge ??
                                         0,
-                                    "per_km_extra_charge": cabBookingController
+                                    "per_km_extra_charge":
+                                        cabBookingController.indiaFareDetails.value?.fareDetails?.perKmExtraCharge
+                                            ?.toDouble() ??
+                                        cabBookingController
                                             .indiaData
                                             .value
                                             ?.inventory
@@ -3011,7 +3028,10 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                             ?.fareDetails
                                             ?.totalDriverCharges ??
                                         0,
-                                    "base_fare": cabBookingController
+                                    "base_fare":
+                                        cabBookingController.indiaFareDetails.value?.fareDetails?.baseFare
+                                            ?.toDouble() ??
+                                        cabBookingController
                                             .indiaData
                                             .value
                                             ?.inventory
@@ -3019,8 +3039,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                             ?.fareDetails
                                             ?.baseFare ??
                                         0,
-                                    "total_fare": cabBookingController
-                                        .totalFare, //(full payment)
+                                    "total_fare": cabBookingController.totalFare, //(full payment, already uses API when available)
                                     "total_tax": double.parse(
                                         cabBookingController.taxCharge
                                             .toStringAsFixed(2)),
@@ -3402,42 +3421,40 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
     required String amount,
   }) {
     final isSelected = selectedOption == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => selectedOption = index),
-        child: Row(
+  return InkWell(
+    onTap: () => setState(() => selectedOption = index),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+          size: 18,
+          color: isSelected ? Colors.blue.shade700 : Colors.grey,
+        ),
+        const SizedBox(width: 6),
+        Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              size: 18,
-              color: isSelected ? Colors.blue.shade700 : Colors.grey,
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(width: 6),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  amount,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            Text(
+              amount,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
-      ),
-    );
+      ],
+    ),
+  );
   }
 }
 
