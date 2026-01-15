@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
-import 'package:wti_cabs_user/core/controller/coupons/apply_coupon_controller.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
 import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
+import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 
 import '../../model/inventory/global_response.dart';
@@ -19,15 +19,30 @@ class CabBookingController extends GetxController {
   Rx<IndiaCabBooking?> indiaData = Rx<IndiaCabBooking?>(null);
   Rx<GlobalBookingFlat?> globalData = Rx<GlobalBookingFlat?>(null);
   Rx<IndiaFareDetailsResponse?> indiaFareDetails = Rx<IndiaFareDetailsResponse?>(null);
-  final ApplyCouponController applyCouponController = Get.put(ApplyCouponController());
   RxBool isLoading = false.obs;
   RxInt selectedOption = 0.obs;
+
+  /// Selected coupon (for passing to booking/payment requests)
+  RxnString selectedCouponId = RxnString();
+  RxnString selectedCouponCode = RxnString();
+
+  void setSelectedCoupon({required String couponId, String? couponCode}) {
+    selectedCouponId.value = couponId;
+    selectedCouponCode.value = couponCode;
+  }
+
+  void clearSelectedCoupon() {
+    selectedCouponId.value = null;
+    selectedCouponCode.value = null;
+  }
 
   // NEW: Extra selected facilities (label -> price)
   RxMap<String, double> selectedExtras = <String, double>{}.obs;
 
   // Assume country is stored separately
   String? country;
+  // Keep the last India payload so we can re-fetch fare details when user selects extras.
+  Map<String, dynamic>? lastIndiaFareRequestData;
               double get baseFare {
                 final value = isIndia
                     ? (indiaFareDetails.value?.fareDetails?.baseFare?.toDouble() ?? 
@@ -121,50 +136,18 @@ class CabBookingController extends GetxController {
     // If we have fare details from new API, use totalFare directly (it already includes tax)
     if (isIndia && indiaFareDetails.value?.fareDetails?.totalFare != null) {
       final apiTotalFare = indiaFareDetails.value!.fareDetails!.totalFare!.toDouble();
-      // Apply coupon discount if applicable
-      if (applyCouponController.isCouponApplied.value) {
-        final discountedFare = applyCouponController.applyCouponResponse.value?.newTotalAmount;
-        if (discountedFare != null) {
-          // Calculate tax on discounted amount and add it
-          final tax = discountedFare * 0.05;
-          return discountedFare + tax;
-        }
-      }
       return apiTotalFare;
     }
 
     // Fallback to calculating from individual charges
-    double subtotal;
-
-    if (applyCouponController.isCouponApplied == false) {
-      // No coupon → just sum all charges
-      subtotal = baseFare +
-          nightCharges +
-          tollCharges +
-          waitingCharges +
-          parkingCharges +
-          stateTax +
-          driverCharge +
-          extraFacilityCharges;
-      debugPrint('Coupon not applied. Subtotal: $subtotal');
-    } else {
-
-      // Coupon applied → take discounted amount (without tax from API)
-      final discountedFare =
-          applyCouponController.applyCouponResponse.value?.newTotalAmount ??
-              baseFare +
-                  nightCharges +
-                  tollCharges +
-                  waitingCharges +
-                  parkingCharges +
-                  stateTax +
-                  driverCharge +
-                  extraFacilityCharges;
-
-      subtotal = discountedFare.toDouble();
-
-      debugPrint('Coupon applied. Discounted subtotal (before tax): $subtotal');
-    }
+    final subtotal = baseFare +
+        nightCharges +
+        tollCharges +
+        waitingCharges +
+        parkingCharges +
+        stateTax +
+        driverCharge +
+        extraFacilityCharges;
 
     // Add tax locally (only once, based on subtotal)
     final tax = isIndia ? subtotal * 0.05 : 0;
@@ -177,36 +160,14 @@ class CabBookingController extends GetxController {
   }
 
   double get taxCharge{
-    double subtotal;
-
-    if (applyCouponController.isCouponApplied == false) {
-      // No coupon → just sum all charges
-      subtotal = baseFare +
-          nightCharges +
-          tollCharges +
-          waitingCharges +
-          parkingCharges +
-          stateTax +
-          driverCharge +
-          extraFacilityCharges;
-      debugPrint('Coupon not applied. Subtotal: $subtotal');
-    } else {
-      // Coupon applied → take discounted amount (without tax from API)
-      final discountedFare =
-          applyCouponController.applyCouponResponse.value?.newTotalAmount ??
-              baseFare;
-
-      subtotal = discountedFare +
-          nightCharges +
-          tollCharges +
-          waitingCharges +
-          parkingCharges +
-          stateTax +
-          driverCharge +
-          extraFacilityCharges;
-
-      debugPrint('Coupon applied. Discounted subtotal (before tax): $subtotal');
-    }
+    final subtotal = baseFare +
+        nightCharges +
+        tollCharges +
+        waitingCharges +
+        parkingCharges +
+        stateTax +
+        driverCharge +
+        extraFacilityCharges;
 
     final tax = isIndia ? subtotal * 0.05 : 0;
     print('yash tAX : $tax');
@@ -370,10 +331,6 @@ class CabBookingController extends GetxController {
             currencyController.convertPrice(actualFare),
             currencyController.convertPrice(taxCharge),
             currencyController.convertPrice(totalFare),
-            if (applyCouponController.isCouponApplied.value)
-              currencyController.convertPrice(
-                applyCouponController.applyCouponResponse.value?.discountAmount?.toDouble() ?? 0.0,
-              ),
           ]);
 
           return {
@@ -388,8 +345,6 @@ class CabBookingController extends GetxController {
             "subtotal": results[8],
             "tax": results[9],
             "total": results[10],
-            if (applyCouponController.isCouponApplied.value)
-              "discount": results.last,
           };
         }
 
@@ -462,9 +417,6 @@ class CabBookingController extends GetxController {
 
                       _buildRow("Subtotal", "$symbol${data['subtotal']!.toStringAsFixed(2)}", isBold: true),
                       _buildRow("Tax include (5%)", "$symbol${data['tax']!.toStringAsFixed(2)}", isBold: true),
-
-                      if ((data['discount'] ?? 0) != 0)
-                        _buildRow("Coupon Applied", "-$symbol${data['discount']!.toStringAsFixed(2)}"),
 
                       _buildRow("Total Fare", "$symbol${data['total']!.toStringAsFixed(2)}",
                           isBold: true, highlight: true),
@@ -544,6 +496,7 @@ class CabBookingController extends GetxController {
       );
 
       print('📥 India Inventory API response: $response');
+      print('📥 India Inventory API response keys: ${response is Map ? (response as Map).keys.toList() : 'Not a map'}');
 
       // Transform the new API response to match IndiaCabBooking structure
       if (response != null) {
@@ -585,13 +538,29 @@ class CabBookingController extends GetxController {
   Future<void> fetchIndiaFareDetails({
     required Map<String, dynamic> requestData,
     required BuildContext context,
+    bool refreshInventory = false, // Flag to also refresh inventory when extras are selected
   }) async {
-    print('📤 India Fare Details API request: $requestData');
+    // Always work with a copy so callers can safely reuse their map.
+    final Map<String, dynamic> payload = Map<String, dynamic>.from(requestData);
+    // If user selected extras on Booking Details, pass them to fare details API.
+    if (selectedExtrasIds.isNotEmpty) {
+      payload['extrasIdsArray'] = List<String>.from(selectedExtrasIds);
+    } else {
+      payload.remove('extrasIdsArray');
+    }
+    // Always include couponID if a coupon is selected
+    if (selectedCouponId.value != null && selectedCouponId.value!.isNotEmpty) {
+      payload['couponID'] = selectedCouponId.value;
+    } else {
+      payload.remove('couponID');
+    }
+
+    print('📤 India Fare Details API request: $payload');
 
     try {
       final response = await ApiService().postRequest(
         'inventory/searchInventorySingleCarFareDetails',
-        requestData,
+        payload,
         context,
       );
 
@@ -608,6 +577,19 @@ class CabBookingController extends GetxController {
           // Parse the response
           indiaFareDetails.value = IndiaFareDetailsResponse.fromJson(responseMap);
           print('✅ India fare details response parsed: ${indiaFareDetails.value?.toJson()}');
+          
+          // If extrasIdsArray was sent or refreshInventory flag is set, also refresh inventory to update extras list
+          if (refreshInventory || payload.containsKey('extrasIdsArray')) {
+            print('🔄 Refreshing inventory data to update extras list...');
+            // Create a copy of payload without extrasIdsArray to get ALL available extras
+            final inventoryPayload = Map<String, dynamic>.from(payload);
+            // Keep extrasIdsArray in request to get updated pricing, but API should still return all extras
+            // inventoryPayload.remove('extrasIdsArray'); // Commented out - keep it to get updated pricing
+            await fetchIndiaInventoryData(
+              requestData: inventoryPayload,
+              context: context,
+            );
+          }
         } catch (parseError, stackTrace) {
           print("❌ Error parsing fare details response: $parseError");
           print("Stack trace: $stackTrace");
@@ -809,6 +791,52 @@ class CabBookingController extends GetxController {
       'comingFrom': response['comingFrom'],
     };
 
+    // Extract extras from new API response - check multiple possible locations
+    dynamic newExtrasIdArray;
+    final responseInventory = _safeCastMap(response['inventory']);
+    final responseCarTypes = _safeCastMap(response['car_types']);
+    
+    print('🔍 Checking for extras in response...');
+    print('🔍 responseInventory: ${responseInventory != null ? responseInventory.keys.toList() : 'null'}');
+    print('🔍 responseCarTypes: ${responseCarTypes != null ? responseCarTypes.keys.toList() : 'null'}');
+    
+    // Check various locations in the response for extras
+    if (responseInventory != null) {
+      newExtrasIdArray = responseInventory['extrasIdArray'] ?? 
+                        responseInventory['extras_id_array'] ??
+                        responseInventory['extras'];
+      print('🔍 Checked responseInventory for extras: ${newExtrasIdArray != null ? 'Found' : 'Not found'}');
+    }
+    if (newExtrasIdArray == null && responseCarTypes != null) {
+      newExtrasIdArray = responseCarTypes['extrasIdArray'] ?? 
+                        responseCarTypes['extras_id_array'] ??
+                        responseCarTypes['extras'];
+      print('🔍 Checked responseCarTypes for extras: ${newExtrasIdArray != null ? 'Found' : 'Not found'}');
+    }
+    if (newExtrasIdArray == null) {
+      newExtrasIdArray = response['extrasIdArray'] ?? 
+                        response['extras_id_array'] ??
+                        response['extras'];
+      print('🔍 Checked root response for extras: ${newExtrasIdArray != null ? 'Found' : 'Not found'}');
+    }
+    
+    // Convert extras to proper format if it's a list
+    List<dynamic>? extrasList;
+    if (newExtrasIdArray != null) {
+      if (newExtrasIdArray is List) {
+        extrasList = newExtrasIdArray;
+        print('✅ Extras found as List with ${extrasList.length} items');
+      } else if (newExtrasIdArray is Map) {
+        // If it's a map, try to extract list from it
+        extrasList = newExtrasIdArray['data'] ?? newExtrasIdArray['items'];
+        print('✅ Extras found as Map, extracted list: ${extrasList != null ? 'Success' : 'Failed'}');
+      } else {
+        print('⚠️ Extras found but in unexpected format: ${newExtrasIdArray.runtimeType}');
+      }
+    } else {
+      print('⚠️ No extras found in API response');
+    }
+    
     // Build inventory structure - merge existing inventory data if available
     Map<String, dynamic> inventoryData = {};
     
@@ -817,33 +845,38 @@ class CabBookingController extends GetxController {
       inventoryData.addAll(existingInventoryBase);
     }
     
-    if (existingInventoryData != null) {
-      // Merge existing car type data
+    // Extract other fields from new API response
+    final newInventoryData = _safeCastMap(response['inventory']);
+    final newCarTypesData = _safeCastMap(response['car_types']) ?? _safeCastMap(newInventoryData?['car_types']);
+    
+    if (existingInventoryData != null || newCarTypesData != null) {
+      // Merge existing car type data with new API response data
       // Note: existingInventoryData is from CarType.toJson(), which uses snake_case for most fields
       // We need to transform it to match the Inventory structure expected by IndiaCabBooking
       final carTypesData = {
-        'type': existingInventoryData['type'],
-        'subcategory': existingInventoryData['subcategory'],
-        'combustion_type': existingInventoryData['combustion_type'],
-        'carrier': existingInventoryData['carrier'],
-        'make_year_type': existingInventoryData['make_year_type'],
-        'base_km': existingInventoryData['base_km'],
-        'cancellation_rule': existingInventoryData['cancellation_rule'],
-        'model': existingInventoryData['model'],
-        'trip_type': existingInventoryData['trip_type'],
-        'amenities': _safeCastMap(existingInventoryData['amenities']),
-        'extrasIdArray': existingInventoryData['extrasIdArray'],
-        'rating': _safeCastMap(existingInventoryData['rating']),
-        'seats': existingInventoryData['seats'],
-        'luggageCapacity': existingInventoryData['luggageCapacity'],
-        'isActive': existingInventoryData['isActive'],
-        'pet': existingInventoryData['pet'],
-        'carTagLine': existingInventoryData['carTagLine'],
-        'fakePercentageOff': existingInventoryData['fakePercentageOff'],
-        'carImageUrl': existingInventoryData['carImageUrl'],
-        'fleet_id': existingInventoryData['sku_id'], // Use sku_id as fleet_id if needed
-        'sku_id': existingInventoryData['sku_id'],
-        'source': _safeCastMap(existingInventoryData['source']),
+        'type': newCarTypesData?['type'] ?? existingInventoryData?['type'],
+        'subcategory': newCarTypesData?['subcategory'] ?? existingInventoryData?['subcategory'],
+        'combustion_type': newCarTypesData?['combustion_type'] ?? existingInventoryData?['combustion_type'],
+        'carrier': newCarTypesData?['carrier'] ?? existingInventoryData?['carrier'],
+        'make_year_type': newCarTypesData?['make_year_type'] ?? existingInventoryData?['make_year_type'],
+        'base_km': newCarTypesData?['base_km'] ?? existingInventoryData?['base_km'],
+        'cancellation_rule': newCarTypesData?['cancellation_rule'] ?? existingInventoryData?['cancellation_rule'],
+        'model': newCarTypesData?['model'] ?? existingInventoryData?['model'],
+        'trip_type': newCarTypesData?['trip_type'] ?? existingInventoryData?['trip_type'],
+        'amenities': _safeCastMap(newCarTypesData?['amenities']) ?? _safeCastMap(existingInventoryData?['amenities']),
+        // Use new API extras if available, otherwise fall back to existing
+        'extrasIdArray': extrasList ?? existingInventoryData?['extrasIdArray'],
+        'rating': _safeCastMap(newCarTypesData?['rating']) ?? _safeCastMap(existingInventoryData?['rating']),
+        'seats': newCarTypesData?['seats'] ?? existingInventoryData?['seats'],
+        'luggageCapacity': newCarTypesData?['luggageCapacity'] ?? newCarTypesData?['luggage_capacity'] ?? existingInventoryData?['luggageCapacity'],
+        'isActive': newCarTypesData?['isActive'] ?? newCarTypesData?['is_active'] ?? existingInventoryData?['isActive'],
+        'pet': newCarTypesData?['pet'] ?? existingInventoryData?['pet'],
+        'carTagLine': newCarTypesData?['carTagLine'] ?? newCarTypesData?['car_tag_line'] ?? existingInventoryData?['carTagLine'],
+        'fakePercentageOff': newCarTypesData?['fakePercentageOff'] ?? newCarTypesData?['fake_percentage_off'] ?? existingInventoryData?['fakePercentageOff'],
+        'carImageUrl': newCarTypesData?['carImageUrl'] ?? newCarTypesData?['car_image_url'] ?? existingInventoryData?['carImageUrl'],
+        'fleet_id': newCarTypesData?['fleet_id'] ?? newInventoryData?['fleet_id'] ?? existingInventoryData?['sku_id'],
+        'sku_id': newCarTypesData?['sku_id'] ?? newInventoryData?['sku_id'] ?? existingInventoryData?['sku_id'],
+        'source': _safeCastMap(newCarTypesData?['source']) ?? _safeCastMap(newInventoryData?['source']) ?? _safeCastMap(existingInventoryData?['source']),
         'fare_details': transformedFareDetails, // Use new API fare details
       };
       
@@ -852,7 +885,18 @@ class CabBookingController extends GetxController {
       // Use minimal structure if no existing data
       inventoryData['car_types'] = {
         'fare_details': transformedFareDetails,
+        if (extrasList != null) 'extrasIdArray': extrasList,
       };
+    }
+    
+    // Also extract other inventory fields from new API response
+    if (newInventoryData != null) {
+      inventoryData['distance_booked'] = newInventoryData['distance_booked'] ?? inventoryData['distance_booked'];
+      inventoryData['start_time'] = newInventoryData['start_time'] ?? inventoryData['start_time'];
+      inventoryData['is_instant_available'] = newInventoryData['is_instant_available'] ?? inventoryData['is_instant_available'];
+      inventoryData['is_part_payment_allowed'] = newInventoryData['is_part_payment_allowed'] ?? inventoryData['is_part_payment_allowed'];
+      inventoryData['communication_type'] = newInventoryData['communication_type'] ?? inventoryData['communication_type'];
+      inventoryData['verification_type'] = newInventoryData['verification_type'] ?? inventoryData['verification_type'];
     }
 
     // Handle offerObject type casting
@@ -879,6 +923,8 @@ class CabBookingController extends GetxController {
     bool isSecondPage = false,
   }) async {
     isLoading.value = true;
+    // Persist country for downstream logic (charges, UI, etc).
+    this.country = country;
 
     showDialog(
       context: context,
@@ -890,6 +936,8 @@ class CabBookingController extends GetxController {
 
     try {
       if (country.toLowerCase() == 'india') {
+        // Store the base payload so we can re-fetch fare details with extrasIdsArray later.
+        lastIndiaFareRequestData = Map<String, dynamic>.from(requestData);
         // 🇮🇳 India flow:
         // 1) Fetch full inventory / booking details
         // 2) Then fetch fare details with the SAME payload

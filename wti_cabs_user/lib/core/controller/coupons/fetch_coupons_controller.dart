@@ -9,21 +9,29 @@ class CouponController extends GetxController {
   RxList<CouponData> coupons = <CouponData>[].obs;
   RxBool isLoading = false.obs;
 
-  Future<void> fetchCoupons(BuildContext context) async {
+  Future<void> fetchCoupons(
+    BuildContext context, {
+    required String vehicleType,
+    String userId = '',
+    String role = 'CUSTOMER',
+    String applicationType = 'APP',
+  }) async {
     isLoading.value = true;
     try {
       final response = await ApiService().postRequestNew<FetchCouponResponse>(
         'couponCodes/getGlobalCouponCodes',
         {
-          "userID": null,
-          "role":""
+          "userID": userId,
+          "role": role,
+          "applicationType": applicationType,
+          "vehicleType": vehicleType.trim().toLowerCase(),
         },
-            (json) => FetchCouponResponse.fromJson(json),
+        (json) => FetchCouponResponse.fromJson(json),
         context,
       );
 
       if (response?.couponCodesFetched == true && response?.data != null) {
-        coupons.value = response?.data??[];
+        coupons.value = response?.data ?? [];
       } else {
         coupons.clear();
       }

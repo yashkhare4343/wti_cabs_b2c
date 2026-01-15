@@ -82,7 +82,7 @@ class ApplyCouponController extends GetxController {
 
       showCouponAppliedDialog(
         context,
-        'Woohoo! ₹${discountAmount.value} off added. Have a great trip!',
+        'Coupon has been successfully applied to your booking.',
       );
 
     } finally {
