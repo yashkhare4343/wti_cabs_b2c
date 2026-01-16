@@ -12,13 +12,25 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../services/storage_services.dart';
-import '../choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 
 class DropPlaceSearchController extends GetxController {
   final RxList<SuggestionPlacesResponse> dropSuggestions = <SuggestionPlacesResponse>[].obs;
-  final BookingRideController bookingRideController = Get.find<BookingRideController>();
-  final PlaceSearchController pickupController = Get.find<PlaceSearchController>();
-  final DestinationLocationController destinationLocationController = Get.find<DestinationLocationController>();
+  // NOTE: Keep these as getters (not `late final`) to avoid circular/re-entrant
+  // initialization crashes during GetX startup.
+  BookingRideController get bookingRideController =>
+      Get.isRegistered<BookingRideController>()
+          ? Get.find<BookingRideController>()
+          : Get.put(BookingRideController());
+
+  PlaceSearchController get pickupController => Get.isRegistered<PlaceSearchController>()
+      ? Get.find<PlaceSearchController>()
+      : Get.put(PlaceSearchController());
+
+  DestinationLocationController get destinationLocationController =>
+      Get.isRegistered<DestinationLocationController>()
+          ? Get.find<DestinationLocationController>()
+          : Get.put(DestinationLocationController());
   final apiService = ApiService(); // Reuse single instance
   final storage = StorageServices.instance; // Reuse storage instance
 

@@ -167,11 +167,17 @@ class SearchCabInventoryController extends GetxController {
 
     } catch (e) {
       debugPrint("❌ Error fetching booking data: $e");
-      if (Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
+      if (context.mounted) {
+        if (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Something went wrong, please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-      Get.snackbar("Error", "Something went wrong, please try again.",
-          snackPosition: SnackPosition.BOTTOM);
     } finally {
       isLoading.value = false;
     }

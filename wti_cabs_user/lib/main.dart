@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wti_cabs_user/core/api/api_services.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/bindings/initial_bindings.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
 import 'package:wti_cabs_user/core/controller/corporate/verify_corporate/verify_corporate_controller.dart';
@@ -460,6 +461,7 @@ class _MyAppState extends State<MyApp> {
           title: "WTI Cabs",
           debugShowCheckedModeBanner: false,
           navigatorObservers: [_observer],
+          initialBinding: InitialBindings(),
           theme: ThemeData(
             fontFamily: "Montserrat",
           ),

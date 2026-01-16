@@ -16,7 +16,7 @@ class TripHistoryController extends GetxController {
   final BookingRideController bookingRideController =
       Get.put(BookingRideController());
   final DestinationLocationController destinationLocationController =
-      Get.find<DestinationLocationController>();
+      Get.put(DestinationLocationController());
 
   @override
   void onInit() {

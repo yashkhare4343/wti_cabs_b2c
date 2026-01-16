@@ -10,7 +10,7 @@ import '../../model/booking_engine/suggestions_places_response.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../../services/storage_services.dart';
-import '../choose_drop/choose_drop_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
 
 class PlaceSearchController extends GetxController {
   final RxList<SuggestionPlacesResponse> suggestions = <SuggestionPlacesResponse>[].obs;
@@ -35,9 +35,6 @@ class PlaceSearchController extends GetxController {
   void onInit() {
     super.onInit();
     _initializeCurrentDateTime();
-    if (Get.isRegistered<DropPlaceSearchController>()) {
-      dropController = Get.find<DropPlaceSearchController>();
-    }
   }
 
   void _initializeCurrentDateTime() {
@@ -182,13 +179,16 @@ class PlaceSearchController extends GetxController {
 
       // Try to call findCountryDateTime, but don't block if it fails
       try {
+        final dropCtrl = Get.isRegistered<DropPlaceSearchController>()
+            ? Get.find<DropPlaceSearchController>()
+            : null;
         await findCountryDateTime(
           latLng.lat,
           latLng.lng,
           getPlacesLatLng.value!.country,
-          dropController?.dropLatLng.value?.country ?? getPlacesLatLng.value!.country,
-          dropController?.dropLatLng.value?.latLong.lat ?? latLng.lat,
-          dropController?.dropLatLng.value?.latLong.lng ?? latLng.lng,
+          dropCtrl?.dropLatLng.value?.country ?? getPlacesLatLng.value!.country,
+          dropCtrl?.dropLatLng.value?.latLong.lat ?? latLng.lat,
+          dropCtrl?.dropLatLng.value?.latLong.lng ?? latLng.lng,
           convertDateTimeToUtcString(bookingRideController.localStartTime.value),
           offset,
           timeZone,

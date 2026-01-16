@@ -373,7 +373,13 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
   /// Load the country and check trip code change dialog after UI is rendered
   Future<void> loadInitialData() async {
-    _country = dropPlaceSearchController.dropLatLng.value?.country.toLowerCase();
+    // ✅ Rental can have no destination; prefer requestData/pickup as fallback.
+    final fromRequest = widget.requestData['countryName'] ?? widget.requestData['country'];
+    _country = (fromRequest is String && fromRequest.isNotEmpty)
+        ? fromRequest.toLowerCase()
+        : (dropPlaceSearchController.dropLatLng.value?.country ??
+                placeSearchController.getPlacesLatLng.value?.country)
+            ?.toLowerCase();
     setState(() {
       isLoading = false;
     });

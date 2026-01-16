@@ -46,24 +46,26 @@ class _SelectDropState extends State<SelectDrop> {
       bookingRideController = Get.put(BookingRideController());
     }
     try {
-      dropPlaceSearchController = Get.find<DropPlaceSearchController>();
-    } catch (_) {
-      dropPlaceSearchController = Get.put(DropPlaceSearchController());
-    }
-    try {
       placeSearchController = Get.find<PlaceSearchController>();
     } catch (_) {
       placeSearchController = Get.put(PlaceSearchController());
     }
     try {
-      tripController = Get.find<TripHistoryController>();
-    } catch (_) {
-      tripController = Get.put(TripHistoryController());
-    }
-    try {
       destinationController = Get.find<DestinationLocationController>();
     } catch (_) {
       destinationController = Get.put(DestinationLocationController());
+    }
+    // IMPORTANT: DropPlaceSearchController depends on PlaceSearchController + DestinationLocationController,
+    // so ensure those are registered first.
+    try {
+      dropPlaceSearchController = Get.find<DropPlaceSearchController>();
+    } catch (_) {
+      dropPlaceSearchController = Get.put(DropPlaceSearchController());
+    }
+    try {
+      tripController = Get.find<TripHistoryController>();
+    } catch (_) {
+      tripController = Get.put(TripHistoryController());
     }
 
     // Set initial text for dropController

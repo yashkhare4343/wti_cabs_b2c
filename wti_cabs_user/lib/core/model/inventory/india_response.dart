@@ -1,3 +1,12 @@
+num? _asNum(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value.trim());
+  return null;
+}
+
+double? _asDouble(dynamic value) => _asNum(value)?.toDouble();
+
 class IndiaResponse {
   final Result? result;
 
@@ -67,7 +76,7 @@ class Inventory {
 
   factory Inventory.fromJson(Map<String, dynamic> json) {
     return Inventory(
-      distanceBooked: json['distance_booked'],
+      distanceBooked: _asNum(json['distance_booked']),
       isInstantSearch: json['is_instant_search'],
       isInstantAvailable: json['is_instant_available'],
       startTime:
@@ -76,7 +85,7 @@ class Inventory {
       communicationType: json['communication_type'],
       verificationType: json['verification_type'],
       carTypes: (json['car_types'] as List<dynamic>?)
-          ?.map((e) => CarType.fromJson(e))
+          ?.map((e) => CarType.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -162,7 +171,7 @@ class CarType {
       combustionType: json['combustion_type'],
       carrier: json['carrier'],
       makeYearType: json['make_year_type'],
-      baseKm: json['base_km'],
+      baseKm: _asNum(json['base_km']),
       flags: (json['flags'] as List?)?.map((e) => e.toString()).toList(),
       cancellationRule: json['cancellation_rule'],
       model: json['model'],
@@ -174,20 +183,20 @@ class CarType {
           ? FareDetails.fromJson(json['fare_details'])
           : null,
       extrasIdArray: (json['extrasIdArray'] as List?)
-          ?.map((e) => Extra.fromJson(e))
+          ?.map((e) => Extra.fromJson(e as Map<String, dynamic>))
           .toList(),
       rating: json['rating'] != null ? Rating.fromJson(json['rating']) : null,
-      seats: json['seats'],
+      seats: _asNum(json['seats']),
       luggageCapacity: json['luggageCapacity'],
       isActive: json['isActive'],
       pet: json['pet'],
       carTagLine: json['carTagLine'],
-      fakePercentageOff: json['fakePercentageOff'],
+      fakePercentageOff: _asNum(json['fakePercentageOff']),
       carImageUrl: json['carImageUrl'],
       coupon: json['coupon'] != null
           ? InventoryCoupon.fromJson(json['coupon'] as Map<String, dynamic>)
           : null,
-      discountedCoupon: json['discountedCoupon'],
+      discountedCoupon: _asNum(json['discountedCoupon']),
     );
   }
 
@@ -243,8 +252,8 @@ class InventoryCoupon {
       id: json['_id'] as String?,
       couponIsActive: json['couponIsActive'] as bool?,
       codeName: json['codeName'] as String?,
-      codePercentage: json['codePercentage'] as num?,
-      maximumDiscountAmount: json['maximumDiscountAmount'] as num?,
+      codePercentage: _asNum(json['codePercentage']),
+      maximumDiscountAmount: _asNum(json['maximumDiscountAmount']),
     );
   }
 
@@ -307,7 +316,7 @@ class TripType {
       searchTags:
       (json['search_tags'] as List?)?.map((e) => e.toString()).toList(),
       packageId: json['package_id'],
-      oneWayDistance: json['one_way_distance'],
+      oneWayDistance: _asNum(json['one_way_distance']),
       isInstantSearch: json['is_instant_search'],
       tripTypeDetails: json['trip_type_details'] != null
           ? TripTypeDetails.fromJson(json['trip_type_details'])
@@ -315,7 +324,7 @@ class TripType {
       previousTripCode: json['previousTripCode'],
       currentTripCode: json['currentTripCode'],
       searchId: json['search_id'],
-      distanceBooked: json['distance_booked'],
+      distanceBooked: _asNum(json['distance_booked']),
     );
   }
 
@@ -350,8 +359,8 @@ class Location {
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
       address: json['address'],
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: _asDouble(json['latitude']),
+      longitude: _asDouble(json['longitude']),
       city: json['city'],
     );
   }
@@ -434,11 +443,11 @@ class FareDetails {
 
   factory FareDetails.fromJson(Map<String, dynamic> json) {
     return FareDetails(
-      sellerDiscount: json['seller_discount'],
-      perKmCharge: json['per_km_charge'],
-      perKmExtraCharge: json['per_km_extra_charge'],
-      totalDriverCharges: json['total_driver_charges'],
-      baseFare: json['base_fare'],
+      sellerDiscount: _asNum(json['seller_discount']),
+      perKmCharge: _asNum(json['per_km_charge']),
+      perKmExtraCharge: _asNum(json['per_km_extra_charge']),
+      totalDriverCharges: _asNum(json['total_driver_charges']),
+      baseFare: _asNum(json['base_fare']),
       extraTimeFare: json['extra_time_fare'] != null
           ? ExtraTimeFare.fromJson(json['extra_time_fare'])
           : null,
@@ -469,8 +478,8 @@ class ExtraTimeFare {
 
   factory ExtraTimeFare.fromJson(Map<String, dynamic> json) {
     return ExtraTimeFare(
-      rate: json['rate'],
-      applicableTime: json['applicable_time'],
+      rate: _asNum(json['rate']),
+      applicableTime: _asNum(json['applicable_time']),
     );
   }
 
@@ -537,11 +546,11 @@ class ChargeDetail {
 
   factory ChargeDetail.fromJson(Map<String, dynamic> json) {
     return ChargeDetail(
-      amount: json['amount'],
+      amount: _asNum(json['amount']),
       isIncludedInBaseFare: json['is_included_in_base_fare'],
       isIncludedInGrandTotal: json['is_included_in_grand_total'],
-      applicableTimeFrom: json['applicable_time_from'],
-      applicableTimeTill: json['applicable_time_till'],
+      applicableTimeFrom: _asNum(json['applicable_time_from']),
+      applicableTimeTill: _asNum(json['applicable_time_till']),
       isApplicable: json['is_applicable'],
     );
   }
@@ -578,12 +587,12 @@ class WaitingCharges extends ChargeDetail {
 
   factory WaitingCharges.fromJson(Map<String, dynamic> json) {
     return WaitingCharges(
-      amount: json['amount'],
+      amount: _asNum(json['amount']),
       isIncludedInBaseFare: json['is_included_in_base_fare'],
       isIncludedInGrandTotal: json['is_included_in_grand_total'],
       isApplicable: json['is_applicable'],
-      freeWaitingTime: json['free_waiting_time'],
-      applicableTime: json['applicable_time'],
+      freeWaitingTime: _asNum(json['free_waiting_time']),
+      applicableTime: _asNum(json['applicable_time']),
     );
   }
 
@@ -657,8 +666,8 @@ class Price {
 
   factory Price.fromJson(Map<String, dynamic> json) {
     return Price(
-      daily: json['daily'],
-      maximum: json['maximum'],
+      daily: _asNum(json['daily']),
+      maximum: _asNum(json['maximum']),
     );
   }
 
@@ -679,7 +688,7 @@ class Rating {
   factory Rating.fromJson(Map<String, dynamic> json) {
     return Rating(
       tag: json['tag'],
-      ratePoints: (json['ratePoints'] as num?)?.toDouble(),
+      ratePoints: _asDouble(json['ratePoints']),
     );
   }
 

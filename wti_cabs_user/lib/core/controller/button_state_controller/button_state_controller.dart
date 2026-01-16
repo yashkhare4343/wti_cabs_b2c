@@ -2,9 +2,9 @@ import 'package:get/get_rx/src/rx_types/rx_types.dart';
 import 'package:get/get_rx/src/rx_workers/rx_workers.dart';
 import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 
-import '../booking_ride_controller.dart';
-import '../choose_drop/choose_drop_controller.dart';
-import '../choose_pickup/choose_pickup_controller.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
+import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 
 class ButtonStateController extends GetxController {
   final PlaceSearchController placeSearchController;

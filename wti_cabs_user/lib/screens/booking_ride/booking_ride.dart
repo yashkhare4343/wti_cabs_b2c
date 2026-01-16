@@ -14,10 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/primary_button.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_picker_tile.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_time_picker.dart';
-import 'package:wti_cabs_user/common_widget/dropdown/common_dropdown.dart';
 import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
-import 'package:wti_cabs_user/common_widget/loader/popup_loader.dart';
-import 'package:wti_cabs_user/common_widget/loader/shimmer/shimmer.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/booking_textformfield.dart';
 import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
@@ -25,10 +22,7 @@ import 'package:wti_cabs_user/core/controller/button_state_controller/button_sta
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
-import 'package:wti_cabs_user/screens/bottom_nav/bottom_nav.dart';
 import 'package:wti_cabs_user/screens/select_location/select_pickup.dart';
-import '../../common_widget/datepicker/drop_date_picker.dart';
-import '../../common_widget/time_picker/drop_time_picker.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
@@ -1951,13 +1945,11 @@ class _RidesState extends State<Rides> {
                 width: double.infinity,
                 child: Obx(() {
                   final sourceValue = bookingRideController.prefilled.value.trim();
-                  final dropValue = bookingRideController.prefilledDrop.value.trim();
                   final sourcePlaceId = placeSearchController.placeId.value;
-                  final dropPlaceId = dropPlaceSearchController.dropPlaceId.value;
                   
                   final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
-                  final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
-                  final isDisabled = isSourceEmpty || isDropEmpty;
+                  // ✅ Rental: destination is optional; enable button if pickup exists.
+                  final isDisabled = isSourceEmpty;
 
                   return PrimaryButton(
                     text: 'Search Now',
@@ -2790,19 +2782,25 @@ class _RentalState extends State<Rental> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: Obx(() {
-                  final sourceValue = bookingRideController.prefilled.value.trim();
-                  final dropValue = bookingRideController.prefilledDrop.value.trim();
-                  final sourcePlaceId = placeSearchController.placeId.value;
-                  final dropPlaceId = dropPlaceSearchController.dropPlaceId.value;
-                  
-                  final isSourceEmpty = sourceValue.isEmpty && sourcePlaceId.isEmpty;
-                  final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
-                  final isDisabled = isSourceEmpty || isDropEmpty;
+                child: AnimatedBuilder(
+                  animation: ridePickupController,
+                  builder: (context, _) {
+                    return Obx(() {
+                      // Keep this reference so widget rebuilds when the shared state updates
+                      // (e.g. after selecting pickup from the picker screen).
+                      bookingRideController.prefilled.value;
 
-                  return PrimaryButton(
-                    text: 'Search Now',
-                    onPressed: isDisabled ? null : () {
+                      final pickupText = ridePickupController.text.trim();
+                      final sourcePlaceId =
+                          placeSearchController.placeId.value.trim();
+
+                      // ✅ Rental: destination is optional; enable button if pickup exists.
+                      final isDisabled =
+                          pickupText.isEmpty && sourcePlaceId.isEmpty;
+
+                      return PrimaryButton(
+                        text: 'Search Now',
+                        onPressed: isDisabled ? null : () {
                       // Haptic feedback for smooth tap response
                       HapticFeedback.lightImpact();
                       
@@ -2815,6 +2813,17 @@ class _RentalState extends State<Rental> {
                       
                       // Defer heavy operations to allow button animation to complete smoothly
                       SchedulerBinding.instance.addPostFrameCallback((_) async {
+                        bool loaderClosed = false;
+                        void closeLoader() {
+                          if (loaderClosed) return;
+                          if (!mounted) return;
+                          final nav = Navigator.of(context, rootNavigator: true);
+                          if (nav.canPop()) {
+                            nav.pop();
+                          }
+                          loaderClosed = true;
+                        }
+
                         // ✅ FAST PATH: Check countries immediately if already available
                         var sourceCountry = placeSearchController
                                 .getPlacesLatLng.value?.country
@@ -2874,9 +2883,7 @@ class _RentalState extends State<Rental> {
                         // For rental, if destination exists, both must match
                         if (destinationCountry.isNotEmpty) {
                           if (sourceCountry.isEmpty || sourceCountry != destinationCountry) {
-                            if (Navigator.of(context, rootNavigator: true).canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
+                            closeLoader();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Pickup and drop countries must be the same.'),
@@ -2891,6 +2898,20 @@ class _RentalState extends State<Rental> {
                         try {
                           final requestData = await _buildRentalRequestData(context);
 
+                          // ✅ If destination is not selected for Rental, close the popup and let
+                          // the InventoryList screen handle fetching (prevents loader sticking).
+                          final hasDestination =
+                              dropPlaceSearchController.dropPlaceId.value.trim().isNotEmpty;
+                          if (!hasDestination) {
+                            closeLoader();
+                            bookingRideController.isInventoryPage.value = false;
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: requestData,
+                            );
+                            return;
+                          }
+
                           setState(() => _isLoading = true);
 
                           // Only call API if countries match (or destination is empty for rental)
@@ -2902,18 +2923,18 @@ class _RentalState extends State<Rental> {
                               isSecondPage: true,
                             );
 
-                            bookingRideController.isInventoryPage.value = false;
+                            // ✅ Close loader BEFORE navigation so we don't accidentally pop the new page.
+                            closeLoader();
 
-                            if (bookingRideController.isInventoryPage.value == true) {
-                              GoRouter.of(context).pop();
-                            } else {
-                              GoRouter.of(context).push(
-                                AppRoutes.inventoryList,
-                                extra: requestData,
-                              );
-                            }
+                            bookingRideController.isInventoryPage.value = false;
+                            GoRouter.of(context).push(
+                              AppRoutes.inventoryList,
+                              extra: requestData,
+                            );
                           } catch (e) {
                             debugPrint('Error fetching booking data: $e');
+                            // Close loader if still open
+                            closeLoader();
                             // Show error to user but don't block
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -2927,13 +2948,12 @@ class _RentalState extends State<Rental> {
                           } finally {
                             if (!mounted) return;
                             setState(() => _isLoading = false);
-                            GoRouter.of(context).pop();
                           }
                         } catch (e) {
                           debugPrint('[SearchNow] Error: $e');
                           // Close FullScreenGifLoader if still open
                           if (mounted) {
-                            Navigator.of(context).pop();
+                            closeLoader();
                             // Navigate to inventory list with error message
                             GoRouter.of(context).push(
                               AppRoutes.inventoryList,
@@ -2945,9 +2965,11 @@ class _RentalState extends State<Rental> {
                           }
                         }
                       });
-                    },
-                  );
-                }),
+                        },
+                      );
+                    });
+                  },
+                ),
               ),
             )
           ],
