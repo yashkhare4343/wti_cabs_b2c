@@ -3685,42 +3685,70 @@ class _RecentTripListState extends State<RecentTripList> {
       }
 
       // Always fetch fresh data from APIs for new placeIds or when data is missing
-      // Search for drop places to get fresh data
+      // Search for drop places to get fresh data (best-effort; do not fail if empty)
+      // Recent trips can contain long addresses that may not return suggestions,
+      // but we still must fetch lat/lng by placeId and save destination.
       if (dropPlaceSearchController.dropSuggestions.isEmpty ||
           dropPlaceSearchController.dropSuggestions.first.placeId != placeId) {
-        await dropPlaceSearchController.searchDropPlaces(title, context);
-        if (dropPlaceSearchController.dropSuggestions.isEmpty) {
-          return false;
+        try {
+          await dropPlaceSearchController.searchDropPlaces(title, context);
+        } catch (_) {
+          // Ignore suggestion failures; placeId-based lat/lng is the source of truth.
         }
       }
 
-      final dropSuggestion = dropPlaceSearchController.dropSuggestions.first;
-
       // Always fetch fresh lat/lng for the placeId
       await dropPlaceSearchController.getLatLngForDrop(placeId, context);
+
+      final latLng = dropPlaceSearchController.dropLatLng.value;
+      final resolvedCity = latLng?.city ??
+          (dropPlaceSearchController.dropSuggestions.isNotEmpty
+              ? dropPlaceSearchController.dropSuggestions.first.city
+              : null) ??
+          city ??
+          '';
+      final resolvedState = latLng?.state ??
+          (dropPlaceSearchController.dropSuggestions.isNotEmpty
+              ? dropPlaceSearchController.dropSuggestions.first.state
+              : null) ??
+          state ??
+          '';
+      final resolvedCountry = latLng?.country ??
+          (dropPlaceSearchController.dropSuggestions.isNotEmpty
+              ? dropPlaceSearchController.dropSuggestions.first.country
+              : null) ??
+          country ??
+          '';
+      final resolvedTypes = (dropPlaceSearchController.dropSuggestions.isNotEmpty
+              ? dropPlaceSearchController.dropSuggestions.first.types
+              : <String>[]) ??
+          <String>[];
+      final resolvedTerms = dropPlaceSearchController.dropSuggestions.isNotEmpty
+          ? dropPlaceSearchController.dropSuggestions.first.terms
+          : <Term>[];
 
       // Save destination details
       await Future.wait([
         StorageServices.instance.save('destinationPlaceId', placeId),
         StorageServices.instance.save('destinationTitle', title),
-        StorageServices.instance.save('destinationCity', dropSuggestion.city),
-        StorageServices.instance.save('destinationState', dropSuggestion.state),
-        StorageServices.instance.save('destinationCountry', dropSuggestion.country),
-        if (dropSuggestion.types.isNotEmpty)
-          StorageServices.instance.save('destinationTypes', jsonEncode(dropSuggestion.types)),
-        if (dropSuggestion.terms.isNotEmpty)
-          StorageServices.instance.save('destinationTerms', jsonEncode(dropSuggestion.terms)),
+        StorageServices.instance.save('destinationCity', resolvedCity),
+        StorageServices.instance.save('destinationState', resolvedState),
+        StorageServices.instance.save('destinationCountry', resolvedCountry),
+        if (resolvedTypes.isNotEmpty)
+          StorageServices.instance.save('destinationTypes', jsonEncode(resolvedTypes)),
+        if (resolvedTerms.isNotEmpty)
+          StorageServices.instance.save('destinationTerms', jsonEncode(resolvedTerms)),
       ]);
 
       // Update destination controller
       dropLocationController.setPlace(
         placeId: placeId,
         title: title,
-        city: dropSuggestion.city,
-        state: dropSuggestion.state,
-        country: dropSuggestion.country,
-        types: dropSuggestion.types,
-        terms: dropSuggestion.terms,
+        city: resolvedCity,
+        state: resolvedState,
+        country: resolvedCountry,
+        types: resolvedTypes,
+        terms: resolvedTerms,
       );
 
       return true;

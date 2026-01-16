@@ -3402,6 +3402,99 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
     setState(() {});
   }
 
+  List<String> _safeStringList(dynamic value) {
+    if (value == null) return <String>[];
+
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+
+    if (value is String) {
+      final s = value.trim();
+      if (s.isEmpty || s.toLowerCase() == 'null') return <String>[];
+
+      try {
+        final decoded = jsonDecode(s);
+        if (decoded is List) {
+          return decoded.map((e) => e.toString()).toList();
+        }
+      } catch (_) {
+        return <String>[];
+      }
+    }
+
+    return <String>[];
+  }
+
+  Map<String, dynamic> _normalizeIndiaExtraTimeFare(Map<String, dynamic>? value) {
+    final map = Map<String, dynamic>.from(value ?? const <String, dynamic>{});
+    map.putIfAbsent('rate', () => 0);
+    map.putIfAbsent('applicable_time', () => 0);
+    return map;
+  }
+
+  Map<String, dynamic> _normalizeIndiaExtraCharges(Map<String, dynamic>? value) {
+    final map = Map<String, dynamic>.from(value ?? const <String, dynamic>{});
+
+    Map<String, dynamic> _baseCharge() => <String, dynamic>{
+          'amount': 0,
+          'is_applicable': false,
+          'is_included_in_base_fare': false,
+          'is_included_in_grand_total': false,
+        };
+
+    void _ensureChargeMap(String key) {
+      final v = map[key];
+      if (v is Map<String, dynamic>) return;
+      if (v is Map) {
+        map[key] = Map<String, dynamic>.from(v);
+        return;
+      }
+      map[key] = _baseCharge();
+    }
+
+    // Backend expects these keys to exist as objects (not null).
+    _ensureChargeMap('toll_charges');
+    _ensureChargeMap('parking_charges');
+    _ensureChargeMap('state_tax');
+    _ensureChargeMap('night_charges');
+
+    final waiting = map['waiting_charges'];
+    if (waiting is Map<String, dynamic>) {
+      // keep
+    } else if (waiting is Map) {
+      map['waiting_charges'] = Map<String, dynamic>.from(waiting);
+    } else {
+      map['waiting_charges'] = <String, dynamic>{
+        ..._baseCharge(),
+        'applicable_time': 0,
+        'free_waiting_time': 0,
+      };
+    }
+
+    return map;
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final s = value.trim();
+      if (s.isEmpty || s.toLowerCase() == 'null') return null;
+      return double.tryParse(s);
+    }
+    return null;
+  }
+
+  bool _hasMeaningfulDestination(Map<String, dynamic> destinationData) {
+    final title = (destinationData['destinationTitle'] ?? '').toString().trim();
+    final placeId =
+        (destinationData['destinationPlaceId'] ?? '').toString().trim();
+    final lat = _asDouble(destinationData['destinationLat']);
+    final lng = _asDouble(destinationData['destinationLng']);
+    return title.isNotEmpty || placeId.isNotEmpty || (lat != null && lng != null);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -3607,6 +3700,9 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
 
                               final destinationData = Map.fromIterables(
                                   destinationKeys, destinationValues);
+                              final currentTripCode = await StorageServices
+                                  .instance
+                                  .read('currentTripCode');
                               showRazorpaySkeletonLoader(context);
                               print(
                                   'yash amountToBeCollected ids : ${double.parse(cabBookingController.amountTobeCollected.toStringAsFixed(2))}');
@@ -3691,6 +3787,80 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   .instance
                                   .read('destinationLng');
 
+                              double? resolvedDestinationLat =
+                                  dropPlaceSearchController
+                                          .dropLatLng.value?.latLong.lat ??
+                                      _asDouble(destinationLat) ??
+                                      _asDouble(destinationData['destinationLat']);
+                              double? resolvedDestinationLng =
+                                  dropPlaceSearchController
+                                          .dropLatLng.value?.latLong.lng ??
+                                      _asDouble(destinationLng) ??
+                                      _asDouble(destinationData['destinationLng']);
+
+                              final destinationAddress =
+                                  destinationController.title.value.isNotEmpty
+                                      ? destinationController.title.value
+                                      : (destinationData['destinationTitle'] ??
+                                              destinationTitle ??
+                                              '')
+                                          .toString();
+                              final destinationCityValue =
+                                  destinationController.city.value.isNotEmpty
+                                      ? destinationController.city.value
+                                      : (destinationData['destinationCity'] ??
+                                              destinationCity ??
+                                              '')
+                                          .toString();
+                              final destinationStateValue =
+                                  destinationController.state.value.isNotEmpty
+                                      ? destinationController.state.value
+                                      : (destinationData['destinationState'] ??
+                                              destinationState ??
+                                              '')
+                                          .toString();
+                              final destinationCountryValue =
+                                  destinationController.country.value.isNotEmpty
+                                      ? destinationController.country.value
+                                      : (destinationData['destinationCountry'] ??
+                                              destinationCountry ??
+                                              '')
+                                          .toString();
+                              final destinationPlaceIdValue =
+                                  destinationController.placeId.value.isNotEmpty
+                                      ? destinationController.placeId.value
+                                      : (destinationData['destinationPlaceId'] ??
+                                              destinationPlaceId ??
+                                              '')
+                                          .toString();
+
+                              // If drop lat/lng is still missing but we have a placeId,
+                              // fetch it once before creating the booking request.
+                              if (currentTripCode != '3' &&
+                                  (resolvedDestinationLat == null ||
+                                      resolvedDestinationLng == null) &&
+                                  destinationPlaceIdValue.trim().isNotEmpty) {
+                                try {
+                                  await dropPlaceSearchController.getLatLngForDrop(
+                                    destinationPlaceIdValue.trim(),
+                                    context,
+                                  );
+                                  final refreshedLat = await StorageServices
+                                      .instance
+                                      .read('destinationLat');
+                                  final refreshedLng = await StorageServices
+                                      .instance
+                                      .read('destinationLng');
+                                  resolvedDestinationLat ??= _asDouble(refreshedLat);
+                                  resolvedDestinationLng ??= _asDouble(refreshedLng);
+                                } catch (_) {
+                                  // Don't block payment if lookup fails
+                                }
+                              }
+
+                              final shouldSendDestination =
+                                  currentTripCode != '3';
+
                               final Map<String, dynamic> requestData = {
                                 "firstName": await StorageServices.instance
                                     .read('firstName'),
@@ -3731,9 +3901,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   "distance": cabBookingController.indiaData
                                       .value?.inventory?.distanceBooked
                                       ?.toInt(),
-                                  "package": await StorageServices.instance
-                                              .read('currentTripCode') ==
-                                          '3'
+                                  "package": currentTripCode == '3'
                                       ? cabBookingController
                                               .indiaData
                                               .value
@@ -3813,53 +3981,22 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "state": sourceController.state.value,
                                     "country": sourceController.country.value
                                   },
-                                  "destination": await StorageServices.instance
-                                              .read('currentTripCode') ==
-                                          '3'
-                                      ? {}
+                                  "destination": !shouldSendDestination
+                                      ? null
                                       : {
-                                          "address": destinationController
-                                                  .title.value.isEmpty
-                                              ? destinationData[
-                                                  'destinationTitle']
-                                              : destinationController
-                                                  .title.value,
-                                          "latitude": dropPlaceSearchController
-                                              .dropLatLng.value?.latLong.lat,
-                                          "longitude": dropPlaceSearchController
-                                              .dropLatLng.value?.latLong.lng,
-                                          "city": destinationController
-                                                  .city.value.isEmpty
-                                              ? destinationData[
-                                                  'destinationCity']
-                                              : destinationController
-                                                  .city.value,
-                                          "place_id": destinationController
-                                                  .placeId.value.isNotEmpty
-                                              ? destinationData[
-                                                  'destinationPlaceId']
-                                              : destinationController
-                                                  .placeId.value,
+                                          "address": destinationAddress,
+                                          "latitude": resolvedDestinationLat,
+                                          "longitude": resolvedDestinationLng,
+                                          "city": destinationCityValue,
+                                          "place_id": destinationPlaceIdValue,
                                           "types": destinationController
                                                   .types.isEmpty
-                                              ? List<String>.from(jsonDecode(
-                                                  destinationData[
-                                                          'destinationTypes'] ??
-                                                      ''))
+                                              ? _safeStringList(destinationData[
+                                                  'destinationTypes'])
                                               : destinationController.types
                                                   .toList(),
-                                          "state": destinationController
-                                                  .state.value.isEmpty
-                                              ? destinationData[
-                                                  'destinationState']
-                                              : destinationController
-                                                  .state.value,
-                                          "country": destinationController
-                                                  .country.value.isEmpty
-                                              ? destinationData[
-                                                  'destinationCountry']
-                                              : destinationController
-                                                  .country.value
+                                          "state": destinationStateValue,
+                                          "country": destinationCountryValue
                                         },
                                   "stopovers": [],
                                   "trip_type_details": {
@@ -3993,22 +4130,28 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "total_tax": double.parse(
                                         cabBookingController.taxCharge
                                             .toStringAsFixed(2)),
-                                    "extra_time_fare": cabBookingController
+                                    "extra_time_fare":
+                                        _normalizeIndiaExtraTimeFare(
+                                      cabBookingController
                                         .indiaData
                                         .value
                                         ?.inventory
                                         ?.carTypes
                                         ?.fareDetails
                                         ?.extraTimeFare
-                                        ?.toJson(),
-                                    "extra_charges": cabBookingController
-                                        .indiaData
-                                        .value
-                                        ?.inventory
-                                        ?.carTypes
-                                        ?.fareDetails
-                                        ?.extraCharges
-                                        ?.toJson(),
+                                        ?.toJson() ??
+                                        const <String, dynamic>{},
+                                    ),
+                                    "extra_charges": _normalizeIndiaExtraCharges(
+                                      cabBookingController
+                                          .indiaData
+                                          .value
+                                          ?.inventory
+                                          ?.carTypes
+                                          ?.fareDetails
+                                          ?.extraCharges
+                                          ?.toJson(),
+                                    ),
                                     "amount_to_be_collected": double.parse(
                                         cabBookingController.amountTobeCollected
                                             .toStringAsFixed(2))
