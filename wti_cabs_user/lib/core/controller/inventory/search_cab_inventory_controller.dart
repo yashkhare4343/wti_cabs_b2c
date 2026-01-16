@@ -104,8 +104,6 @@ class SearchCabInventoryController extends GetxController {
       final oldCurrent = await StorageServices.instance.read('currentTripCode') ?? '';
       final oldPrevious = await StorageServices.instance.read('previousTripCode') ?? '';
 
-
-
       if (country.toLowerCase() == 'india') {
         final response = await ApiService().postRequestNew<IndiaResponse>(
           'globalSearch/searchSwitchBasedOnCountry',

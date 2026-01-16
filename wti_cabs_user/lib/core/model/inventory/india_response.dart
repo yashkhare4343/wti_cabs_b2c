@@ -120,6 +120,8 @@ class CarType {
   final String? carTagLine;
   final num? fakePercentageOff;
   final String? carImageUrl;
+  final InventoryCoupon? coupon;
+  final num? discountedCoupon;
 
   CarType({
     this.routeId,
@@ -146,6 +148,8 @@ class CarType {
     this.carTagLine,
     this.fakePercentageOff,
     this.carImageUrl,
+    this.coupon,
+    this.discountedCoupon,
   });
 
   factory CarType.fromJson(Map<String, dynamic> json) {
@@ -180,6 +184,10 @@ class CarType {
       carTagLine: json['carTagLine'],
       fakePercentageOff: json['fakePercentageOff'],
       carImageUrl: json['carImageUrl'],
+      coupon: json['coupon'] != null
+          ? InventoryCoupon.fromJson(json['coupon'] as Map<String, dynamic>)
+          : null,
+      discountedCoupon: json['discountedCoupon'],
     );
   }
 
@@ -208,7 +216,45 @@ class CarType {
       'pet': pet,
       'carTagLine': carTagLine,
       'fakePercentageOff': fakePercentageOff,
-      'carImageUrl': carImageUrl
+      'carImageUrl': carImageUrl,
+      'coupon': coupon?.toJson(),
+      'discountedCoupon': discountedCoupon,
+    };
+  }
+}
+
+class InventoryCoupon {
+  final String? id;
+  final bool? couponIsActive;
+  final String? codeName;
+  final num? codePercentage;
+  final num? maximumDiscountAmount;
+
+  InventoryCoupon({
+    this.id,
+    this.couponIsActive,
+    this.codeName,
+    this.codePercentage,
+    this.maximumDiscountAmount,
+  });
+
+  factory InventoryCoupon.fromJson(Map<String, dynamic> json) {
+    return InventoryCoupon(
+      id: json['_id'] as String?,
+      couponIsActive: json['couponIsActive'] as bool?,
+      codeName: json['codeName'] as String?,
+      codePercentage: json['codePercentage'] as num?,
+      maximumDiscountAmount: json['maximumDiscountAmount'] as num?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'couponIsActive': couponIsActive,
+      'codeName': codeName,
+      'codePercentage': codePercentage,
+      'maximumDiscountAmount': maximumDiscountAmount,
     };
   }
 }

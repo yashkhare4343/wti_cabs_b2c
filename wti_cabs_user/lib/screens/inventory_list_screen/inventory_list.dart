@@ -913,7 +913,12 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
         print('✅ Logged select with ${items.length} items.');
 
-
+        // Pass recommended coupon (if any) to Booking Details for auto-selection.
+        cabBookingController.setPreselectedCoupon(
+          couponId: carType.coupon?.id,
+          couponCode: carType.coupon?.codeName,
+          discountedCoupon: carType.discountedCoupon,
+        );
 
         cabBookingController.fetchBookingData(
             country: country ?? '', requestData: requestData, context: context);
@@ -1202,6 +1207,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                 ''
           },
         };
+        // Global flow doesn't carry an inventory-provided coupon; ensure we don't reuse a stale one.
+        cabBookingController.clearPreselectedCoupon();
         cabBookingController
             .fetchBookingData(
             country: country ?? '',

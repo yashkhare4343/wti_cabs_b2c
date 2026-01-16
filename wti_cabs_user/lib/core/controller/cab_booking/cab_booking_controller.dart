@@ -26,6 +26,12 @@ class CabBookingController extends GetxController {
   RxnString selectedCouponId = RxnString();
   RxnString selectedCouponCode = RxnString();
 
+  /// Coupon coming from Inventory list (auto-select on Booking Details).
+  /// This is separate from selectedCoupon* so we can apply it once on entry.
+  RxnString preselectedCouponId = RxnString();
+  RxnString preselectedCouponCode = RxnString();
+  Rxn<num> preselectedDiscountedCoupon = Rxn<num>();
+
   void setSelectedCoupon({required String couponId, String? couponCode}) {
     selectedCouponId.value = couponId;
     selectedCouponCode.value = couponCode;
@@ -34,6 +40,22 @@ class CabBookingController extends GetxController {
   void clearSelectedCoupon() {
     selectedCouponId.value = null;
     selectedCouponCode.value = null;
+  }
+
+  void setPreselectedCoupon({
+    String? couponId,
+    String? couponCode,
+    num? discountedCoupon,
+  }) {
+    preselectedCouponId.value = (couponId?.trim().isNotEmpty ?? false) ? couponId : null;
+    preselectedCouponCode.value = (couponCode?.trim().isNotEmpty ?? false) ? couponCode : null;
+    preselectedDiscountedCoupon.value = discountedCoupon;
+  }
+
+  void clearPreselectedCoupon() {
+    preselectedCouponId.value = null;
+    preselectedCouponCode.value = null;
+    preselectedDiscountedCoupon.value = null;
   }
 
   // NEW: Extra selected facilities (label -> price)
@@ -617,6 +639,10 @@ class CabBookingController extends GetxController {
     Map<String, dynamic> response,
     Map<String, dynamic> requestData,
   ) {
+    // Some APIs wrap payload under `result` or `data`. Prefer the wrapped map if present.
+    final Map<String, dynamic> root =
+        _safeCastMap(response['result']) ?? _safeCastMap(response['data']) ?? response;
+
     // Try to get existing inventory data from SearchCabInventoryController
     Map<String, dynamic>? existingInventoryData;
     Map<String, dynamic>? existingInventoryBase;
@@ -655,7 +681,7 @@ class CabBookingController extends GetxController {
     }
 
     // Extract fare_details from response - handle type casting
-    final fareDetailsRaw = response['fare_details'];
+    final fareDetailsRaw = root['fare_details'] ?? root['fareDetails'];
     final Map<String, dynamic>? fareDetails = fareDetailsRaw != null
         ? (fareDetailsRaw is Map<String, dynamic>
             ? fareDetailsRaw
@@ -753,14 +779,14 @@ class CabBookingController extends GetxController {
 
     // Build tripType from requestData and response
     // Handle type casting for source and destination
-    final sourceRaw = response['source'];
+    final sourceRaw = root['source'] ?? requestData['source'];
     final Map<String, dynamic>? source = sourceRaw != null
         ? (sourceRaw is Map<String, dynamic>
             ? sourceRaw
             : Map<String, dynamic>.from(sourceRaw as Map))
         : null;
     
-    final destinationRaw = response['destination'];
+    final destinationRaw = root['destination'] ?? requestData['destination'];
     final Map<String, dynamic>? destination = destinationRaw != null
         ? (destinationRaw is Map<String, dynamic>
             ? destinationRaw
@@ -784,17 +810,17 @@ class CabBookingController extends GetxController {
       'dropDateTime': requestData['dropDateTime'],
       'totalKilometers': requestData['totalKilometers'],
       'trip_type_details': tripTypeDetails,
-      'package_id': response['package_id'],
+      'package_id': root['package_id'],
       'source': source,
       'destination': destination,
-      'tripCode': response['tripCode'],
-      'comingFrom': response['comingFrom'],
+      'tripCode': root['tripCode'],
+      'comingFrom': root['comingFrom'],
     };
 
     // Extract extras from new API response - check multiple possible locations
     dynamic newExtrasIdArray;
-    final responseInventory = _safeCastMap(response['inventory']);
-    final responseCarTypes = _safeCastMap(response['car_types']);
+    final responseInventory = _safeCastMap(root['inventory']);
+    final responseCarTypes = _safeCastMap(root['car_types']);
     
     print('🔍 Checking for extras in response...');
     print('🔍 responseInventory: ${responseInventory != null ? responseInventory.keys.toList() : 'null'}');
@@ -814,9 +840,9 @@ class CabBookingController extends GetxController {
       print('🔍 Checked responseCarTypes for extras: ${newExtrasIdArray != null ? 'Found' : 'Not found'}');
     }
     if (newExtrasIdArray == null) {
-      newExtrasIdArray = response['extrasIdArray'] ?? 
-                        response['extras_id_array'] ??
-                        response['extras'];
+      newExtrasIdArray = root['extrasIdArray'] ?? 
+                        root['extras_id_array'] ??
+                        root['extras'];
       print('🔍 Checked root response for extras: ${newExtrasIdArray != null ? 'Found' : 'Not found'}');
     }
     
@@ -846,8 +872,9 @@ class CabBookingController extends GetxController {
     }
     
     // Extract other fields from new API response
-    final newInventoryData = _safeCastMap(response['inventory']);
-    final newCarTypesData = _safeCastMap(response['car_types']) ?? _safeCastMap(newInventoryData?['car_types']);
+    final newInventoryData = _safeCastMap(root['inventory']);
+    final newCarTypesData =
+        _safeCastMap(root['car_types']) ?? _safeCastMap(newInventoryData?['car_types']);
     
     if (existingInventoryData != null || newCarTypesData != null) {
       // Merge existing car type data with new API response data
@@ -899,8 +926,31 @@ class CabBookingController extends GetxController {
       inventoryData['verification_type'] = newInventoryData['verification_type'] ?? inventoryData['verification_type'];
     }
 
+    // ✅ Inclusion/Exclusion charges (Postman shows non-null but we were dropping it in transform)
+    final incExc =
+        _safeCastMap(root['inclusionExclusionCharges']) ??
+        _safeCastMap(root['inclusion_exclusion_charges']) ??
+        _safeCastMap(newInventoryData?['inclusionExclusionCharges']) ??
+        _safeCastMap(newInventoryData?['inclusion_exclusion_charges']) ??
+        _safeCastMap(newCarTypesData?['inclusionExclusionCharges']) ??
+        _safeCastMap(newCarTypesData?['inclusion_exclusion_charges']);
+
+    if (incExc != null) {
+      inventoryData['inclusionExclusionCharges'] = incExc;
+    } else {
+      // Some backends send included/excluded lists at root without wrapping.
+      final includedRaw = root['includedCharges'];
+      final excludedRaw = root['excludedCharges'];
+      if (includedRaw is List || excludedRaw is List) {
+        inventoryData['inclusionExclusionCharges'] = {
+          if (includedRaw is List) 'includedCharges': includedRaw,
+          if (excludedRaw is List) 'excludedCharges': excludedRaw,
+        };
+      }
+    }
+
     // Handle offerObject type casting
-    final offerObjectRaw = response['offerObject'];
+    final offerObjectRaw = root['offerObject'] ?? root['offer_object'];
     final Map<String, dynamic>? offerObject = offerObjectRaw != null
         ? (offerObjectRaw is Map<String, dynamic>
             ? offerObjectRaw
@@ -909,7 +959,7 @@ class CabBookingController extends GetxController {
 
     // Return transformed structure matching IndiaCabBooking
     return {
-      'success': response['success'] ?? true,
+      'success': root['success'] ?? response['success'] ?? true,
       'offerObject': offerObject,
       'tripType': tripType,
       'inventory': inventoryData,

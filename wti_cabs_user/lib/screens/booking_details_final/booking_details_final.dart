@@ -44,8 +44,17 @@ class BookingDetailsFinal extends StatefulWidget {
   final num? totalKms;
   final String? endTime;
   final bool? fromPaymentFailure;
+  final String? preselectedCouponId;
+  final String? preselectedCouponCode;
+  final num? preselectedDiscountedCoupon;
   const BookingDetailsFinal(
-      {super.key, this.totalKms, this.endTime, this.fromPaymentFailure});
+      {super.key,
+      this.totalKms,
+      this.endTime,
+      this.fromPaymentFailure,
+      this.preselectedCouponId,
+      this.preselectedCouponCode,
+      this.preselectedDiscountedCoupon});
 
   @override
   State<BookingDetailsFinal> createState() => _BookingDetailsFinalState();
@@ -140,6 +149,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
         context,
         vehicleType: vehicleType,
       );
+      await _applyPreselectedCouponIfAny();
     } else {
       fetchCouponController.coupons.clear();
     }
@@ -173,6 +183,44 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       });
     }); // to trigger rebuild once _country is loaded
     await logCabViewItemList();
+  }
+
+  Future<void> _applyPreselectedCouponIfAny() async {
+    final isIndiaCountry = (_country ?? '').toLowerCase() == 'india';
+    if (!isIndiaCountry) return;
+
+    // Prefer widget-provided coupon (Navigator.push / router extra), fallback to controller (InventoryList -> controller).
+    final incomingCouponId = (widget.preselectedCouponId?.trim().isNotEmpty ?? false)
+        ? widget.preselectedCouponId
+        : cabBookingController.preselectedCouponId.value;
+    final incomingCouponCode = (widget.preselectedCouponCode?.trim().isNotEmpty ?? false)
+        ? widget.preselectedCouponCode
+        : cabBookingController.preselectedCouponCode.value;
+
+    if (incomingCouponId == null || incomingCouponId.trim().isEmpty) return;
+
+    // If user already selected a coupon manually, don't override it.
+    if (cabBookingController.selectedCouponId.value != null &&
+        cabBookingController.selectedCouponId.value!.isNotEmpty) {
+      cabBookingController.clearPreselectedCoupon();
+      return;
+    }
+
+    cabBookingController.setSelectedCoupon(
+      couponId: incomingCouponId,
+      couponCode: incomingCouponCode,
+    );
+
+    // Refresh fare details so coupon discount is reflected immediately.
+    if (cabBookingController.lastIndiaFareRequestData != null) {
+      final payload = Map<String, dynamic>.from(cabBookingController.lastIndiaFareRequestData!);
+      await cabBookingController.fetchIndiaFareDetails(
+        requestData: payload,
+        context: context,
+      );
+    }
+
+    cabBookingController.clearPreselectedCoupon();
   }
 
   @override
@@ -252,8 +300,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                         ),
                         //inclusion/exclusion (india)
                         (_country?.toLowerCase() == 'india')
-                            ? GetBuilder<CabBookingController>(
-                                builder: (cabBookingController) {
+                            // Use controller inventory response (fetchIndiaInventoryData) reactively.
+                            ? Obx(() {
                                   final currencyController =
                                       Get.find<CurrencyController>();
                                   final indiaData =
@@ -262,6 +310,212 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                                     return Center(child: buildShimmer());
                                   }
 
+                                  // ✅ Prefer API-provided inclusion/exclusion list (IndiaCabBooking.inclusionExclusionCharges)
+                                  final incExc = indiaData.inventory?.inclusionExclusionCharges;
+                                  final includedCharges =
+                                      incExc?.includedCharges ?? const <ChargeItem>[];
+                                  final excludedCharges =
+                                      incExc?.excludedCharges ?? const <ChargeItem>[];
+                                  final hasIncExcData =
+                                      includedCharges.isNotEmpty || excludedCharges.isNotEmpty;
+
+                                  Widget buildChargeRow({
+                                    required ChargeItem item,
+                                    required bool included,
+                                  }) {
+                                    final rawKey = ((item.type ?? '') + ' ' + (item.value ?? '')).toLowerCase();
+                                    final typeText = (item.type ?? '').trim();
+                                    final titleRaw = (item.value ?? item.type ?? '').trim();
+
+                                    String friendlyTitle() {
+                                      // ✅ Special case: km-included pattern like "2130 Kms"
+                                      if (included) {
+                                        final kmMatch = RegExp(r'^\s*(\d+)\s*kms?\s*$', caseSensitive: false)
+                                            .firstMatch(typeText);
+                                        if (kmMatch != null) {
+                                          final km = kmMatch.group(1);
+                                          return '${km ?? ''} km included'.trim();
+                                        }
+                                      }
+
+                                      // ✅ Exclusion: keep "Fare beyond 2130 Kms" exactly as-is
+                                      if (!included && typeText.isNotEmpty && typeText.toLowerCase().startsWith('fare beyond')) {
+                                        return typeText;
+                                      }
+
+                                      if (rawKey.contains('state') || rawKey.contains('tax')) {
+                                        return 'State Tax';
+                                      }
+                                      if (rawKey.contains('toll')) return 'Toll Charges';
+                                      if (rawKey.contains('parking')) return 'Parking Charges';
+                                      if (rawKey.contains('night')) return 'Night Charges';
+                                      if (rawKey.contains('waiting')) return 'Waiting Charges';
+                                      if (rawKey.contains('driver')) return 'Driver allowance';
+                                      if (rawKey.contains('km') || rawKey.contains('kilometer')) {
+                                        return 'Km included';
+                                      }
+                                      return titleRaw.isNotEmpty ? titleRaw : 'Charge';
+                                    }
+
+                                    String friendlySubtitleNoPrice() {
+                                      // Match earlier copy as closely as possible
+                                      if (rawKey.contains('state') || rawKey.contains('tax')) {
+                                        return included
+                                            ? 'State tax is included'
+                                            : 'State tax is not covered in base fare';
+                                      }
+                                      if (rawKey.contains('toll')) {
+                                        return included
+                                            ? 'Toll charges are included'
+                                            : 'Toll charges need to be paid separately';
+                                      }
+                                      if (rawKey.contains('parking')) {
+                                        return included
+                                            ? 'Parking charges are included'
+                                            : 'Parking charges need to be paid separately';
+                                      }
+                                      if (rawKey.contains('night')) {
+                                        return included
+                                            ? 'Night charges are covered'
+                                            : 'Night travel charges are extra';
+                                      }
+                                      if (rawKey.contains('waiting')) {
+                                        return included
+                                            ? 'Waiting time charges are included'
+                                            : 'Waiting charges will apply';
+                                      }
+                                      if (rawKey.contains('driver')) {
+                                        return included
+                                            ? 'Driver food and accommodation(stay) charges are included'
+                                            : 'Driver allowance is not included';
+                                      }
+                                      return included ? 'Included' : 'Excluded';
+                                    }
+
+                                    final title = friendlyTitle();
+                                    final suffix = (item.suffix ?? '').trim();
+                                    final amount = item.amount;
+                                    final icon = included ? Icons.check_circle : Icons.cancel;
+
+                                    if (amount == null) {
+                                      final subtitle =
+                                          suffix.isNotEmpty ? suffix : friendlySubtitleNoPrice();
+                                      return included
+                                          ? _buildInclusionItem(
+                                              icon: icon,
+                                              title: title,
+                                              subtitle: subtitle,
+                                            )
+                                          : _buildExclusionItem(
+                                              icon: icon,
+                                              title: title,
+                                              subtitle: subtitle,
+                                            );
+                                    }
+
+                                    return FutureBuilder<double>(
+                                      future: currencyController.convertPrice(amount.toDouble()),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return SizedBox(
+                                            height: 12,
+                                            width: 20,
+                                            child: Center(
+                                              child: SizedBox(
+                                                height: 10,
+                                                width: 10,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 1.5,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                                    Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+
+                                        final converted = snapshot.data ?? amount.toDouble();
+                                        final suffixText = suffix.isEmpty
+                                            ? ''
+                                            : (suffix.startsWith('/') ? suffix : ' $suffix');
+                                        // If price is 0, don't show the currency amount.
+                                        // Also use friendlier wording when we don't show a price.
+                                        final subtitle = converted == 0
+                                            ? (suffixText.trim().isNotEmpty
+                                                ? suffixText.trim()
+                                                : friendlySubtitleNoPrice())
+                                            : (included
+                                                // Keep inclusions copy clean like earlier; show amount only on exclusions.
+                                                ? friendlySubtitleNoPrice()
+                                                : '${currencyController.selectedCurrency.value.symbol}${converted.toStringAsFixed(2)}$suffixText');
+
+                                        return included
+                                            ? _buildInclusionItem(
+                                                icon: icon,
+                                                title: title,
+                                                subtitle: subtitle,
+                                              )
+                                            : _buildExclusionItem(
+                                                icon: icon,
+                                                title: title,
+                                                subtitle: subtitle,
+                                              );
+                                      },
+                                    );
+                                  }
+
+                                  if (hasIncExcData) {
+                                    final inclusions = <Widget>[
+                                      ...includedCharges
+                                          .map((c) => buildChargeRow(item: c, included: true)),
+                                    ];
+                                    final exclusions = <Widget>[
+                                      ...excludedCharges
+                                          .map((c) => buildChargeRow(item: c, included: false)),
+                                    ];
+
+                                    return Card(
+                                      color: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                            color: AppColors.greyBorder1, width: 1),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "INCLUSIONS",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            ...inclusions,
+                                            Text(
+                                              "EXCLUSIONS",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            ...exclusions,
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  // Fallback (older extraCharges flags) if inclusionExclusionCharges is missing
                                   final extraCharges = indiaData.inventory
                                       ?.carTypes?.fareDetails?.extraCharges;
 
@@ -590,8 +844,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                                       ),
                                     ),
                                   );
-                                },
-                              )
+                                })
                             : Obx(() {
                                 final globalBooking =
                                     cabBookingController.globalData.value;
@@ -2523,10 +2776,10 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
     Get.isRegistered<SearchCabInventoryController>()
         ? Get.find<SearchCabInventoryController>()
         : Get.put(SearchCabInventoryController());
-    final ApplyCouponController applyCouponController =
-    Get.isRegistered<ApplyCouponController>()
-        ? Get.find<ApplyCouponController>()
-        : Get.put(ApplyCouponController());
+    // final ApplyCouponController applyCouponController =
+    // Get.isRegistered<ApplyCouponController>()
+    //     ? Get.find<ApplyCouponController>()
+    //     : Get.put(ApplyCouponController());
 
     final isSelected = cabBookingController.selectedCouponId.value == coupon.id;
     if (isSelected) {
@@ -2558,10 +2811,7 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
           cabBookingController.indiaData.value?.inventory?.carTypes?.type ??
               ''
         };
-        await applyCouponController.applyCoupon(
-          requestData: requestData,
-          context: context,
-        );
+
       } catch (e) {
         print('Error applying coupon: $e');
         // If API fails, still allow coupon selection but don't show dialog
