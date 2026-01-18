@@ -138,7 +138,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   }
 
   Future<void> loadInitialData() async {
-    _country = dropPlaceSearchController.dropLatLng.value?.country;
+    _country = dropPlaceSearchController.dropLatLng.value?.country ?? 'india';
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
@@ -1817,7 +1817,7 @@ class _ExtrasSelectionCardState extends State<ExtrasSelectionCard> {
 
   Future<void> loadInitialData() async {
     try {
-      _country = dropPlaceSearchController.dropLatLng.value?.country;
+      _country = dropPlaceSearchController.dropLatLng.value?.country ?? 'india';
 
       final isIndiaCountry = (_country?.toLowerCase() ?? '') == 'india';
       // 🇮🇳 India: ensure extras come from India inventory details API.
@@ -3388,7 +3388,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
   }
 
   Future<void> loadInitialData() async {
-    _country = dropPlaceSearchController.dropLatLng.value?.country;
+    _country = dropPlaceSearchController.dropLatLng.value?.country ?? 'india';
     cabBookingController.country = _country;
     token = await StorageServices.instance.read('token');
     firstName = await StorageServices.instance.read('firstName');
@@ -4282,7 +4282,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   "remarks": "",
                                   "gst_number": "",
                                   "payment_gateway_used": 0,
-                                  "countryName": _country,
+                                  "countryName": _country ?? 'india',
                                   "search_id": "",
                                   "partnername": "wti",
                                   "start_time": await StorageServices.instance
@@ -4344,7 +4344,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                     "place_id": sourceController.placeId.value,
                                     "types": sourceController.types.toList(),
                                     "state": sourceController.state.value,
-                                    "country": sourceController.country.value
+                                    "country": sourceController.country.value ?? 'india'
                                   },
                                   "destination": {
                                     "address":
@@ -4360,7 +4360,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                         destinationController.types.toList(),
                                     "state": destinationController.state.value,
                                     "country":
-                                        destinationController.country.value
+                                        destinationController.country.value ?? 'india'
                                   },
                                   "stopovers": [],
                                   "trip_type_details":
