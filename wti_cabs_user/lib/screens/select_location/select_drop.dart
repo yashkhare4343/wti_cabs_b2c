@@ -200,13 +200,15 @@ class _SelectDropState extends State<SelectDrop> {
 
     // Always navigate to BookingRide after place selection
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Ensure airport tab is selected when returning to BookingRide from SelectDrop
+      bookingRideController.setTabByName('airport');
       Navigator.of(context).push(
         Platform.isIOS
             ? CupertinoPageRoute(
-          builder: (context) => const BookingRide(),
+          builder: (context) => const BookingRide(initialTab: 'airport'),
         )
             : MaterialPageRoute(
-          builder: (context) => const BookingRide(),
+          builder: (context) => const BookingRide(initialTab: 'airport'),
         ),
       );
     });

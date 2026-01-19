@@ -206,7 +206,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     if (result == null ||
         result.inventory?.carTypes == null ||
         result.inventory!.carTypes!.isEmpty) {
-      print('⚠️ No car inventory data found, skipping analytics event.');
+      debugPrint('⚠️ No car inventory data found, skipping analytics event.');
       return;
     }
 
@@ -241,7 +241,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           '${carType}-${car.combustionType ?? ''}-${car.skuId ?? index}';
       final baseFare = (car.fareDetails?.baseFare ?? 0).toDouble();
 
-      print('base fare view_item_list: $baseFare');
+      debugPrint('base fare view_item_list: $baseFare');
 
       // 🔹 Await converted price (async)
       final convertedPrice = await currencyController.convertPrice(baseFare);
@@ -294,7 +294,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
       parameters: parameters,
     );
 
-    print('✅ Logged view_item_list with ${items.length} items.');
+    debugPrint('✅ Logged view_item_list with ${items.length} items.');
   }
 
   Future<void> _logViewItemList() async {
@@ -367,7 +367,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
   //     },
   //   );
   //
-  //   print('✅ Firebase Analytics: view_item_list logged with ${items.length} items');
+  //   debugPrint('✅ Firebase Analytics: view_item_list logged with ${items.length} items');
   // }
 
 
@@ -384,11 +384,15 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     setState(() {
       isLoading = false;
     });
-    // Show dialog after data is loaded and UI is rendered
-    // Always check for trip code changes, even when coming back from booking details
-    if (mounted) {
+    // Show this dialog ONLY when InventoryList is opened from BookingRide.
+    if (mounted && _shouldShowTripUpdatedDialog) {
       await loadTripCode(context);
     }
+  }
+
+  bool get _shouldShowTripUpdatedDialog {
+    final v = widget.requestData['inventoryEntryPoint'];
+    return v == 'booking_ride';
   }
 
   /// Check for trip code changes and show dialog if needed
@@ -498,21 +502,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           // Navigate back - use microtask for immediate execution
           Future.microtask(() {
             if (!mounted) return;
-            
-            final tabName = bookingRideController.currentTabName;
-
-            final route = tabName == 'rental'
-                ? '${AppRoutes.bookingRide}?tab=airport'
-                : '${AppRoutes.bookingRide}?tab=airport';
-
-            if (widget.fromRecentSearch == true) {
-              GoRouter.of(context).push(route,
-                  extra: (context) => Platform.isIOS
-                      ? CupertinoPage(child: const BottomNavScreen())
-                      : MaterialPage(child: const BottomNavScreen()));
-            } else {
-              GoRouter.of(context).push(AppRoutes.bookingRide);
-            }
+            // InventoryList >>> back to >>> BookingRide (always, using push)
+            GoRouter.of(context).push(AppRoutes.bookingRide);
           });
         },
         child: Scaffold(
@@ -575,14 +566,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                   '';
             }
 
-            final tabName = bookingRideController.currentTabName;
-            final route = tabName == 'rental'
-                ? '${AppRoutes.bookingRide}?tab=airport'
-                : '${AppRoutes.bookingRide}?tab=airport';
-            GoRouter.of(context).push(route,
-                extra: (context) => Platform.isIOS
-                    ? CupertinoPage(child: const BottomNavScreen())
-                    : MaterialPage(child: const BottomNavScreen()));
+            // InventoryList >>> back to >>> BookingRide (always, using push)
+            GoRouter.of(context).push(AppRoutes.bookingRide);
           });
         },
         child: Scaffold(
@@ -615,17 +600,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
         // Navigate back - use microtask for immediate execution
         Future.microtask(() {
           if (!mounted) return;
-          
-          final tabName = bookingRideController.currentTabName;
-          final route = tabName == 'rental'
-              ? '${AppRoutes.bookingRide}?tab=airport'
-              : '${AppRoutes.bookingRide}?tab=airport';
-
-          if (widget.fromRecentSearch == false) {
-            GoRouter.of(context).go(AppRoutes.bookingRide);
-          } else if (widget.fromRecentSearch == true) {
-            GoRouter.of(context).go(AppRoutes.bottomNav);
-          }
+          // InventoryList >>> back to >>> BookingRide (always, using push)
+          GoRouter.of(context).push(AppRoutes.bookingRide);
         });
       },
       child: Scaffold(
@@ -860,7 +836,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
               '${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?[index].type}-${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?[index].combustionType}-${searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?[index].skuId ?? index}';
           final baseFare = (searchCabInventoryController.indiaData.value?.result?.inventory?.carTypes?[index].fareDetails?.baseFare ?? 0).toDouble();
 
-          print('base fare view_item_list: $baseFare');
+          debugPrint('base fare view_item_list: $baseFare');
 
           // 🔹 Await converted price (async)
           final convertedPrice = await currencyController.convertPrice(baseFare);
@@ -918,7 +894,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           params: parameters,  // your analytics or trip parameters
         );
 
-        print('✅ Logged select with ${items.length} items.');
+        debugPrint('✅ Logged select with ${items.length} items.');
 
         // Pass recommended coupon (if any) to Booking Details for auto-selection.
         cabBookingController.setPreselectedCoupon(
@@ -947,9 +923,17 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           final bool hasCoupon = carType.coupon != null;
 
 
-          final String subtitle = (carType.subcategory?.trim().isNotEmpty ?? false)
-              ? carType.subcategory!.trim()
-              : 'Spacious Car';
+          final String categoryLower = category.toLowerCase();
+          final String defaultSubtitle = categoryLower == 'sedan'
+              ? 'Compact Car'
+              : categoryLower == 'suv'
+                  ? 'Spacious Car'
+                  : 'Spacious Car';
+
+          final String subtitle =
+              (carType.subcategory?.trim().isNotEmpty ?? false)
+                  ? carType.subcategory!.trim()
+                  : defaultSubtitle;
 
           num finalInventoryPrice(num baseFare, num discountCouponPrice){
             return baseFare - discountCouponPrice;
@@ -1105,10 +1089,10 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                             Expanded(
                               child: Row(
                                 children: [
-                                  const Flexible(
+                                   Flexible(
                                     child: Text(
-                                      'Book Now and get ',
-                                      maxLines: 1,
+                                      carType.coupon?.codeDescription ?? '',
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 10,
@@ -1117,26 +1101,26 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                                       ),
                                     ),
                                   ),
-                                  compactConvertedPrice(
-                                    (carType.discountedCoupon ?? 0),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF373737),
-                                    ),
-                                  ),
-                                  const Text(
-                                    ' OFF',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF373737),
-                                    ),
-                                  ),
+                                  // compactConvertedPrice(
+                                  //   (carType.discountedCoupon ?? 0),
+                                  //   style: const TextStyle(
+                                  //     fontSize: 10,
+                                  //     fontWeight: FontWeight.w600,
+                                  //     color: Color(0xFF373737),
+                                  //   ),
+                                  // ),
+                                  // const Text(
+                                  //   ' OFF',
+                                  //   style: TextStyle(
+                                  //     fontSize: 10,
+                                  //     fontWeight: FontWeight.w600,
+                                  //     color: Color(0xFF373737),
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),
-                            CouponAppliedUI(text: 'WTICABS')
+                            CouponAppliedUI(text: carType.coupon?.codeName??'')
                           ],
                         ),
                       if (hasCoupon) const SizedBox(height: 6),
@@ -2040,12 +2024,12 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     super.initState();
     // Defer loadTripCode to ensure it runs after the build phase
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('Calling loadTripCode at ${DateTime.now()}');
+      debugPrint('Calling loadTripCode at ${DateTime.now()}');
       searchCabInventoryController.loadTripCode();
     });
     // Monitor tripCode changes for debugging
     ever(searchCabInventoryController.tripCode, (value) {
-      print('tripCode changed to $value at ${DateTime.now()}');
+      debugPrint('tripCode changed to $value at ${DateTime.now()}');
     });
   }
 
@@ -2059,7 +2043,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
       statusBarColor: Colors.white, // Status bar color set to white
       statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
     ));
-    print('Building TopBookingDialogWrapper at ${DateTime.now()}');
+    debugPrint('Building TopBookingDialogWrapper at ${DateTime.now()}');
     return Column(
       children: [
         Dialog(
@@ -2073,7 +2057,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Obx(() {
-                print('Obx rebuild triggered at ${DateTime.now()}');
+                debugPrint('Obx rebuild triggered at ${DateTime.now()}');
                 // Capture the current tripCode value to avoid direct reactive access
                 final tripCode = searchCabInventoryController.newCurrent.value;
                 return Column(

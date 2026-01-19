@@ -7,9 +7,21 @@ class VersionCheckResponse {
     this.message,
   });
 
+  static bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final v = value.trim().toLowerCase();
+      if (v == 'true' || v == '1' || v == 'yes' || v == 'y') return true;
+      if (v == 'false' || v == '0' || v == 'no' || v == 'n') return false;
+    }
+    return null;
+  }
+
   factory VersionCheckResponse.fromJson(Map<String, dynamic> json) {
     return VersionCheckResponse(
-      isCompatible: json['isCompatible'] as bool?,
+      isCompatible: _parseBool(json['isCompatible']),
       message: json['message'] as String?,
     );
   }

@@ -62,12 +62,13 @@ class _BookingRideState extends State<BookingRide> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers to avoid LateInitializationError
-    // if (widget.initialTab != null) {
-    //   bookingRideController.setTabByName(widget.initialTab!);
-    // }
+    // Ensure controllers are registered and apply any requested initial tab.
+    // This is critical when navigating back from location selection screens.
     Get.put(BookingRideController());
     Get.put(PlaceSearchController());
+    if (widget.initialTab != null && widget.initialTab!.trim().isNotEmpty) {
+      bookingRideController.setTabByName(widget.initialTab!.trim());
+    }
     setPickup();
     fetchPackageController.fetchPackages();
     
@@ -111,7 +112,7 @@ class _BookingRideState extends State<BookingRide> {
         latLng.latitude,
         latLng.longitude,
       );
-      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
+      debugPrint('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
         setState(() => address = 'Address not found');
@@ -138,7 +139,7 @@ class _BookingRideState extends State<BookingRide> {
       await placeSearchController.searchPlaces(fullAddress, context);
 
       if (placeSearchController.suggestions.isEmpty) {
-        print("No search suggestions found for $fullAddress");
+        debugPrint("No search suggestions found for $fullAddress");
         setState(() => address = 'Address not found');
         return; // stop here – do not prefill controllers/storage
       }
@@ -185,10 +186,10 @@ class _BookingRideState extends State<BookingRide> {
         terms: suggestion.terms,
       );
 
-      print('akash country: ${suggestion.country}');
-      print('Current location address saved: $fullAddress');
+      debugPrint('akash country: ${suggestion.country}');
+      debugPrint('Current location address saved: $fullAddress');
     } catch (e) {
-      print('Error fetching location/address: $e');
+      debugPrint('Error fetching location/address: $e');
       setState(() => address = 'Error fetching address');
       rethrow; // Re-throw to let caller handle the error
     }
@@ -202,7 +203,7 @@ class _BookingRideState extends State<BookingRide> {
         await fetchCurrentLocationAndAddress();
       }
     } catch (e) {
-      print('Error in setPickup: $e');
+      debugPrint('Error in setPickup: $e');
       // Don't set address to error state here as it might not be the first time
     }
   }
@@ -279,7 +280,7 @@ class CustomTabBarDemo extends StatefulWidget {
 
 class _CustomTabBarDemoState extends State<CustomTabBarDemo> {
   final BookingRideController bookingRideController =
-  Get.put(BookingRideController());
+  Get.find<BookingRideController>();
   final tabs = ["Airport", "Outstation", "Rentals"];
 
   @override
@@ -1253,6 +1254,8 @@ class _OutStationState extends State<OutStation> {
     }
 
     return {
+      // Used by InventoryList to decide whether to show the Trip Updated dialog.
+      "inventoryEntryPoint": "booking_ride",
       "timeOffSet": -offset,
       "countryName": data['country'] ?? 'India',
       "searchDate": searchDate,
@@ -1554,7 +1557,7 @@ class _RidesState extends State<Rides> {
         final utc = DateTime.parse(userDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing userDateTime: $e");
+        debugPrint("Error parsing userDateTime: $e");
       }
     }
     return bookingRideController.localStartTime.value;
@@ -1571,7 +1574,7 @@ class _RidesState extends State<Rides> {
         final utc = DateTime.parse(actualDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing actualDateTime: $e");
+        debugPrint("Error parsing actualDateTime: $e");
       }
     }
     return getLocalDateTime();
@@ -1866,13 +1869,13 @@ class _RidesState extends State<Rides> {
 
                           if (!updatedTime.isAtSameMomentAs(
                               bookingRideController.localStartTime.value)) {
-                            print(
+                            debugPrint(
                                 'yash 22 local start time : ${bookingRideController.localStartTime.value}');
                             updateLocalStartTime(updatedTime);
                             bookingRideController.localStartTime
                                 .refresh(); // 🔁 Force rebuild on same value
                           } else {
-                            print(
+                            debugPrint(
                                 'yash 22 local start time : ${bookingRideController.localStartTime.value}');
                             bookingRideController.localStartTime
                                 .refresh(); // 🔁 Force rebuild on same value
@@ -2138,11 +2141,11 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
     },
   );
 
-  print('yash pickup utc time : ${data['userDateTime']}');
+  debugPrint('yash pickup utc time : ${data['userDateTime']}');
   GoRouter.of(context).pop();
-  print(
+  debugPrint(
       'yash 22aug local start time : ${bookingRideController.localStartTime.value}');
-  print(
+  debugPrint(
       'yash 22aug local selected time : ${bookingRideController.selectedDateTime.value}');
   // Get fallback values from controllers if storage is null
   final sourceTitle = data['sourceTitle'] ?? 
@@ -2182,6 +2185,8 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
   }
 
   return {
+    // Used by InventoryList to decide whether to show the Trip Updated dialog.
+    "inventoryEntryPoint": "booking_ride",
     "timeOffSet": -offset,
     "countryName": data['country'] ?? 'India',
     "searchDate": searchDate,
@@ -2279,7 +2284,7 @@ class _RentalState extends State<Rental> {
     required TextEditingController pickupController,
     required TextEditingController dropController,
   }) async {
-    print('switch button hit ho gya hai');
+    debugPrint('switch button hit ho gya hai');
     // Step 1: Swap place IDs
     final oldPickupId = placeSearchController.placeId.value;
     final oldDropId = dropPlaceSearchController.dropPlaceId.value;
@@ -2387,7 +2392,7 @@ class _RentalState extends State<Rental> {
         final utc = DateTime.parse(userDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing userDateTime: $e");
+        debugPrint("Error parsing userDateTime: $e");
       }
     }
     return bookingRideController.localStartTime.value;
@@ -2404,7 +2409,7 @@ class _RentalState extends State<Rental> {
         final utc = DateTime.parse(actualDateTimeStr).toUtc();
         return utc.add(Duration(minutes: offset ?? 0));
       } catch (e) {
-        print("Error parsing actualDateTime: $e");
+        debugPrint("Error parsing actualDateTime: $e");
       }
     }
     return getLocalDateTime();
@@ -2675,7 +2680,7 @@ class _RentalState extends State<Rental> {
                                           .updateSelectedPackage(item);
                                       Navigator.pop(context);
 
-                                      print(' Selected package is: $item');
+                                      debugPrint(' Selected package is: $item');
 
                                       // Extract hours & kms
                                       final packageRegex = RegExp(
@@ -2694,9 +2699,9 @@ class _RentalState extends State<Rental> {
                                         fetchPackageController.selectedKms
                                             .value = extractedKms ?? 0;
 
-                                        print(
+                                        debugPrint(
                                             '📦 Extracted Hours: $extractedHours');
-                                        print(
+                                        debugPrint(
                                             '📦 Extracted KMs: $extractedKms');
 
                                         await StorageServices.instance.save(
@@ -3078,6 +3083,8 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
   }
 
   return {
+    // Used by InventoryList to decide whether to show the Trip Updated dialog.
+    "inventoryEntryPoint": "booking_ride",
     "timeOffSet": -offset,
     "countryName": data['country'] ?? 'India',
     "searchDate": searchDate,

@@ -40,17 +40,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   final VersionCheckController versionCheckController = Get.put(VersionCheckController());
   final FetchCountryController fetchCountryController = Get.put(FetchCountryController());
   DateTime? _startTime;
+  late final Future<void> _versionCheckFuture;
 
   @override
   void initState() {
     super.initState();
     _startTime = DateTime.now();
-    fetchVersion();
+    _versionCheckFuture = versionCheckController.verifyAppCompatibity(context: context);
     _waitAndRedirect();
-  }
-
-  void fetchVersion() async {
-    await versionCheckController.verifyAppCompatibity(context: context);
   }
 
   Future<void> _waitAndRedirect() async {
@@ -62,11 +59,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     if (!mounted) return;
 
+    // Ensure version check has completed before deciding redirect.
+    await _versionCheckFuture;
+    if (!mounted) return;
+
     // Check first launch
     final prefs = await SharedPreferences.getInstance();
     final isFirstTime = prefs.getBool("isFirstTime") ?? true;
 
-    if (versionCheckController.versionCheckResponse.value?.isCompatible == true) {
+    // Redirect to store ONLY when API explicitly says isCompatible == false.
+    final isCompatible = versionCheckController.versionCheckResponse.value?.isCompatible;
+    if (isCompatible != false) {
       if (isFirstTime) {
         // Don't set isFirstTime to false here - let walkthrough handle it.
         // First-time users go to walkthrough, which will now route directly

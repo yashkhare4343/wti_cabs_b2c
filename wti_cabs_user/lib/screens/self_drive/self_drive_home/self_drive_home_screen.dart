@@ -1123,39 +1123,43 @@ class _SelfDriveHomeScreenState extends State<SelfDriveHomeScreen> {
                                     ],
                                   ),
                                 ),
-                                Container(
-                                  height: 35,
-                                  decoration: BoxDecoration(
-                                    /*gradient: const LinearGradient(
-                                      colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    ),*/
-                                    color: AppColors.mainButtonBg,
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent, // transparent to show gradient
-                                      shadowColor: Colors.transparent, // remove default shadow
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                    ),
-                                    onPressed: _isCorporateLoading ? null : () async {
-                                      await _handleCorporateEntry(context);
-                                    },
-                                    child: const Text(
-                                      "Go Corporate",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                )
+                                // ========= ============
+                                // Go Corporate
+                                // 19 jan before android launch
+                                // Container(
+                                //   height: 35,
+                                //   decoration: BoxDecoration(
+                                //     /*gradient: const LinearGradient(
+                                //       colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                //       begin: Alignment.centerLeft,
+                                //       end: Alignment.centerRight,
+                                //     ),*/
+                                //     color: AppColors.mainButtonBg,
+                                //     borderRadius: BorderRadius.circular(24),
+                                //   ),
+                                //   child: ElevatedButton(
+                                //     style: ElevatedButton.styleFrom(
+                                //       backgroundColor: Colors.transparent, // transparent to show gradient
+                                //       shadowColor: Colors.transparent, // remove default shadow
+                                //       shape: RoundedRectangleBorder(
+                                //         borderRadius: BorderRadius.circular(16),
+                                //       ),
+                                //       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                //     ),
+                                //     onPressed: _isCorporateLoading ? null : () async {
+                                //       await _handleCorporateEntry(context);
+                                //     },
+                                //     child: const Text(
+                                //       "Go Corporate",
+                                //       style: TextStyle(
+                                //         color: Colors.white,
+                                //         fontSize: 12,
+                                //         fontWeight: FontWeight.w600,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // )
+                                // =========================
                               ],
                             ),
                           ),

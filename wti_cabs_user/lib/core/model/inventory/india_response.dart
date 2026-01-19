@@ -237,6 +237,7 @@ class InventoryCoupon {
   final bool? couponIsActive;
   final String? codeName;
   final num? codePercentage;
+  final String? codeDescription;
   final num? maximumDiscountAmount;
 
   InventoryCoupon({
@@ -244,6 +245,7 @@ class InventoryCoupon {
     this.couponIsActive,
     this.codeName,
     this.codePercentage,
+    this.codeDescription,
     this.maximumDiscountAmount,
   });
 
@@ -253,6 +255,7 @@ class InventoryCoupon {
       couponIsActive: json['couponIsActive'] as bool?,
       codeName: json['codeName'] as String?,
       codePercentage: _asNum(json['codePercentage']),
+      codeDescription : json['codeDescription'] as String?,
       maximumDiscountAmount: _asNum(json['maximumDiscountAmount']),
     );
   }
@@ -263,6 +266,7 @@ class InventoryCoupon {
       'couponIsActive': couponIsActive,
       'codeName': codeName,
       'codePercentage': codePercentage,
+      'codeDescription' : codeDescription,
       'maximumDiscountAmount': maximumDiscountAmount,
     };
   }

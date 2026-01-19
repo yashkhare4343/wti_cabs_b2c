@@ -388,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         latLng.latitude,
         latLng.longitude,
       );
-      print('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
+      debugPrint('yash current lat/lng is ${latLng.latitude},${latLng.longitude}');
 
       if (placemarks.isEmpty) {
         setState(() => address = 'Address not found');
@@ -415,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await placeSearchController.searchPlaces(fullAddress, context);
 
       if (placeSearchController.suggestions.isEmpty) {
-        print("No search suggestions found for $fullAddress");
+        debugPrint("No search suggestions found for $fullAddress");
         return; // stop here – do not prefill controllers/storage
       }
 
@@ -461,14 +461,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             terms: suggestion.terms,
           );
 
-          print('akash country: ${suggestion.country}');
-          print('Current location address saved: $fullAddress');
+          debugPrint('akash country: ${suggestion.country}');
+          debugPrint('Current location address saved: $fullAddress');
         } catch (err) {
-          print('Background save failed: $err');
+          debugPrint('Background save failed: $err');
         }
       });
     } catch (e) {
-      print('Error fetching location/address: $e');
+      debugPrint('Error fetching location/address: $e');
       setState(() => address = 'Error fetching address');
     }
   }
@@ -539,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Start the sign-in flow
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
-          print("User cancelled the sign-in flow");
+          debugPrint("User cancelled the sign-in flow");
           return null;
         }
 
@@ -556,10 +556,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Sign in to Firebase
         final userCredential =
             await FirebaseAuth.instance.signInWithCredential(credential);
-        print("✅ Signed in as: ${userCredential.user?.displayName}");
+        debugPrint("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
-        print("❌ Google sign-in failed: $e");
+        debugPrint("❌ Google sign-in failed: $e");
         return null;
       }
     }
@@ -596,9 +596,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         //
         // gender = "MALE"; // default or based on preference
         //
-        // print("✅ User signed in: ${result.user?.email}");
+        // debugPrint("✅ User signed in: ${result.user?.email}");
       } else {
-        print("❌ Google Sign-In cancelled or failed");
+        debugPrint("❌ Google Sign-In cancelled or failed");
       }
     }
 
@@ -614,9 +614,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Sign out from Firebase
         await FirebaseAuth.instance.signOut();
 
-        print("✅ User signed out successfully");
+        debugPrint("✅ User signed out successfully");
       } catch (e) {
-        print("❌ Error signing out: $e");
+        debugPrint("❌ Error signing out: $e");
       }
     }
 
@@ -1012,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
 
       // Always returned
-      print('User ID: $userId');
+      debugPrint('User ID: $userId');
 
       if (email != null) {
         // First-time login — store data
@@ -1066,7 +1066,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       // (Optional) Use userId + email for backend auth here
     } catch (e) {
-      print('❌ Apple Sign-In Error: $e');
+      debugPrint('❌ Apple Sign-In Error: $e');
     }
   }
 
@@ -1097,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Start the sign-in flow
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
-          print("User cancelled the sign-in flow");
+          debugPrint("User cancelled the sign-in flow");
           return null;
         }
 
@@ -1114,10 +1114,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Sign in to Firebase
         final userCredential =
             await FirebaseAuth.instance.signInWithCredential(credential);
-        print("✅ Signed in as: ${userCredential.user?.displayName}");
+        debugPrint("✅ Signed in as: ${userCredential.user?.displayName}");
         return userCredential;
       } catch (e) {
-        print("❌ Google sign-in failed: $e");
+        debugPrint("❌ Google sign-in failed: $e");
         return null;
       }
     }
@@ -1170,11 +1170,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       //       .then((value) {
       //     Navigator.of(context).pop();
       //   });
-      //   print("✅ User signed in: ${result.user?.email}");
+      //   debugPrint("✅ User signed in: ${result.user?.email}");
       //
       //   // close the bottom sheet
       // } else {
-      //   print("❌ Google Sign-In cancelled or failed");
+      //   debugPrint("❌ Google Sign-In cancelled or failed");
       // }
     }
 
@@ -1919,47 +1919,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 //     SizedBox(
                                 //       width: 12,
                                 //     ),
+                                // ===================================
+                                // 19 jan before android launch
                                 //     // Go Corporate
-                                    Container(
-                                      height: 35,
-                                      decoration: BoxDecoration(
-                                        /*gradient: const LinearGradient(
-                                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),*/
-                                        color: AppColors.mainButtonBg,
-                                        borderRadius: BorderRadius.circular(24),
-                                      ),
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.transparent, // transparent to show gradient
-                                          shadowColor: Colors.transparent, // remove default shadow
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                        ),
-                                        onPressed: _isCorporateLoading ? null : () async {
-                                          await _handleCorporateEntry(context);
-                                        },
-                                        child: const Text(
-                                          "Go Corporate",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                //     Container(
+                                //       height: 35,
+                                //       decoration: BoxDecoration(
+                                //         /*gradient: const LinearGradient(
+                                //           colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                                //           begin: Alignment.centerLeft,
+                                //           end: Alignment.centerRight,
+                                //         ),*/
+                                //         color: AppColors.mainButtonBg,
+                                //         borderRadius: BorderRadius.circular(24),
+                                //       ),
+                                //       child: ElevatedButton(
+                                //         style: ElevatedButton.styleFrom(
+                                //           backgroundColor: Colors.transparent, // transparent to show gradient
+                                //           shadowColor: Colors.transparent, // remove default shadow
+                                //           shape: RoundedRectangleBorder(
+                                //             borderRadius: BorderRadius.circular(16),
+                                //           ),
+                                //           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                //         ),
+                                //         onPressed: _isCorporateLoading ? null : () async {
+                                //           await _handleCorporateEntry(context);
+                                //         },
+                                //         child: const Text(
+                                //           "Go Corporate",
+                                //           style: TextStyle(
+                                //             color: Colors.white,
+                                //             fontSize: 12,
+                                //             fontWeight: FontWeight.w600,
+                                //           ),
+                                //         ),
+                                //       ),
+                                //     ),
+                                // =====================================
                                 //     // upcomingBookingController
                                 //     //             .isLoggedIn.value ==
                                 //     //         true
                                 //     //     ? InkWell(
                                 //     //         splashColor: Colors.transparent,
                                 //     //         onTap: () async {
-                                //     //           print(
+                                //     //           debugPrint(
                                 //     //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
                                 //     //           if (await StorageServices
                                 //     //                   .instance
@@ -1990,7 +1993,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 //     //     : InkWell(
                                 //     //         splashColor: Colors.transparent,
                                 //     //         onTap: () async {
-                                //     //           print(
+                                //     //           debugPrint(
                                 //     //               'homepage yash token for profile : ${await StorageServices.instance.read('token') == null}');
                                 //     //           if (await StorageServices
                                 //     //                   .instance
@@ -3937,10 +3940,12 @@ class _RecentTripListState extends State<RecentTripList> {
         Navigator.pop(context);
       }
 
+      // Always open BookingRide on Airport tab when coming from Recent/Popular destinations
+      bookingRideController.setTabByName('airport');
       Navigator.of(context).push(
         Platform.isIOS
-            ? CupertinoPageRoute(builder: (_) => BookingRide())
-            : MaterialPageRoute(builder: (_) => BookingRide()),
+            ? CupertinoPageRoute(builder: (_) => const BookingRide(initialTab: 'airport'))
+            : MaterialPageRoute(builder: (_) => const BookingRide(initialTab: 'airport')),
       );
     } catch (e) {
       debugPrint('❌ Error in trip selection: $e');

@@ -85,12 +85,11 @@ Future<String> _determineStartRoute(
   final prefs = await SharedPreferences.getInstance();
 
   // Step 1: Version check
-  await versionCheckController.verifyAppCompatibity(context: context);
+  await controller.verifyAppCompatibity(context: context);
 
-  final isCompatible =
-      controller.versionCheckResponse.value?.isCompatible ?? true;
-
-  if (!isCompatible) {
+  // Redirect to store ONLY when API explicitly says isCompatible == false.
+  final isCompatible = controller.versionCheckResponse.value?.isCompatible;
+  if (isCompatible == false) {
     final Uri uri = Uri.parse(
       Platform.isAndroid
           ? 'https://play.google.com/store/apps/details?id=com.wti.cabbooking&pcampaignid=web_share'

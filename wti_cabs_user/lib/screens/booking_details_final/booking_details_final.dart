@@ -88,14 +88,19 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   @override
   void initState() {
     super.initState();
-    loadInitialData();
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    });
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Keep full-screen loader until initial data + (if any) preselected coupon is applied.
+    try {
+      await loadInitialData();
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> logCabViewItemList() async {
@@ -111,7 +116,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
     final storedParams = selectedTripController.parameters;
 
     if (storedItem == null || storedParams.isEmpty) {
-      print('⚠️ No trip data found in controller, skipping log.');
+      debugPrint('⚠️ No trip data found in controller, skipping log.');
       return;
     }
 
@@ -135,8 +140,8 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       parameters: updatedParams,
     );
 
-    print('✅ Logged view_item for ${storedItem.itemName}');
-    print('📦 Parameters sent: $updatedParams');
+    debugPrint('✅ Logged view_item for ${storedItem.itemName}');
+    debugPrint('📦 Parameters sent: $updatedParams');
   }
 
   Future<void> loadInitialData() async {
@@ -145,6 +150,10 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
 
     await profileController.fetchData();
     if ((_country ?? '').toLowerCase() == 'india') {
+      // Ensure India inventory details are present before we drop the full-screen loader,
+      // so Inclusion/Exclusion can render immediately.
+      await _ensureIndiaInclusionExclusionLoaded();
+
       final vehicleType =
           cabBookingController.indiaData.value?.inventory?.carTypes?.type ?? '';
       await fetchCouponController.fetchCoupons(
@@ -156,7 +165,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       fetchCouponController.coupons.clear();
     }
 
-    print('📦 3rd page country: $_country');
+    debugPrint('📦 3rd page country: $_country');
     firstName =
         profileController.profileResponse.value?.result?.firstName ?? '';
     contact =
@@ -166,10 +175,10 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
         profileController.profileResponse.value?.result?.contactCode ?? '';
     email = profileController.profileResponse.value?.result?.emailID ?? '';
 
-    print('First Name: $firstName');
-    print('Contact: $contact');
-    print('Contact Code: $contactCode');
-    print('Email: $email');
+    debugPrint('First Name: $firstName');
+    debugPrint('Contact: $contact');
+    debugPrint('Contact Code: $contactCode');
+    debugPrint('Email: $email');
 
     // ✅ Trigger validation once after prefill
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -185,6 +194,23 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
       });
     }); // to trigger rebuild once _country is loaded
     await logCabViewItemList();
+  }
+
+  Future<void> _ensureIndiaInclusionExclusionLoaded() async {
+    final indiaData = cabBookingController.indiaData.value;
+    final incExc = indiaData?.inventory?.inclusionExclusionCharges;
+    final included = incExc?.includedCharges ?? const <ChargeItem>[];
+    final excluded = incExc?.excludedCharges ?? const <ChargeItem>[];
+    final hasIncExc = included.isNotEmpty || excluded.isNotEmpty;
+    if (hasIncExc) return;
+
+    final base = cabBookingController.lastIndiaFareRequestData;
+    if (base == null) return;
+
+    await cabBookingController.fetchIndiaInventoryData(
+      requestData: Map<String, dynamic>.from(base),
+      context: context,
+    );
   }
 
   Future<void> _applyPreselectedCouponIfAny() async {
@@ -228,31 +254,18 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true, // 🚀 Stops the default "pop and close app"
+      canPop: false, // Always intercept back; we always route to InventoryList.
       onPopInvoked: (didPop) {
-        // This will be called for hardware back and gesture
-        // Avoid pushing while Navigator is in the middle of a pop (!_debugLocked)
-        if (didPop) return;
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Always go back to InventoryList (even if user came from PaymentFailurePage).
+        // IMPORTANT: this app uses GoRouter (page-based navigator). Avoid imperative Navigator APIs here.
+        Future.microtask(() {
           if (!mounted) return;
-          Navigator.push(
-            context,
-            Platform.isIOS
-                ? CupertinoPageRoute(
-                    builder: (context) => InventoryList(
-                      requestData: bookingRideController.requestData.value,
-                      fromFinalBookingPage: true,
-                    ),
-                  )
-                : MaterialPageRoute(
-                    builder: (context) => InventoryList(
-                      requestData: bookingRideController.requestData.value,
-                      fromFinalBookingPage: true,
-                    ),
-                  ),
-          );
-        }); // GoRouter.of(context).pop();
+          final req = Map<String, dynamic>.from(bookingRideController.requestData);
+          // We're returning FROM booking details, not entering inventory fresh from BookingRide.
+          // This prevents InventoryList from showing the Trip Updated dialog on back navigation.
+          req['inventoryEntryPoint'] = 'booking_details_final';
+          GoRouter.of(context).push(AppRoutes.inventoryList, extra: req);
+        });
       },
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBgPrimary1,
@@ -309,6 +322,15 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                                   final indiaData =
                                       cabBookingController.indiaData.value;
                                   if (indiaData == null) {
+                                    return Center(child: buildShimmer());
+                                  }
+
+                                  // ✅ Keep shimmer visible until inclusion/exclusion data is actually loaded.
+                                  // Inventory details API provides `inclusionExclusionCharges` (preferred).
+                                  // If that is not present yet, wait before attempting the legacy fallback UI.
+                                  final incExcLoaded = indiaData.inventory?.inclusionExclusionCharges != null;
+                                  final legacyExtraChargesLoaded = indiaData.inventory?.carTypes?.fareDetails?.extraCharges != null;
+                                  if (!incExcLoaded && !legacyExtraChargesLoaded) {
                                     return Center(child: buildShimmer());
                                   }
 
@@ -1724,15 +1746,15 @@ class _BookingTopBarState extends State<BookingTopBar> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         leading: GestureDetector(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => InventoryList(
-                  requestData: bookingRideController.requestData.value,
-                  fromFinalBookingPage: true,
-                ),
-              ),
-            );
+            // IMPORTANT: Use GoRouter navigation; avoid Navigator.push on a page-based navigator.
+            Future.microtask(() {
+              final req =
+                  Map<String, dynamic>.from(bookingRideController.requestData);
+              // We're returning FROM booking details, not entering inventory fresh from BookingRide.
+              // This prevents InventoryList from showing the Trip Updated dialog on back navigation.
+              req['inventoryEntryPoint'] = 'booking_details_final';
+              GoRouter.of(context).push(AppRoutes.inventoryList, extra: req);
+            });
           },
           child: Container(
             padding: const EdgeInsets.all(5),
@@ -1749,9 +1771,28 @@ class _BookingTopBarState extends State<BookingTopBar> {
           children: [
             Expanded(
               child: Text(
-                tripCode == '3'
-                    ? bookingRideController.prefilled.value
-                    : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
+                (() {
+                  // `tripCode` is loaded async from storage; on first build it can be null.
+                  // Fall back to inventory trip code so rental doesn't briefly show "pickup to ...".
+                  final effectiveTripCode = ((tripCode ?? '').trim().isNotEmpty
+                          ? (tripCode ?? '')
+                          : (searchCabInventoryController
+                                  .indiaData
+                                  .value
+                                  ?.result
+                                  ?.tripType
+                                  ?.currentTripCode
+                                  ?.toString() ??
+                              ''))
+                      .trim();
+                  final isRentalTrip = effectiveTripCode == '3' ||
+                      int.tryParse(effectiveTripCode) == 3;
+                  if (isRentalTrip) {
+                    // Rental trip: show ONLY pickup (no "to").
+                    return bookingRideController.prefilled.value;
+                  }
+                  return '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}';
+                })(),
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -2186,7 +2227,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   void getCurrentTripCode() async {
     tripCode = await StorageServices.instance.read('currentTripCode');
     setState(() {});
-    print('yash trip code : $tripCode');
+    debugPrint('yash trip code : $tripCode');
   }
 
   Future<void> loadInitialData() async {
@@ -2194,7 +2235,7 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
-    print('📦 3rd page country: $_country');
+    debugPrint('📦 3rd page country: $_country');
 
     if (widget.fromPaymentFailurePage == true) {
       firstName = await StorageServices.instance.read('firstName') ?? '';
@@ -2225,11 +2266,11 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
     destinationController.text =
         tripCode == '3' ? '' : bookingRideController.prefilledDrop.value;
 
-    print('First Name: $firstName');
-    print('Contact: $contact');
-    print('Contact Code: $contactCode');
-    print('Email: $email');
-    print(
+    debugPrint('First Name: $firstName');
+    debugPrint('Contact: $contact');
+    debugPrint('Contact Code: $contactCode');
+    debugPrint('Email: $email');
+    debugPrint(
         'yash current trip code for fight no is : ${searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode}');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2583,28 +2624,28 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
               if (controller == firstNameController) {
                 firstName = value;
                 await StorageServices.instance.save('firstName', value);
-                print("📝 First Name updated: $value");
+                debugPrint("📝 First Name updated: $value");
               } else if (controller == emailController) {
                 email = value;
                 await StorageServices.instance.save('emailId', value);
-                print("📧 Email updated: $value");
+                debugPrint("📧 Email updated: $value");
               } else if (controller == sourceController) {
                 bookingRideController.prefilled.value = value;
                 await StorageServices.instance.save('pickupAddress', value);
-                print("📍 Pickup Address updated: $value");
+                debugPrint("📍 Pickup Address updated: $value");
               } else if (controller == destinationController) {
                 bookingRideController.prefilledDrop.value = value;
                 await StorageServices.instance.save('dropAddress', value);
-                print("🏁 Drop Address updated: $value");
+                debugPrint("🏁 Drop Address updated: $value");
               } else if (controller == flightNoController) {
                 await StorageServices.instance.save('flightNo', value);
-                print("✈️ Flight no updated: $value");
+                debugPrint("✈️ Flight no updated: $value");
               } else if (controller == remarkController) {
                 await StorageServices.instance.save('remark', value);
-                print("📝 Remark updated: $value");
+                debugPrint("📝 Remark updated: $value");
               } else if (controller == gstController) {
                 await StorageServices.instance.save('gstValue', value);
-                print("💳 GST updated: $value");
+                debugPrint("💳 GST updated: $value");
               }
               cabBookingController.validateForm();
               setState(() {});
@@ -2814,7 +2855,7 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
         };
 
       } catch (e) {
-        print('Error applying coupon: $e');
+        debugPrint('Error applying coupon: $e');
         // If API fails, still allow coupon selection but don't show dialog
       }
     }
@@ -3750,9 +3791,9 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                   .instance
                                   .read('currentTripCode');
                               showRazorpaySkeletonLoader(context);
-                              print(
+                              debugPrint(
                                   'yash amountToBeCollected ids : ${double.parse(cabBookingController.amountTobeCollected.toStringAsFixed(2))}');
-                              print(
+                              debugPrint(
                                   'yash fare details : ${cabBookingController.indiaData.value?.inventory?.carTypes?.fareDetails?.toJson()}');
                               final timeZone = await StorageServices.instance
                                   .read('timeZone');
@@ -4064,9 +4105,9 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                           : () async {
                               globalPaymentController.showLoader(context);
 
-                              print(
+                              debugPrint(
                                   'yash amountToBeCollected ids : ${double.parse(cabBookingController.amountTobeCollected.toStringAsFixed(2))}');
-                              print(
+                              debugPrint(
                                   'yash fare details : ${cabBookingController.indiaData.value?.inventory?.carTypes?.fareDetails?.toJson()}');
                               final timeZone = await StorageServices.instance
                                   .read('timeZone');
@@ -4748,7 +4789,7 @@ class _DiscountCouponsCardState extends State<DiscountCouponsCard> {
                         description: coupon.codeDescription ?? '',
                         codePercentage: coupon.codePercentage?.toInt() ?? 0,
                         onApply: () {
-                          print("Coupon Applied!");
+                          debugPrint("Coupon Applied!");
                         },
                       );
                     },
