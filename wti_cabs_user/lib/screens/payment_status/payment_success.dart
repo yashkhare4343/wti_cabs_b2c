@@ -184,7 +184,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                           title: "Booking Details",
                           icon: Icons.assignment,
                           details: [
-                           _detailItem("Booking Id", fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.referenceNumber??''),
+                           _detailItem("Booking Id", fetchReservationBookingData.chaufferReservationResponse.value?.result?.first.orderReferenceNumber??''),
                             _detailItem("Booking Type",
                                 booking.tripTypeDetails?.tripType ?? ''),
                             _detailItem("Cab Category",

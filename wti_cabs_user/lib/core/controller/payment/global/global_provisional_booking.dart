@@ -126,6 +126,11 @@ class GlobalPaymentController extends GetxController {
     isLoading.value = true;
     try {
       requestData['reservation']['passenger'] = registeredUser?['user_obj_id'];
+      // Keep a copy for payment failure UI, but strip UI-only keys before sending to backend.
+      lastProvisionalRequest = requestData;
+      final Map<String, dynamic> apiPayload =
+          Map<String, dynamic>.from(requestData);
+      apiPayload.remove('ui');
       requestData.forEach((key, value) {
         requestData[key] = value;
       });
@@ -139,7 +144,7 @@ class GlobalPaymentController extends GetxController {
           'Authorization': 'Basic aGFyc2g6MTIz',
           'X-Platform': 'APP'
         },
-        body: jsonEncode(requestData),
+        body: jsonEncode(apiPayload),
       );
 
       if (res.statusCode == 201) {

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
+import 'package:wti_cabs_user/core/model/apply_coupon/apply_coupon.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
 
@@ -24,7 +25,10 @@ class IndiaPaymentController extends GetxController {
   final currencyController = Get.find<CurrencyController>();
   Map<String, dynamic>? lastProvisionalRequest;
   RxString? orderId;
-  final cabBookingController = Get.put(CabBookingController());
+  final CabBookingController cabBookingController =
+      Get.isRegistered<CabBookingController>()
+          ? Get.find<CabBookingController>()
+          : Get.put(CabBookingController());
 
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
@@ -32,6 +36,96 @@ class IndiaPaymentController extends GetxController {
   RxString passengerId = ''.obs;
   final FetchReservationBookingData fetchReservationBookingData =
       Get.put(FetchReservationBookingData());
+
+  String? _safeTrim(dynamic v) => v == null ? null : v.toString().trim();
+
+  String? _toIsoUtcString(dynamic value) {
+    final s = _safeTrim(value);
+    if (s == null || s.isEmpty || s.toLowerCase() == 'null') return null;
+    try {
+      final dt = DateTime.parse(s);
+      return dt.toUtc().toIso8601String();
+    } catch (_) {
+      // If it's not parseable, send as-is.
+      return s;
+    }
+  }
+
+  Future<ApplyCouponResponse?> _finalValidateCoupon({
+    required String userId,
+    required String couponId,
+  }) async {
+    try {
+      final sourceLocation =
+          _safeTrim(await StorageServices.instance.read('pickupAddress')) ??
+              _safeTrim(await StorageServices.instance.read('sourceTitle')) ??
+              '';
+      final destinationLocation =
+          _safeTrim(await StorageServices.instance.read('dropAddress')) ??
+              _safeTrim(await StorageServices.instance.read('destinationTitle')) ??
+              '';
+      final bookingDateTime = _toIsoUtcString(
+        cabBookingController.indiaData.value?.tripType?.pickUpDateTime?.toIso8601String() ??
+            await StorageServices.instance.read('userDateTime'),
+      );
+      final vehicleType =
+          cabBookingController.indiaData.value?.inventory?.carTypes?.type ?? '';
+
+      final payload = <String, dynamic>{
+        "userID": userId,
+        "couponID": couponId,
+        "totalAmount": cabBookingController.totalFare,
+        "sourceLocation": sourceLocation,
+        "destinationLocation": destinationLocation,
+        "serviceType": "",
+        "bankName": "",
+        "userType": "CUSTOMER",
+        "bookingDateTime": bookingDateTime,
+        "tripType": null,
+        "vehicleType": vehicleType,
+      };
+
+      final res = await http.post(
+        Uri.parse('${ApiService().baseUrl}/couponCodes/couponFinalValidation'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic aGFyc2g6MTIz',
+          'X-Platform': 'APP',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (res.statusCode != 200) {
+        return ApplyCouponResponse(
+          message: 'Unable to validate coupon. Please try again.',
+          discountAmount: 0,
+          newTotalAmount: cabBookingController.totalFare,
+          errorCode: 1,
+        );
+      }
+
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) {
+        return ApplyCouponResponse.fromJson(decoded);
+      }
+      if (decoded is Map) {
+        return ApplyCouponResponse.fromJson(Map<String, dynamic>.from(decoded));
+      }
+      return ApplyCouponResponse(
+        message: 'Unable to validate coupon. Please try again.',
+        discountAmount: 0,
+        newTotalAmount: cabBookingController.totalFare,
+        errorCode: 1,
+      );
+    } catch (e) {
+      return ApplyCouponResponse(
+        message: 'Unable to validate coupon. Please try again.',
+        discountAmount: 0,
+        newTotalAmount: cabBookingController.totalFare,
+        errorCode: 1,
+      );
+    }
+  }
 
   @override
   void onInit() {
@@ -117,6 +211,38 @@ class IndiaPaymentController extends GetxController {
 
         await Future.delayed(Duration(milliseconds: 1000));
 
+        // ✅ Final coupon validation (pay time) before provisional booking.
+        final selectedCouponId = cabBookingController.selectedCouponId.value;
+        if (selectedCouponId != null && selectedCouponId.trim().isNotEmpty) {
+          final userObjId = _safeTrim(registeredUser?['user_obj_id']) ?? '';
+          if (userObjId.isNotEmpty) {
+            final couponRes = await _finalValidateCoupon(
+              userId: userObjId,
+              couponId: selectedCouponId.trim(),
+            );
+            if ((couponRes?.errorCode ?? 0) == 1) {
+              // Unselect coupon but keep error so UI can show it under that coupon.
+              cabBookingController.clearSelectedCoupon(clearValidationError: false);
+              cabBookingController.setCouponValidationError(
+                couponId: selectedCouponId.trim(),
+                message: couponRes?.message ?? 'Coupon validation failed',
+                errorCode: couponRes?.errorCode,
+              );
+              // Also refetch fare details WITHOUT couponID so pricing reflects removal.
+              final base = cabBookingController.lastIndiaFareRequestData;
+              if (base != null) {
+                final payload = Map<String, dynamic>.from(base);
+                payload.remove('couponID'); // ensure it's not passed accidentally
+                await cabBookingController.fetchIndiaFareDetails(
+                  requestData: payload,
+                  context: context,
+                );
+              }
+              return;
+            }
+          }
+        }
+
         await provisionalBookingMethod(
           requestData: provisionalRequestData,
           context: context,
@@ -142,15 +268,19 @@ class IndiaPaymentController extends GetxController {
       requestData['reservation']['passenger'] = passengerId;
       lastProvisionalRequest = requestData;
       print('provision request data : ${requestData}');
+      // Do NOT send UI-only keys to backend.
+      final Map<String, dynamic> apiPayload =
+          Map<String, dynamic>.from(requestData);
+      apiPayload.remove('ui');
       final res = await http.post(
         Uri.parse(
-            '${ApiService().baseUrl}/chaufferReservation/createProvisionalReservation'),
+            '${ApiService().baseUrl}/chaufferReservation/createProvisionalReservationRefactored'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic aGFyc2g6MTIz',
           'X-Platform': 'APP'
         },
-        body: jsonEncode(requestData),
+        body: jsonEncode(apiPayload),
       );
 
       print("📤 provision request: $requestData");
@@ -289,7 +419,10 @@ class IndiaPaymentController extends GetxController {
     } catch (e) {
       print("❌ Verification exception: $e");
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        GoRouter.of(_currentContext).push(AppRoutes.paymentFailure);
+        GoRouter.of(_currentContext).push(
+          AppRoutes.paymentFailure,
+          extra: lastProvisionalRequest, // ✅ Pass request data (new payload)
+        );
       });
       GoRouter.of(_currentContext).pop();
     } finally {

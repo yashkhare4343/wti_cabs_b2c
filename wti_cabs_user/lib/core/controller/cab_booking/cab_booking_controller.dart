@@ -26,6 +26,12 @@ class CabBookingController extends GetxController {
   RxnString selectedCouponId = RxnString();
   RxnString selectedCouponCode = RxnString();
 
+  /// Coupon validation (final validation at pay time)
+  /// If final validation fails, we keep the message and couponId so UI can show it.
+  RxnString couponValidationCouponId = RxnString();
+  RxnString couponValidationMessage = RxnString();
+  RxnInt couponValidationErrorCode = RxnInt();
+
   /// Coupon coming from Inventory list (auto-select on Booking Details).
   /// This is separate from selectedCoupon* so we can apply it once on entry.
   RxnString preselectedCouponId = RxnString();
@@ -35,11 +41,32 @@ class CabBookingController extends GetxController {
   void setSelectedCoupon({required String couponId, String? couponCode}) {
     selectedCouponId.value = couponId;
     selectedCouponCode.value = couponCode;
+    // User is actively selecting a coupon; clear any previous validation error state.
+    clearCouponValidationError();
   }
 
-  void clearSelectedCoupon() {
+  void clearSelectedCoupon({bool clearValidationError = true}) {
     selectedCouponId.value = null;
     selectedCouponCode.value = null;
+    if (clearValidationError) {
+      clearCouponValidationError();
+    }
+  }
+
+  void setCouponValidationError({
+    required String couponId,
+    required String message,
+    int? errorCode,
+  }) {
+    couponValidationCouponId.value = couponId;
+    couponValidationMessage.value = message;
+    couponValidationErrorCode.value = errorCode;
+  }
+
+  void clearCouponValidationError() {
+    couponValidationCouponId.value = null;
+    couponValidationMessage.value = null;
+    couponValidationErrorCode.value = null;
   }
 
   void setPreselectedCoupon({
@@ -924,6 +951,21 @@ class CabBookingController extends GetxController {
       inventoryData['is_part_payment_allowed'] = newInventoryData['is_part_payment_allowed'] ?? inventoryData['is_part_payment_allowed'];
       inventoryData['communication_type'] = newInventoryData['communication_type'] ?? inventoryData['communication_type'];
       inventoryData['verification_type'] = newInventoryData['verification_type'] ?? inventoryData['verification_type'];
+    }
+
+    // ✅ Preserve request/response id needed by provisional booking payload
+    // New API may provide this at root, under `inventory`, or (rarely) under `car_types`.
+    final reqResIdVehicleDetails =
+        root['reqResId_vehicle_details'] ??
+        root['reqResIdVehicleDetails'] ??
+        newInventoryData?['reqResId_vehicle_details'] ??
+        newInventoryData?['reqResIdVehicleDetails'] ??
+        newCarTypesData?['reqResId_vehicle_details'] ??
+        newCarTypesData?['reqResIdVehicleDetails'] ??
+        existingInventoryData?['reqResId_vehicle_details'] ??
+        existingInventoryData?['reqResIdVehicleDetails'];
+    if (reqResIdVehicleDetails != null) {
+      inventoryData['reqResId_vehicle_details'] = reqResIdVehicleDetails;
     }
 
     // ✅ Inclusion/Exclusion charges (Postman shows non-null but we were dropping it in transform)

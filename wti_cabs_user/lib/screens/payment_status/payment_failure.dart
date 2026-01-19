@@ -24,33 +24,136 @@ class PaymentFailurePage extends StatefulWidget {
 class _PaymentFailurePageState extends State<PaymentFailurePage> {
   // final FetchReservationBookingData fetchReservationBookingData = Get.put(FetchReservationBookingData());
 
+  bool _isTripCodeRental(dynamic tripCode) {
+    if (tripCode == null) return false;
+    if (tripCode is num) return tripCode.toInt() == 3;
+    final s = tripCode.toString().trim();
+    return s == '3';
+  }
+
+  Map<String, dynamic>? _asMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
+  }
+
+  String _stringOrDash(dynamic v) {
+    final s = v?.toString().trim() ?? '';
+    return s.isEmpty ? '-' : s;
+  }
+
+  double? _asDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v.trim());
+    return null;
+  }
+
+  String _formatAmount(dynamic amount) {
+    final a = _asDouble(amount);
+    if (a == null) return '-';
+    return a.toStringAsFixed(2);
+  }
+
+  /// Backward compatible getter for both old and new provisional payload shapes.
+  dynamic _getNested(Map<String, dynamic>? map, List<String> path) {
+    dynamic cur = map;
+    for (final key in path) {
+      final m = _asMap(cur);
+      if (m == null) return null;
+      cur = m[key];
+    }
+    return cur;
+  }
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    // Ensure timezone database is initialized before calling tz.getLocation(...)
+    try {
+      tz.initializeTimeZones();
+    } catch (_) {
+      // If already initialized or fails for some reason, we fall back safely in convertUtcToLocal().
+    }
     // fetchReservationBookingData.fetchReservationData();
   }
 
 
   String convertUtcToLocal(String utcTimeString, String timezoneString) {
-    // Parse UTC time
-    DateTime utcTime = DateTime.parse(utcTimeString);
+    // Guard against empty/invalid timestamps coming from provisionalData.
+    final raw = utcTimeString.trim();
+    if (raw.isEmpty) return '-';
 
-    // Get the location based on timezone string like "Asia/Kolkata"
-    final location = tz.getLocation(timezoneString);
+    DateTime? utcTime = DateTime.tryParse(raw);
 
-    // Convert UTC to local time in given timezone
-    final localTime = tz.TZDateTime.from(utcTime, location);
+    // Also support epoch timestamps (seconds or milliseconds) if API sends numeric strings.
+    if (utcTime == null) {
+      final epoch = int.tryParse(raw);
+      if (epoch != null) {
+        // Heuristic: 13 digits => milliseconds; otherwise seconds.
+        final millis = raw.length >= 13 ? epoch : epoch * 1000;
+        utcTime = DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+      }
+    }
 
-    // Format the local time as "28 July, 2025"
-    final formatted = DateFormat("d MMMM, yyyy, hh:mm a").format(localTime);
+    if (utcTime == null) return '-';
+    final utc = utcTime.isUtc ? utcTime : utcTime.toUtc();
 
-    return formatted;
+    // Convert UTC to local time in given timezone, but fall back to UTC on any issues.
+    try {
+      final tzName = timezoneString.trim().isEmpty ? 'UTC' : timezoneString.trim();
+      final location = tz.getLocation(tzName);
+      final localTime = tz.TZDateTime.from(utc, location);
+      return DateFormat("d MMMM, yyyy, hh:mm a").format(localTime);
+    } catch (_) {
+      return DateFormat("d MMMM, yyyy, hh:mm a").format(utc);
+    }
   }
   @override
   Widget build(BuildContext context) {
-    final reservation = widget.provisionalData?['reservation'] ?? {};
-    final order = widget.provisionalData?['order'] ?? {};
+    final provisional = widget.provisionalData ?? const <String, dynamic>{};
+    final reservation = _asMap(provisional['reservation']) ?? const <String, dynamic>{};
+    final order = _asMap(provisional['order']) ?? const <String, dynamic>{};
+    final receipt = _asMap(provisional['receiptData']) ?? const <String, dynamic>{};
+    final ui = _asMap(provisional['ui']) ?? const <String, dynamic>{};
+
+    final currencyCode = _stringOrDash(order['currency']);
+    final amountStr = _formatAmount(order['amount']);
+    final paymentType = _stringOrDash(receipt['paymentType']);
+
+    // Old payload fallbacks (if present)
+    final oldPickup = _stringOrDash(_getNested(provisional, ['reservation', 'source', 'address']));
+    final oldDrop = _stringOrDash(_getNested(provisional, ['reservation', 'destination', 'address']));
+    final oldStartTime = _stringOrDash(_getNested(provisional, ['reservation', 'start_time']));
+    final oldEndTime = _stringOrDash(_getNested(provisional, ['reservation', 'end_time']));
+    final oldTimezone = _stringOrDash(_getNested(provisional, ['reservation', 'timezone']));
+
+    final tripCode = ui['tripCode'];
+    final isRentalTrip = _isTripCodeRental(tripCode);
+
+    final pickupAddress = _stringOrDash(ui['pickup'] ?? oldPickup);
+    // For rental trips, never show drop/drop time (even if old fallback contains values).
+    final dropAddress =
+        isRentalTrip ? '-' : _stringOrDash(ui['drop'] ?? oldDrop);
+
+    final pickupTimeRaw = _stringOrDash(ui['pickup_time'] ?? oldStartTime);
+    final dropTimeRaw =
+        isRentalTrip ? '-' : _stringOrDash(ui['drop_time'] ?? oldEndTime);
+
+    final timezone = _stringOrDash(ui['timezone'] ?? oldTimezone);
+    final hasDrop = dropAddress != '-' && dropAddress.trim().isNotEmpty;
+    final hasDropTime = dropTimeRaw != '-' && dropTimeRaw.trim().isNotEmpty;
+
+    CurrencyController? currencyController;
+    try {
+      currencyController = Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : null;
+    } catch (_) {
+      currencyController = null;
+    }
+    final currencySymbol = currencyController?.selectedCurrency.value.symbol ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -80,20 +183,27 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                     ),
                     SizedBox(height: 24),
 
-                    bookingDetailRow('Booking Type',
-                        reservation['trip_type_details']?['trip_type'] ?? ''),
-                    bookingDetailRow('Cab Category',
-                        reservation['vehicle_details']?['model'] ?? ''),
-                    bookingDetailRow(
-                        'Pickup', reservation['source']?['address'] ?? ''),
-                    if(reservation['trip_type_details']?['trip_type'] != 'LOCAL_RENTAL')  bookingDetailRow(
-                        'Drop', reservation['destination']?['address'] ?? ''),
-                    bookingDetailRow('Pickup Date',
-                        convertUtcToLocal(reservation['start_time'] ?? '', reservation['timezone'] ?? 'UTC')),
-                    if(reservation['trip_type_details']?['trip_type'] != 'LOCAL_RENTAL') bookingDetailRow('Drop Date',
-                        convertUtcToLocal(reservation['end_time'] ?? '', reservation['timezone'] ?? 'UTC')),
-                    bookingDetailRow('Amount',
-                        '${CurrencyController().selectedCurrency.value.symbol} ${order['amount']?.toStringAsFixed(2)}' ?? '0'),
+                    // Payment summary
+                    bookingDetailRow('Payment Type', paymentType),
+                    bookingDetailRow('Currency', currencyCode),
+                    bookingDetailRow('Amount', '$currencySymbol $amountStr'),
+
+                    // Booking details (from BookingDetailsFinal -> provisionalData['ui'])
+                    bookingDetailRow('Pickup', pickupAddress),
+                    if (!isRentalTrip && hasDrop)
+                      bookingDetailRow('Drop', dropAddress),
+                    if (pickupTimeRaw != '-' && timezone != '-')
+                      bookingDetailRow(
+                        'Pickup Time',
+                        convertUtcToLocal(
+                            pickupTimeRaw, timezone == '-' ? 'UTC' : timezone),
+                      ),
+                    if (!isRentalTrip && hasDropTime && timezone != '-')
+                      bookingDetailRow(
+                        'Drop Time',
+                        convertUtcToLocal(
+                            dropTimeRaw, timezone == '-' ? 'UTC' : timezone),
+                      ),
 
                     SizedBox(height: 24),
                     SizedBox(
@@ -105,7 +215,9 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => BookingDetailsFinal(fromPaymentFailure: true,), // replace with your screen
+                              builder: (context) => BookingDetailsFinal(
+                                fromPaymentFailure: true,
+                              ), // replace with your screen
                             ),
                           );                        },
                       ),

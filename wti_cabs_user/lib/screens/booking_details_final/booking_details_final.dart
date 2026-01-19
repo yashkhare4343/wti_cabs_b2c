@@ -62,6 +62,8 @@ class BookingDetailsFinal extends StatefulWidget {
 
 final CabBookingController cabBookingController =
     Get.put(CabBookingController());
+// Used to scroll to Coupon section on pay-time validation failure.
+final GlobalKey couponOffersSectionKey = GlobalKey();
 
 class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   String? _country;
@@ -1035,7 +1037,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                         // Coupon & Offers (India only) - shown below Inclusion/Exclusion
                         if ((_country ?? '').toLowerCase() == 'india') ...[
                           const SizedBox(height: 12),
-                          const CouponOffersCard(),
+                          CouponOffersCard(key: couponOffersSectionKey),
                         ],
 
                         SizedBox(
@@ -2724,7 +2726,6 @@ class CouponOffersCard extends StatefulWidget {
 }
 
 class _CouponOffersCardState extends State<CouponOffersCard> {
-  bool _isExpanded = false;
   bool _fetchRequested = false;
 
   void _maybeFetchCoupons() {
@@ -2837,7 +2838,22 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
     required CouponData coupon,
     required bool selected,
   }) {
-    final borderColor = selected ? const Color(0xFF4082F1) : Color(0xFF7B7B7B);
+    final CabBookingController cabBookingController =
+        Get.isRegistered<CabBookingController>()
+            ? Get.find<CabBookingController>()
+            : Get.put(CabBookingController());
+    final validationCouponId =
+        cabBookingController.couponValidationCouponId.value;
+    final validationMessage =
+        cabBookingController.couponValidationMessage.value ?? '';
+    final showValidationError =
+        validationCouponId != null &&
+            validationCouponId == coupon.id &&
+            validationMessage.trim().isNotEmpty;
+
+    final borderColor = showValidationError
+        ? Colors.redAccent
+        : (selected ? const Color(0xFF4082F1) : const Color(0xFF7B7B7B));
     return InkWell(
       onTap: () => _applyOrToggleCoupon(coupon),
       child: Container(
@@ -2845,7 +2861,9 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: borderColor, width: 1),
-          color: selected ? const Color(0xFFEFF6FF) : Color(0xFFF3F3F3),
+          color: selected
+              ? const Color(0xFFEFF6FF)
+              : (showValidationError ? const Color(0xFFEEEEEE) : const Color(0xFFF3F3F3)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2923,6 +2941,17 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                       height: 1.25,
                     ),
                   ),
+                  if (showValidationError) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      validationMessage,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -2959,10 +2988,42 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
               ? Get.find<CabBookingController>()
               : Get.put(CabBookingController());
           final selectedCode = cabBookingController.selectedCouponCode.value;
+          final validationCouponId =
+              cabBookingController.couponValidationCouponId.value;
+          final selectedCouponId = cabBookingController.selectedCouponId.value;
 
-          final list = _isExpanded
-              ? coupons.toList()
-              : (coupons.isNotEmpty ? <CouponData>[coupons.first] : <CouponData>[]);
+          CouponData? _findById(String? id) {
+            final cid = (id ?? '').trim();
+            if (cid.isEmpty) return null;
+            try {
+              return coupons.firstWhere((c) => c.id == cid);
+            } catch (_) {
+              return null;
+            }
+          }
+
+          final selectedCoupon = _findById(selectedCouponId);
+          final validationCoupon = _findById(validationCouponId);
+
+          List<CouponData> orderedList(List<CouponData> input) {
+            final out = <CouponData>[];
+            void addOnce(CouponData? c) {
+              if (c == null) return;
+              if (out.any((e) => e.id == c.id)) return;
+              out.add(c);
+            }
+
+            // Priority: selected first, then validation-failed coupon, then the rest.
+            addOnce(selectedCoupon);
+            addOnce(validationCoupon);
+            for (final c in input) {
+              addOnce(c);
+            }
+            return out;
+          }
+
+          // Always show all coupons (no View More/Less).
+          final list = orderedList(coupons.toList());
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3046,22 +3107,7 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                 )),
               ],
 
-              if (coupons.length > 1) ...[
-                const SizedBox(height: 2),
-                Center(
-                  child: InkWell(
-                    onTap: () => setState(() => _isExpanded = !_isExpanded),
-                    child: Text(
-                      _isExpanded ? 'View Less' : 'View All Coupons',
-                      style: const TextStyle(
-                        color: Color(0xFF2F6BFF),
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              // Removed View More/Less: always showing full list.
             ],
           );
         }),
@@ -3874,172 +3920,40 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                 "emailID": await StorageServices.instance
                                     .read('emailId')
                               };
-                              final Map<String, dynamic>
-                                  provisionalRequestData = {
+                              final failureUiTimeZone =
+                                  await StorageServices.instance.read('timeZone');
+                              final passengerId =
+                                  await StorageServices.instance.read('userObjId');
+                              final selectedCouponId =
+                                  (cabBookingController.selectedCouponId.value !=
+                                              null &&
+                                          cabBookingController.selectedCouponId
+                                              .value!.trim().isNotEmpty)
+                                      ? cabBookingController.selectedCouponId.value
+                                      : null;
+
+                              final Map<String, dynamic> provisionalRequestData =
+                                  {
                                 "reservation": {
                                   "flightNumber": flightNo ?? "",
                                   "remarks": remark ?? "",
                                   "gst_number": gstValue ?? "",
                                   "payment_gateway_used": 1,
-                                  "countryName": _country,
-                                  "search_id": "",
+                                  "countryName": (_country?.trim().isNotEmpty ??
+                                          false)
+                                      ? _country
+                                      : "India",
                                   "partnername": "wti",
-                                  "start_time": cabBookingController
-                                      .indiaData.value?.tripType?.pickUpDateTime
-                                      ?.toIso8601String(),
-                                  "end_time": cabBookingController
-                                      .indiaData.value?.tripType?.dropDateTime
-                                      ?.toIso8601String(),
-                                  "platform_fee": 0,
-                                  "booking_gst": 0,
-                                  "one_way_distance": cabBookingController
-                                      .indiaData
-                                      .value
-                                      ?.inventory
-                                      ?.distanceBooked
-                                      ?.toInt(),
-                                  "distance": cabBookingController.indiaData
-                                      .value?.inventory?.distanceBooked
-                                      ?.toInt(),
-                                  "package": currentTripCode == '3'
-                                      ? cabBookingController
-                                              .indiaData
-                                              .value
-                                              ?.inventory
-                                              ?.carTypes
-                                              ?.packageId ??
-                                          ''
-                                      : null,
-                                  "flags": [],
-                                  "base_km": cabBookingController.indiaData
-                                      .value?.inventory?.carTypes?.baseKm
-                                      ?.toInt(),
-                                  "vehicle_details": {
-                                    "sku_id": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.skuId ??
-                                        '',
-                                    "fleet_id": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.fleetId ??
-                                        '',
-                                    "type": cabBookingController.indiaData.value
-                                            ?.inventory?.carTypes?.type ??
-                                        '',
-                                    "subcategory": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.subcategory ??
-                                        '',
-                                    "combustion_type": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.combustionType ??
-                                        '',
-                                    "model": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.model ??
-                                        '',
-                                    "carrier": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.carrier ??
-                                        false,
-                                    "make_year_type": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.makeYearType ??
-                                        '',
-                                    "make_year": ""
-                                  },
-                                  "source": {
-                                    "address": sourceController.title.value,
-                                    "latitude": placeSearchController
-                                        .getPlacesLatLng.value?.latLong.lat,
-                                    "longitude": placeSearchController
-                                        .getPlacesLatLng.value?.latLong.lng,
-                                    "city": sourceController.city.value,
-                                    "place_id": sourceController.placeId.value,
-                                    "types": sourceController.types.toList(),
-                                    "state": sourceController.state.value,
-                                    "country": sourceController.country.value
-                                  },
-                                  "destination": !shouldSendDestination
-                                      ? null
-                                      : {
-                                          "address": destinationAddress,
-                                          "latitude": resolvedDestinationLat,
-                                          "longitude": resolvedDestinationLng,
-                                          "city": destinationCityValue,
-                                          "place_id": destinationPlaceIdValue,
-                                          "types": destinationController
-                                                  .types.isEmpty
-                                              ? _safeStringList(destinationData[
-                                                  'destinationTypes'])
-                                              : destinationController.types
-                                                  .toList(),
-                                          "state": destinationStateValue,
-                                          "country": destinationCountryValue
-                                        },
-                                  "stopovers": [],
-                                  "trip_type_details": {
-                                    "basic_trip_type": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.tripType
-                                            ?.tripTypeDetails
-                                            ?.basicTripType ??
-                                        '',
-                                    "trip_type": cabBookingController
-                                        .indiaData.value?.tripType?.tripType,
-                                    cabBookingController
-                                                .indiaData
-                                                .value
-                                                ?.tripType
-                                                ?.tripTypeDetails
-                                                ?.airportType !=
-                                            null
-                                        ? "airport_type"
-                                        : cabBookingController
-                                                .indiaData
-                                                .value
-                                                ?.tripType
-                                                ?.tripTypeDetails
-                                                ?.basicTripType ??
-                                            '': null
-                                  },
-                                  "paid": false,
-                                  "extrasSelected":
-                                      cabBookingController.selectedExtrasIds,
-                                  "total_fare": cabBookingController.totalFare,
-                                  "amount_to_be_collected": double.parse(
-                                      cabBookingController.amountTobeCollected
-                                          .toStringAsFixed(2)),
-                                  "cancelled_by": null,
-                                  "cancellation_reason": null,
-                                  "canceltime": null,
-                                  "couponCodeUsed": null,
+                                  "passenger":
+                                      (passengerId?.trim().isNotEmpty ?? false)
+                                          ? passengerId
+                                          : null,
+                                  // pass coupon id if used if not used then send null
+                                  "couponCodeUsed": selectedCouponId,
                                   "offerUsed": null,
                                   "userType": "CUSTOMER",
-                                  "timezone": "Asia/Kolkata",
-                                  "guest_id": null
+                                  "guest_id": null,
+                                  "exact_source": null,
                                 },
                                 "order": {
                                   "currency": currencyController
@@ -4048,8 +3962,7 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                       ? await currencyController.convertPrice(
                                           cabBookingController.partFare)
                                       : await currencyController.convertPrice(
-                                          cabBookingController
-                                              .totalFare), //(part payment or full paymenmt)
+                                          cabBookingController.totalFare),
                                 },
                                 "receiptData": {
                                   "countryName":
@@ -4061,106 +3974,53 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                         .selectedCurrency.value.code,
                                     "currencyRate": currencyController
                                             .convertedRate.value ??
-                                        1
+                                        1,
                                   },
-                                  "addon_charges":
-                                      cabBookingController.extraFacilityCharges,
                                   "isOffer": false,
-                                  "fare_details": {
-                                    "actual_fare":
-                                        cabBookingController.actualFare,
-                                    "seller_discount": 0,
-                                    // ⬇️ Use new India fareDetails API when available, fallback to old inventory data
-                                    "per_km_charge": cabBookingController
-                                            .indiaFareDetails
-                                            .value
-                                            ?.fareDetails
-                                            ?.perKmCharge
-                                            ?.toDouble() ??
-                                        cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.fareDetails
-                                            ?.perKmCharge ??
-                                        0,
-                                    "per_km_extra_charge": cabBookingController
-                                            .indiaFareDetails
-                                            .value
-                                            ?.fareDetails
-                                            ?.perKmExtraCharge
-                                            ?.toDouble() ??
-                                        cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.fareDetails
-                                            ?.perKmExtraCharge ??
-                                        0,
-                                    "amount_paid": selectedOption == 0
-                                        ? cabBookingController.partFare
-                                        : cabBookingController
-                                            .totalFare, //(part payment or full paymenmt)
-                                    "total_driver_charges": cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.fareDetails
-                                            ?.totalDriverCharges ??
-                                        0,
-                                    "base_fare": cabBookingController
-                                            .indiaFareDetails
-                                            .value
-                                            ?.fareDetails
-                                            ?.baseFare
-                                            ?.toDouble() ??
-                                        cabBookingController
-                                            .indiaData
-                                            .value
-                                            ?.inventory
-                                            ?.carTypes
-                                            ?.fareDetails
-                                            ?.baseFare ??
-                                        0,
-                                    "total_fare": cabBookingController
-                                        .totalFare, //(full payment, already uses API when available)
-                                    "total_tax": double.parse(
-                                        cabBookingController.taxCharge
-                                            .toStringAsFixed(2)),
-                                    "extra_time_fare":
-                                        _normalizeIndiaExtraTimeFare(
-                                      cabBookingController
-                                        .indiaData
-                                        .value
-                                        ?.inventory
-                                        ?.carTypes
-                                        ?.fareDetails
-                                        ?.extraTimeFare
-                                        ?.toJson() ??
-                                        const <String, dynamic>{},
-                                    ),
-                                    "extra_charges": _normalizeIndiaExtraCharges(
-                                      cabBookingController
+                                  "paymentType":
+                                      selectedOption == 1 ? "FULL" : "PART",
+                                },
+                                // UI-only fields used by payment failure screen. These are stripped before API calls.
+                                "ui": {
+                                  "pickup": sourceController.title.value,
+                                  "drop": shouldSendDestination
+                                      ? destinationAddress
+                                      : null,
+                                  "pickup_time": cabBookingController
                                           .indiaData
                                           .value
-                                          ?.inventory
-                                          ?.carTypes
-                                          ?.fareDetails
-                                          ?.extraCharges
-                                          ?.toJson(),
-                                    ),
-                                    "amount_to_be_collected": double.parse(
-                                        cabBookingController.amountTobeCollected
-                                            .toStringAsFixed(2))
-                                  },
-                                  // "fare_details": cabBookingController.indiaData.value?.inventory?.carTypes?.fareDetails?.toJson(),
-
-                                  "paymentType":
-                                      selectedOption == 1 ? "FULL" : "PART"
-                                }
+                                          ?.tripType
+                                          ?.pickUpDateTime
+                                          ?.toIso8601String() ??
+                                      await StorageServices.instance
+                                          .read('userDateTime'),
+                                  "drop_time": shouldSendDestination
+                                      ? cabBookingController
+                                          .indiaData
+                                          .value
+                                          ?.tripType
+                                          ?.dropDateTime
+                                          ?.toIso8601String()
+                                      : null,
+                                  "timezone": (failureUiTimeZone?.trim().isNotEmpty ??
+                                          false)
+                                      ? failureUiTimeZone
+                                      : "Asia/Kolkata",
+                                  "tripCode": currentTripCode,
+                                },
+                                "comingFrom": "/cab-booking-details",
+                                // id from india data api
+                                "reqResId_vehicle_details": cabBookingController
+                                    .indiaData
+                                    .value
+                                    ?.inventory
+                                    ?.reqResIdVehicleDetails,
+                                // id for farefetails api
+                                "reqResId_fare_details": cabBookingController
+                                    .indiaFareDetails
+                                    .value
+                                    ?.fareDetails
+                                    ?.reqResIdFareDetails,
                               };
 
                               cabBookingController.selectedOption.value =
@@ -4173,7 +4033,33 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                                           provisionalRequestData,
                                       context: context)
                                   .then((value) {});
-                              GoRouter.of(context).pop();
+                              // Close only the loader/dialog (avoid popping the route).
+                              if (Navigator.of(context, rootNavigator: true)
+                                  .canPop()) {
+                                Navigator.of(context, rootNavigator: true)
+                                    .pop();
+                              }
+
+                              // If coupon final validation failed, scroll user to Coupon section to show red error message.
+                              if ((cabBookingController
+                                          .couponValidationErrorCode.value ??
+                                      0) ==
+                                  1) {
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  final ctx =
+                                      couponOffersSectionKey.currentContext;
+                                  if (ctx != null) {
+                                    Scrollable.ensureVisible(
+                                      ctx,
+                                      duration:
+                                          const Duration(milliseconds: 350),
+                                      curve: Curves.easeInOut,
+                                      alignment: 0.05,
+                                    );
+                                  }
+                                });
+                              }
                             }
                           : () async {
                               globalPaymentController.showLoader(context);
@@ -5404,6 +5290,14 @@ class _CouponCardLatestState extends State<CouponCardLatest> {
     return Obx(() {
       final isApplied =
           cabBookingController.selectedCouponId.value == widget.id;
+      final validationCouponId =
+          cabBookingController.couponValidationCouponId.value;
+      final validationMessage =
+          cabBookingController.couponValidationMessage.value ?? '';
+      final showValidationError = !isApplied &&
+          validationCouponId != null &&
+          validationCouponId == widget.id &&
+          validationMessage.trim().isNotEmpty;
 
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -5411,7 +5305,9 @@ class _CouponCardLatestState extends State<CouponCardLatest> {
           color: isApplied ? Colors.green.shade50 : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isApplied ? Colors.green : Colors.transparent,
+            color: showValidationError
+                ? Colors.redAccent
+                : (isApplied ? Colors.green : Colors.transparent),
             width: 1,
           ),
           boxShadow: [
@@ -5474,6 +5370,17 @@ class _CouponCardLatestState extends State<CouponCardLatest> {
                         color: Colors.black54,
                       ),
                     ),
+                    if (showValidationError) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        validationMessage,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     SizedBox(
                       height: 28,

@@ -483,8 +483,8 @@ class _CrpBookingState extends State<CrpBooking> {
     return null;
   }
 
-  /// Download invoice PDF and open it directly in PDF viewer
-  Future<void> _downloadInvoice(CrpBookingHistoryItem booking) async {
+  /// Download DutySlip PDF and open it directly in PDF viewer
+  Future<void> _downloadDutySlip(CrpBookingHistoryItem booking) async {
     try {
       // Extract numeric booking ID from booking number
       final numericBookingId = _extractNumericBookingId(booking);
@@ -500,7 +500,7 @@ class _CrpBookingState extends State<CrpBooking> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const PopupLoader(message: 'Downloading Invoice...'),
+        builder: (_) => const PopupLoader(message: 'Downloading DutySlip...'),
       );
 
       // Construct invoice URL with extracted numeric booking ID
@@ -553,7 +553,7 @@ class _CrpBookingState extends State<CrpBooking> {
         }
         
         // Save the PDF file
-        final fileName = 'invoice_$numericBookingId.pdf';
+        final fileName = 'dutyslip_$numericBookingId.pdf';
         final filePath = '${dir.path}/$fileName';
         final file = File(filePath);
         
@@ -565,6 +565,106 @@ class _CrpBookingState extends State<CrpBooking> {
         }
 
         // Open the PDF file directly in PDF viewer
+        final result = await OpenFile.open(filePath);
+        if (result.type != ResultType.done && mounted) {
+          CustomSuccessSnackbar.show(context, 'PDF saved to ${dir.path}. Opening...');
+        }
+      } else if (response.statusCode == 500) {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          CustomFailureSnackbar.show(context, 'The booking is still in progress. The DutySlip will be available once the trip is completed.');
+        }
+      } else {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          CustomFailureSnackbar.show(context, 'Failed to download DutySlip. Status: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        GoRouter.of(context).pop(); // Close loader
+        CustomFailureSnackbar.show(context, 'Error downloading DutySlip: ${e.toString()}');
+      }
+    }
+  }
+
+  /// Download Invoice PDF and open it directly in PDF viewer
+  /// Uses: http://office.aaveg.co.in/Mt/PrintAsPDF_F7?bid=$bookingId
+  Future<void> _downloadInvoice(CrpBookingHistoryItem booking) async {
+    try {
+      final numericBookingId = _extractNumericBookingId(booking);
+
+      if (numericBookingId == null || numericBookingId.isEmpty) {
+        if (mounted) {
+          CustomFailureSnackbar.show(context, 'Booking ID not found');
+        }
+        return;
+      }
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopupLoader(message: 'Downloading Invoice...'),
+      );
+
+      final invoiceUrl =
+          'http://office.aaveg.co.in/Mt/PrintAsPDF_F7?bid=$numericBookingId';
+
+      // Request storage permissions (for Android)
+      if (Platform.isAndroid) {
+        // Android 13+ → use these new permissions
+        if (await Permission.photos.isDenied) {
+          await Permission.photos.request();
+        }
+        if (await Permission.videos.isDenied) {
+          await Permission.videos.request();
+        }
+        // Older Android (for writing to /storage/emulated/0/Download)
+        if (await Permission.storage.isDenied) {
+          await Permission.storage.request();
+        }
+      }
+
+      // Determine download directory
+      // Use app's external storage directory (works on all Android versions including 13+)
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = await getExternalStorageDirectory();
+        if (dir != null) {
+          // Create Downloads subfolder in app's external storage for better organization
+          dir = Directory('${dir.path}/Download');
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      if (dir == null) {
+        if (mounted) {
+          GoRouter.of(context).pop(); // Close loader
+          CustomFailureSnackbar.show(context, 'Could not access download directory');
+        }
+        return;
+      }
+
+      final uri = Uri.parse(invoiceUrl);
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+
+        final fileName = 'invoice_$numericBookingId.pdf';
+        final filePath = '${dir.path}/$fileName';
+        final file = File(filePath);
+
+        await file.writeAsBytes(response.bodyBytes);
+
+        if (mounted) {
+          GoRouter.of(context).pop();
+        }
+
         final result = await OpenFile.open(filePath);
         if (result.type != ResultType.done && mounted) {
           CustomSuccessSnackbar.show(context, 'PDF saved to ${dir.path}. Opening...');
@@ -1224,7 +1324,7 @@ class _CrpBookingState extends State<CrpBooking> {
                           fontFamily: 'Montserrat',
                         ),
                       ),
-                      // Show Download Invoice button for completed statuses (Allocated, or Dispatched with Close status)
+                      // Show Download buttons for completed statuses (Allocated, or Dispatched with Close status)
                       Builder(
                         builder: (context) {
                           final effectiveStatus = BookingStatus.getEffectiveStatus(booking).toLowerCase().trim();
@@ -1232,6 +1332,38 @@ class _CrpBookingState extends State<CrpBooking> {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 24,
+                                  child: ElevatedButton(
+                                    onPressed: () => _downloadDutySlip(booking),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFDCEAFD), // bg color
+                                      elevation: 0,
+                                      padding: const EdgeInsets.all(5), // padding
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15), // border-radius
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Image.asset('assets/images/bookmark.png', width: 12, height: 12,),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Download DutySlip',
+                                          style: const TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 10,
+                                            color: Color(0xFF7B7B7B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 SizedBox(
                                   width: double.infinity,
