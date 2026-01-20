@@ -9,6 +9,7 @@ class PrimaryButton extends StatelessWidget {
   final Color backgroundColor;
   final bool? isIcon;
   final IconData? icon;
+  final bool isLoading;
 
   // Constructor with default values for backgroundColor and borderRadius
   const PrimaryButton({
@@ -17,14 +18,16 @@ class PrimaryButton extends StatelessWidget {
     this.onPressed,
     this.backgroundColor = AppColors.purple1,  // Default to blue if no color is provided
     this.isIcon, this.icon,  // Default border radius
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDisabled = onPressed == null;
+    final effectiveOnPressed = isLoading ? null : onPressed;
+    final isDisabled = effectiveOnPressed == null;
     
     return ElevatedButton(
-      onPressed: onPressed,
+      onPressed: effectiveOnPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: isDisabled 
             ? backgroundColor.withOpacity(0.4) 
@@ -37,20 +40,34 @@ class PrimaryButton extends StatelessWidget {
         ),
         padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),  // Adjust padding
       ),
-      child:isIcon== true?
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-
-          Text(text, style: CommonFonts.primaryButtonText,),
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 20.0,
-          ),
-
-        ],
-      ): Text(text, style: CommonFonts.primaryButtonText,)
+      child: isLoading
+          ? const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : (isIcon == true
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      text,
+                      style: CommonFonts.primaryButtonText,
+                    ),
+                    Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 20.0,
+                    ),
+                  ],
+                )
+              : Text(
+                  text,
+                  style: CommonFonts.primaryButtonText,
+                )),
     );
   }
 }

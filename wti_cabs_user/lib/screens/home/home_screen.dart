@@ -2036,10 +2036,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 context,
                                 Platform.isIOS
                                     ? CupertinoPageRoute(
-                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                                  builder: (context) => const SelectDrop(
+                                    fromInventoryScreen: false,
+                                    fromHomeScreen: true,
+                                  ),
                                 )
                                     : MaterialPageRoute(
-                                  builder: (context) => const SelectDrop(fromInventoryScreen: false),
+                                  builder: (context) => const SelectDrop(
+                                    fromInventoryScreen: false,
+                                    fromHomeScreen: true,
+                                  ),
                                 ),
                               );
                               await fetchCurrentLocationAndAddress();
@@ -2055,8 +2061,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 onTap: () {
                                   bookingRideController.prefilledDrop.value =
                                       '';
-
-                                  GoRouter.of(context).push(AppRoutes.chooseDrop);
+                                  bookingRideController.fromHomePage.value = true;
+                                  Navigator.push(
+                                    context,
+                                    Platform.isIOS
+                                        ? CupertinoPageRoute(
+                                            builder: (context) => const SelectDrop(
+                                              fromInventoryScreen: false,
+                                              fromHomeScreen: true,
+                                            ),
+                                          )
+                                        : MaterialPageRoute(
+                                            builder: (context) => const SelectDrop(
+                                              fromInventoryScreen: false,
+                                              fromHomeScreen: true,
+                                            ),
+                                          ),
+                                  );
                                 },
                                 // onTap: () {
                                 //   if (placeSearchController
@@ -3988,7 +4009,7 @@ class _RecentTripListState extends State<RecentTripList> {
               : null,
         ),
         child: ListTile(
-          contentPadding: const EdgeInsets.only(left: 16),
+          contentPadding: const EdgeInsets.only(left: 16, right: 16),
           dense: true,
           minVerticalPadding: 0,
           leading: Container(
@@ -4005,6 +4026,8 @@ class _RecentTripListState extends State<RecentTripList> {
           ),
           title: Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,

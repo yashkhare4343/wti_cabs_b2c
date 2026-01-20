@@ -156,9 +156,12 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
 
       final vehicleType =
           cabBookingController.indiaData.value?.inventory?.carTypes?.type ?? '';
+
       await fetchCouponController.fetchCoupons(
         context,
         vehicleType: vehicleType,
+        tripCode: cabBookingController.indiaData.value?.tripType?.tripCode ??
+            '',
       );
       await _applyPreselectedCouponIfAny();
     } else {
@@ -2795,7 +2798,13 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
     _fetchRequested = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      fetchCouponController.fetchCoupons(context, vehicleType: vehicleType);
+
+      fetchCouponController.fetchCoupons(
+        context,
+        vehicleType: vehicleType,
+        tripCode: cabBookingController.indiaData.value?.tripType?.tripCode ??
+            '',
+      );
     });
   }
 

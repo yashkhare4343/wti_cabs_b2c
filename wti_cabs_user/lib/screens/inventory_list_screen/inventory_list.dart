@@ -1027,12 +1027,12 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    const Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 18,
-                                      color: Color(0xFF2B64E5),
-                                    ),
+                                    // const SizedBox(width: 10),
+                                    // const Icon(
+                                    //   Icons.info_outline_rounded,
+                                    //   size: 18,
+                                    //   color: Color(0xFF2B64E5),
+                                    // ),
                                   ],
                                 ),
                                 const SizedBox(height: 3),
@@ -1101,6 +1101,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                                       ),
                                     ),
                                   ),
+                                  SizedBox(width: 10,)
                                   // compactConvertedPrice(
                                   //   (carType.discountedCoupon ?? 0),
                                   //   style: const TextStyle(
@@ -1661,9 +1662,9 @@ class _CouponAppliedUIState extends State<CouponAppliedUI> {
         Text(
           "Applied",
           style: TextStyle(
-            fontSize: 13,
-            color: Color(0xFF6B7280),
-            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            color: Color(0xFF585858),
+            fontWeight: FontWeight.w600,
           ),
         ),
         SizedBox(width: 8),

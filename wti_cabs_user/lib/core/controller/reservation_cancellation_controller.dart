@@ -13,13 +13,14 @@ class ReservationCancellationController extends GetxController {
   RxBool isLoading = false.obs;
 
   /// Fetch booking data based on the given country and request body
-  Future<void> verifyCancelReservation({
+  Future<bool> verifyCancelReservation({
     required final Map<String, dynamic> requestData,
     required BuildContext context,
   }) async {
 
     isLoading.value = true;
     try {
+      reservationCancelResponse.value = null;
       final response = await ApiService().postRequestNew<ReservationCancelResponse>(
         'chaufferReservation/cancelChauffeurReservation',
         requestData,
@@ -27,6 +28,7 @@ class ReservationCancellationController extends GetxController {
         context,
       );
       reservationCancelResponse.value = response;
+      return response != null;
     }
     catch(e){
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,6 +42,7 @@ class ReservationCancellationController extends GetxController {
           ),
         ),
       );
+      return false;
     }
     finally {
       isLoading.value = false;

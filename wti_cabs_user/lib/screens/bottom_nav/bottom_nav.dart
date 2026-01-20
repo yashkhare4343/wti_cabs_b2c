@@ -1386,7 +1386,11 @@ class _BottomNavScreenState extends State<BottomNavScreen>
       onWillPop: () async {
         // Reapply status bar color when navigating back
         _setStatusBarColor();
-        return true;
+        // If BottomNav was pushed on top of another route (e.g. BookingRide),
+        // popping would reveal the previous screen again. Block that.
+        // If BottomNav is the root (canPop == false), allow the system to pop/exit.
+        final canPop = Navigator.of(context).canPop();
+        return !canPop;
       },
       child: Scaffold(
         body: _screens[_selectedIndex],

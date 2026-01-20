@@ -14,7 +14,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wti_cabs_user/common_widget/buttons/primary_button.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_picker_tile.dart';
 import 'package:wti_cabs_user/common_widget/datepicker/date_time_picker.dart';
-import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
 import 'package:wti_cabs_user/common_widget/textformfield/booking_textformfield.dart';
 import 'package:wti_cabs_user/common_widget/time_picker/time_picker_tile.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
@@ -393,6 +392,7 @@ class _OutStationState extends State<OutStation> {
   final Duration defaultTripDuration = const Duration(hours: 4);
   final _debounceDuration = const Duration(milliseconds: 300);
   Timer? _debounceTimer;
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -857,17 +857,14 @@ class _OutStationState extends State<OutStation> {
 
                 return PrimaryButton(
                   text: 'Search Now',
+                  isLoading: _isSearching,
                   onPressed: isDisabled ? null : () {
                     // Haptic feedback for smooth tap response
                     HapticFeedback.lightImpact();
-                    
-                    // Show loader immediately on button tap
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const FullScreenGifLoader(),
-                    );
-                    
+
+                    if (_isSearching) return;
+                    setState(() => _isSearching = true);
+
                     // Defer heavy operations to allow button animation to complete smoothly
                     SchedulerBinding.instance.addPostFrameCallback((_) async {
                       try {
@@ -884,9 +881,6 @@ class _OutStationState extends State<OutStation> {
                         // If countries are available, check immediately (fast path)
                         if (sourceCountry.isNotEmpty && destinationCountry.isNotEmpty) {
                           if (sourceCountry != destinationCountry) {
-                            if (Navigator.of(context, rootNavigator: true).canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Pickup and drop countries must be the same.'),
@@ -928,16 +922,10 @@ class _OutStationState extends State<OutStation> {
 
                         // ✅ Final country validation
                         if (sourceCountry.isEmpty || destinationCountry.isEmpty) {
-                          if (Navigator.of(context, rootNavigator: true).canPop()) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
                           return;
                         }
 
                         if (sourceCountry != destinationCountry) {
-                          if (Navigator.of(context, rootNavigator: true).canPop()) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Pickup and drop countries must be the same.'),
@@ -1017,9 +1005,7 @@ class _OutStationState extends State<OutStation> {
                         // Navigator.of(context).pop();
                       } catch (e) {
                         debugPrint('[SearchNow] Error: $e');
-                        // Close FullScreenGifLoader if still open
                         if (mounted) {
-                          Navigator.of(context).pop();
                           // Navigate to inventory list with error message
                           Navigator.push(
                             context,
@@ -1040,6 +1026,8 @@ class _OutStationState extends State<OutStation> {
                                         )),
                           );
                         }
+                      } finally {
+                        if (mounted) setState(() => _isSearching = false);
                       }
                     });
                   },
@@ -1130,10 +1118,12 @@ class _OutStationState extends State<OutStation> {
         context,
         Platform.isIOS
             ? CupertinoPageRoute(
-          builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+          builder: (context) =>
+              const SelectDrop(fromInventoryScreen: false, fromHomeScreen: false),
         )
             : MaterialPageRoute(
-          builder: (context) => const SelectDrop(fromInventoryScreen: false,),
+          builder: (context) =>
+              const SelectDrop(fromInventoryScreen: false, fromHomeScreen: false),
         ),
       );
       
@@ -1744,11 +1734,11 @@ class _RidesState extends State<Rides> {
                               Platform.isIOS
                                   ? CupertinoPageRoute(
                                 builder: (context) =>
-                                const SelectDrop(fromInventoryScreen: false,),
+                                const SelectDrop(fromInventoryScreen: false, fromHomeScreen: false,),
                               )
                                   : MaterialPageRoute(
                                 builder: (context) =>
-                                const SelectDrop(fromInventoryScreen: false,),
+                                const SelectDrop(fromInventoryScreen: false, fromHomeScreen: false,),
                               ),
                             );
                             
@@ -1956,17 +1946,14 @@ class _RidesState extends State<Rides> {
 
                   return PrimaryButton(
                     text: 'Search Now',
+                    isLoading: _isLoading,
                     onPressed: isDisabled ? null : () {
                       // Haptic feedback for smooth tap response
                       HapticFeedback.lightImpact();
-                      
-                      // Show loader immediately on button tap
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => const FullScreenGifLoader(),
-                      );
-                      
+
+                      if (_isLoading) return;
+                      setState(() => _isLoading = true);
+
                       // Defer heavy operations to allow button animation to complete smoothly
                       SchedulerBinding.instance.addPostFrameCallback((_) async {
                         // ✅ FAST PATH: Check countries immediately if already available
@@ -1982,9 +1969,6 @@ class _RidesState extends State<Rides> {
                         // If countries are available, check immediately (fast path)
                         if (sourceCountry.isNotEmpty && destinationCountry.isNotEmpty) {
                           if (sourceCountry != destinationCountry) {
-                            if (Navigator.of(context, rootNavigator: true).canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Pickup and drop countries must be the same.'),
@@ -2026,16 +2010,10 @@ class _RidesState extends State<Rides> {
 
                         // ✅ Final country validation
                         if (sourceCountry.isEmpty || destinationCountry.isEmpty) {
-                          if (Navigator.of(context, rootNavigator: true).canPop()) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
                           return;
                         }
 
                         if (sourceCountry != destinationCountry) {
-                          if (Navigator.of(context, rootNavigator: true).canPop()) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Pickup and drop countries must be the same.'),
@@ -2056,9 +2034,7 @@ class _RidesState extends State<Rides> {
                           );
                         } catch (e) {
                           debugPrint('[SearchNow] Error: $e');
-                          // Close FullScreenGifLoader if still open
                           if (mounted) {
-                            Navigator.of(context).pop();
                             // Navigate to inventory list with error message
                             GoRouter.of(context).push(
                               AppRoutes.inventoryList,
@@ -2068,6 +2044,8 @@ class _RidesState extends State<Rides> {
                               },
                             );
                           }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
                         }
                       });
                     },
@@ -2142,7 +2120,6 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
   );
 
   debugPrint('yash pickup utc time : ${data['userDateTime']}');
-  GoRouter.of(context).pop();
   debugPrint(
       'yash 22aug local start time : ${bookingRideController.localStartTime.value}');
   debugPrint(
@@ -2805,30 +2782,16 @@ class _RentalState extends State<Rental> {
 
                       return PrimaryButton(
                         text: 'Search Now',
+                        isLoading: _isLoading,
                         onPressed: isDisabled ? null : () {
                       // Haptic feedback for smooth tap response
                       HapticFeedback.lightImpact();
-                      
-                      // Show loader immediately on button tap
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => const FullScreenGifLoader(),
-                      );
-                      
+
+                      if (_isLoading) return;
+                      setState(() => _isLoading = true);
+
                       // Defer heavy operations to allow button animation to complete smoothly
                       SchedulerBinding.instance.addPostFrameCallback((_) async {
-                        bool loaderClosed = false;
-                        void closeLoader() {
-                          if (loaderClosed) return;
-                          if (!mounted) return;
-                          final nav = Navigator.of(context, rootNavigator: true);
-                          if (nav.canPop()) {
-                            nav.pop();
-                          }
-                          loaderClosed = true;
-                        }
-
                         // ✅ FAST PATH: Check countries immediately if already available
                         var sourceCountry = placeSearchController
                                 .getPlacesLatLng.value?.country
@@ -2842,9 +2805,6 @@ class _RentalState extends State<Rental> {
                         // For rental, if destination exists, check immediately (fast path)
                         if (destinationCountry.isNotEmpty && sourceCountry.isNotEmpty) {
                           if (sourceCountry != destinationCountry) {
-                            if (Navigator.of(context, rootNavigator: true).canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Pickup and drop countries must be the same.'),
@@ -2888,7 +2848,6 @@ class _RentalState extends State<Rental> {
                         // For rental, if destination exists, both must match
                         if (destinationCountry.isNotEmpty) {
                           if (sourceCountry.isEmpty || sourceCountry != destinationCountry) {
-                            closeLoader();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Pickup and drop countries must be the same.'),
@@ -2908,7 +2867,6 @@ class _RentalState extends State<Rental> {
                           final hasDestination =
                               dropPlaceSearchController.dropPlaceId.value.trim().isNotEmpty;
                           if (!hasDestination) {
-                            closeLoader();
                             bookingRideController.isInventoryPage.value = false;
                             GoRouter.of(context).push(
                               AppRoutes.inventoryList,
@@ -2916,8 +2874,6 @@ class _RentalState extends State<Rental> {
                             );
                             return;
                           }
-
-                          setState(() => _isLoading = true);
 
                           // Only call API if countries match (or destination is empty for rental)
                           try {
@@ -2928,9 +2884,6 @@ class _RentalState extends State<Rental> {
                               isSecondPage: true,
                             );
 
-                            // ✅ Close loader BEFORE navigation so we don't accidentally pop the new page.
-                            closeLoader();
-
                             bookingRideController.isInventoryPage.value = false;
                             GoRouter.of(context).push(
                               AppRoutes.inventoryList,
@@ -2938,8 +2891,6 @@ class _RentalState extends State<Rental> {
                             );
                           } catch (e) {
                             debugPrint('Error fetching booking data: $e');
-                            // Close loader if still open
-                            closeLoader();
                             // Show error to user but don't block
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -2950,15 +2901,10 @@ class _RentalState extends State<Rental> {
                                 ),
                               );
                             }
-                          } finally {
-                            if (!mounted) return;
-                            setState(() => _isLoading = false);
                           }
                         } catch (e) {
                           debugPrint('[SearchNow] Error: $e');
-                          // Close FullScreenGifLoader if still open
                           if (mounted) {
-                            closeLoader();
                             // Navigate to inventory list with error message
                             GoRouter.of(context).push(
                               AppRoutes.inventoryList,
@@ -2968,6 +2914,8 @@ class _RentalState extends State<Rental> {
                               },
                             );
                           }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
                         }
                       });
                         },

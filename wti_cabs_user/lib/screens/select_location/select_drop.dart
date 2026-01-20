@@ -15,13 +15,20 @@ import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/drop_location_controller/drop_location_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
-import '../bottom_nav/bottom_nav.dart';
 import '../booking_ride/booking_ride.dart';
 import '../trip_history_controller/trip_history_controller.dart';
 
 class SelectDrop extends StatefulWidget {
   final bool? fromInventoryScreen;
-  const SelectDrop({super.key, this.fromInventoryScreen});
+  /// When `true`, back navigation should push to `BottomNavScreen` route.
+  /// When `false`, back navigation should push to `BookingRide` route.
+  final bool fromHomeScreen;
+
+  const SelectDrop({
+    super.key,
+    this.fromInventoryScreen,
+    this.fromHomeScreen = false,
+  });
 
   @override
   State<SelectDrop> createState() => _SelectDropState();
@@ -87,21 +94,28 @@ class _SelectDropState extends State<SelectDrop> {
     super.dispose();
   }
 
+  void _handleBack(BuildContext context) {
+    bookingRideController.selectedIndex.value = 0;
+
+    final shouldGoBottomNav = widget.fromHomeScreen;
+    // bookingRideController.fromHomePage.value = false;
+
+    // Always use push, per requirement.
+    Future.microtask(() {
+      if (!mounted) return;
+      GoRouter.of(context).push(
+        shouldGoBottomNav ? AppRoutes.bottomNav : AppRoutes.bookingRide,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
         if (didPop) return; // Already popped, nothing to do
-        
-        bookingRideController.selectedIndex.value = 0;
-        bookingRideController.fromHomePage.value = false;
-        
-        // Navigate back to bottomNav
-        Future.microtask(() {
-          if (!mounted) return;
-          GoRouter.of(context).push(AppRoutes.bookingRide);
-        });
+        _handleBack(context);
       },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
@@ -109,7 +123,11 @@ class _SelectDropState extends State<SelectDrop> {
         appBar: AppBar(
           elevation: 0,
           backgroundColor: AppColors.scaffoldBgPrimary1,
-          iconTheme: IconThemeData(color: AppColors.blue4),
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.blue4),
+            onPressed: () => _handleBack(context),
+          ),
           title: Text("Choose Drop", style: CommonFonts.appBarText),
           centerTitle: false,
         ),
@@ -194,6 +212,8 @@ class _SelectDropState extends State<SelectDrop> {
     // Update Rx variables
     bookingRideController.prefilledDrop.value = place.primaryText;
     dropPlaceSearchController.dropPlaceId.value = place.placeId;
+    // This flag is only relevant for SelectDrop back behaviour; clear it after use.
+    bookingRideController.fromHomePage.value = false;
 
     print('fromInventoryPage = ${widget.fromInventoryScreen}');
     FocusScope.of(context).unfocus();

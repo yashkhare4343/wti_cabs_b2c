@@ -58,11 +58,6 @@ void _showLoader(String message, BuildContext context) {
       );
     },
   );
-
-  // Fake delay to simulate loading
-  Future.delayed(const Duration(seconds: 3), () {
-    Navigator.pop(context); // Close loader
-  });
 }
 
 void _successLoader(
@@ -308,6 +303,8 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                         child: MainButton(
                             text: 'Cancel Booking',
                             onPressed: () async {
+                              if (selectedReason == null) return;
+
                               _showLoader('Please wait', context);
                               final Map<String, dynamic> requestData = {
                                 "id": booking["id"] ?? '',
@@ -322,32 +319,41 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                               };
                               debugPrint(
                                   'cancellation reservation request data : $requestData');
-                              await reservationCancellationController
+                              final bool isSuccess = await reservationCancellationController
                                   .verifyCancelReservation(
-                                      requestData: requestData,
-                                      context: context)
-                                  .then((value) {
-                                _successLoader(
-                                  'Booking Canceled Successfully',
-                                  context,
-                                  () {
-                                    // ✅ Navigate only after loader closes
-                                    Navigator.of(context).push(
-                                      Platform.isIOS
-                                          ? CupertinoPageRoute(
-                                              builder: (_) => BottomNavScreen(
-                                                initialIndex: 0,
-                                              ),
-                                            )
-                                          : MaterialPageRoute(
-                                              builder: (_) => BottomNavScreen(
-                                                initialIndex: 0,
-                                              ),
+                                requestData: requestData,
+                                context: context,
+                              );
+
+                              if (!context.mounted) return;
+
+                              // Close "Please wait" loader immediately once API finishes
+                              if (Navigator.of(context, rootNavigator: true).canPop()) {
+                                Navigator.of(context, rootNavigator: true).pop();
+                              }
+
+                              if (!isSuccess) return;
+
+                              _successLoader(
+                                'Booking Canceled Successfully',
+                                context,
+                                () {
+                                  // ✅ Navigate only after loader closes
+                                  Navigator.of(context).push(
+                                    Platform.isIOS
+                                        ? CupertinoPageRoute(
+                                            builder: (_) => BottomNavScreen(
+                                              initialIndex: 0,
                                             ),
-                                    );
-                                  },
-                                );
-                              });
+                                          )
+                                        : MaterialPageRoute(
+                                            builder: (_) => BottomNavScreen(
+                                              initialIndex: 0,
+                                            ),
+                                          ),
+                                  );
+                                },
+                              );
                             })),
                   ),
                 ],
