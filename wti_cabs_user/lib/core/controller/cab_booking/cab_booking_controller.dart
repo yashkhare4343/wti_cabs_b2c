@@ -1,7 +1,8 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
-import 'package:wti_cabs_user/common_widget/loader/full_screen_gif/full_screen_gif.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/india_cab_booking.dart';
 import 'package:wti_cabs_user/core/model/cab_booking/global_cab_booking.dart';
@@ -1021,10 +1022,39 @@ class CabBookingController extends GetxController {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const FullScreenGifLoader(),
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false,
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(
+                  color: Colors.white.withOpacity(0.12),
+                ),
+              ),
+              Center(
+                child: SizedBox(
+                  width: 35,
+                  height: 35,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF6A8ED5), // dark gray
+                    ),
+                  ),
+                ),
+              ),
+
+            ],
+          ),
+        ),
+      ),
     );
 
-    print('📤 Booking request: $requestData');
+    debugPrint('📤 Booking request: $requestData');
 
     try {
       if (country.toLowerCase() == 'india') {
