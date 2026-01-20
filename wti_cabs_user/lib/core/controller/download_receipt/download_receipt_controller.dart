@@ -4,13 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:wti_cabs_user/core/api/self_drive_api_services.dart';
 
 import '../../api/api_services.dart';
 
 class PdfDownloadController extends GetxController {
   var isDownloading = false.obs;
+
+  Future<Directory> _getPdfDirectory() async {
+    // App-scoped directory (no storage/media permissions needed).
+    final Directory baseDir = Platform.isAndroid
+        ? (await getExternalStorageDirectory() ??
+            await getApplicationDocumentsDirectory())
+        : await getApplicationDocumentsDirectory();
+
+    final pdfDir = Directory('${baseDir.path}/pdf');
+    if (!await pdfDir.exists()) {
+      await pdfDir.create(recursive: true);
+    }
+    return pdfDir;
+  }
 
 
 
@@ -20,20 +33,7 @@ class PdfDownloadController extends GetxController {
     isDownloading.value = true;
 
     try {
-      await _ensurePermissions(); // 🔑 Ask storage permission (for Android <=12)
-
-      Directory? dir;
-      if (Platform.isAndroid) {
-        if (await Directory("/storage/emulated/0/Download").exists()) {
-          dir = Directory(
-              "/storage/emulated/0/Download"); // Public Downloads folder
-        } else {
-          dir =
-          await getExternalStorageDirectory(); // App-specific storage (Android 11+)
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory(); // iOS/macOS
-      }
+      final dir = await _getPdfDirectory();
 
       final filePath = "${dir!.path}/receipt_$objectId.pdf";
       print('📂 Saving file to: $filePath');
@@ -75,24 +75,6 @@ class PdfDownloadController extends GetxController {
     }
   }
 
-  Future<void> _ensurePermissions() async {
-    if (!Platform.isAndroid) return;
-
-    // Android 13+ → use these new permissions
-    if (await Permission.photos.isDenied) {
-      await Permission.photos.request();
-    }
-
-    if (await Permission.videos.isDenied) {
-      await Permission.videos.request();
-    }
-
-    // Older Android (for writing to /storage/emulated/0/Download)
-    if (await Permission.storage.isDenied) {
-      await Permission.storage.request();
-    }
-  }
-
   Future<void> downloadChauffeurEInvoice({
     required BuildContext context,
     required String objectId,
@@ -102,19 +84,7 @@ class PdfDownloadController extends GetxController {
     print('🔗 Endpoint: $endpoint');
 
     try {
-      await _ensurePermissions();
-
-      Directory? dir;
-      if (Platform.isAndroid) {
-        // ✅ Prefer Downloads folder
-        if (await Directory("/storage/emulated/0/Download").exists()) {
-          dir = Directory("/storage/emulated/0/Download");
-        } else {
-          dir = await getExternalStorageDirectory();
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory();
-      }
+      final dir = await _getPdfDirectory();
 
       final filePath = "${dir!.path}/e_invoice_$objectId.pdf";
       print('📂 Target save path: $filePath');
@@ -159,19 +129,7 @@ class PdfDownloadController extends GetxController {
     print('🔗 Endpoint: $endpoint');
 
     try {
-      await _ensurePermissions();
-
-      Directory? dir;
-      if (Platform.isAndroid) {
-        // ✅ Prefer Downloads folder
-        if (await Directory("/storage/emulated/0/Download").exists()) {
-          dir = Directory("/storage/emulated/0/Download");
-        } else {
-          dir = await getExternalStorageDirectory();
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory();
-      }
+      final dir = await _getPdfDirectory();
 
       final filePath = "${dir!.path}/e_invoice_$objectId.pdf";
       print('📂 Target save path: $filePath');

@@ -583,24 +583,13 @@ class ApiService {
         await savePdfFile(response.bodyBytes, filePath);
 
         print("✅ PDF successfully saved at: $filePath");
-
-        // ✅ Close loader dialog (PopupLoader)
-        GoRouter.of(context).pop();
-
-        // ✅ Try to open the saved file
-        final result = await OpenFile.open(filePath);
-        print("📖 OpenFile result: ${result.message}");
       } else {
         throw Exception("Failed to download PDF. Status: ${response.statusCode}");
       }
     } catch (e) {
       print("❌ Error downloading PDF: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to download PDF. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Let callers decide how to handle UI (snackbar/dialog). Do not swallow failures.
+      rethrow;
     }
   }
 
