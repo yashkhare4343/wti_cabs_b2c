@@ -1296,6 +1296,7 @@ class _OutStationState extends State<OutStation> {
     return {
       // Used by InventoryList to decide whether to show the Trip Updated dialog.
       "applicationType": "APP",
+      "comingFrom": "searchInventory api 2nd page -APP",
       "inventoryEntryPoint": "booking_ride",
       "timeOffSet": -offset,
       "countryName": data['country'] ?? 'India',
@@ -2288,6 +2289,7 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
   return {
     // Used by InventoryList to decide whether to show the Trip Updated dialog.
     "applicationType": "APP",
+    "comingFrom": "searchInventory api 2nd page -APP",
     "inventoryEntryPoint": "booking_ride",
     "timeOffSet": -offset,
     "countryName": data['country'] ?? 'India',
@@ -3230,6 +3232,7 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
   return {
     // Used by InventoryList to decide whether to show the Trip Updated dialog.
     "applicationType": "APP",
+    "comingFrom": "searchInventory api 2nd page -APP",
     "inventoryEntryPoint": "booking_ride",
     "timeOffSet": -offset,
     "countryName": data['country'] ?? 'India',
