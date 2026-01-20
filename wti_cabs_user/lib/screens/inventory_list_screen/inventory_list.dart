@@ -1171,7 +1171,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                subtitle,
+                                defaultSubtitle,
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
