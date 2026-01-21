@@ -257,8 +257,10 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Always intercept back; we always route to InventoryList.
+      // iOS interactive swipe-back needs a real pop. Keep Android back routing intact.
+      canPop: Platform.isIOS,
       onPopInvoked: (didPop) {
+        if (didPop) return;
         // Always go back to InventoryList (even if user came from PaymentFailurePage).
         // IMPORTANT: this app uses GoRouter (page-based navigator). Avoid imperative Navigator APIs here.
         Future.microtask(() {
@@ -267,6 +269,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
           // We're returning FROM booking details, not entering inventory fresh from BookingRide.
           // This prevents InventoryList from showing the Trip Updated dialog on back navigation.
           req['inventoryEntryPoint'] = 'booking_details_final';
+          // Always use push (matches existing Android behavior).
           GoRouter.of(context).push(AppRoutes.inventoryList, extra: req);
         });
       },
@@ -3097,39 +3100,39 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
               ),
               const SizedBox(height: 12),
 
-              if (selectedCode != null && selectedCode.isNotEmpty) ...[
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF3F3F3),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          selectedCode,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF7B7B7B),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'Applied',
-                        style:  const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF7B7B7B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
+              // if (selectedCode != null && selectedCode.isNotEmpty) ...[
+              //   Container(
+              //     padding:
+              //     const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              //     decoration: BoxDecoration(
+              //       color: Color(0xFFF3F3F3),
+              //       borderRadius: BorderRadius.circular(14),
+              //     ),
+              //     child: Row(
+              //       children: [
+              //         Expanded(
+              //           child: Text(
+              //             selectedCode,
+              //             style: const TextStyle(
+              //               fontSize: 14,
+              //               fontWeight: FontWeight.w600,
+              //               color: Color(0xFF7B7B7B),
+              //             ),
+              //           ),
+              //         ),
+              //         Text(
+              //           'Applied',
+              //           style:  const TextStyle(
+              //             fontSize: 14,
+              //             fontWeight: FontWeight.w600,
+              //             color: Color(0xFF7B7B7B),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              //   const SizedBox(height: 12),
+              // ],
 
               if (isLoading) ...[
                 const Center(

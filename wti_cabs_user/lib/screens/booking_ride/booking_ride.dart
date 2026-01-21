@@ -29,6 +29,7 @@ import '../../core/controller/source_controller/source_controller.dart';
 import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
+import 'package:wti_cabs_user/main.dart' show navigatorKey;
 import '../inventory_list_screen/inventory_list.dart';
 import '../select_location/select_drop.dart';
 import 'package:location/location.dart' as location;
@@ -215,13 +216,39 @@ class _BookingRideState extends State<BookingRide> {
     });
   }
 
+  void _pushToBottomNav() {
+    final rootCtx = navigatorKey.currentContext;
+    if (rootCtx != null) {
+      GoRouter.of(rootCtx).push(AppRoutes.bottomNav);
+      return;
+    }
+    if (!mounted) return;
+    GoRouter.of(context).push(AppRoutes.bottomNav);
+  }
+
+  void _pushToBookingRideSelf() {
+    // Preserve the current tab, if any.
+    final tab = bookingRideController.currentTabName.trim();
+    final route = tab.isNotEmpty ? '${AppRoutes.bookingRide}?tab=$tab' : AppRoutes.bookingRide;
+
+    final rootCtx = navigatorKey.currentContext;
+    if (rootCtx != null) {
+      GoRouter.of(rootCtx).push(route);
+      return;
+    }
+    if (!mounted) return;
+    GoRouter.of(context).push(route);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // 🚀 Stops the default "pop and close app"
+      // Disable iOS interactive swipe-back gesture.
+      canPop: false,
       onPopInvoked: (didPop) {
-        // This will be called for hardware back and gesture
-        GoRouter.of(context).push(AppRoutes.bottomNav);
+        if (didPop) return;
+        // Always push BottomNav (no pop, no iOS swipe-back).
+        _pushToBottomNav();
       },
 
       child: Scaffold(
@@ -240,8 +267,8 @@ class _BookingRideState extends State<BookingRide> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // Navigate back to bottomNav
-                        GoRouter.of(context).push(AppRoutes.bottomNav);
+                        // Always use push (matches existing Android behavior).
+                        _pushToBottomNav();
                       },
                       child:
                           const Icon(Icons.arrow_back, color: AppColors.blue4),

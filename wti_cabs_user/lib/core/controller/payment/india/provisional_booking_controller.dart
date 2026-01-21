@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:wti_cabs_user/core/controller/currency_controller/currency_controller.dart';
+import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_controller.dart';
 import 'package:wti_cabs_user/core/model/apply_coupon/apply_coupon.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/core/services/storage_services.dart';
+import 'package:wti_cabs_user/main.dart' show navigatorKey;
 
 import '../../../../common_widget/loader/popup_loader.dart';
 import '../../../api/api_services.dart';
@@ -30,12 +32,39 @@ class IndiaPaymentController extends GetxController {
           ? Get.find<CabBookingController>()
           : Get.put(CabBookingController());
 
+  final SearchCabInventoryController searchCabInventoryController = Get.put(SearchCabInventoryController());
+
   Map<String, dynamic>? registeredUser;
   Map<String, dynamic>? provisionalBooking;
   Map<String, dynamic>? paymentVerification;
   RxString passengerId = ''.obs;
   final FetchReservationBookingData fetchReservationBookingData =
       Get.put(FetchReservationBookingData());
+
+  // Prevent a "double push" to PaymentFailure that can happen when multiple
+  // async callbacks (razorpay error + verification exception) try to navigate.
+  bool _didNavigateToPaymentFailure = false;
+
+  void _resetPaymentFailureGuard() {
+    _didNavigateToPaymentFailure = false;
+  }
+
+  void _pushPaymentFailureOnce() {
+    if (_didNavigateToPaymentFailure) return;
+    _didNavigateToPaymentFailure = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = navigatorKey.currentContext ?? _currentContext;
+      try {
+        GoRouter.of(ctx).push(
+          AppRoutes.paymentFailure,
+          extra: lastProvisionalRequest,
+        );
+      } catch (_) {
+        // If ctx is stale/unmounted, ignore; guard prevents navigation loops.
+      }
+    });
+  }
 
   String? _safeTrim(dynamic v) => v == null ? null : v.toString().trim();
 
@@ -81,36 +110,27 @@ class IndiaPaymentController extends GetxController {
         "bankName": "",
         "userType": "CUSTOMER",
         "bookingDateTime": bookingDateTime,
-        "tripType": null,
+        "tripType":
+        int.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode??''),
         "vehicleType": vehicleType,
       };
 
-      final res = await http.post(
-        Uri.parse('${ApiService().baseUrl}/couponCodes/couponFinalValidation'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic aGFyc2g6MTIz',
-          'X-Platform': 'APP',
-        },
-        body: jsonEncode(payload),
+      // Use shared API helper so headers/auth/platform are centralized.
+      // Also: preserve backend-provided message/errorCode even when status != 200.
+      final res = await ApiService().postRequestWithStatus(
+        endpoint: 'couponCodes/couponFinalValidation',
+        data: payload,
       );
 
-      if (res.statusCode != 200) {
-        return ApplyCouponResponse(
-          message: 'Unable to validate coupon. Please try again.',
-          discountAmount: 0,
-          newTotalAmount: cabBookingController.totalFare,
-          errorCode: 1,
-        );
+      final body = res['body'];
+      if (body is Map<String, dynamic>) {
+        return ApplyCouponResponse.fromJson(body);
       }
+      if (body is Map) {
+        return ApplyCouponResponse.fromJson(Map<String, dynamic>.from(body));
+      }
+      debugPrint('yash coupon final validation: $payload');
 
-      final decoded = jsonDecode(res.body);
-      if (decoded is Map<String, dynamic>) {
-        return ApplyCouponResponse.fromJson(decoded);
-      }
-      if (decoded is Map) {
-        return ApplyCouponResponse.fromJson(Map<String, dynamic>.from(decoded));
-      }
       return ApplyCouponResponse(
         message: 'Unable to validate coupon. Please try again.',
         discountAmount: 0,
@@ -189,6 +209,7 @@ class IndiaPaymentController extends GetxController {
     required BuildContext context,
   }) async {
     _currentContext = context; // ✅ Save context early
+    _resetPaymentFailureGuard();
 
     isLoading.value = true;
     try {
@@ -263,6 +284,7 @@ class IndiaPaymentController extends GetxController {
     required BuildContext context,
     required String passengerId,
   }) async {
+    _resetPaymentFailureGuard();
     isLoading.value = true;
     try {
       requestData['reservation']['passenger'] = passengerId;
@@ -379,14 +401,13 @@ class IndiaPaymentController extends GetxController {
   void _handlePaymentError(PaymentFailureResponse response) async {
     print("❌ Payment Error: ${response.code} - ${response.message}");
     fetchReservationBookingData.fetchReservationData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      GoRouter.of(_currentContext).push(
-        AppRoutes.paymentFailure,
-        extra: lastProvisionalRequest, // ✅ Pass request data
-      );
-    });
+    _pushPaymentFailureOnce();
 
-    GoRouter.of(_currentContext).pop();
+    // Best-effort pop to close any loader/dialog route.
+    try {
+      final router = GoRouter.of(navigatorKey.currentContext ?? _currentContext);
+      if (router.canPop()) router.pop();
+    } catch (_) {}
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
@@ -397,6 +418,7 @@ class IndiaPaymentController extends GetxController {
 
   // ✅ FIXED: context taken from _currentContext
   Future<void> verifyPaymentStatus(Map<String, dynamic> requestData) async {
+    _resetPaymentFailureGuard();
     isLoading.value = true;
     try {
       print("📤 Verifying payment with: $requestData");
@@ -418,13 +440,12 @@ class IndiaPaymentController extends GetxController {
       }
     } catch (e) {
       print("❌ Verification exception: $e");
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        GoRouter.of(_currentContext).push(
-          AppRoutes.paymentFailure,
-          extra: lastProvisionalRequest, // ✅ Pass request data (new payload)
-        );
-      });
-      GoRouter.of(_currentContext).pop();
+      _pushPaymentFailureOnce();
+      // Best-effort pop to close any loader/dialog route.
+      try {
+        final router = GoRouter.of(navigatorKey.currentContext ?? _currentContext);
+        if (router.canPop()) router.pop();
+      } catch (_) {}
     } finally {
       isLoading.value = false;
     }

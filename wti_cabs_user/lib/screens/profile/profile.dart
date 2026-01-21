@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -520,15 +521,18 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
+    // iOS interactive swipe-back needs a real pop.
+    final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return PopScope(
-      canPop: false, // 🚀 Stops the default "pop and close app"
+      // Allow iOS swipe-back; keep Android back routing intact.
+      canPop: isIOS,
       onPopInvoked: (didPop) {
-        // This will be called for hardware back and gesture
-        if(widget.fromSelfDrive == true){
-          GoRouter.of(context).go(AppRoutes.selfDriveBottomSheet);
-        }
-        else{
-          GoRouter.of(context).go(AppRoutes.bottomNav);
+        if (didPop) return;
+        // Android back should route to the appropriate home.
+        if (widget.fromSelfDrive == true) {
+          GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
+        } else {
+          GoRouter.of(context).push(AppRoutes.bottomNav);
         }
       },
       child: Scaffold(
@@ -543,7 +547,12 @@ class _ProfileState extends State<Profile> {
               size: 20,
             ),
             onPressed: () {
-              GoRouter.of(context).go(AppRoutes.bottomNav);
+              // Always use push (matches existing Android behavior).
+              if (widget.fromSelfDrive == true) {
+                GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
+              } else {
+                GoRouter.of(context).push(AppRoutes.bottomNav);
+              }
               setState(() {
                 isEdit = false;
               });

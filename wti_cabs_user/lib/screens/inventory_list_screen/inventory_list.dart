@@ -22,6 +22,7 @@ import 'package:wti_cabs_user/core/controller/inventory/search_cab_inventory_con
 import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
 import 'package:wti_cabs_user/core/model/inventory/global_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/main.dart' show navigatorKey;
 import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
 import 'package:wti_cabs_user/screens/map_picker/map_picker.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
@@ -395,6 +396,17 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     return v == 'booking_ride';
   }
 
+  /// When InventoryList is reached from payment flow screens, the previous route
+  /// in the stack is often `PaymentFailurePage` or `BookingDetailsFinal`.
+  /// Allowing an iOS interactive pop would land back on those pages, which is
+  /// not desired. In that case we intercept back/swipe and push to BookingRide.
+  bool get _isFromPaymentFlow {
+    final v = widget.requestData['inventoryEntryPoint'];
+    return v == 'payment_failure' || v == 'booking_details_final';
+  }
+
+  bool get _allowIosInteractivePop => Platform.isIOS && !_isFromPaymentFlow;
+
   /// Check for trip code changes and show dialog if needed
   Future<void> loadTripCode(BuildContext context) async {
     final current =
@@ -469,7 +481,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     } catch (e) {
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 300));
-        Navigator.pop(context);
+        // If inventory fetch fails, route back to BookingRide without popping.
+        _pushToBookingRide();
       }
     }
   }
@@ -480,30 +493,40 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
   final CurrencyController currencyController = Get.find<CurrencyController>();
 
+  void _pushToBookingRide([String? route]) {
+    final target = route ?? AppRoutes.bookingRide;
+
+    // Prefer pushing via the app's root navigator key, to avoid nested navigator
+    // contexts where `GoRouter.of(context)` may not target the root stack.
+    final rootCtx = navigatorKey.currentContext;
+    if (rootCtx != null) {
+      GoRouter.of(rootCtx).push(target);
+      return;
+    }
+
+    if (!mounted) return;
+    GoRouter.of(context).push(target);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return PopScope(
-        canPop: false,
+        // Always intercept back and route to BookingRide (no .pop()).
+        // Enable iOS interactive swipe-back.
+        canPop: _allowIosInteractivePop,
         onPopInvoked: (didPop) {
           if (didPop) return; // Already popped, nothing to do
-          
-          // Close any open popups/dialogs first
-          final navigator = Navigator.of(context);
-          int popAttempts = 0;
-          while (navigator.canPop() && popAttempts < 3) {
-            navigator.pop();
-            popAttempts++;
-          }
-          
+          if (Platform.isIOS && _allowIosInteractivePop) return;
+
           bookingRideController.selectedIndex.value = 0;
           bookingRideController.isInventoryPage.value = false;
           
           // Navigate back - use microtask for immediate execution
           Future.microtask(() {
             if (!mounted) return;
-            // InventoryList >>> back to >>> BookingRide (always, using push)
-            GoRouter.of(context).push(AppRoutes.bookingRide);
+            // InventoryList >>> back to >>> BookingRide (always push)
+            _pushToBookingRide();
           });
         },
         child: Scaffold(
@@ -521,18 +544,13 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
         (isIndia && indiaData == null) ||
         (!isIndia && globalData == null)) {
       return PopScope(
-        canPop: false,
+        // Always intercept back and route to BookingRide (no .pop()).
+        // Enable iOS interactive swipe-back.
+        canPop: _allowIosInteractivePop,
         onPopInvoked: (didPop) {
           if (didPop) return; // Already popped, nothing to do
-          
-          // Close any open popups/dialogs first
-          final navigator = Navigator.of(context);
-          int popAttempts = 0;
-          while (navigator.canPop() && popAttempts < 3) {
-            navigator.pop();
-            popAttempts++;
-          }
-          
+          if (Platform.isIOS && _allowIosInteractivePop) return;
+
           bookingRideController.selectedIndex.value = 0;
           bookingRideController.isInventoryPage.value = false;
           
@@ -566,8 +584,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                   '';
             }
 
-            // InventoryList >>> back to >>> BookingRide (always, using push)
-            GoRouter.of(context).push(AppRoutes.bookingRide);
+            // InventoryList >>> back to >>> BookingRide (always push)
+            _pushToBookingRide();
           });
         },
         child: Scaffold(
@@ -580,28 +598,21 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     final globalList = globalData?.result ?? [];
 
     return PopScope(
-      canPop: false,
+      // Always intercept back and route to BookingRide (no .pop()).
+      // Enable iOS interactive swipe-back.
+      canPop: _allowIosInteractivePop,
       onPopInvoked: (didPop) {
         if (didPop) return; // Already popped, nothing to do
-        
-        // Close any open popups/dialogs first
-        // Pop Navigator routes (popups are pushed with Navigator.push)
-        final navigator = Navigator.of(context);
-        // Pop up to 3 times to close any open popups/dialogs
-        int popAttempts = 0;
-        while (navigator.canPop() && popAttempts < 3) {
-          navigator.pop();
-          popAttempts++;
-        }
-        
+        if (Platform.isIOS && _allowIosInteractivePop) return;
+
         bookingRideController.selectedIndex.value = 0;
         bookingRideController.isInventoryPage.value = false;
         
         // Navigate back - use microtask for immediate execution
         Future.microtask(() {
           if (!mounted) return;
-          // InventoryList >>> back to >>> BookingRide (always, using push)
-          GoRouter.of(context).push(AppRoutes.bookingRide);
+          // InventoryList >>> back to >>> BookingRide (always push)
+          _pushToBookingRide();
         });
       },
       child: Scaffold(
@@ -1317,29 +1328,12 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
         };
         // Global flow doesn't carry an inventory-provided coupon; ensure we don't reuse a stale one.
         cabBookingController.clearPreselectedCoupon();
-        cabBookingController
-            .fetchBookingData(
-            country: country ?? '',
-            requestData: requestData,
-            context: context)
-            .then((value) {
-          Navigator.push(
-            context,
-            Platform.isIOS
-                ? CupertinoPageRoute(
-              builder: (context) => BookingDetailsFinal(
-                totalKms: tripDetails.totalDistance ?? 0.0,
-                endTime: tripDetails.dropDateTime,
-              ),
-            )
-                : MaterialPageRoute(
-              builder: (context) => BookingDetailsFinal(
-                totalKms: tripDetails.totalDistance ?? 0.0,
-                endTime: tripDetails.dropDateTime,
-              ),
-            ),
-          );
-        });
+        // `fetchBookingData` handles navigation to BookingDetailsFinal via GoRouter.push().
+        cabBookingController.fetchBookingData(
+          country: country ?? '',
+          requestData: requestData,
+          context: context,
+        );
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: 0.0),

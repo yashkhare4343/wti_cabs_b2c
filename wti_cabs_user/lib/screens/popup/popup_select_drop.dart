@@ -163,10 +163,12 @@ class _PopupSelectDropState extends State<PopupSelectDrop> {
         if (GoRouter.of(context).canPop()) {
           GoRouter.of(context).pop();
         } else {
-          GoRouter.of(context).go(AppRoutes.bookingRide);
+          // Always use push to preserve back stack.
+          GoRouter.of(context).push(AppRoutes.bookingRide);
         }
       } else {
-        GoRouter.of(context).go(AppRoutes.bookingRide);
+        // Always use push to preserve back stack.
+        GoRouter.of(context).push(AppRoutes.bookingRide);
       }
     });
 

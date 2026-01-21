@@ -9,7 +9,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
-import 'package:wti_cabs_user/screens/booking_details_final/booking_details_final.dart';
+import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 
 import '../../core/controller/currency_controller/currency_controller.dart';
 
@@ -212,14 +212,28 @@ class _PaymentFailurePageState extends State<PaymentFailurePage> {
                       child: MainButton(
                         text: 'Retry Payment',
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => BookingDetailsFinal(
-                                fromPaymentFailure: true,
-                              ), // replace with your screen
-                            ),
-                          );                        },
+                          // IMPORTANT (iOS back-swipe): ensure InventoryList is directly below BookingDetailsFinal
+                          // so the interactive pop gesture always lands on InventoryList (not PaymentFailurePage).
+                          final bookingRideController =
+                              Get.isRegistered<BookingRideController>()
+                                  ? Get.find<BookingRideController>()
+                                  : Get.put(BookingRideController());
+
+                          final req = Map<String, dynamic>.from(
+                              bookingRideController.requestData);
+                          // Prevent "Trip updated" dialogs on back stack rebuilds.
+                          req['inventoryEntryPoint'] = 'payment_failure';
+
+                          // Always use GoRouter.push() as requested.
+                          GoRouter.of(context)
+                              .push(AppRoutes.inventoryList, extra: req);
+                          GoRouter.of(context).push(
+                            AppRoutes.bookingDetailsFinal,
+                            extra: <String, dynamic>{
+                              'fromPaymentFailure': true,
+                            },
+                          );
+                        },
                       ),
                     )
                   ],

@@ -115,7 +115,37 @@ class AppPages {
     ),
     GoRoute(
       path: AppRoutes.bookingDetailsFinal,
-      pageBuilder: (context, state) => _platformPage(BookingDetailsFinal()),
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        bool? fromPaymentFailure;
+        num? totalKms;
+        String? endTime;
+        String? preselectedCouponId;
+        String? preselectedCouponCode;
+        num? preselectedDiscountedCoupon;
+
+        if (extra is Map) {
+          final map = Map<String, dynamic>.from(extra as Map);
+          fromPaymentFailure = map['fromPaymentFailure'] == true;
+          totalKms = map['totalKms'] is num ? map['totalKms'] as num : null;
+          endTime = map['endTime']?.toString();
+          preselectedCouponId = map['preselectedCouponId']?.toString();
+          preselectedCouponCode = map['preselectedCouponCode']?.toString();
+          final dc = map['preselectedDiscountedCoupon'];
+          preselectedDiscountedCoupon = dc is num ? dc : null;
+        }
+
+        return _platformPage(
+          BookingDetailsFinal(
+            totalKms: totalKms,
+            endTime: endTime,
+            fromPaymentFailure: fromPaymentFailure,
+            preselectedCouponId: preselectedCouponId,
+            preselectedCouponCode: preselectedCouponCode,
+            preselectedDiscountedCoupon: preselectedDiscountedCoupon,
+          ),
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.paymentSuccess,

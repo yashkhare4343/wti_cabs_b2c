@@ -206,20 +206,18 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     final booking = widget.booking;
 
     return PopScope(
-      canPop: true, // 🚀 Stops the default "pop and close app"
+      // iOS interactive swipe-back needs a real pop. Keep Android back routing intact.
+      canPop: Platform.isIOS,
       onPopInvoked: (didPop) {
-        // This will be called for hardware back and gesture
+        if (didPop) return;
+        // Always use push (matches existing Android behavior).
         Navigator.of(context).push(
           Platform.isIOS
               ? CupertinoPageRoute(
-                  builder: (_) => BottomNavScreen(
-                    initialIndex: 1,
-                  ),
+                  builder: (_) => const BottomNavScreen(initialIndex: 1),
                 )
               : MaterialPageRoute(
-                  builder: (_) => BottomNavScreen(
-                    initialIndex: 1,
-                  ),
+                  builder: (_) => const BottomNavScreen(initialIndex: 1),
                 ),
         );
       },
@@ -235,17 +233,14 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           backgroundColor: Colors.white,
           leading: GestureDetector(
             onTap: () {
+              // Always use push (matches existing Android behavior).
               Navigator.of(context).push(
                 Platform.isIOS
                     ? CupertinoPageRoute(
-                        builder: (_) => BottomNavScreen(
-                          initialIndex: 1,
-                        ),
+                        builder: (_) => const BottomNavScreen(initialIndex: 1),
                       )
                     : MaterialPageRoute(
-                        builder: (_) => BottomNavScreen(
-                          initialIndex: 1,
-                        ),
+                        builder: (_) => const BottomNavScreen(initialIndex: 1),
                       ),
               );
             },
