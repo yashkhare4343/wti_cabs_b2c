@@ -1219,12 +1219,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                 final pickupOtpStr = pickupOtpRaw?.toString().trim() ?? "0";
                                 final dropOtpStr = dropOtpRaw?.toString().trim() ?? "0";
                                 
-                                // Get bStatus from driver details
-                                final bStatus = driverDetails?.bStatus ?? false;
-                                // Note: BookingStatus will come from tracking response as a string
-                                // We pass empty string here, tracking response will provide the actual value
-                                final bookingStatusStr = '';
-                                
                                 GoRouter.of(context).push(
                                   AppRoutes.cprCabTracking,
                                   extra: {
@@ -1235,8 +1229,6 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                     'driverMobile': driverDetails?.mobile ?? '',
                                     'bookingNo': _currentBooking.bookingNo ?? _currentBooking.bookingId?.toString() ?? '',
                                     'cabRequiredOn': _currentBooking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
-                                    'bStatus': bStatus,
-                                    'bookingStatus': bookingStatusStr,
                                     'pickupOtp': pickupOtpStr,
                                     'dropOtp': dropOtpStr,
                                   },

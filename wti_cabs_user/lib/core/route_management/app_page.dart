@@ -443,9 +443,6 @@ class AppPages {
         final extra = state.extra;
         String bookingId = '';
         Map<String, String>? bookingDetails;
-        
-        bool? bStatus;
-        String? bookingStatus;
         String? pickupOtp;
         String? dropOtp;
         
@@ -461,9 +458,6 @@ class AppPages {
             'bookingNo': extra['bookingNo']?.toString() ?? '',
             'cabRequiredOn': extra['cabRequiredOn']?.toString() ?? '',
           };
-          // Extract new parameters
-          bStatus = extra['bStatus'] as bool?;
-          bookingStatus = extra['bookingStatus']?.toString();
           pickupOtp = extra['pickupOtp']?.toString();
           dropOtp = extra['dropOtp']?.toString();
         } else {
@@ -474,8 +468,6 @@ class AppPages {
           CrpCabTrackingScreen(
             bookingId: bookingId,
             bookingDetails: bookingDetails,
-            bStatus: bStatus,
-            bookingStatus: bookingStatus,
             pickupOtp: pickupOtp,
             dropOtp: dropOtp,
           ),

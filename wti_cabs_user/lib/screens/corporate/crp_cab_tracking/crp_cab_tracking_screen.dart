@@ -15,17 +15,13 @@ import '../../../core/model/corporate/crp_cab_tracking/crp_cab_tracking_response
 class CrpCabTrackingScreen extends StatefulWidget {
   final String bookingId;
   final Map<String, String>? bookingDetails;
-  final bool? bStatus;
-  final String? bookingStatus;
   final String? pickupOtp;
   final String? dropOtp;
 
   const CrpCabTrackingScreen({
     super.key,
-    required this.bookingId,
+    this.bookingId = '',
     this.bookingDetails,
-    this.bStatus,
-    this.bookingStatus,
     this.pickupOtp,
     this.dropOtp,
   });
@@ -247,69 +243,69 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              'Arriving in',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFA5A5A5),
-                                fontFamily: 'Montserrat',
+                      Obx(() {
+                        final status = (_controller
+                                .trackingResponse.value?.bookingStatus ??
+                            '')
+                            .toLowerCase()
+                            .trim();
+                        final shouldShow = status == 'start' || status == 'pick';
+                        if (!shouldShow) return const SizedBox.shrink();
+
+                        // Calculate arrival time from tracking response
+                        final response = _controller.trackingResponse.value;
+                        String arrivalText = 'NAN';
+
+                        // Show ETA only from API (null-safe), else show NAN
+                        if (response != null) {
+                          final eta = response.eta;
+                          final etaMinutes = eta?.toDouble();
+                          if (etaMinutes != null &&
+                              etaMinutes.isFinite &&
+                              etaMinutes > 0 &&
+                              etaMinutes < 1000) {
+                            final etaText = (etaMinutes % 1 == 0)
+                                ? etaMinutes.toInt().toString()
+                                : etaMinutes.toStringAsFixed(1);
+                            arrivalText = '$etaText Mins';
+                          }
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'Arriving in',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFA5A5A5),
+                                  fontFamily: 'Montserrat',
+                                ),
                               ),
-                            ),
-                            Obx(() {
-                              // Calculate arrival time from tracking response
-                              final response = _controller.trackingResponse.value;
-                              String arrivalText = '15 Mins';
-                              
-                              // Calculate estimated time based on distance if we have coordinates
-                              if (response != null) {
-                                final cabLat = response.cabLatitude;
-                                final cabLng = response.cabLongitude;
-                                final pickupLat = response.pickupLatitude;
-                                final pickupLng = response.pickupLongitude;
-                                
-                                if (cabLat != null && cabLng != null && 
-                                    pickupLat != null && pickupLng != null) {
-                                  // Calculate distance in km
-                                  final distance = _calculateDistance(
-                                    cabLat, cabLng, 
-                                    pickupLat, pickupLng
-                                  );
-                                  
-                                  // Estimate time: assume average speed of 30 km/h
-                                  // Time in minutes = (distance / 30) * 60
-                                  final estimatedMinutes = (distance / 30 * 60).round();
-                                  if (estimatedMinutes > 0 && estimatedMinutes < 120) {
-                                    arrivalText = '$estimatedMinutes Mins';
-                                  }
-                                }
-                              }
-                              
-                              return Text(
+                              Text(
                                 arrivalText,
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4F4F4F), // Dark gray instead of blue
+                                  color: Color(
+                                      0xFF4F4F4F), // Dark gray instead of blue
                                   fontFamily: 'Montserrat',
                                 ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                       // Booking Information - below arrival time badge, on the right
                       if (bookingNo.isNotEmpty || formattedDate.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -350,8 +346,12 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
               Obx(() {
                 // Get current status from tracking response or use passed parameters
                 final response = _controller.trackingResponse.value;
-                final currentBStatus = response?.bStatus ?? widget.bStatus ?? false;
-                final currentBookingStatus = (response?.bookingStatus ?? widget.bookingStatus ?? '').toLowerCase().trim();
+                final currentBStatus = response?.bStatus ?? false;
+                final currentBookingStatus = (response?.bookingStatus ?? '').toLowerCase().trim();
+                // BookingStatus shown should be from API/controller only
+                final bookingStatusText = (_controller.trackingResponse.value?.bookingStatus ?? '').trim().isEmpty
+                    ? 'NAN'
+                    : (_controller.trackingResponse.value?.bookingStatus ?? '').trim();
                 
                 // Get OTP values
                 final pickupOtpRaw = widget.pickupOtp ?? '0';
@@ -373,86 +373,129 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                     currentBookingStatus == 'drop' && 
                     dropOtpInt > 0;
                 
-                if (showStartOtp || showDropOtp) {
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Container(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Start OTP Section
+                          Expanded(
+                            child: showStartOtp
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Start OTP',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF7B7B7B),
+                                          fontFamily: 'Montserrat',
+                                        ),
+                                      ),
+                                      Text(
+                                        pickupOtpStr,
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF7CC521),
+                                          fontFamily: 'Montserrat',
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          const SizedBox(width: 12),
+                          // Drop OTP Section
+                          Expanded(
+                            child: showDropOtp
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      const Text(
+                                        'End OTP',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF7B7B7B),
+                                          fontFamily: 'Montserrat',
+                                        ),
+                                      ),
+                                      Text(
+                                        dropOtpStr,
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFFF8935),
+                                          fontFamily: 'Montserrat',
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Booking Status (from API) - always visible
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Start OTP Section
-                              showStartOtp ? Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Start OTP',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF7B7B7B),
-                                        fontFamily: 'Montserrat',
-                                      ),
-                                    ),
-                                    Text(
-                                      pickupOtpStr,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF7CC521),
-                                        fontFamily: 'Montserrat',
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                  ],
+                              const Text(
+                                'Ride Status',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF7B7B7B),
+                                  fontFamily: 'Montserrat',
                                 ),
-                              ) : const SizedBox.shrink(),
-                              // Horizontal Line
-                              if (showStartOtp && showDropOtp)
-                                Container(
-                                  width: MediaQuery.of(context).size.width * 0.2,
-                                  height: 1,
-                                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                                  color: const Color(0xFFC1C1C1),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                              // Drop OTP Section
-                              showDropOtp ? Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Text(
-                                      'End OTP',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF7B7B7B),
-                                        fontFamily: 'Montserrat',
-                                      ),
-                                    ),
-                                    Text(
-                                      dropOtpStr,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFFF8935),
-                                        fontFamily: 'Montserrat',
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                  ],
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE7F0FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFB9D3FF),
+                                  ),
                                 ),
-                              ) : const SizedBox.shrink(),
+                                child: Text(
+                                  bookingStatusText,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF002CC0),
+                                    fontFamily: 'Montserrat',
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }
-                return const SizedBox.shrink();
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                );
               }),
               // Chauffeur Details Bar
               Container(
@@ -723,8 +766,10 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
       body: Obx(() {
         // Get current status from tracking response or use passed parameters
         final response = _controller.trackingResponse.value;
-        final currentBStatus = response?.bStatus ?? widget.bStatus ?? false;
-        final currentBookingStatus = (response?.bookingStatus ?? widget.bookingStatus ?? '').toLowerCase().trim();
+        // Use API response only (no widget fallbacks)
+        final currentBStatus = response?.bStatus ?? false;
+        final currentBookingStatus =
+            (response?.bookingStatus ?? '').toLowerCase().trim();
 
         // Show loader until first successful response
         if (_controller.isLoading.value &&
@@ -774,6 +819,45 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                       fontFamily: 'Montserrat',
                     ),
                   ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // If bStatus is false, never show tracking/map UI
+        if (!currentBStatus) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset('assets/images/no_tracking.png', width: 248, height: 223,),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Live Cab tracking is currently \n unavailable for this booking',
+                      maxLines: 2,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF192653),
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  response?.sMessage ?? '',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontFamily: 'Montserrat',
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

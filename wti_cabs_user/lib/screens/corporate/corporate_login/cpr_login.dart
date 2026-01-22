@@ -20,6 +20,7 @@ class CprLogin extends StatefulWidget {
 
 class _CprLoginState extends State<CprLogin> {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  bool _isSignInEnabled = false;
 
   Future<void> _restorePreviousSession() async {
     // Prefill email so users don't have to re-enter after relaunch
@@ -140,6 +141,9 @@ class _CprLoginState extends State<CprLogin> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    emailController.addListener(_recomputeSignInEnabled);
+    passwordController.addListener(_recomputeSignInEnabled);
+    _recomputeSignInEnabled();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _restorePreviousSession();
       // _showBottomSheet();
@@ -148,6 +152,23 @@ class _CprLoginState extends State<CprLogin> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  void _recomputeSignInEnabled() {
+    final nextEnabled = emailController.text.trim().isNotEmpty &&
+        passwordController.text.trim().isNotEmpty;
+    if (nextEnabled != _isSignInEnabled && mounted) {
+      setState(() => _isSignInEnabled = nextEnabled);
+    }
+  }
+
+  @override
+  void dispose() {
+    emailController.removeListener(_recomputeSignInEnabled);
+    passwordController.removeListener(_recomputeSignInEnabled);
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
 
   @override
@@ -289,12 +310,18 @@ class _CprLoginState extends State<CprLogin> {
                              style: ElevatedButton.styleFrom(
                                elevation: 0, // no default Material shadow
                                backgroundColor: const Color(0xFF2563EB), // change if needed
+                               disabledBackgroundColor:
+                                   const Color(0xFF2563EB).withOpacity(0.5),
+                               disabledForegroundColor: Colors.white.withOpacity(0.9),
                                shape: RoundedRectangleBorder(
                                  borderRadius: BorderRadius.circular(39),
                                ),
                                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                              ),
-                             onPressed: () async{
+                             onPressed: (!_isSignInEnabled ||
+                                     loginInfoController.isLoading.value)
+                                 ? null
+                                 : () async {
                                FocusScope.of(context).unfocus();
                                // your sign in action
                                final Map<String, dynamic> params = {

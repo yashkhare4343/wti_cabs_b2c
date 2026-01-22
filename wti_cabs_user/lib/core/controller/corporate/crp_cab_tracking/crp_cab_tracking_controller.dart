@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_cab_tracking/crp_cab_tracking_response.dart';
+import 'package:wti_cabs_user/core/services/storage_services.dart';
 
 class CrpCabTrackingController extends GetxController {
   final CprApiService _apiService = CprApiService();
@@ -66,10 +67,23 @@ class CrpCabTrackingController extends GetxController {
       if (trackingResponse.value == null) {
         isLoading.value = true;
       }
-      
-      final response = await _apiService.getRequest(
-        'CabTracking?BookingID=$_bookingId',
-      );
+
+      // Cab tracking API expects `user` and `token` in query payload as well.
+      final token = await StorageServices.instance.read('crpKey');
+      final userEmail = await StorageServices.instance.read('email');
+
+      final params = <String, String>{
+        'BookingID': _bookingId!,
+        if (token != null && token.isNotEmpty && token != 'null') 'token': token,
+        if (userEmail != null && userEmail.isNotEmpty && userEmail != 'null')
+          'user': userEmail,
+      };
+
+      final endpoint = Uri.parse('CabTrackingV1')
+          .replace(queryParameters: params)
+          .toString();
+
+      final response = await _apiService.getRequest(endpoint);
       
       final trackingData = CrpCabTrackingResponse.fromJson(response);
       trackingResponse.value = trackingData;
@@ -101,7 +115,7 @@ class CrpCabTrackingController extends GetxController {
     _pollingTimer = Timer.periodic(
       const Duration(seconds: 5),
       (timer) async {
-        // Only poll if ride is still active
+        // Keep polling while tracking is active; fetchTrackingData will stopPolling on completion
         if (trackingResponse.value?.isRideActive == true) {
           await fetchTrackingData();
         } else {

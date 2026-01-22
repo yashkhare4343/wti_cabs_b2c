@@ -9,6 +9,7 @@ class CrpCabTrackingResponse {
   final String? frmLng;
   final String? toLat;
   final String? toLng;
+  final num? eta;
 
   CrpCabTrackingResponse({
     this.bStatus,
@@ -21,12 +22,37 @@ class CrpCabTrackingResponse {
     this.frmLng,
     this.toLat,
     this.toLng,
+    this.eta,
   });
+
+  static num? _parseNum(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
+  }
+
+  static bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) {
+      if (value == 1) return true;
+      if (value == 0) return false;
+      return null;
+    }
+    if (value is String) {
+      final v = value.toLowerCase().trim();
+      if (v == 'true' || v == '1' || v == 'yes' || v == 'y') return true;
+      if (v == 'false' || v == '0' || v == 'no' || v == 'n') return false;
+      return null;
+    }
+    return null;
+  }
 
   /// Factory: Convert JSON → Model
   factory CrpCabTrackingResponse.fromJson(Map<String, dynamic> json) {
     return CrpCabTrackingResponse(
-      bStatus: json['bStatus'] as bool?,
+      bStatus: _parseBool(json['bStatus']),
       sMessage: json['sMessage'] as String?,
       bookingID: json['BookingID'] as int?,
       bookingStatus: json['BookingStatus'] as String?,
@@ -36,6 +62,7 @@ class CrpCabTrackingResponse {
       frmLng: json['FrmLng'] as String?,
       toLat: json['ToLat'] as String?,
       toLng: json['ToLng'] as String?,
+      eta: _parseNum(json['ETA']),
     );
   }
 
@@ -52,6 +79,7 @@ class CrpCabTrackingResponse {
       'FrmLng': frmLng,
       'ToLat': toLat,
       'ToLng': toLng,
+      'ETA': eta,
     };
   }
 
@@ -88,9 +116,11 @@ class CrpCabTrackingResponse {
 
   /// Check if ride is active (should show tracking)
   bool get isRideActive {
-    return bStatus == true && 
-           bookingStatus != null && 
-           bookingStatus!.toLowerCase() == 'start';
+    if (bStatus != true) return false;
+    final status = bookingStatus?.toLowerCase().trim();
+    if (status == null || status.isEmpty) return true;
+    // Treat everything except "close" as active for polling/tracking updates
+    return status != 'close';
   }
 
   /// Check if ride is completed
