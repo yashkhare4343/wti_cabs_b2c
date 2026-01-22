@@ -54,16 +54,61 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   /// Get effective status for a booking
   /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), return "Completed"
   String _getEffectiveStatus() {
-    final status = _currentBooking.status;
+    return _getEffectiveStatusFrom(
+      status: _currentBooking.status,
+      currentDispatchStatusId: _currentBooking.currentDispatchStatusId,
+    );
+  }
+
+  String _getEffectiveStatusFrom({
+    required String? status,
+    required int? currentDispatchStatusId,
+  }) {
     if (status == null || status.isEmpty) return status ?? 'Pending';
     
     final normalizedStatus = status.trim().toLowerCase();
     // If status is "Dispatched" and currentDispatchStatusId is 6 (Close), treat as "Completed"
-    if (normalizedStatus == 'dispatched' && _currentBooking.currentDispatchStatusId == 6) {
+    if ((normalizedStatus == 'dispatched' || normalizedStatus == '2') &&
+        currentDispatchStatusId == 6) {
       return 'Completed';
     }
     
     return status;
+  }
+
+  /// Sync local `_currentBooking.status` from latest booking-detail API.
+  /// This ensures the status badge (which reads `_currentBooking.status`) updates after refresh.
+  void _syncCurrentBookingStatusFromDetailsResponse() {
+    final details = crpBookingDetailsController.crpBookingDetailResponse.value;
+    final bookingStatus = details?.bookingStatus;
+    if (bookingStatus == null) return;
+
+    final nextStatus = bookingStatus.toString();
+    if ((_currentBooking.status ?? '').trim() == nextStatus) return;
+    if (!mounted) return;
+
+    setState(() {
+      _currentBooking = CrpBookingHistoryItem(
+        bookingId: _currentBooking.bookingId,
+        uid: _currentBooking.uid,
+        id: _currentBooking.id,
+        bookingNo: _currentBooking.bookingNo,
+        passenger: _currentBooking.passenger,
+        cabRequiredOn: _currentBooking.cabRequiredOn,
+        pickupDateTime: _currentBooking.pickupDateTime,
+        completedDateTime: _currentBooking.completedDateTime,
+        cancelledDateTime: _currentBooking.cancelledDateTime,
+        status: nextStatus,
+        model: _currentBooking.model,
+        run: _currentBooking.run,
+        isReviewed: _currentBooking.isReviewed,
+        pickupAddress: _currentBooking.pickupAddress,
+        dropAddress: _currentBooking.dropAddress,
+        currentDispatchStatusId: _currentBooking.currentDispatchStatusId,
+        extraPaxCount: _currentBooking.extraPaxCount,
+        multipax: _currentBooking.multipax,
+      );
+    });
   }
 
   @override
@@ -87,6 +132,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     final userEmail = await StorageServices.instance.read('email');
     final orderId = _currentBooking.bookingId.toString();
     await crpBookingDetailsController.fetchBookingData(orderId, token??'', userEmail??'');
+    _syncCurrentBookingStatusFromDetailsResponse();
     await crpBookingDetailsController.fetchDriverDetails(orderId, token??'', userEmail??'');
   }
 
@@ -106,6 +152,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
         });
       }
     }
+    // Ensure badge reflects latest status even if parent did not provide updated booking.
+    _syncCurrentBookingStatusFromDetailsResponse();
     if (mounted) {
       setState(() {});
     }
@@ -585,7 +633,10 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   /// Build status badge with pill design and different colors/icons for each status
   Widget _buildStatusBadge(String? status) {
     // Use effective status (handles Dispatched + currentDispatchStatusId == 6 -> Completed)
-    final effectiveStatus = _getEffectiveStatus();
+    final effectiveStatus = _getEffectiveStatusFrom(
+      status: status,
+      currentDispatchStatusId: _currentBooking.currentDispatchStatusId,
+    );
     // Normalize status to handle case variations
     final normalizedStatus = effectiveStatus.trim().toLowerCase();
 
