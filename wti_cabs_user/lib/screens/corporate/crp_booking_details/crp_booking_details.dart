@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:wti_cabs_user/core/api/corporate/cpr_api_services.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_booking_detail/crp_booking_detail_controller.dart';
 import 'package:wti_cabs_user/core/model/corporate/crp_booking_history/crp_booking_history_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
@@ -41,6 +44,12 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
   
   // Access currentDispatchStatusId from current booking
   int? get currentDispatchStatusId => _currentBooking.currentDispatchStatusId;
+
+  // Draggable SOS floating button (shown only when dispatched / status==2)
+  static const double _sosButtonSize = 72;
+  static const double _sosMargin = 8;
+  Offset? _sosOffset;
+  bool _isSendingSos = false;
 
   /// Get effective status for a booking
   /// If status is "Dispatched" and currentDispatchStatusId is 6 (Close), return "Completed"
@@ -107,6 +116,189 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     if (status == null) return false;
     final statusLower = status.toLowerCase().trim();
     return statusLower == '2' || statusLower == 'dispatched';
+  }
+
+  void _ensureInitialSosOffset(BoxConstraints constraints) {
+    if (_sosOffset != null) return;
+
+    // Defer setState so we don't update during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _sosOffset != null) return;
+      final initial = Offset(
+        constraints.maxWidth - _sosButtonSize - _sosMargin,
+        constraints.maxHeight - _sosButtonSize - _sosMargin,
+      );
+      setState(() {
+        _sosOffset = _clampSosOffset(initial, constraints);
+      });
+    });
+  }
+
+  Offset _clampSosOffset(Offset proposed, BoxConstraints constraints) {
+    final minX = _sosMargin;
+    final minY = _sosMargin;
+    final rawMaxX = constraints.maxWidth - _sosButtonSize - _sosMargin;
+    final rawMaxY = constraints.maxHeight - _sosButtonSize - _sosMargin;
+    final maxX = (rawMaxX < minX) ? minX : rawMaxX;
+    final maxY = (rawMaxY < minY) ? minY : rawMaxY;
+
+    return Offset(
+      proposed.dx.clamp(minX, maxX).toDouble(),
+      proposed.dy.clamp(minY, maxY).toDouble(),
+    );
+  }
+
+  Widget _buildSosButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        splashColor: Colors.transparent,
+        onTap: _isSendingSos ? null : _sendSosAlert,
+        child: SizedBox(
+          width: _sosButtonSize,
+          height: _sosButtonSize,
+          child: ClipOval(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Image.asset(
+                    'assets/images/sos_floating.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                if (_isSendingSos)
+                  Container(
+                    color: Colors.white.withOpacity(0.45),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendSosAlert() async {
+    if (_isSendingSos) return;
+    setState(() {
+      _isSendingSos = true;
+    });
+
+    try {
+      final token = await StorageServices.instance.read('crpKey');
+      final user = await StorageServices.instance.read('email');
+      final guestIdStr = await StorageServices.instance.read('guestId');
+      final bookingIdStr = _extractNumericBookingId(_currentBooking);
+
+      if (token == null || token.isEmpty || token == 'null') {
+        CustomFailureSnackbar.show(context, 'Token missing. Please login again.');
+        return;
+      }
+      if (user == null || user.isEmpty || user == 'null') {
+        CustomFailureSnackbar.show(context, 'User missing. Please login again.');
+        return;
+      }
+      final bookingId = int.tryParse((bookingIdStr ?? '').trim());
+      if (bookingId == null) {
+        CustomFailureSnackbar.show(context, 'Booking ID not found');
+        return;
+      }
+      final guestId = int.tryParse((guestIdStr ?? '').trim());
+      if (guestId == null) {
+        CustomFailureSnackbar.show(context, 'Guest ID not found');
+        return;
+      }
+
+      // Try to get current location; fallback to sample coordinates if unavailable.
+      double lat = 28.56210606787203;
+      double lng = 77.06701577966714;
+      try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          var permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission != LocationPermission.denied &&
+              permission != LocationPermission.deniedForever) {
+            final position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+            );
+            lat = position.latitude;
+            lng = position.longitude;
+          }
+        }
+      } catch (_) {
+        // keep fallback
+      }
+
+      final payload = {
+        "Lat": lat,
+        "lng": lng,
+        "BookingID": bookingId,
+        "GuestID": guestId,
+      };
+
+      final uri = Uri.parse('${CprApiService().baseUrl}/SOSAlert').replace(
+        queryParameters: {
+          'user': user,
+          'token': token,
+        },
+      );
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic $token',
+      };
+
+      final response = await CprApiService().sendRequestWithRetry(() {
+        return http.post(uri, headers: headers, body: jsonEncode(payload));
+      });
+
+      dynamic decoded = response.body;
+      try {
+        // Some APIs wrap JSON in quotes; decode until it's no longer wrapped.
+        while (decoded is String &&
+            decoded.startsWith('"') &&
+            decoded.endsWith('"')) {
+          decoded = jsonDecode(decoded);
+        }
+        if (decoded is String) {
+          decoded = jsonDecode(decoded);
+        }
+      } catch (_) {
+        // leave as-is
+      }
+
+      final map = decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{};
+      final bStatus = map['bStatus'] == true;
+      final message = (map['sMessage'] ?? map['message'] ?? 'SOS request completed').toString();
+
+      if (!mounted) return;
+      if (bStatus) {
+        CustomSuccessSnackbar.show(context, message);
+      } else {
+        CustomFailureSnackbar.show(context, message);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      CustomFailureSnackbar.show(context, 'Failed to send SOS alert');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingSos = false;
+        });
+      }
+    }
   }
 
   /// Extract numeric booking ID from booking number
@@ -522,6 +714,10 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       );
     }
 
+    final bookingStatus = (_currentBooking.status ?? '').toLowerCase().trim();
+    final shouldShowSos =
+        bookingStatus == 'dispatched' || bookingStatus == '2';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -561,44 +757,52 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshBookingDetails,
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Main Booking Card
-          Obx(() {
-            if(crpBookingDetailsController.isLoading.value){
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              );
-            }
-            return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (shouldShowSos) {
+            _ensureInitialSosOffset(constraints);
+          }
+
+          return Stack(
+            children: [
+              RefreshIndicator(
+                onRefresh: _refreshBookingDetails,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Main Booking Card
+                      Obx(() {
+                        if (crpBookingDetailsController.isLoading.value) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade200,
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                   // Booking Type, Car Model, Car Details Link, and Status Row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,41 +1284,42 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                       );
                     },
                   ),
-                ],
-              ),
-            ),
-          );
-          }),
-            const SizedBox(height: 16),
-            // Chauffeur Details Card
-            Obx(() {
-              final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
-              // Only show card if bStatus is true
-              if (driverDetails?.bStatus != true) {
-                return const SizedBox.shrink();
-              }
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      // Chauffeur Details Card
+                      Obx(() {
+                        final driverDetails = crpBookingDetailsController
+                            .driverDetailsResponse.value;
+                        // Only show card if bStatus is true
+                        if (driverDetails?.bStatus != true) {
+                          return const SizedBox.shrink();
+                        }
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey.shade300,
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade200,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade200,
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                       // Title
                       const Text(
                         'Chauffeur Details',
@@ -1153,13 +1358,13 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         driverDetails?.carNo ?? 'N/A',
                         Icons.confirmation_number,
                       ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-            // Need Help? Section
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      // Need Help? Section
             // Container(
             //   width: double.infinity,
             //   decoration: BoxDecoration(
@@ -1205,10 +1410,32 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
             //     ),
             //   ),
             // ),
-          ],
-        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Draggable SOS button (only when dispatched / "2")
+              if (shouldShowSos && _sosOffset != null)
+                Positioned(
+                  left: _sosOffset!.dx,
+                  top: _sosOffset!.dy,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanUpdate: (details) {
+                      final next =
+                          (_sosOffset ?? Offset.zero) + details.delta;
+                      setState(() {
+                        _sosOffset = _clampSosOffset(next, constraints);
+                      });
+                    },
+                    child: _buildSosButton(),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
-        ),
     );
   }
 

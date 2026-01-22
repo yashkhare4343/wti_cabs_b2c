@@ -28,6 +28,7 @@ import '../../../core/services/storage_services.dart';
 import '../../../core/controller/corporate/crp_login_controller/crp_login_controller.dart';
 import '../../../core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
 import '../../../core/controller/corporate/crp_car_provider/crp_car_provider_controller.dart';
+import '../../../core/controller/corporate/crp_fiscal_year_controller/crp_fiscal_year_controller.dart';
 
 /// Booking Status Constants
 /// Status codes: 0 = Pending, 1 = Confirmed, 2 = Dispatched, 3 = Missed, 4 = Cancelled, 5 = Void, 6 = Allocated
@@ -52,21 +53,23 @@ class BookingStatus {
   static const String allocatedStr = 'Allocated';
 
   // Tab-to-Status Mapping
-  // Upcoming Tab → Status IN (0, 1, 2) - Pending, Confirmed, Dispatched
+  // Upcoming Tab → Status IN (0, 1, 2, 6) - Pending, Confirmed, Dispatched, Allocated
   static const List<String> confirmedTabStatuses = [
     pendingStr,
     confirmedStr,
     dispatchedStr,
-  ];
-
-  // Completed Tab → Status IN (6) - Allocated
-  static const List<String> completedTabStatuses = [
     allocatedStr,
   ];
 
-  // Cancelled Tab → Status = 4 - Cancelled
+  // Completed Tab → Effective status "Completed"
+  // (Status is "Dispatched" AND currentDispatchStatusId == 6 (Close))
+  static const List<String> completedTabStatuses = [];
+
+  // Cancelled Tab → Status IN (3, 4, 5) - Missed, Cancelled, Void
   static const List<String> cancelledTabStatuses = [
+    missedStr,
     cancelledStr,
+    voidStr,
   ];
 
   /// Check if a booking belongs to a specific tab
@@ -141,6 +144,8 @@ class _CrpBookingState extends State<CrpBooking> {
       Get.put(CarProviderController());
   final CrpFeedbackQuestionsController _feedbackController =
       Get.put(CrpFeedbackQuestionsController());
+  final CrpFiscalYearController _fiscalYearController =
+      Get.put(CrpFiscalYearController());
   bool _showShimmer = true;
   bool _hasLoadedData = false; // Track if data has been loaded at least once
 
@@ -151,87 +156,78 @@ class _CrpBookingState extends State<CrpBooking> {
   final RxList<CrpBookingHistoryItem> _allBookings =
       <CrpBookingHistoryItem>[].obs;
 
+  // Pre-filtered + pre-sorted lists per tab (reactive)
+  final RxList<CrpBookingHistoryItem> _upcomingBookings =
+      <CrpBookingHistoryItem>[].obs;
+  final RxList<CrpBookingHistoryItem> _completedBookings =
+      <CrpBookingHistoryItem>[].obs;
+  final RxList<CrpBookingHistoryItem> _cancelledBookings =
+      <CrpBookingHistoryItem>[].obs;
+
+  int _compareDateTimeNullable(DateTime? a, DateTime? b, {required bool ascending}) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1; // nulls last
+    if (b == null) return -1; // nulls last
+    return ascending ? a.compareTo(b) : b.compareTo(a);
+  }
+
+  void _rebuildAndSortTabLists() {
+    final upcoming = <CrpBookingHistoryItem>[];
+    final completed = <CrpBookingHistoryItem>[];
+    final cancelled = <CrpBookingHistoryItem>[];
+
+    for (final booking in _allBookings) {
+      if (BookingStatus.belongsToTab(booking, BookingTab.completed)) {
+        completed.add(booking);
+      } else if (BookingStatus.belongsToTab(booking, BookingTab.cancelled)) {
+        cancelled.add(booking);
+      } else if (BookingStatus.belongsToTab(booking, BookingTab.confirmed)) {
+        upcoming.add(booking);
+      }
+    }
+
+    // Upcoming: pickupDateTime ASC (nearest first)
+    upcoming.sort((a, b) => _compareDateTimeNullable(
+          a.pickupDateTimeLocal,
+          b.pickupDateTimeLocal,
+          ascending: true,
+        ));
+
+    // Completed: completedDateTime DESC (most recent first)
+    completed.sort((a, b) => _compareDateTimeNullable(
+          a.completedDateTimeLocal,
+          b.completedDateTimeLocal,
+          ascending: false,
+        ));
+
+    // Cancelled: cancelledDateTime DESC (most recent first)
+    cancelled.sort((a, b) => _compareDateTimeNullable(
+          a.cancelledDateTimeLocal,
+          b.cancelledDateTimeLocal,
+          ascending: false,
+        ));
+
+    _upcomingBookings.assignAll(upcoming);
+    _completedBookings.assignAll(completed);
+    _cancelledBookings.assignAll(cancelled);
+  }
+
   // Filtered bookings based on selected tab (reactive)
   List<CrpBookingHistoryItem> get _filteredBookings {
-    final filtered = _allBookings.where((booking) {
-      return BookingStatus.belongsToTab(booking, _selectedTab.value);
-    }).toList();
-    
-    // Sort based on selected tab
-    // Upcoming: Nearest booking date → farthest (ascending)
-    // Completed: Most recent → oldest (descending)
-    // Cancelled: Most recent → oldest (descending)
-    final isAscending = _selectedTab.value == BookingTab.confirmed;
-    
-    filtered.sort((a, b) {
-      final dateA = _parseBookingDate(a.cabRequiredOn);
-      final dateB = _parseBookingDate(b.cabRequiredOn);
-      
-      // Handle null dates - put them at the end, but sort by string as fallback
-      if (dateA == null && dateB == null) {
-        // Both null - sort by string comparison as fallback
-        final strA = a.cabRequiredOn ?? '';
-        final strB = b.cabRequiredOn ?? '';
-        return isAscending ? strA.compareTo(strB) : strB.compareTo(strA);
-      }
-      if (dateA == null) return 1; // Put null dates at the end
-      if (dateB == null) return -1; // Put null dates at the end
-      
-      // Sort based on tab: ascending for Upcoming, descending for Completed/Cancelled
-      return isAscending 
-          ? dateA.compareTo(dateB)  // Nearest → farthest
-          : dateB.compareTo(dateA); // Most recent → oldest
-    });
-    
-    return filtered;
-  }
-  
-  /// Parse booking date from string, handling multiple formats
-  /// Matches the parsing logic used in _buildBookingCard for consistency
-  DateTime? _parseBookingDate(String? dateString) {
-    if (dateString == null || dateString.isEmpty || dateString.trim().toLowerCase() == 'null') {
-      return null;
-    }
-    
-    final trimmed = dateString.trim();
-    
-    // Try standard DateTime.parse first (handles ISO 8601 and most standard formats)
-    try {
-      return DateTime.parse(trimmed);
-    } catch (e) {
-      // Try other common formats
-      final formats = [
-        'dd/MM/yyyy HH:mm:ss',
-        'dd/MM/yyyy HH:mm',
-        'dd/MM/yyyy',
-        'yyyy-MM-dd HH:mm:ss',
-        'yyyy-MM-dd HH:mm',
-        'yyyy-MM-dd',
-        'MM/dd/yyyy HH:mm:ss',
-        'MM/dd/yyyy HH:mm',
-        'MM/dd/yyyy',
-        'dd-MM-yyyy HH:mm:ss',
-        'dd-MM-yyyy HH:mm',
-        'dd-MM-yyyy',
-      ];
-      
-      for (final format in formats) {
-        try {
-          return DateFormat(format).parse(trimmed);
-        } catch (e) {
-          // Continue to next format
-        }
-      }
-      
-      // If all parsing fails, return null
-      debugPrint('⚠️ Could not parse date: $dateString');
-      return null;
+    switch (_selectedTab.value) {
+      case BookingTab.confirmed:
+        return _upcomingBookings;
+      case BookingTab.completed:
+        return _completedBookings;
+      case BookingTab.cancelled:
+        return _cancelledBookings;
     }
   }
 
   // Filter state
   String _selectedCategory = 'Office Branches';
   String? _selectedCity = 'All'; // Default to 'All'
+  int _selectedFiscalYear = 0; // 0 = All years
 
   // Month name to ID mapping
   final Map<String, int> _monthMap = {
@@ -305,7 +301,7 @@ class _CrpBookingState extends State<CrpBooking> {
       branchId: branchId,
       monthId: 0,
       providerId: 0,
-      fiscalYear: 0,
+      fiscalYear: _selectedFiscalYear,
       criteria: criteria,
     );
   }
@@ -331,25 +327,7 @@ class _CrpBookingState extends State<CrpBooking> {
 
     // Update _allBookings with fetched data
     _allBookings.assignAll(_controller.bookings);
-    
-    // Sort all bookings by date in ascending order immediately after assignment
-    _allBookings.sort((a, b) {
-      final dateA = _parseBookingDate(a.cabRequiredOn);
-      final dateB = _parseBookingDate(b.cabRequiredOn);
-      
-      // Handle null dates - put them at the end, but sort by string as fallback
-      if (dateA == null && dateB == null) {
-        // Both null - sort by string comparison as fallback
-        final strA = a.cabRequiredOn ?? '';
-        final strB = b.cabRequiredOn ?? '';
-        return strA.compareTo(strB);
-      }
-      if (dateA == null) return 1; // Put null dates at the end
-      if (dateB == null) return -1; // Put null dates at the end
-      
-      // Sort in ascending order (earliest first)
-      return dateA.compareTo(dateB);
-    });
+    _rebuildAndSortTabLists();
     
     // Mark that data has been loaded
     _hasLoadedData = true;
@@ -371,6 +349,8 @@ class _CrpBookingState extends State<CrpBooking> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ✅ Ensure email is persisted before fetching booking history
       await _ensureEmailPersistence();
+      // Fetch fiscal years for filter
+      await _fiscalYearController.fetchFiscalYears(context);
       // Fetch feedback questions status
       await _feedbackController.fetchFeedbackQuestions(context);
       // Fetch with saved or default values
@@ -382,6 +362,10 @@ class _CrpBookingState extends State<CrpBooking> {
     final savedCity =
         await StorageServices.instance.read('filter_selected_city');
     _selectedCity = savedCity ?? 'All'; // Default to 'All' if nothing is saved
+
+    final savedFiscal =
+        await StorageServices.instance.read('filter_selected_fiscal_year');
+    _selectedFiscalYear = int.tryParse(savedFiscal?.toString() ?? '') ?? 0;
   }
 
   Future<void> _saveFilters() async {
@@ -389,6 +373,8 @@ class _CrpBookingState extends State<CrpBooking> {
       await StorageServices.instance
           .save('filter_selected_city', _selectedCity!);
     }
+    await StorageServices.instance
+        .save('filter_selected_fiscal_year', _selectedFiscalYear.toString());
   }
 
   Future<void> _loadAndFetchBookings() async {
@@ -399,7 +385,7 @@ class _CrpBookingState extends State<CrpBooking> {
       branchId: branchId,
       monthId: 0,
       providerId: 0,
-      fiscalYear: 0,
+      fiscalYear: _selectedFiscalYear,
       criteria: criteria,
     );
   }
@@ -916,6 +902,7 @@ class _CrpBookingState extends State<CrpBooking> {
       builder: (context) => _FilterBottomSheet(
         selectedCategory: _selectedCategory,
         selectedCity: _selectedCity,
+        selectedFiscalYear: _selectedFiscalYear,
         searchController: _filterSearchController,
         onCategoryChanged: (category) {
           setState(() {
@@ -927,6 +914,11 @@ class _CrpBookingState extends State<CrpBooking> {
             _selectedCity = city;
           });
         },
+        onFiscalYearChanged: (year) {
+          setState(() {
+            _selectedFiscalYear = year;
+          });
+        },
         onApply: () {
           Navigator.pop(context);
           _applyFilters();
@@ -934,11 +926,13 @@ class _CrpBookingState extends State<CrpBooking> {
         onClear: () async {
           setState(() {
             _selectedCity = 'All';
+            _selectedFiscalYear = 0;
           });
           // Reset tab to Confirmed (default)
           _selectedTab.value = BookingTab.confirmed;
           // Clear saved filters
           await StorageServices.instance.delete('filter_selected_city');
+          await StorageServices.instance.delete('filter_selected_fiscal_year');
 
           // Clear search criteria text as well
           _filterSearchController.clear();
@@ -1610,18 +1604,22 @@ class VerticalDashedLinePainter extends CustomPainter {
 class _FilterBottomSheet extends StatefulWidget {
   final String selectedCategory;
   final String? selectedCity;
+  final int selectedFiscalYear;
   final TextEditingController searchController;
   final Function(String) onCategoryChanged;
   final Function(String) onCityChanged;
+  final Function(int) onFiscalYearChanged;
   final VoidCallback onApply;
   final VoidCallback onClear;
 
   const _FilterBottomSheet({
     required this.selectedCategory,
     required this.selectedCity,
+    required this.selectedFiscalYear,
     required this.searchController,
     required this.onCategoryChanged,
     required this.onCityChanged,
+    required this.onFiscalYearChanged,
     required this.onApply,
     required this.onClear,
   });
@@ -1633,8 +1631,11 @@ class _FilterBottomSheet extends StatefulWidget {
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late String _currentCategory;
   late String? _currentCity;
+  late int _currentFiscalYear;
   final CrpBranchListController _branchController =
       Get.find<CrpBranchListController>();
+  final CrpFiscalYearController _fiscalYearController =
+      Get.find<CrpFiscalYearController>();
 
   @override
   void initState() {
@@ -1642,7 +1643,12 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _currentCategory = widget.selectedCategory;
     // Set default selected city from widget, defaulting to 'All'
     _currentCity = widget.selectedCity ?? 'All';
+    _currentFiscalYear = widget.selectedFiscalYear;
     _fetchBranches();
+    if (_fiscalYearController.years.isEmpty) {
+      // Safe to call again; controller caches results in-memory.
+      _fiscalYearController.fetchFiscalYears(context);
+    }
   }
 
   Future<void> _fetchBranches() async {
@@ -1697,25 +1703,39 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Office Branches Label
-                  const Text(
-                    'Office Branches',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF000000),
-                      fontFamily: 'Montserrat',
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Fiscal Year
+                    const Text(
+                      'Fiscal Year',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'Montserrat',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Grid of Branch Buttons
-                  Expanded(
-                    child: _buildFilterOptions(),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    _buildFiscalYearOptions(),
+                    const SizedBox(height: 20),
+
+                    // Office Branches Label
+                    const Text(
+                      'Office Branches',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Grid of Branch Buttons
+                    _buildFilterOptions(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1738,6 +1758,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     child: TextButton(
                       onPressed: () {
                         widget.onCityChanged(_currentCity ?? 'All');
+                        widget.onFiscalYearChanged(_currentFiscalYear);
                         widget.onApply();
                       },
                       style: TextButton.styleFrom(
@@ -1774,7 +1795,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       onPressed: () {
                         setState(() {
                           _currentCity = 'All';
+                          _currentFiscalYear = 0;
                         });
+                        widget.onFiscalYearChanged(0);
                         widget.onClear();
                       },
                       style: TextButton.styleFrom(
@@ -1855,7 +1878,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       }
 
       return GridView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           crossAxisSpacing: 12,
@@ -1869,6 +1893,54 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         },
       );
     });
+  }
+
+  Widget _buildFiscalYearOptions() {
+    return Obx(() {
+      if (_fiscalYearController.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      // Static "All" (0) + dynamic years from API (e.g. 2025, 2026)
+      final List<int> options = [0, ..._fiscalYearController.years];
+
+      return Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: options.map((year) {
+          final label = year == 0 ? 'All' : year.toString();
+          return _buildFiscalYearChip(label, year);
+        }).toList(),
+      );
+    });
+  }
+
+  Widget _buildFiscalYearChip(String label, int value) {
+    final isSelected = _currentFiscalYear == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentFiscalYear = value;
+        });
+        widget.onFiscalYearChanged(value);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4082F1) : const Color(0xFFE8E8E8),
+          borderRadius: BorderRadius.circular(36),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF484848),
+            fontFamily: 'Montserrat',
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildBranchButton(String label, String value) {

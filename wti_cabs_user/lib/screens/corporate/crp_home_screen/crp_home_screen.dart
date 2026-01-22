@@ -32,6 +32,7 @@ class CprHomeScreen extends StatefulWidget {
 class _CprHomeScreenState extends State<CprHomeScreen> {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
   final CrpSelectDropController crpSelectDropController = Get.put(CrpSelectDropController());
+
   @override
   void initState() {
     super.initState();
@@ -372,165 +373,118 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-          child: Column(
-        children: [
-          SizedBox(height: 290, child: TopBanner()),
-          // services dynamic
-          SizedBox(height: 20),
-          // selected location
-          //  Padding(
-          //    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          //    child: Row(
-          //      children: [
-          //        Text('Selected Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),),
-          //      ],
-          //    ),
-          //  ),
-          //  SizedBox(height: 10,),
-          // Obx(()=> Material(
-          //   color: Colors.transparent,
-          //   child: InkWell(
-          //     onTap: () async {
-          //       // await _showBranchSelectorBottomSheet();
-          //     },
-          //     borderRadius: BorderRadius.circular(8),
-          //     child: Padding(
-          //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          //       child: Container(
-          //         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          //         decoration: BoxDecoration(
-          //           color: Colors.white,
-          //           borderRadius: BorderRadius.circular(8),
-          //           border: Border.all(color: Colors.grey.shade300),
-          //         ),
-          //         child: Row(
-          //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //           children: [
-          //             Text(
-          //               crpGetBranchListController.selectedBranchName.value??'Select Location',
-          //               style: TextStyle(
-          //                 fontSize: 15,
-          //                 color: Colors.black87,
-          //               ),
-          //             ),
-          //             Icon(
-          //               Icons.arrow_forward_ios,
-          //               size: 16,
-          //               color: Colors.grey.shade600,
-          //             ),
-          //           ],
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // )),
-          OfficeBranchTile(
-            onTap: () async {
-              await _showBranchSelectorBottomSheet(forceShow: true);
-            },
-          ),
-          SizedBox(
-            height: 16,
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Row(
-              children: [
-                Text(
-                  'Services',
-                  style: TextStyle(
+        child: Column(
+          children: [
+            SizedBox(height: 290, child: TopBanner()),
+            // services dynamic
+            SizedBox(height: 20),
+            OfficeBranchTile(
+              onTap: () async {
+                await _showBranchSelectorBottomSheet(forceShow: true);
+              },
+            ),
+            SizedBox(
+              height: 16,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                children: [
+                  Text(
+                    'Services',
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
-                    fontFamily: 'Montserrat',
+                      fontFamily: 'Montserrat',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Obx(() {
-              final list = runTypeController.runTypes.value?.runTypes ?? [];
+            SizedBox(
+              height: 10,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Obx(() {
+                final list = runTypeController.runTypes.value?.runTypes ?? [];
 
-              if (list.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              const maxPerRow = 3;
-              const spacing = 12.0;
-              const double tileHeight = 80;
-              const horizontalPadding = 40.0;
-
-              final screenWidth = MediaQuery.of(context).size.width;
-
-              // --- CHUNKING LOGIC ---
-              List<List<dynamic>> rows = [];
-              int index = 0;
-
-              while (index < list.length) {
-                int remaining = list.length - index;
-
-                // Special: exactly 4 items → 2 + 2
-                if (remaining == 4) {
-                  rows.add(list.sublist(index, index + 2));
-                  rows.add(list.sublist(index + 2, index + 4));
-                  break;
+                if (list.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                int take = remaining >= maxPerRow ? maxPerRow : remaining;
-                rows.add(list.sublist(index, index + take));
-                index += take;
-              }
+                const maxPerRow = 3;
+                const spacing = 12.0;
+                const double tileHeight = 80;
+                const horizontalPadding = 40.0;
 
-              // Aspect ratio calculator
-              double calcAspect(int count) {
-                final availableWidth = screenWidth - horizontalPadding;
-                final itemWidth =
-                    (availableWidth - (count - 1) * spacing) / count;
-                return itemWidth / tileHeight;
-              }
+                final screenWidth = MediaQuery.of(context).size.width;
 
-              // Row builder
-              Widget rowBuilder(List rowData, int startIndex) {
-                int count = rowData.length;
+                // --- CHUNKING LOGIC ---
+                List<List<dynamic>> rows = [];
+                int index = 0;
 
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: rowData.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: count,
-                    crossAxisSpacing: spacing,
-                    mainAxisSpacing: spacing,
-                    childAspectRatio: calcAspect(count),
-                  ),
-                  itemBuilder: (context, index) => CrpServiceTile(
-                    item: rowData[index],
-                    index: startIndex + index,
-                  ),
-                );
-              }
+                while (index < list.length) {
+                  int remaining = list.length - index;
 
-              // Build final UI with proper indexing
-              List<Widget> children = [];
-              int globalIndex = 0;
+                  // Special: exactly 4 items → 2 + 2
+                  if (remaining == 4) {
+                    rows.add(list.sublist(index, index + 2));
+                    rows.add(list.sublist(index + 2, index + 4));
+                    break;
+                  }
 
-              for (var row in rows) {
-                children.add(rowBuilder(row, globalIndex));
-                children.add(const SizedBox(height: 16));
-                globalIndex += row.length;
-              }
+                  int take = remaining >= maxPerRow ? maxPerRow : remaining;
+                  rows.add(list.sublist(index, index + take));
+                  index += take;
+                }
 
-              return Column(children: children);
-            }),
-          )
-        ],
-      )),
+                // Aspect ratio calculator
+                double calcAspect(int count) {
+                  final availableWidth = screenWidth - horizontalPadding;
+                  final itemWidth =
+                      (availableWidth - (count - 1) * spacing) / count;
+                  return itemWidth / tileHeight;
+                }
+
+                // Row builder
+                Widget rowBuilder(List rowData, int startIndex) {
+                  int count = rowData.length;
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: rowData.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: count,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      childAspectRatio: calcAspect(count),
+                    ),
+                    itemBuilder: (context, index) => CrpServiceTile(
+                      item: rowData[index],
+                      index: startIndex + index,
+                    ),
+                  );
+                }
+
+                // Build final UI with proper indexing
+                List<Widget> children = [];
+                int globalIndex = 0;
+
+                for (var row in rows) {
+                  children.add(rowBuilder(row, globalIndex));
+                  children.add(const SizedBox(height: 16));
+                  globalIndex += row.length;
+                }
+
+                return Column(children: children);
+              }),
+            )
+          ],
+        ),
+      ),
     );
   }
 }
