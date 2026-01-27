@@ -442,7 +442,7 @@ class _CprLoginState extends State<CprLogin> {
                           size: 18,
                         ),
                         onPressed: (){
-
+                             GoRouter.of(context).push(AppRoutes.cprLandingPage);
                         },
                       ),
                     ),

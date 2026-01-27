@@ -371,43 +371,66 @@ class _CprRegisterState extends State<CprRegister> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ Header
+                      // Header
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          SvgPicture.asset(
-                            'assets/images/wti_logo.svg',
-                            height: 17,
-                            width: 15,
+                          Transform.translate(
+                            offset: const Offset(-15.0, 0.0),
+                            child: IconButton(
+                              onPressed: () {
+                                FocusScope.of(context).unfocus();
+                                GoRouter.of(context).push(AppRoutes.cprLandingPage);
+                              },
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                              tooltip: 'Back',
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: AppColors.mainButtonBg,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/wti_logo.svg',
+                                  height: 17,
+                                  width: 15,
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                              ),
-                              onPressed: () {},
-                              child: const Text(
-                                "Corporate",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
+                                const SizedBox(width: 8),
+                                Container(
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.mainButtonBg,
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4, horizontal: 8),
+                                    ),
+                                    onPressed: () {},
+                                    child: const Text(
+                                      "Corporate",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          )
+                          ),
+                          const SizedBox(width: 48), // keep center alignment
                         ],
                       ),
 

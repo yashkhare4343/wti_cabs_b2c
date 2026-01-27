@@ -113,6 +113,61 @@ class _CrpProfileState extends State<CrpProfile> {
     );
   }
 
+  void _showLogoutDialog(BuildContext outerContext) {
+    showDialog<void>(
+      context: outerContext,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Confirm Logout',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to log out?',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _performLogout(outerContext);
+              },
+              child: const Text(
+                'Log Out',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   /// Perform logout: clear corporate data and navigate to bottom nav
   Future<void> _performLogout(BuildContext context) async {
@@ -515,8 +570,7 @@ class _CrpProfileState extends State<CrpProfile> {
                     // Log Out
                     InkWell(
                       onTap: () {
-                        // _showLogoutDialog(context);
-                        _performLogout(context);
+                        _showLogoutDialog(context);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(

@@ -787,7 +787,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
                 item.run ?? "",
                 style: const TextStyle(
                   fontFamily: 'Urbanist',
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700, // Bold
                   height: 1.2, // line-height: 120%
                   letterSpacing: 0,
