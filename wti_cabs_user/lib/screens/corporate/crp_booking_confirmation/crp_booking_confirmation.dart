@@ -130,9 +130,9 @@ class _CrpBookingConfirmationState extends State<CrpBookingConfirmation> {
     }
 
     return PopScope(
-      canPop: false,
+      canPop: true,
       onPopInvoked: (didPop) {
-        if (!didPop) {
+        if (didPop) {
           Navigator.push(
             context,
             Platform.isIOS

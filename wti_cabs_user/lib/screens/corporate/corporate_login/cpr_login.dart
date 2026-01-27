@@ -174,10 +174,15 @@ class _CprLoginState extends State<CprLogin> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: true, // ✅ required for iOS swipe
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          GoRouter.of(context).push(AppRoutes.cprLandingPage);
+        if (didPop) {
+          // 🔑 delay + use root context
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              GoRouter.of(context).push(AppRoutes.cprLandingPage);
+            }
+          });
         }
       },
       child: Scaffold(

@@ -109,9 +109,9 @@ class _CrpInventoryState extends State<CrpInventory> {
 
       if (showLoader) {
         return PopScope(
-          canPop: false,
+          canPop: true,
           onPopInvokedWithResult: (bool didPop, Object? result) {
-            if (!didPop) {
+            if (didPop) {
               context.push(AppRoutes.cprBookingEngine);
             }
           },
@@ -121,9 +121,9 @@ class _CrpInventoryState extends State<CrpInventory> {
 
       // Show actual content when loading is complete
       return PopScope(
-        canPop: false,
+        canPop: true,
         onPopInvokedWithResult: (bool didPop, Object? result) {
-          if (!didPop) {
+          if (didPop) {
             context.push(AppRoutes.cprBookingEngine);
           }
         },

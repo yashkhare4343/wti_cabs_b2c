@@ -911,7 +911,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         crpSelectPickupController.selectedPlace.value?.primaryText ?? '';
     crpSelectDropController.searchController.text =
         crpSelectDropController.selectedPlace.value?.primaryText ?? '';
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -1100,6 +1102,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

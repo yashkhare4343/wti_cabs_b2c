@@ -571,6 +571,7 @@ class _CrpProfileState extends State<CrpProfile> {
                     InkWell(
                       onTap: () {
                         _showLogoutDialog(context);
+                        // _performLogout(context);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(

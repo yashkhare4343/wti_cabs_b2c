@@ -343,11 +343,15 @@ class _CprRegisterState extends State<CprRegister> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: true, // ✅ required for iOS swipe
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          FocusScope.of(context).unfocus();
-          GoRouter.of(context).push(AppRoutes.cprLandingPage);
+        if (didPop) {
+          // 🔑 delay + use root context
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              GoRouter.of(context).push(AppRoutes.cprLandingPage);
+            }
+          });
         }
       },
       child: Scaffold(

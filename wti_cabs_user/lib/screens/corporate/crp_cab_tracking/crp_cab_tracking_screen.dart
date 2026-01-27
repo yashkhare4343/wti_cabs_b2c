@@ -736,7 +736,9 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -970,6 +972,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
           ),
         );
       }),
+      ),
     );
   }
 

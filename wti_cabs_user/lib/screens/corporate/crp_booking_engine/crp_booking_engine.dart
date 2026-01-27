@@ -1212,10 +1212,15 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     }
 
     return PopScope(
-      canPop: false,
+      canPop: true, // ✅ required for iOS swipe
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          context.push(AppRoutes.cprBottomNav);
+        if (didPop) {
+          // 🔑 delay + use root context
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              context.push(AppRoutes.cprBottomNav);
+            }
+          });
         }
       },
       child: Scaffold(

@@ -853,7 +853,9 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     final shouldShowSos =
         bookingStatus == 'dispatched' || bookingStatus == '2';
 
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -1568,6 +1570,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
             ],
           );
         },
+      ),
       ),
     );
   }
