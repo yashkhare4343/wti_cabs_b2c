@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -497,6 +498,49 @@ class CprApiService {
       T Function(dynamic) fromJson,
       BuildContext context,
       ) async {
+    // #region agent log
+    void _agentLog({
+      required String hypothesisId,
+      required String location,
+      required String message,
+      Map<String, dynamic>? data,
+      String runId = 'run1',
+    }) {
+      try {
+        final payload = <String, dynamic>{
+          'sessionId': 'debug-session',
+          'runId': runId,
+          'hypothesisId': hypothesisId,
+          'location': location,
+          'message': message,
+          'data': data ?? <String, dynamic>{},
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        // 1) Best-effort local file write
+        try {
+          File('/Users/asndtechnologies/Documents/yash/wti_cabs_b2c/wti_cabs_user/.cursor/debug.log')
+              .writeAsStringSync('${jsonEncode(payload)}\n',
+                  mode: FileMode.append, flush: true);
+        } catch (_) {}
+
+        // 2) Best-effort HTTP ingest
+        try {
+          final baseUri = Uri.parse(
+              'http://127.0.0.1:7242/ingest/7d4e7254-f04b-431d-ae17-5bdc7357e72b');
+          final effectiveUri =
+              Platform.isAndroid ? baseUri.replace(host: '10.0.2.2') : baseUri;
+          http
+              .post(
+                effectiveUri,
+                headers: const {'Content-Type': 'application/json'},
+                body: jsonEncode(payload),
+              )
+              .catchError((_) {});
+        } catch (_) {}
+      } catch (_) {}
+    }
+    // #endregion
+
     // ✅ Automatically add token and user to params if not already present
     final token = await _getToken();
     final userEmail = await _getEmailFallback();
@@ -575,11 +619,43 @@ class CprApiService {
     debugPrint('📦 Request Headers: $headers');
     debugPrint('🧮 Query Params: $params');
 
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'D',
+      location: 'cpr_api_services.dart:getRequestCrp',
+      message: 'Built GET request (safe subset)',
+      data: {
+        'endpoint': endpoint,
+        'paramsKeys': params.keys.toList(),
+        'hasTokenParam': params.containsKey('token'),
+        'hasUserParam': params.containsKey('user'),
+        'hasEmailParam': params.containsKey('email'),
+        'runTypeID': params['RunTypeID'],
+        'runTypeID_lower': params['runTypeID'],
+        'corpId': params['CorpID'],
+        'branchId': params['BranchID'],
+      },
+    );
+    // #endregion
+
     final response =
     await _sendRequestWithRetry(() => http.get(uri, headers: headers));
 
     dynamic body = response.body;
     debugPrint('📥 Raw Response Body: $body');
+
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'D',
+      location: 'cpr_api_services.dart:getRequestCrp',
+      message: 'Received GET response',
+      data: {
+        'endpoint': endpoint,
+        'statusCode': response.statusCode,
+        'bodyLength': (response.body).length,
+      },
+    );
+    // #endregion
 
     // 🧩 Handle possible escaped or malformed responses
     try {

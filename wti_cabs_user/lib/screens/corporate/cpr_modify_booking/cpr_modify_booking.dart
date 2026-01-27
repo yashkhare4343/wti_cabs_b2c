@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -51,6 +53,48 @@ class CprModifyBooking extends StatefulWidget {
 }
 
 class _CprModifyBookingState extends State<CprModifyBooking> {
+  // #region agent log
+  void _agentLog({
+    required String hypothesisId,
+    required String location,
+    required String message,
+    Map<String, dynamic>? data,
+    String runId = 'run1',
+  }) {
+    try {
+      final payload = <String, dynamic>{
+        'sessionId': 'debug-session',
+        'runId': runId,
+        'hypothesisId': hypothesisId,
+        'location': location,
+        'message': message,
+        'data': data ?? <String, dynamic>{},
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      // 1) Best-effort local file write (works on macOS/desktop runs)
+      try {
+        File('/Users/asndtechnologies/Documents/yash/wti_cabs_b2c/wti_cabs_user/.cursor/debug.log')
+            .writeAsStringSync('${jsonEncode(payload)}\n',
+                mode: FileMode.append, flush: true);
+      } catch (_) {}
+
+      // 2) Best-effort HTTP ingest (works when app can't write to host FS)
+      try {
+        final baseUri = Uri.parse(
+            'http://127.0.0.1:7242/ingest/7d4e7254-f04b-431d-ae17-5bdc7357e72b');
+        final effectiveUri =
+            Platform.isAndroid ? baseUri.replace(host: '10.0.2.2') : baseUri;
+        http
+            .post(
+              effectiveUri,
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .catchError((_) {});
+      } catch (_) {}
+    } catch (_) {}
+  }
+  // #endregion
   final GenderController controller = Get.put(GenderController());
   final CarProviderController carProviderController =
       Get.put(CarProviderController());
@@ -70,6 +114,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   bool _hasAppliedSelectionPrefill = false;
   bool _showSkeletonLoader = true;
   bool _hasAppliedCarModelPrefill = false;
+  int? _lastFetchedInventoryRunTypeId;
 
   /// Modify button enablement
   /// - Disabled (with 0.4 opacity) until user changes something
@@ -113,6 +158,23 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   @override
   void initState() {
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'E',
+      location: 'cpr_modify_booking.dart:initState',
+      message: 'CprModifyBooking opened',
+      data: {'hasInitialCarModelName': widget.initialCarModelName != null},
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _agentLog(
+        hypothesisId: 'E',
+        location: 'cpr_modify_booking.dart:initState',
+        message: 'CprModifyBooking first frame',
+        data: {'mounted': mounted},
+      );
+    });
+    // #endregion
+
     // Show shimmer for 0.5 seconds
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
@@ -148,6 +210,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
+    final storedCorpId = await StorageServices.instance.read('crpId');
+    final storedBranchId = await StorageServices.instance.read('branchId');
 
     // 3. Now call payment modes safely
     final Map<String, dynamic> paymentParams = {
@@ -156,32 +220,52 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'user': user ?? email
     };
 
-    // Prefer the user-selected run type; fallback to booking-detail RunTypeID
-    int? runTypeIdForInventory() {
-      final runTypes = runTypeController.runTypes.value?.runTypes ?? [];
-      final selectedId = runTypes
-          .firstWhereOrNull((item) => item.run == selectedPickupType)
-          ?.runTypeID;
-      return selectedId ??
-          _preselectedRunTypeId ??
-          crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
-    }
+    // Inventory (car models) depends on an exact RunTypeID.
+    // On this screen, booking details + run types can arrive later, so only fetch
+    // when we can resolve a non-null RunTypeID.
+    final resolvedRunTypeId = runTypeIdForInventory();
+    if (resolvedRunTypeId != null) {
+      // Prefer stored corp/branch (authoritative for corporate session)
+      // Booking-details IDs can be different fields (e.g. provider/company ids) and break inventory filtering.
+      final corpIdForInventory = storedCorpId ??
+          crpBookingDetailsController
+              .crpBookingDetailResponse.value?.corporateID
+              ?.toString();
+      final branchIdForInventory = storedBranchId ??
+          crpBookingDetailsController
+              .crpBookingDetailResponse.value?.branchID
+              ?.toString();
 
-    final Map<String, dynamic> inventoryParams = {
-      'token': token,
-      'user': user ?? email,
-      'CorpID': crpBookingDetailsController
-          .crpBookingDetailResponse.value?.corporateID,
-      'BranchID':
-          crpBookingDetailsController.crpBookingDetailResponse.value?.branchID,
-      'RunTypeID': runTypeIdForInventory()
-    };
+      final Map<String, dynamic> inventoryParams = {
+        'token': token,
+        'user': user ?? email,
+        'CorpID': corpIdForInventory,
+        'BranchID': branchIdForInventory,
+        'RunTypeID': resolvedRunTypeId,
+      };
+
+      // #region agent log
+      _agentLog(
+        hypothesisId: 'B',
+        location: 'cpr_modify_booking.dart:runTypesAndPaymentModes',
+        message: 'Initial inventory fetch params (corp/branch source)',
+        data: {
+          'corpIdForInventory': corpIdForInventory,
+          'branchIdForInventory': branchIdForInventory,
+          'storedCorpId': storedCorpId,
+          'storedBranchId': storedBranchId,
+        },
+      );
+      // #endregion
+
+      _lastFetchedInventoryRunTypeId = resolvedRunTypeId;
+      // Skip auto-selection so we can preselect based on booking details
+      crpInventoryListController.fetchCarModels(inventoryParams, context,
+          skipAutoSelection: true);
+    }
 
     paymentModeController.fetchPaymentModes(paymentParams, context);
     controller.fetchGender(context);
-    // Skip auto-selection so we can preselect based on booking details
-    crpInventoryListController.fetchCarModels(inventoryParams, context,
-        skipAutoSelection: true);
   }
 
   void _initPrefillListeners() {
@@ -283,6 +367,18 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   void _showCarModelBottomSheet() {
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'E',
+      location: 'cpr_modify_booking.dart:_showCarModelBottomSheet',
+      message: 'Open car model bottom sheet',
+      data: {
+        'modelsCount': crpInventoryListController.models.length,
+        'selectedMakeId': crpInventoryListController.selectedModel.value?.makeId,
+      },
+    );
+    // #endregion
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -493,6 +589,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     if (runTypeReady && paymentReady && genderReady && providerReady) {
       _hasAppliedSelectionPrefill =
           runTypeApplied || paymentApplied || genderApplied || providerApplied;
+    }
+
+    // Ensure inventory models are fetched for the exact (prefilled) RunTypeID.
+    // This fixes cases where initial inventory fetch happened before booking/run types were ready.
+    if (runTypeApplied) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reloadCarModelsOnRunTypeChange();
+      });
     }
   }
 
@@ -1540,32 +1644,172 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   int? runTypeIdForInventory() {
     final runTypes = runTypeController.runTypes.value?.runTypes ?? [];
-    final selectedId = runTypes
-        .firstWhereOrNull((item) => item.run == selectedPickupType)
-        ?.runTypeID;
-    return selectedId ??
-        _preselectedRunTypeId ??
+    final selectedLabel = selectedPickupType?.trim();
+    int? selectedId;
+    if (selectedLabel != null && selectedLabel.isNotEmpty) {
+      // Try exact (trimmed) match first
+      selectedId = runTypes
+          .firstWhereOrNull((item) => (item.run ?? '').trim() == selectedLabel)
+          ?.runTypeID;
+      // Fallback to case-insensitive match (guards against inconsistent API casing)
+      selectedId ??= runTypes
+          .firstWhereOrNull(
+              (item) => (item.run ?? '').trim().toLowerCase() ==
+                  selectedLabel.toLowerCase())
+          ?.runTypeID;
+    }
+    final bookingId =
         crpBookingDetailsController.crpBookingDetailResponse.value?.runTypeID;
+    final resolved = selectedId ?? _preselectedRunTypeId ?? bookingId;
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'A',
+      location: 'cpr_modify_booking.dart:runTypeIdForInventory',
+      message: 'Resolved RunTypeID for inventory',
+      data: {
+        'selectedPickupType': selectedPickupType,
+        'runTypesCount': runTypes.length,
+        'selectedId': selectedId,
+        'preselectedRunTypeId': _preselectedRunTypeId,
+        'bookingRunTypeId': bookingId,
+        'resolvedRunTypeId': resolved,
+      },
+    );
+    // #endregion
+    return resolved;
   }
 
   /// Reloads car models when run type changes
-  Future<void> _reloadCarModelsOnRunTypeChange() async {
+  /// [explicitRunTypeId] - Optional explicit runTypeId to use (prevents timing issues)
+  Future<void> _reloadCarModelsOnRunTypeChange({int? explicitRunTypeId}) async {
+    // Ensure auth params are available (can be called from UI interactions)
+    if (token == null || token!.isEmpty || user == null || user!.isEmpty) {
+      await fetchParameter();
+    }
+
+    // Use explicit runTypeId if provided, otherwise resolve from current state
+    final resolvedRunTypeId = explicitRunTypeId ?? runTypeIdForInventory();
+    final earlyReturnReason = <String>[
+      if (resolvedRunTypeId == null) 'resolvedRunTypeId_null',
+      if (_lastFetchedInventoryRunTypeId == resolvedRunTypeId)
+        'already_fetched_same_runTypeId',
+    ];
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'B',
+      location: 'cpr_modify_booking.dart:_reloadCarModelsOnRunTypeChange',
+      message: 'Attempt reload car models',
+      data: {
+        'resolvedRunTypeId': resolvedRunTypeId,
+        'explicitRunTypeId': explicitRunTypeId,
+        'lastFetchedInventoryRunTypeId': _lastFetchedInventoryRunTypeId,
+        'hasToken': (token != null && token!.isNotEmpty),
+        'hasUser': (user != null && user!.isNotEmpty),
+        'earlyReturnReason': earlyReturnReason,
+      },
+    );
+    // #endregion
+    if (resolvedRunTypeId == null) return;
+    if (_lastFetchedInventoryRunTypeId == resolvedRunTypeId) return;
+
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
+    final storedCorpId = await StorageServices.instance.read('crpId');
+    final storedBranchId = await StorageServices.instance.read('branchId');
+
+    // Prefer stored corp/branch ids (authoritative)
+    final corpId = storedCorpId ??
+        crpBookingDetailsController
+            .crpBookingDetailResponse.value?.corporateID
+            ?.toString();
+    final branchId = storedBranchId ??
+        crpBookingDetailsController
+            .crpBookingDetailResponse.value?.branchID
+            ?.toString();
+
+    if (corpId == null ||
+        corpId.toString().isEmpty ||
+        branchId == null ||
+        branchId.toString().isEmpty) {
+      // #region agent log
+      _agentLog(
+        hypothesisId: 'B',
+        location: 'cpr_modify_booking.dart:_reloadCarModelsOnRunTypeChange',
+        message: 'Skipped reload due to missing corp/branch',
+        data: {
+          'corpIdNull': corpId == null,
+          'branchIdNull': branchId == null,
+          'storedCorpId': storedCorpId,
+          'storedBranchId': storedBranchId,
+        },
+      );
+      // #endregion
+      return;
+    }
+
     final Map<String, dynamic> inventoryParams = {
       'token': token,
       'user': user ?? email,
-      'CorpID': crpBookingDetailsController
-          .crpBookingDetailResponse.value?.corporateID,
-      'BranchID':
-          crpBookingDetailsController.crpBookingDetailResponse.value?.branchID,
-      'RunTypeID': runTypeIdForInventory()
+      'CorpID': corpId,
+      'BranchID': branchId,
+      'RunTypeID': resolvedRunTypeId,
     };
 
-    crpInventoryListController.fetchCarModels(inventoryParams, context,
-        skipAutoSelection: true);
-    // Reset prefill flag so it can reapply after models reload
-    _hasAppliedCarModelPrefill = false;
+    // #region agent log
+    _agentLog(
+      hypothesisId: 'B',
+      location: 'cpr_modify_booking.dart:_reloadCarModelsOnRunTypeChange',
+      message: 'Reload inventory params (corp/branch source)',
+      data: {
+        'corpIdForInventory': corpId,
+        'branchIdForInventory': branchId,
+        'storedCorpId': storedCorpId,
+        'storedBranchId': storedBranchId,
+      },
+    );
+    // #endregion
+
+    // Clear selected model when changing runTypeId (old selection may not be valid)
+    crpInventoryListController.selectedModel.value = null;
+    
+    try {
+      await crpInventoryListController.fetchCarModels(inventoryParams, context,
+          skipAutoSelection: true);
+      
+      // Only update last fetched ID AFTER successful fetch
+      _lastFetchedInventoryRunTypeId = resolvedRunTypeId;
+      
+      // Reset prefill flag so it can reapply after models reload
+      _hasAppliedCarModelPrefill = false;
+      
+      // #region agent log
+      _agentLog(
+        hypothesisId: 'B',
+        location: 'cpr_modify_booking.dart:_reloadCarModelsOnRunTypeChange',
+        message: 'Successfully reloaded car models',
+        data: {
+          'resolvedRunTypeId': resolvedRunTypeId,
+          'modelsCount': crpInventoryListController.models.length,
+          'lastFetchedInventoryRunTypeId': _lastFetchedInventoryRunTypeId,
+        },
+      );
+      // #endregion
+    } catch (e) {
+      // If fetch fails, don't update last fetched ID so it can retry
+      // #region agent log
+      _agentLog(
+        hypothesisId: 'B',
+        location: 'cpr_modify_booking.dart:_reloadCarModelsOnRunTypeChange',
+        message: 'Failed to reload car models',
+        data: {
+          'resolvedRunTypeId': resolvedRunTypeId,
+          'lastFetchedInventoryRunTypeId': _lastFetchedInventoryRunTypeId,
+          'error': e.toString(),
+        },
+      );
+      // #endregion
+      rethrow;
+    }
   }
 
   void _showPickupTypeBottomSheet(List<String> pickupTypes) async {
@@ -1697,6 +1941,37 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                             child: InkWell(
                               splashColor: Colors.transparent,
                               onTap: () async {
+                                // Find the runTypeID for the selected pickup type BEFORE updating state
+                                final runTypes = runTypeController.runTypes.value?.runTypes ?? [];
+                                final normalizedPickupType = pickupType.trim();
+                                int? selectedRunTypeId;
+                                
+                                // Try exact match first
+                                selectedRunTypeId = runTypes
+                                    .firstWhereOrNull((item) => (item.run ?? '').trim() == normalizedPickupType)
+                                    ?.runTypeID;
+                                
+                                // Fallback to case-insensitive match
+                                selectedRunTypeId ??= runTypes
+                                    .firstWhereOrNull((item) => 
+                                        (item.run ?? '').trim().toLowerCase() == normalizedPickupType.toLowerCase())
+                                    ?.runTypeID;
+
+                                // #region agent log
+                                _agentLog(
+                                  hypothesisId: 'F',
+                                  location: 'cpr_modify_booking.dart:pickupType_onTap',
+                                  message: 'User selected pickup type',
+                                  data: {
+                                    'pickupType': pickupType,
+                                    'normalizedPickupType': normalizedPickupType,
+                                    'selectedRunTypeId': selectedRunTypeId,
+                                    'currentLastFetched': _lastFetchedInventoryRunTypeId,
+                                    'allRunTypes': runTypes.map((rt) => {'run': rt.run, 'runTypeID': rt.runTypeID}).toList(),
+                                  },
+                                );
+                                // #endregion
+
                                 setState(() {
                                   _userHasInteracted = true;
                                   selectedPickupType = pickupType;
@@ -1704,8 +1979,22 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                   _isPickupTypeExpanded = false;
                                 });
 
-                                // Reload car models when run type changes
-                                await _reloadCarModelsOnRunTypeChange();
+                                // Reload car models when run type changes - pass explicit runTypeId
+                                if (selectedRunTypeId != null) {
+                                  await _reloadCarModelsOnRunTypeChange(explicitRunTypeId: selectedRunTypeId);
+                                } else {
+                                  // #region agent log
+                                  _agentLog(
+                                    hypothesisId: 'F',
+                                    location: 'cpr_modify_booking.dart:pickupType_onTap',
+                                    message: 'Warning: Could not resolve runTypeId, using fallback',
+                                    data: {
+                                      'pickupType': pickupType,
+                                    },
+                                  );
+                                  // #endregion
+                                  await _reloadCarModelsOnRunTypeChange();
+                                }
                                 _recomputeHasChanges();
 
                                 Navigator.pop(context);
@@ -1722,6 +2011,39 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                       value: pickupType,
                                       groupValue: selectedPickupType,
                                       onChanged: (value) async {
+                                        if (value == null) return;
+                                        
+                                        // Find the runTypeID for the selected pickup type BEFORE updating state
+                                        final runTypes = runTypeController.runTypes.value?.runTypes ?? [];
+                                        final normalizedValue = value.trim();
+                                        int? selectedRunTypeId;
+                                        
+                                        // Try exact match first
+                                        selectedRunTypeId = runTypes
+                                            .firstWhereOrNull((item) => (item.run ?? '').trim() == normalizedValue)
+                                            ?.runTypeID;
+                                        
+                                        // Fallback to case-insensitive match
+                                        selectedRunTypeId ??= runTypes
+                                            .firstWhereOrNull((item) => 
+                                                (item.run ?? '').trim().toLowerCase() == normalizedValue.toLowerCase())
+                                            ?.runTypeID;
+
+                                        // #region agent log
+                                        _agentLog(
+                                          hypothesisId: 'F',
+                                          location: 'cpr_modify_booking.dart:pickupType_Radio_onChanged',
+                                          message: 'User selected pickup type via Radio',
+                                          data: {
+                                            'value': value,
+                                            'normalizedValue': normalizedValue,
+                                            'selectedRunTypeId': selectedRunTypeId,
+                                            'currentLastFetched': _lastFetchedInventoryRunTypeId,
+                                            'allRunTypes': runTypes.map((rt) => {'run': rt.run, 'runTypeID': rt.runTypeID}).toList(),
+                                          },
+                                        );
+                                        // #endregion
+
                                         setState(() {
                                           _userHasInteracted = true;
                                           selectedPickupType = value;
@@ -1729,8 +2051,22 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                           _isPickupTypeExpanded = false;
                                         });
 
-                                        // Reload car models when run type changes
-                                        await _reloadCarModelsOnRunTypeChange();
+                                        // Reload car models when run type changes - pass explicit runTypeId
+                                        if (selectedRunTypeId != null) {
+                                          await _reloadCarModelsOnRunTypeChange(explicitRunTypeId: selectedRunTypeId);
+                                        } else {
+                                          // #region agent log
+                                          _agentLog(
+                                            hypothesisId: 'F',
+                                            location: 'cpr_modify_booking.dart:pickupType_Radio_onChanged',
+                                            message: 'Warning: Could not resolve runTypeId, using fallback',
+                                            data: {
+                                              'value': value,
+                                            },
+                                          );
+                                          // #endregion
+                                          await _reloadCarModelsOnRunTypeChange();
+                                        }
                                         _recomputeHasChanges();
 
                                         Navigator.pop(context);
