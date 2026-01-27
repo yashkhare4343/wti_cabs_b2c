@@ -419,7 +419,36 @@ class _CprLoginState extends State<CprLogin> {
                           ),
                         ),
                       )
-                    ],))
+                    ],)),
+              // Back button (always pushes retail bottom nav)
+              Positioned(
+                top: 80,
+                left: 8,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black,
+                          size: 18,
+                        ),
+                        onPressed: (){
+
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
             ],
           ),

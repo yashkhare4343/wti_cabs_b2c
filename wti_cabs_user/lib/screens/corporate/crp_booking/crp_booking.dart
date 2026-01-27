@@ -1132,7 +1132,7 @@ class _CrpBookingState extends State<CrpBooking> {
                         ],
                       ),
                       Text(
-                        booking.model ?? '-',
+                        booking.model?.replaceAll(RegExp(r'\s*\[.*?\]'), '') ?? '-',
                         style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF939393),

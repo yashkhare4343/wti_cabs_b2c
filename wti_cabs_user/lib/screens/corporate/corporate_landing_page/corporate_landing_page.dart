@@ -22,6 +22,11 @@ class CorporateLandingPage extends StatefulWidget {
 }
 
 class _CorporateLandingPageState extends State<CorporateLandingPage> {
+  void _pushToRetailBottomNav() {
+    if (!mounted) return;
+    GoRouter.of(context).push(AppRoutes.bottomNav);
+  }
+
   @override
   void initState() {
     // TODO: implement initState
@@ -126,10 +131,8 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) {
-          // Use a smooth transition back to the retail bottom nav
-          Navigator.of(context).push(
-            _buildSmoothPageRoute(const BottomNavScreen()),
-          );
+          // Always push retail bottom nav (no pop).
+          _pushToRetailBottomNav();
         }
       },
       child: Scaffold(
@@ -161,7 +164,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       ) , child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(height: 30,),
+                      const SizedBox(height: 10),
                       // Icons row
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 20),
@@ -308,7 +311,35 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                       height: 50,
                       width: 180,
                     )
-                ],))
+                ],)),
+            const SizedBox(height: 10),
+            // Back button (always pushes retail bottom nav)
+            Positioned(
+              top: 90,
+              left: 8,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.black,
+                        size: 18,
+                      ),
+                      onPressed: _pushToRetailBottomNav,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           ],
         ),

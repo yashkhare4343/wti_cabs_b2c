@@ -1400,7 +1400,7 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildSectionLabel('Choose Corporate *'),
+                                    _buildSectionLabel('Choose Entity *'),
                                     const SizedBox(height: 10),
                                     GestureDetector(
                                       onTap: () {
@@ -3880,6 +3880,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       entityId: selectedCorporate?.entityId,
       runTypeId: selectedRunTypeId,
     );
+
+    debugPrint('yash crp Booking data engine : ${jsonEncode(bookingData)}');
 
     // Navigate to inventory screen with booking data
     GoRouter.of(context).push(

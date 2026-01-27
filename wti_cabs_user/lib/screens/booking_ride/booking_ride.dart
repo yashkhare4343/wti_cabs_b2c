@@ -2044,12 +2044,16 @@ class _RidesState extends State<Rides> {
                 child: Obx(() {
                   final sourceValue =
                       bookingRideController.prefilled.value.trim();
+                  final dropValue =
+                      bookingRideController.prefilledDrop.value.trim();
                   final sourcePlaceId = placeSearchController.placeId.value;
+                  final dropPlaceId =
+                      dropPlaceSearchController.dropPlaceId.value;
 
                   final isSourceEmpty =
                       sourceValue.isEmpty && sourcePlaceId.isEmpty;
-                  // ✅ Rental: destination is optional; enable button if pickup exists.
-                  final isDisabled = isSourceEmpty;
+                  final isDropEmpty = dropValue.isEmpty && dropPlaceId.isEmpty;
+                  final isDisabled = isSourceEmpty || isDropEmpty;
 
                   return PrimaryButton(
                     text: 'Search Now',

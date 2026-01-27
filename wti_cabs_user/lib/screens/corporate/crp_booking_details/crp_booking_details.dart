@@ -196,12 +196,96 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
     );
   }
 
+  Future<void> _confirmAndSendSosAlert() async {
+    if (_isSendingSos || !mounted) return;
+
+    bool isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Send Emergency Alert', style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F1F1F), // Near-black for seriousness
+                ),),
+                content: const Text(
+                  'This action will notify our emergency support team for immediate attention.\n',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF4F4F4F), // Calm dark grey
+                    height: 1.4,
+                  ),
+                ),
+                actionsPadding: EdgeInsets.zero,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              child: const Text('Cancel', style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF757575), // Grey
+                              ),),
+                            ),
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  if (_isSendingSos) return;
+                                  setDialogState(() => isSubmitting = true);
+                                  Navigator.of(dialogContext).pop();
+                                  await Future<void>.delayed(Duration.zero);
+                                  if (!mounted) return;
+                                  await _sendSosAlert();
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.error,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onError,
+                          ),
+                          child: const Text('Send Alert', style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSosButton() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         splashColor: Colors.transparent,
-        onTap: _isSendingSos ? null : _sendSosAlert,
+        onTap: _isSendingSos ? null : _confirmAndSendSosAlert,
         child: SizedBox(
           width: _sosButtonSize,
           height: _sosButtonSize,
@@ -267,8 +351,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       }
 
       // Try to get current location; fallback to sample coordinates if unavailable.
-      double lat = 28.56210606787203;
-      double lng = 77.06701577966714;
+      double lat = 0.0;
+      double lng = 0.0;
       try {
         final serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (serviceEnabled) {
@@ -891,7 +975,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                             const SizedBox(height: 4),
                             // Car Model
                             Text(
-                              _currentBooking.model ?? 'Swift Dzire',
+                              _currentBooking.model?.replaceAll(RegExp(r'\s*\[.*?\]'), '') ?? '',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1058,6 +1142,12 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   // OTP Display Section
                   Obx(() {
                     final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+                    final effectiveStatus = _getEffectiveStatus().toLowerCase().trim();
+
+                    // Do not show OTP section once booking is completed
+                    if (effectiveStatus == 'completed') {
+                      return const SizedBox.shrink();
+                    }
 
                     // Get OTP values, handling null cases
                     final pickupOtpRaw = bookingDetails?.pickupOtp;

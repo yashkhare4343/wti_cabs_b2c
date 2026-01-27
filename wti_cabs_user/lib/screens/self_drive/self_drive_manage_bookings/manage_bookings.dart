@@ -52,6 +52,10 @@ class SelfDriveManageBooking extends StatefulWidget {
 class _SelfDriveManageBookingState extends State<SelfDriveManageBooking> with SingleTickerProviderStateMixin {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
   String convertUtcToLocal(String utcTimeString, String timezoneString) {
     // Parse UTC time
     DateTime utcTime = DateTime.parse(utcTimeString);
@@ -71,23 +75,38 @@ class _SelfDriveManageBookingState extends State<SelfDriveManageBooking> with Si
   int selectedDriveType = 1; // 0: Chauffeur's, 1: Self Drive
   TabController? _tabController;
 
+  String get _currentSelfDriveStatus {
+    final idx = _tabController?.index ?? 0;
+    if (idx == 1) return 'COMPLETED';
+    if (idx == 2) return 'CANCELLED';
+    return 'CONFIRMED';
+  }
+
+  Future<void> _refreshCurrentTab() async {
+    if (!upcomingBookingController.isLoggedIn.value) return;
+
+    if (selectedDriveType == 0) {
+      await upcomingBookingController.fetchUpcomingBookingsData();
+    } else {
+      await selfDriveManageBookingController.fetchMangeBooking(
+        _currentSelfDriveStatus,
+        force: true,
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    // Add listener to TabController to trigger API call on tab change
-    _tabController?.addListener(() {
-      if (_tabController!.indexIsChanging && upcomingBookingController.isLoggedIn.value) {
-        // Call API only if user is logged in
-        upcomingBookingController.fetchUpcomingBookingsData();
-      }
-    });
-    // Initial API call
-    if (upcomingBookingController.isLoggedIn.value) {
-      upcomingBookingController.fetchUpcomingBookingsData();
-    } else {
-      upcomingBookingController.reset();
-    }
+    // `UpcomingBookingController` already checks token + fetches in `onInit()`.
+    // Avoid duplicate fetches on init/tab-change to prevent long loader.
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
   }
 
   Future<void> signInWithApple() async {
@@ -1005,8 +1024,30 @@ class _SelfDriveManageBookingState extends State<SelfDriveManageBooking> with Si
           automaticallyImplyLeading: false,
         ),
         backgroundColor: AppColors.scaffoldBgPrimary1,
+        floatingActionButton: Obx(() {
+          final authChecked = upcomingBookingController.authChecked.value;
+          final loggedIn = upcomingBookingController.isLoggedIn.value;
+          if (!authChecked || !loggedIn) return const SizedBox.shrink();
+
+          final isRefreshing = selectedDriveType == 0
+              ? upcomingBookingController.isLoading.value
+              : selfDriveManageBookingController
+                  .isLoadingFor(_currentSelfDriveStatus);
+
+          return FloatingActionButton(
+            onPressed: isRefreshing ? null : _refreshCurrentTab,
+            backgroundColor: AppColors.mainButtonBg,
+            child: const Icon(Icons.refresh, color: Colors.white),
+          );
+        }),
         body: Obx(() {
-          if (upcomingBookingController.isLoading.value) {
+          final authChecked = upcomingBookingController.authChecked.value;
+          final loggedIn = upcomingBookingController.isLoggedIn.value;
+          final hasCabData =
+              upcomingBookingController.upcomingBookingResponse.value?.result !=
+                  null;
+
+          if (!authChecked) {
             return ListView.builder(
               itemCount: 5,
               itemBuilder: (context, index) {
@@ -1019,36 +1060,29 @@ class _SelfDriveManageBookingState extends State<SelfDriveManageBooking> with Si
             );
           }
 
-          if (upcomingBookingController.isLoggedIn.value == false) {
+          if (!loggedIn) {
             return _buildLoginPrompt(context);
+          }
+
+          if (upcomingBookingController.isLoading.value && !hasCabData) {
+            return ListView.builder(
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                return Container(
+                  height: 120,
+                  margin: EdgeInsets.only(bottom: 8, left: 16),
+                  child: BookingCardShimmer(),
+                );
+              },
+            );
           }
 
           return Column(
             children: [
-              StorageServices.instance.read('token') == null
-                  ? SizedBox(height: 12)
-                  : SizedBox(),
+              const SizedBox(height: 12),
 
               /// 🚀 Drive Type Toggle
-              StorageServices.instance.read('token') == null
-                  ? Container(
-                width: MediaQuery.of(context).size.width * 0.8,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Center(
-                    child: MainButton(
-                      text: 'Login/Register',
-                      onPressed: () {},
-                    ),
-                  ),
-                ),
-              )
-                  : Container(
+              Container(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -1112,25 +1146,42 @@ class _SelfDriveManageBookingState extends State<SelfDriveManageBooking> with Si
                 ),
               ),
 
+              if (selectedDriveType == 0 &&
+                  upcomingBookingController.isLoading.value &&
+                  hasCabData)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+
               /// 🚀 Bookings List Based on Tab + Drive Type
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
                     // Upcoming Tab
-                    selectedDriveType == 0
-                        ? BookingList() // Chauffeur’s
-                        : SelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? BookingList() // Chauffeur’s
+                          : SelfDriveBookingList(),
+                    ),
 
                     // Completed Tab
-                    selectedDriveType == 0
-                        ? CompletedBookingList()
-                        : CompletedSelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? CompletedBookingList()
+                          : CompletedSelfDriveBookingList(),
+                    ),
 
                     // Cancelled Tab
-                    selectedDriveType == 0
-                        ? CanceledBookingList()
-                        : CanceledSelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? CanceledBookingList()
+                          : CanceledSelfDriveBookingList(),
+                    ),
                   ],
                 ),
               ),
@@ -1208,9 +1259,13 @@ class _BookingCardState extends State<BookingCard> {
         // ⏳ Show loading until data is ready
       }
 
-      if (upcomingBookingController.confirmedBookings.isNotEmpty) {
-        Center(
-          child: Text('No Upcoming Booking Found'),
+      if (upcomingBookingController.confirmedBookings.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Upcoming Booking Found')),
+          ],
         );
       }
 
@@ -1691,8 +1746,12 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
       }
 
       if (upcomingBookingController.completedBookings.isEmpty) {
-        return Center(
-          child: Text('No Completed Booking Found'),
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Completed Booking Found')),
+          ],
         );
       }
 
@@ -2139,8 +2198,12 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
       }
 
       if (upcomingBookingController.cancelledBookings.value.isEmpty) {
-        return Center(
-          child: Text('No Cancelled Booking Found'),
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Cancelled Booking Found')),
+          ],
         );
         // ⏳ Show loading until data is ready
       }
@@ -2633,31 +2696,57 @@ class SelfDriveBookingList extends StatefulWidget {
 }
 
 class _SelfDriveBookingListState extends State<SelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'CONFIRMED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('CONFIRMED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
 
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Upcoming Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Upcoming Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list
@@ -3018,30 +3107,56 @@ class CompletedSelfDriveBookingList extends StatefulWidget {
 }
 
 class _CompletedSelfDriveBookingListState extends State<CompletedSelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'COMPLETED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('COMPLETED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Completed Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Completed Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list
@@ -3370,31 +3485,57 @@ class CanceledSelfDriveBookingList extends StatefulWidget {
 }
 
 class _CanceledSelfDriveBookingListState extends State<CanceledSelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'CANCELLED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('CANCELLED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
 
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Cancelled Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Cancelled Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list

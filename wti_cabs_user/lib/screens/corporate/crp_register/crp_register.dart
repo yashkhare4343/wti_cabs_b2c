@@ -634,21 +634,6 @@ class _CprRegisterState extends State<CprRegister> {
                           if (value == null || value.isEmpty) {
                             return "Password is required";
                           }
-                          if (value.length < 8) {
-                            return "At least 8 characters required";
-                          }
-                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                            return "Include at least one uppercase letter";
-                          }
-                          if (!RegExp(r'[a-z]').hasMatch(value)) {
-                            return "Include at least one lowercase letter";
-                          }
-                          if (!RegExp(r'[0-9]').hasMatch(value)) {
-                            return "Include at least one number";
-                          }
-                          if (!RegExp(r'[!@#\$&*~_]').hasMatch(value)) {
-                            return "Include at least one special character";
-                          }
                           return null;
                         },
                       ),
@@ -740,7 +725,7 @@ class _CprRegisterState extends State<CprRegister> {
                                   "ios_token": "",
                                   "EntityID": selectedEntity?.entityId!=null? selectedEntity?.entityId : "",
                                   "ManagerEmail": "",
-                                  "register_sourceID": "Mobile",
+                                  "register_sourceID": "MOBILE",
                                   "gender":_genderController.selectedGender.value?.genderID
                                 };
                                 _validateAndSubmit(params);

@@ -48,6 +48,10 @@ class ManageBookings extends StatefulWidget {
 class _ManageBookingsState extends State<ManageBookings> with SingleTickerProviderStateMixin {
   final UpcomingBookingController upcomingBookingController =
   Get.put(UpcomingBookingController());
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
   String convertUtcToLocal(String utcTimeString, String timezoneString) {
     // Parse UTC time
     DateTime utcTime = DateTime.parse(utcTimeString);
@@ -67,23 +71,40 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
   int selectedDriveType = 0; // 0: Chauffeur's, 1: Self Drive
   TabController? _tabController;
 
+  String get _currentSelfDriveStatus {
+    final idx = _tabController?.index ?? 0;
+    if (idx == 1) return 'COMPLETED';
+    if (idx == 2) return 'CANCELLED';
+    return 'CONFIRMED';
+  }
+
+  Future<void> _refreshCurrentTab() async {
+    if (!upcomingBookingController.isLoggedIn.value) return;
+
+    if (selectedDriveType == 0) {
+      await upcomingBookingController.fetchUpcomingBookingsData();
+    } else {
+      await selfDriveManageBookingController.fetchMangeBooking(
+        _currentSelfDriveStatus,
+        force: true,
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    // Add listener to TabController to trigger API call on tab change
-    _tabController?.addListener(() {
-      if (_tabController!.indexIsChanging && upcomingBookingController.isLoggedIn.value) {
-        // Call API only if user is logged in
-        upcomingBookingController.fetchUpcomingBookingsData();
-      }
-    });
-    // Initial API call
-    if (upcomingBookingController.isLoggedIn.value) {
-      upcomingBookingController.fetchUpcomingBookingsData();
-    } else {
-      upcomingBookingController.reset();
-    }
+    // NOTE:
+    // - `UpcomingBookingController` already checks token + fetches in `onInit()`.
+    // - Avoid re-fetching on tab switches (API returns all statuses at once).
+    // This prevents multiple back-to-back calls that keep the loader visible.
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
   }
 
   Widget _buildLoginPrompt(BuildContext context) {
@@ -1065,8 +1086,31 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
           automaticallyImplyLeading: false,
         ),
         backgroundColor: AppColors.scaffoldBgPrimary1,
+        floatingActionButton: Obx(() {
+          final authChecked = upcomingBookingController.authChecked.value;
+          final loggedIn = upcomingBookingController.isLoggedIn.value;
+          if (!authChecked || !loggedIn) return const SizedBox.shrink();
+
+          final isRefreshing = selectedDriveType == 0
+              ? upcomingBookingController.isLoading.value
+              : selfDriveManageBookingController
+                  .isLoadingFor(_currentSelfDriveStatus);
+
+          return FloatingActionButton(
+            onPressed: isRefreshing ? null : _refreshCurrentTab,
+            backgroundColor: AppColors.mainButtonBg,
+            child: const Icon(Icons.refresh, color: Colors.white),
+          );
+        }),
         body: Obx(() {
-          if (upcomingBookingController.isLoading.value) {
+          final authChecked = upcomingBookingController.authChecked.value;
+          final loggedIn = upcomingBookingController.isLoggedIn.value;
+          final hasCabData =
+              upcomingBookingController.upcomingBookingResponse.value?.result !=
+                  null;
+
+          // Avoid flashing login UI before we read token.
+          if (!authChecked) {
             return ListView.builder(
               itemCount: 5,
               itemBuilder: (context, index) {
@@ -1079,36 +1123,31 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
             );
           }
 
-          if (upcomingBookingController.isLoggedIn.value == false) {
+          // Show login UI if not authenticated.
+          if (!loggedIn) {
             return _buildLoginPrompt(context);
+          }
+
+          // Only show full-page shimmer for the very first load.
+          if (upcomingBookingController.isLoading.value && !hasCabData) {
+            return ListView.builder(
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                return Container(
+                  height: 120,
+                  margin: EdgeInsets.only(bottom: 8, left: 16),
+                  child: BookingCardShimmer(),
+                );
+              },
+            );
           }
 
           return Column(
             children: [
-              StorageServices.instance.read('token') == null
-                  ? SizedBox(height: 12)
-                  : SizedBox(),
+              const SizedBox(height: 12),
 
               /// 🚀 Drive Type Toggle
-              StorageServices.instance.read('token') == null
-                  ? Container(
-                width: MediaQuery.of(context).size.width * 0.8,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Center(
-                    child: MainButton(
-                      text: 'Login/Register',
-                      onPressed: () {},
-                    ),
-                  ),
-                ),
-              )
-                  : Container(
+              Container(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -1172,25 +1211,43 @@ class _ManageBookingsState extends State<ManageBookings> with SingleTickerProvid
                 ),
               ),
 
+              // If we're refreshing Cab bookings, don't blank the whole screen.
+              if (selectedDriveType == 0 &&
+                  upcomingBookingController.isLoading.value &&
+                  hasCabData)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+
               /// 🚀 Bookings List Based on Tab + Drive Type
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
                     // Upcoming Tab
-                    selectedDriveType == 0
-                        ? BookingList() // Chauffeur’s
-                        : SelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? BookingList() // Chauffeur’s
+                          : SelfDriveBookingList(),
+                    ),
 
                     // Completed Tab
-                    selectedDriveType == 0
-                        ? CompletedBookingList()
-                        : CompletedSelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? CompletedBookingList()
+                          : CompletedSelfDriveBookingList(),
+                    ),
 
                     // Cancelled Tab
-                    selectedDriveType == 0
-                        ? CanceledBookingList()
-                        : CanceledSelfDriveBookingList(),
+                    RefreshIndicator(
+                      onRefresh: _refreshCurrentTab,
+                      child: selectedDriveType == 0
+                          ? CanceledBookingList()
+                          : CanceledSelfDriveBookingList(),
+                    ),
                   ],
                 ),
               ),
@@ -1230,10 +1287,20 @@ class BookingCard extends StatefulWidget {
 
 class _BookingCardState extends State<BookingCard> {
   final UpcomingBookingController upcomingBookingController =
-  Get.put(UpcomingBookingController());
-  final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfCtrl = Get.put(SdPdfDownloadController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
+      Get.isRegistered<UpcomingBookingController>()
+          ? Get.find<UpcomingBookingController>()
+          : Get.put(UpcomingBookingController());
+  final PdfDownloadController pdfCtrl = Get.isRegistered<PdfDownloadController>()
+      ? Get.find<PdfDownloadController>()
+      : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfCtrl =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
@@ -1257,21 +1324,26 @@ class _BookingCardState extends State<BookingCard> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (upcomingBookingController.upcomingBookingResponse.value?.result ==
-          null) {
+      final isInitialLoad = upcomingBookingController.isLoading.value &&
+          upcomingBookingController.upcomingBookingResponse.value?.result ==
+              null;
+      if (isInitialLoad) {
         return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: upcomingBookingController.confirmedBookings?.length,
-            itemBuilder: (BuildContext context, int index) {
-              return BookingCardShimmer();
-            });
-
-        // ⏳ Show loading until data is ready
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (BuildContext context, int index) {
+            return BookingCardShimmer();
+          },
+        );
       }
 
-      if (upcomingBookingController.confirmedBookings.isNotEmpty) {
-        Center(
-          child: Text('No Upcoming Booking Found'),
+      if (upcomingBookingController.confirmedBookings.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Upcoming Booking Found')),
+          ],
         );
       }
 
@@ -1658,7 +1730,7 @@ class _BookingCardState extends State<BookingCard> {
                                 horizontal: 12, vertical: 6),
                           ),
                           child: Text(
-                            'Manage Booking',
+                            'Booking Details',
                             style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -1715,11 +1787,20 @@ class CompletedBookingCard extends StatefulWidget {
 
 class _CompletedBookingCardState extends State<CompletedBookingCard> {
   final UpcomingBookingController upcomingBookingController =
-  Get.put(UpcomingBookingController());
-  final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
+      Get.isRegistered<UpcomingBookingController>()
+          ? Get.find<UpcomingBookingController>()
+          : Get.put(UpcomingBookingController());
+  final PdfDownloadController pdfCtrl = Get.isRegistered<PdfDownloadController>()
+      ? Get.find<PdfDownloadController>()
+      : Get.put(PdfDownloadController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
   final FetchReservationBookingData fetchReservationBookingData =
-  Get.put(FetchReservationBookingData());
+      Get.isRegistered<FetchReservationBookingData>()
+          ? Get.find<FetchReservationBookingData>()
+          : Get.put(FetchReservationBookingData());
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
 
@@ -1742,20 +1823,24 @@ class _CompletedBookingCardState extends State<CompletedBookingCard> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (upcomingBookingController.isLoading.value) {
+      final hasData = upcomingBookingController.completedBookings.isNotEmpty;
+      if (upcomingBookingController.isLoading.value && !hasData) {
         return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: upcomingBookingController.completedBookings?.length,
-            itemBuilder: (BuildContext context, int index) {
-              return BookingCardShimmer();
-            });
-
-        // ⏳ Show loading until data is ready
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (BuildContext context, int index) {
+            return BookingCardShimmer();
+          },
+        );
       }
 
       if (upcomingBookingController.completedBookings.isEmpty) {
-        return Center(
-          child: Text('No Completed Booking Found'),
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Completed Booking Found')),
+          ],
         );
       }
 
@@ -2172,9 +2257,16 @@ class CanceledBookingCard extends StatefulWidget {
 
 class _CanceledBookingCardState extends State<CanceledBookingCard> {
   final UpcomingBookingController upcomingBookingController =
-  Get.put(UpcomingBookingController());
-  final PdfDownloadController pdfCtrl = Get.put(PdfDownloadController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
+      Get.isRegistered<UpcomingBookingController>()
+          ? Get.find<UpcomingBookingController>()
+          : Get.put(UpcomingBookingController());
+  final PdfDownloadController pdfCtrl = Get.isRegistered<PdfDownloadController>()
+      ? Get.find<PdfDownloadController>()
+      : Get.put(PdfDownloadController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
 
   String? convertUtcToLocal(String? utcTimeString, String timezoneString) {
     if (utcTimeString == null || utcTimeString.isEmpty) return null;
@@ -2198,20 +2290,24 @@ class _CanceledBookingCardState extends State<CanceledBookingCard> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (upcomingBookingController.isLoading.value) {
+      final hasData = upcomingBookingController.cancelledBookings.isNotEmpty;
+      if (upcomingBookingController.isLoading.value && !hasData) {
         return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: upcomingBookingController.cancelledBookings?.length,
-            itemBuilder: (BuildContext context, int index) {
-              return BookingCardShimmer();
-            });
-
-        // ⏳ Show loading until data is ready
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (BuildContext context, int index) {
+            return BookingCardShimmer();
+          },
+        );
       }
 
       if (upcomingBookingController.cancelledBookings.value.isEmpty) {
-        return Center(
-          child: Text('No Cancelled Booking Found'),
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Cancelled Booking Found')),
+          ],
         );
         // ⏳ Show loading until data is ready
       }
@@ -2702,31 +2798,57 @@ class SelfDriveBookingList extends StatefulWidget {
 }
 
 class _SelfDriveBookingListState extends State<SelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'CONFIRMED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('CONFIRMED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
 
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Upcoming Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Upcoming Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list
@@ -3087,30 +3209,56 @@ class CompletedSelfDriveBookingList extends StatefulWidget {
 }
 
 class _CompletedSelfDriveBookingListState extends State<CompletedSelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'COMPLETED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('COMPLETED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Completed Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Completed Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list
@@ -3438,31 +3586,57 @@ class CanceledSelfDriveBookingList extends StatefulWidget {
 }
 
 class _CanceledSelfDriveBookingListState extends State<CanceledSelfDriveBookingList> {
-  final SelfDriveManageBookingController selfDriveManageBookingController = Get.put(SelfDriveManageBookingController());
-  final CurrencyController currencyController = Get.put(CurrencyController());
-  final PdfDownloadController pdfDownloadController = Get.put(PdfDownloadController());
-  final SdPdfDownloadController sdPdfDownloadController = Get.put(SdPdfDownloadController());
+  static const String _status = 'CANCELLED';
+
+  final SelfDriveManageBookingController selfDriveManageBookingController =
+      Get.isRegistered<SelfDriveManageBookingController>()
+          ? Get.find<SelfDriveManageBookingController>()
+          : Get.put(SelfDriveManageBookingController());
+  final CurrencyController currencyController =
+      Get.isRegistered<CurrencyController>()
+          ? Get.find<CurrencyController>()
+          : Get.put(CurrencyController());
+  final PdfDownloadController pdfDownloadController =
+      Get.isRegistered<PdfDownloadController>()
+          ? Get.find<PdfDownloadController>()
+          : Get.put(PdfDownloadController());
+  final SdPdfDownloadController sdPdfDownloadController =
+      Get.isRegistered<SdPdfDownloadController>()
+          ? Get.find<SdPdfDownloadController>()
+          : Get.put(SdPdfDownloadController());
 
   @override
   void initState() {
     super.initState();
     // Fetch data only if not already fetched
-    selfDriveManageBookingController.fetchMangeBooking('CANCELLED');
+    selfDriveManageBookingController.fetchMangeBooking(_status);
 
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show shimmer while loading
-      if (selfDriveManageBookingController.isLoading.value) {
-        return const BookingCardShimmer();
+      final results = selfDriveManageBookingController.resultsFor(_status);
+
+      // Show shimmer only for first load of this status
+      if (selfDriveManageBookingController.isLoadingFor(_status) &&
+          results.isEmpty) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: 5,
+          itemBuilder: (_, __) => const BookingCardShimmer(),
+        );
       }
 
       // Show empty state if no bookings
-      final results = selfDriveManageBookingController.sdManageBooking.value?.result;
-      if (results == null || results.isEmpty) {
-        return const Center(child: Text('No Cancelled Bookings Found'));
+      if (results.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No Cancelled Bookings Found')),
+          ],
+        );
       }
 
       // Show booking list

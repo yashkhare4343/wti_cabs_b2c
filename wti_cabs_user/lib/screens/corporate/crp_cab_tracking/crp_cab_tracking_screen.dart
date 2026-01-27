@@ -228,7 +228,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                       const SizedBox(height: 4),
                       // Car Model - lighter gray
                       Text(
-                        carModel,
+                        carModel.replaceAll(RegExp(r'\s*\[.*?\]'), '').trim(),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -249,12 +249,12 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                             '')
                             .toLowerCase()
                             .trim();
-                        final shouldShow = status == 'start' || status == 'pick';
+                        final shouldShow = status == 'start';
                         if (!shouldShow) return const SizedBox.shrink();
 
                         // Calculate arrival time from tracking response
                         final response = _controller.trackingResponse.value;
-                        String arrivalText = 'NAN';
+                        String arrivalText = '';
 
                         // Show ETA only from API (null-safe), else show NAN
                         if (response != null) {
@@ -325,7 +325,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                             if (formattedDate.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'Booked on $formattedDate',
+                                'Reporting on $formattedDate',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w400,

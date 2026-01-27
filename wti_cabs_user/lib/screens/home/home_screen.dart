@@ -97,7 +97,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   String address = '';
   List<Map<String, dynamic>> recentTrips = [];
   final BookingRideController bookingRideController =
@@ -351,6 +352,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       isDrawerOpen = !isDrawerOpen;
     });
   }
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void dispose() {
@@ -1720,6 +1724,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required for keep-alive
     final double drawerWidth = MediaQuery.of(context).size.width * 0.8;
     return WillPopScope(
       onWillPop: () async {
@@ -2554,6 +2559,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             '';
                         final imageUrl = images[index].url ?? '';
                         final fullImageUrl = "$baseUrl$imageUrl".trim();
+
+                        // Keep memory usage bounded to the rendered size
+                        final dpr = MediaQuery.of(context).devicePixelRatio;
+                        final cacheWidthPx =
+                            (MediaQuery.of(context).size.width * dpr).round();
+                        final cacheHeightPx = (124 * dpr).round();
                         
                         // ✅ Validate URL before loading
                         if (fullImageUrl.isEmpty || !fullImageUrl.startsWith('http')) {
@@ -2585,7 +2596,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               useOldImageOnUrlChange: true,
                               fadeInDuration: const Duration(milliseconds: 300),
                               fadeOutDuration: const Duration(milliseconds: 200),
-                              memCacheWidth: 1500, // ✅ Optimize memory usage
+                              memCacheWidth: cacheWidthPx,
+                              memCacheHeight: cacheHeightPx,
                               httpHeaders: const {
                                 'Cache-Control': 'max-age=31536000', // Cache for 1 year
                               },
@@ -2726,6 +2738,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       itemBuilder: (context, index, realIdx) {
                         final imageUrl = "$baseUrl${images[index].url ?? ''}".trim();
+
+                        // Keep memory usage bounded to the rendered size
+                        final dpr = MediaQuery.of(context).devicePixelRatio;
+                        final logicalWidth =
+                            MediaQuery.of(context).size.width * 0.75;
+                        final cacheWidthPx = (logicalWidth * dpr).round();
+                        final cacheHeightPx = (174 * dpr).round();
                         
                         // ✅ Validate URL before loading
                         if (imageUrl.isEmpty || !imageUrl.startsWith('http')) {
@@ -2754,7 +2773,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               fadeInDuration: const Duration(milliseconds: 300),
                               fadeOutDuration:
                                   const Duration(milliseconds: 200),
-                              memCacheWidth: 1500, // ✅ sharp banners
+                              memCacheWidth: cacheWidthPx,
+                              memCacheHeight: cacheHeightPx,
                               httpHeaders: const {
                                 'Cache-Control': 'max-age=31536000', // Cache for 1 year
                               },
@@ -2819,7 +2839,12 @@ class _CustomCarouselState extends State<CustomCarousel>
   @override
   void initState() {
     super.initState();
-    // ✅ Force fetch on first load with error handling
+    // Avoid re-fetching on rebuild/navigation back if data already exists
+    final existing = uspController.uspResponse.value?.data;
+    if (existing != null && existing.isNotEmpty) return;
+    if (uspController.isLoading.value) return;
+
+    // Fetch once with retry
     uspController.fetchUsps().catchError((e) {
       debugPrint("❌ Error fetching USP: $e");
       // Retry after delay

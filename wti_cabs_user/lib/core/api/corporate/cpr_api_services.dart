@@ -814,6 +814,7 @@ class CprApiService {
       params,
       (body) {
         if (body is Map) {
+          debugPrint('yash booking confirmation params: $params');
           return Map<String, dynamic>.from(body);
         }
         return {"response": body};

@@ -136,7 +136,109 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
   String? selectedReason;
   final CurrencyController currencyController = Get.put(CurrencyController());
 
-  void _showReasonBottomSheet(BuildContext context) {
+  Future<void> _cancelBooking({
+    required BuildContext context,
+    required Map<String, dynamic> booking,
+    required String reason,
+  }) async {
+    _showLoader('Please wait', context);
+    final Map<String, dynamic> requestData = {
+      "id": booking["id"] ?? '',
+      "cancellation_reason": reason,
+      "amount": booking["amountPaid"],
+      "payment_gateway_used": (countryController.isIndia == true) ? 1 : 0,
+      if (countryController.isIndia == true) "paymentId": booking["paymentId"],
+      if (countryController.isIndia == true) "receiptId": booking["recieptId"],
+    };
+    debugPrint('cancellation reservation request data : $requestData');
+
+    final bool isSuccess =
+        await reservationCancellationController.verifyCancelReservation(
+      requestData: requestData,
+      context: context,
+    );
+
+    if (!context.mounted) return;
+
+    // Close "Please wait" loader immediately once API finishes
+    if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!isSuccess) return;
+
+    _successLoader(
+      'Booking Canceled Successfully',
+      context,
+      () {
+        // ✅ Navigate only after loader closes
+        Navigator.of(context).push(
+          Platform.isIOS
+              ? CupertinoPageRoute(
+                  builder: (_) => const BottomNavScreen(initialIndex: 0),
+                )
+              : MaterialPageRoute(
+                  builder: (_) => const BottomNavScreen(initialIndex: 0),
+                ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _showCancelConfirmationDialog({
+    required BuildContext context,
+    required String reason,
+  }) async {
+    if (Platform.isIOS) {
+      final res = await showCupertinoDialog<bool>(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('Cancel booking?'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Reason: $reason\n\nThis action can’t be undone.',
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Keep booking'),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Cancel booking'),
+            ),
+          ],
+        ),
+      );
+      return res ?? false;
+    }
+
+    final res = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        title: const Text('Cancel booking?'),
+        content: Text('Reason: $reason\n\nThis action can’t be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep booking'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel booking'),
+          ),
+        ],
+      ),
+    );
+    return res ?? false;
+  }
+
+  void _showCancelBottomSheet(BuildContext context) {
     final reasons = [
       "Change of plans",
       "Driver issue",
@@ -147,14 +249,22 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     showModalBottomSheet(
       backgroundColor: Colors.white,
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final booking = widget.booking;
+            final String? modalSelectedReason = selectedReason;
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -171,7 +281,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                       dense: true, // makes tile more compact
                       title: Text(reason, style: const TextStyle(fontSize: 14)),
                       value: reason,
-                      groupValue: selectedReason,
+                      groupValue: modalSelectedReason,
                       onChanged: (value) {
                         setModalState(() {
                           selectedReason = value;
@@ -186,11 +296,32 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                   const SizedBox(height: 8), // spacing before Done button
                   SizedBox(
                     width: double.infinity,
-                    child: MainButton(
-                        text: 'Done',
-                        onPressed: () {
-                          Navigator.pop(context);
-                        }),
+                    child: Opacity(
+                      opacity: selectedReason == null ? 0.4 : 1,
+                      child: MainButton(
+                        text: 'Continue',
+                        onPressed: () async {
+                          final reason = selectedReason;
+                          if (reason == null) return;
+
+                          Navigator.pop(context); // close bottom sheet
+
+                          final shouldCancel =
+                              await _showCancelConfirmationDialog(
+                            context: context,
+                            reason: reason,
+                          );
+                          if (!shouldCancel) return;
+
+                          if (!context.mounted) return;
+                          await _cancelBooking(
+                            context: context,
+                            booking: booking,
+                            reason: reason,
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -223,7 +354,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Cancel Bookings",
+          title: Text("Bookings Details",
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
@@ -231,6 +362,13 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           centerTitle: true,
           elevation: 0.6,
           backgroundColor: Colors.white,
+          actions: [
+            IconButton(
+              tooltip: 'More',
+              onPressed: () => _showCancelBottomSheet(context),
+              icon: const Icon(Icons.more_vert, color: Colors.black),
+            ),
+          ],
           leading: GestureDetector(
             onTap: () {
               // Always use push (matches existing Android behavior).
@@ -258,101 +396,13 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildBookingDetails(booking),
-              const SizedBox(height: 24),
-              const Text(
-                "Why are you cancelling?",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-
-              // Button to open bottom sheet
-              OutlinedButton(
-                onPressed: () => _showReasonBottomSheet(context),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor:
-                      Colors.grey.shade100, // optional light background
-                  foregroundColor: Colors.black87,
-                  minimumSize: const Size.fromHeight(48),
-                  side: const BorderSide(color: Colors.grey), // border color
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(selectedReason ?? "Select a reason"),
-                    const Icon(Icons.arrow_drop_down),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 220,
-                    height: 46,
-                    child: Opacity(
-                        opacity: selectedReason == null ? 0.4 : 1,
-                        child: MainButton(
-                            text: 'Cancel Booking',
-                            onPressed: () async {
-                              if (selectedReason == null) return;
-
-                              _showLoader('Please wait', context);
-                              final Map<String, dynamic> requestData = {
-                                "id": booking["id"] ?? '',
-                                "cancellation_reason": selectedReason,
-                                "amount": booking["amountPaid"],
-                                "payment_gateway_used":
-                                    (countryController.isIndia == true) ? 1 : 0,
-                                if (countryController.isIndia == true)
-                                  "paymentId": booking["paymentId"],
-                                if (countryController.isIndia == true)
-                                  "receiptId": booking["recieptId"],
-                              };
-                              debugPrint(
-                                  'cancellation reservation request data : $requestData');
-                              final bool isSuccess = await reservationCancellationController
-                                  .verifyCancelReservation(
-                                requestData: requestData,
-                                context: context,
-                              );
-
-                              if (!context.mounted) return;
-
-                              // Close "Please wait" loader immediately once API finishes
-                              if (Navigator.of(context, rootNavigator: true).canPop()) {
-                                Navigator.of(context, rootNavigator: true).pop();
-                              }
-
-                              if (!isSuccess) return;
-
-                              _successLoader(
-                                'Booking Canceled Successfully',
-                                context,
-                                () {
-                                  // ✅ Navigate only after loader closes
-                                  Navigator.of(context).push(
-                                    Platform.isIOS
-                                        ? CupertinoPageRoute(
-                                            builder: (_) => BottomNavScreen(
-                                              initialIndex: 0,
-                                            ),
-                                          )
-                                        : MaterialPageRoute(
-                                            builder: (_) => BottomNavScreen(
-                                              initialIndex: 0,
-                                            ),
-                                          ),
-                                  );
-                                },
-                              );
-                            })),
-                  ),
-                ],
-              )
+              // const SizedBox(height: 16),
+              // Text(
+              //   selectedReason == null
+              //       ? "To cancel this booking, tap the 3-dot menu in the top-right."
+              //       : "Selected reason: $selectedReason",
+              //   style: const TextStyle(fontSize: 13, color: Colors.black54),
+              // ),
             ],
           ),
         ),

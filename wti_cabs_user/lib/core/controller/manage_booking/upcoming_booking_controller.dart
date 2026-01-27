@@ -14,6 +14,7 @@ class UpcomingBookingController extends GetxController {
   RxList<ChauffeurResult> cancelledBookings = <ChauffeurResult>[].obs;
   RxBool isLoggedIn = false.obs;
   RxBool isLoading = false.obs;
+  RxBool authChecked = false.obs;
 
   @override
   void onInit() {
@@ -24,20 +25,28 @@ class UpcomingBookingController extends GetxController {
   void reset() {
     upcomingBookingResponse.value = null; // or new UpcomingBookingResponse()
     isLoggedIn.value = false;
+    authChecked.value = true;
   }
 
-  void _checkLoginStatus() async{
-    final token = await StorageServices.instance.read('token');
-    if (token!=null) {
-      isLoggedIn.value = true;
-      fetchUpcomingBookingsData();
-    } else {
-      isLoggedIn.value = false;
+  void _checkLoginStatus() async {
+    authChecked.value = false;
+    try {
+      final token = await StorageServices.instance.read('token');
+      if (token != null) {
+        isLoggedIn.value = true;
+        fetchUpcomingBookingsData();
+      } else {
+        isLoggedIn.value = false;
+      }
+    } finally {
+      authChecked.value = true;
     }
   }
 
   // upcoming bookings
   Future<void> fetchUpcomingBookingsData() async {
+    // Prevent duplicate back-to-back calls from multiple widgets/listeners.
+    if (isLoading.value) return;
     isLoading.value = true;
 
     try {

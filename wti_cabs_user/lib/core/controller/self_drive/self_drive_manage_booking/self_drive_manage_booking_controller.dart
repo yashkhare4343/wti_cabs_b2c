@@ -10,8 +10,12 @@ import '../../../model/self_drive/get_all_cities/get_all_cities_response.dart';
 
 
 class SelfDriveManageBookingController extends GetxController {
-  Rx<SelfDriveManageBookingResponse?> sdManageBooking = Rx<SelfDriveManageBookingResponse?>(null);
-  RxBool isLoading = false.obs;
+  /// Per-status cache so tab switches don't overwrite each other.
+  final RxMap<String, SelfDriveManageBookingResponse?> bookingsByStatus =
+      <String, SelfDriveManageBookingResponse?>{}.obs;
+
+  /// Per-status loading state (so one tab loading doesn't blank others).
+  final RxMap<String, bool> loadingByStatus = <String, bool>{}.obs;
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   var isFormValid = false.obs;
@@ -21,18 +25,28 @@ class SelfDriveManageBookingController extends GetxController {
     isFormValid.value = isValid;
   }
 
-  Future<void> fetchMangeBooking(String status) async {
-    isLoading.value = true;
+  bool isLoadingFor(String status) => loadingByStatus[status] ?? false;
+
+  List<ReservationResult> resultsFor(String status) =>
+      bookingsByStatus[status]?.result ?? const <ReservationResult>[];
+
+  Future<void> fetchMangeBooking(String status, {bool force = false}) async {
+    // If we already have data for this status, don't refetch unless forced.
+    if (!force && bookingsByStatus.containsKey(status)) return;
+
+    loadingByStatus[status] = true;
     try {
-      final result = await SelfDriveApiService().getRequestNewToken<SelfDriveManageBookingResponse>(
+      final result = await SelfDriveApiService()
+          .getRequestNewToken<SelfDriveManageBookingResponse>(
         'reservations/getFinalReservationAndReceipts/$status',
         SelfDriveManageBookingResponse.fromJson,
       );
-      sdManageBooking.value = result;
+      bookingsByStatus[status] = result;
     } catch (e) {
+      // Keep existing cached data (if any) on error.
       print("Failed to fetch packages: $e");
     } finally {
-      isLoading.value = false;
+      loadingByStatus[status] = false;
     }
   }
 }

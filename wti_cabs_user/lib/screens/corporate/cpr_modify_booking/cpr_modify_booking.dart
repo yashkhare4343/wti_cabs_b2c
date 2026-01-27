@@ -56,7 +56,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       Get.put(CarProviderController());
   final CrpBookingDetailsController crpBookingDetailsController =
       Get.put(CrpBookingDetailsController());
-  final LoginInfoController loginInfoController = Get.put(LoginInfoController());
+  final LoginInfoController loginInfoController =
+      Get.put(LoginInfoController());
   bool _showShimmer = true;
 
   String? guestId, token, user;
@@ -69,6 +70,19 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   bool _hasAppliedSelectionPrefill = false;
   bool _showSkeletonLoader = true;
   bool _hasAppliedCarModelPrefill = false;
+
+  /// Modify button enablement
+  /// - Disabled (with 0.4 opacity) until user changes something
+  /// - Disabled again if user reverts to original values
+  bool _userHasInteracted = false;
+  bool _hasChanges = false;
+  bool _hasCapturedBaseline = false;
+
+  int? _baselineRunTypeId;
+  int? _baselineMakeId;
+  DateTime? _baselinePickupDateTime;
+  String _baselinePickupAddress = '';
+  String _baselineDropAddress = '';
 
   Future<void> fetchParameter() async {
     // Resolve identifiers from storage; fallback to in-memory login info when returning from other screens
@@ -86,10 +100,13 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     }
 
     final loginGuestId = loginInfoController.crpLoginInfo.value?.guestID;
-    if (guestId == null || guestId!.isEmpty || guestId == '0' || guestId == 'null') {
+    if (guestId == null ||
+        guestId!.isEmpty ||
+        guestId == '0' ||
+        guestId == 'null') {
       if (loginGuestId != null && loginGuestId != 0) {
         guestId = loginGuestId.toString();
-        await StorageServices.instance.save('guestId', guestId??'');
+        await StorageServices.instance.save('guestId', guestId ?? '');
       }
     }
   }
@@ -106,6 +123,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     });
     super.initState();
     _initPrefillListeners();
+    // Recompute change state when text changes (incl. after returning from search screens)
+    alternativeMobileNoController.addListener(_recomputeHasChanges);
+    crpSelectPickupController.searchController.addListener(_recomputeHasChanges);
+    crpSelectDropController.searchController.addListener(_recomputeHasChanges);
     runTypesAndPaymentModes();
     _loadBookingDetails();
     // Show skeleton loader for 2 seconds
@@ -148,7 +169,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     final Map<String, dynamic> inventoryParams = {
       'token': token,
-      'user': user??email,
+      'user': user ?? email,
       'CorpID': crpBookingDetailsController
           .crpBookingDetailResponse.value?.corporateID,
       'BranchID':
@@ -159,7 +180,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     paymentModeController.fetchPaymentModes(paymentParams, context);
     controller.fetchGender(context);
     // Skip auto-selection so we can preselect based on booking details
-    crpInventoryListController.fetchCarModels(inventoryParams, context, skipAutoSelection: true);
+    crpInventoryListController.fetchCarModels(inventoryParams, context,
+        skipAutoSelection: true);
   }
 
   void _initPrefillListeners() {
@@ -168,6 +190,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       _applyPrefilledSelectionsIfReady();
       // Also try to apply car model prefill when booking details are loaded
       _applyCarModelPrefill();
+      _captureBaselineIfNeeded();
+      _recomputeHasChanges();
     });
     ever(runTypeController.runTypes, (_) => _applyPrefilledSelectionsIfReady());
     ever(
@@ -183,6 +207,11 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         _applyCarModelPrefill();
       }
     });
+
+    // Change tracking hooks
+    ever(crpSelectPickupController.selectedPlace, (_) => _recomputeHasChanges());
+    ever(crpSelectDropController.selectedPlace, (_) => _recomputeHasChanges());
+    ever(crpInventoryListController.selectedModel, (_) => _recomputeHasChanges());
   }
 
   Future<void> _loadBookingDetails() async {
@@ -312,7 +341,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
                       return GestureDetector(
                         onTap: () {
+                          _userHasInteracted = true;
                           crpInventoryListController.updateSelected(item);
+                          _recomputeHasChanges();
                           Navigator.pop(context);
                         },
                         child: Row(
@@ -374,10 +405,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     // Handle drop address - clear if null, empty, or "null" string
     final dropAddress = data.dropAddress;
-    final hasValidDropAddress = dropAddress != null && 
-        dropAddress.trim().isNotEmpty && 
+    final hasValidDropAddress = dropAddress != null &&
+        dropAddress.trim().isNotEmpty &&
         dropAddress.trim().toLowerCase() != 'null';
-    
+
     if (hasValidDropAddress) {
       final dropPlace = _buildPlaceFromAddress(dropAddress);
       if (dropPlace != null) {
@@ -476,7 +507,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     CrpCarModel? matchedModel;
 
     // First, try to match by makeID from booking details response (more reliable)
-    final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+    final bookingDetails =
+        crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingDetails?.makeID != null) {
       matchedModel = models.firstWhereOrNull(
         (m) => m.makeId == bookingDetails!.makeID,
@@ -484,7 +516,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       if (matchedModel != null) {
         crpInventoryListController.updateSelected(matchedModel);
         _hasAppliedCarModelPrefill = true;
-        debugPrint('✅ Car model preselected by makeID: ${matchedModel.carType}');
+        debugPrint(
+            '✅ Car model preselected by makeID: ${matchedModel.carType}');
         return;
       }
     }
@@ -493,17 +526,21 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     final targetName = widget.initialCarModelName;
     if (targetName != null && targetName.trim().isNotEmpty) {
       final normalizedTarget = targetName.trim().toLowerCase();
-      
+
       // Try exact match first
       matchedModel = models.firstWhereOrNull(
         (m) => (m.carType ?? '').trim().toLowerCase() == normalizedTarget,
       );
-      
+
       // If no exact match, try partial match (contains)
       if (matchedModel == null) {
         matchedModel = models.firstWhereOrNull(
-          (m) => (m.carType ?? '').trim().toLowerCase().contains(normalizedTarget) ||
-                 normalizedTarget.contains((m.carType ?? '').trim().toLowerCase()),
+          (m) =>
+              (m.carType ?? '')
+                  .trim()
+                  .toLowerCase()
+                  .contains(normalizedTarget) ||
+              normalizedTarget.contains((m.carType ?? '').trim().toLowerCase()),
         );
       }
 
@@ -513,7 +550,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         debugPrint('✅ Car model preselected by name: ${matchedModel.carType}');
       } else {
         debugPrint('⚠️ Could not find car model matching: $targetName');
-        debugPrint('Available models: ${models.map((m) => m.carType).toList()}');
+        debugPrint(
+            'Available models: ${models.map((m) => m.carType).toList()}');
         // If no match found, select first model as fallback
         if (models.isNotEmpty) {
           crpInventoryListController.updateSelected(models.first);
@@ -548,7 +586,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   String? carProviderError;
   String? carModelError;
 
-  final TextEditingController alternativeMobileNoController = TextEditingController();
+  final TextEditingController alternativeMobileNoController =
+      TextEditingController();
   final TextEditingController cancelReasonController = TextEditingController();
   String? selectedCancelReason; // Track selected radio option
 
@@ -581,9 +620,77 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   void dispose() {
     // Note: crpSelectPickupController.searchController and crpSelectDropController.searchController
     // are managed by their respective GetX controllers and will be disposed in onClose()
+    alternativeMobileNoController.removeListener(_recomputeHasChanges);
+    crpSelectPickupController.searchController
+        .removeListener(_recomputeHasChanges);
+    crpSelectDropController.searchController.removeListener(_recomputeHasChanges);
     alternativeMobileNoController.dispose();
     cancelReasonController.dispose();
     super.dispose();
+  }
+
+  void _captureBaselineIfNeeded() {
+    if (_hasCapturedBaseline) return;
+    final data = crpBookingDetailsController.crpBookingDetailResponse.value;
+    if (data == null) return;
+
+    _baselineRunTypeId = data.runTypeID;
+    _baselineMakeId = data.makeID;
+    _baselinePickupDateTime = _parseDateTime(data.cabRequiredOn);
+    _baselinePickupAddress = (data.pickupAddress ?? '').trim();
+
+    final drop = data.dropAddress;
+    final dropClean = (drop == null ||
+            drop.trim().isEmpty ||
+            drop.trim().toLowerCase() == 'null')
+        ? ''
+        : drop.trim();
+    _baselineDropAddress = dropClean;
+
+    _hasCapturedBaseline = true;
+  }
+
+  bool _isSameMoment(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.toUtc().millisecondsSinceEpoch == b.toUtc().millisecondsSinceEpoch;
+  }
+
+  bool _computeHasChangesCore() {
+    if (!_hasCapturedBaseline) return false;
+
+    final pickupRaw =
+        (crpSelectPickupController.selectedPlace.value?.primaryText ??
+                crpSelectPickupController.searchController.text)
+            .trim();
+    final dropRaw = (crpSelectDropController.selectedPlace.value?.primaryText ??
+            crpSelectDropController.searchController.text)
+        .trim();
+
+    // Match API fallback behavior: if empty, treat as "unchanged"
+    final pickup = pickupRaw.isNotEmpty ? pickupRaw : _baselinePickupAddress;
+    final drop = dropRaw.isNotEmpty ? dropRaw : _baselineDropAddress;
+
+    final currentRunTypeId = runTypeIdForInventory() ?? _baselineRunTypeId;
+    final currentMakeId =
+        crpInventoryListController.selectedModel.value?.makeId ?? _baselineMakeId;
+    final currentPickupDateTime =
+        selectedPickupDateTime ?? _baselinePickupDateTime;
+
+    if (pickup.trim() != _baselinePickupAddress.trim()) return true;
+    if (drop.trim() != _baselineDropAddress.trim()) return true;
+    if (currentRunTypeId != _baselineRunTypeId) return true;
+    if (currentMakeId != _baselineMakeId) return true;
+    if (!_isSameMoment(currentPickupDateTime, _baselinePickupDateTime)) return true;
+
+    return false;
+  }
+
+  void _recomputeHasChanges() {
+    if (!mounted) return;
+    final next = _userHasInteracted && _computeHasChangesCore();
+    if (next == _hasChanges) return;
+    setState(() => _hasChanges = next);
   }
 
   Widget _buildSkeletonLoader() {
@@ -629,7 +736,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           highlightColor: highlightColor,
           period: const Duration(milliseconds: 1400),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
+            padding:
+                const EdgeInsets.only(left: 20, right: 20, top: 14, bottom: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -638,7 +746,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                 const SizedBox(height: 20),
                 // Location section skeleton
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(12),
@@ -803,9 +912,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                             Expanded(
                               child: Text(
                                 _removeBracketText(
-                                  crpInventoryListController
-                                      .selectedModel.value?.carType,
-                                ) ?? 'Select Car Model',
+                                      crpInventoryListController
+                                          .selectedModel.value?.carType,
+                                    ) ??
+                                    'Select Car Model',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
@@ -942,9 +1052,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            offset: Offset(0, 1),     // x: 0px, y: 1px
-            blurRadius: 3,            // blur: 3px
-            spreadRadius: 0,          // spread: 0px
+            offset: Offset(0, 1), // x: 0px, y: 1px
+            blurRadius: 3, // blur: 3px
+            spreadRadius: 0, // spread: 0px
             color: Color(0x40000000), // #00000040 → 25% opacity black
           ),
         ],
@@ -1036,6 +1146,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                   onTap: () {
                     setState(() {
                       pickupLocationError = null;
+                      _userHasInteracted = true;
                     });
                     GoRouter.of(context).push(
                       AppRoutes.cprPickupSearch,
@@ -1047,11 +1158,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                   child: Container(
                     alignment: Alignment.centerLeft,
                     child: Obx(() {
-                      final pickupPlace = crpSelectPickupController.selectedPlace.value;
+                      final pickupPlace =
+                          crpSelectPickupController.selectedPlace.value;
                       String displayText;
                       bool hasText;
 
-                      if (pickupPlace != null && pickupPlace.primaryText != null && pickupPlace.primaryText!.isNotEmpty) {
+                      if (pickupPlace != null &&
+                          pickupPlace.primaryText != null &&
+                          pickupPlace.primaryText!.isNotEmpty) {
                         final secondaryText = pickupPlace.secondaryText ?? '';
                         displayText = secondaryText.isNotEmpty
                             ? '${pickupPlace.primaryText}, $secondaryText'
@@ -1065,7 +1179,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                       return Text(
                         displayText,
                         style: TextStyle(
-                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight:
+                              hasText ? FontWeight.w600 : FontWeight.w500,
                           color: hasText
                               ? const Color(0xFF4F4F4F)
                               : Color(0xFFB2B2B2),
@@ -1085,6 +1200,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                   onTap: () {
                     setState(() {
                       dropLocationError = null;
+                      _userHasInteracted = true;
                     });
                     GoRouter.of(context).push(
                       AppRoutes.cprDropSearch,
@@ -1097,11 +1213,14 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     alignment: Alignment.centerLeft,
                     margin: const EdgeInsets.only(top: 2),
                     child: Obx(() {
-                      final dropPlace = crpSelectDropController.selectedPlace.value;
+                      final dropPlace =
+                          crpSelectDropController.selectedPlace.value;
                       String displayText;
                       bool hasText;
 
-                      if (dropPlace != null && dropPlace.primaryText != null && dropPlace.primaryText!.isNotEmpty) {
+                      if (dropPlace != null &&
+                          dropPlace.primaryText != null &&
+                          dropPlace.primaryText!.isNotEmpty) {
                         final secondaryText = dropPlace.secondaryText ?? '';
                         displayText = secondaryText.isNotEmpty
                             ? '${dropPlace.primaryText}, $secondaryText'
@@ -1115,7 +1234,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                       return Text(
                         displayText,
                         style: TextStyle(
-                          fontWeight: hasText ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight:
+                              hasText ? FontWeight.w600 : FontWeight.w500,
                           color: hasText
                               ? const Color(0xFF4F4F4F)
                               : Color(0xFFB2B2B2),
@@ -1436,23 +1556,19 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'token': token,
       'user': user ?? email,
       'CorpID': crpBookingDetailsController
-          .crpBookingDetailResponse
-          .value
-          ?.corporateID,
-      'BranchID': crpBookingDetailsController
-          .crpBookingDetailResponse
-          .value
-          ?.branchID,
+          .crpBookingDetailResponse.value?.corporateID,
+      'BranchID':
+          crpBookingDetailsController.crpBookingDetailResponse.value?.branchID,
       'RunTypeID': runTypeIdForInventory()
     };
-    
-    crpInventoryListController.fetchCarModels(
-        inventoryParams, context, skipAutoSelection: true);
+
+    crpInventoryListController.fetchCarModels(inventoryParams, context,
+        skipAutoSelection: true);
     // Reset prefill flag so it can reapply after models reload
     _hasAppliedCarModelPrefill = false;
   }
 
-  void _showPickupTypeBottomSheet(List<String> pickupTypes) async{
+  void _showPickupTypeBottomSheet(List<String> pickupTypes) async {
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
     showGeneralDialog(
@@ -1582,14 +1698,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                               splashColor: Colors.transparent,
                               onTap: () async {
                                 setState(() {
+                                  _userHasInteracted = true;
                                   selectedPickupType = pickupType;
                                   pickupTypeError = null;
                                   _isPickupTypeExpanded = false;
                                 });
-                                
+
                                 // Reload car models when run type changes
                                 await _reloadCarModelsOnRunTypeChange();
-                                
+                                _recomputeHasChanges();
+
                                 Navigator.pop(context);
                               },
                               child: Container(
@@ -1605,14 +1723,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                       groupValue: selectedPickupType,
                                       onChanged: (value) async {
                                         setState(() {
+                                          _userHasInteracted = true;
                                           selectedPickupType = value;
                                           pickupTypeError = null;
                                           _isPickupTypeExpanded = false;
                                         });
-                                        
+
                                         // Reload car models when run type changes
                                         await _reloadCarModelsOnRunTypeChange();
-                                        
+                                        _recomputeHasChanges();
+
                                         Navigator.pop(context);
                                       },
                                       activeColor: const Color(0xFF1C1B1F),
@@ -1707,9 +1827,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20),
                       child: Text(
-                        isPickup
-                            ? 'Choose Pickup time'
-                            : 'Choose Drop Time',
+                        isPickup ? 'Choose Pickup time' : 'Choose Drop Time',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -1776,6 +1894,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                       child: ElevatedButton(
                         onPressed: () {
                           setState(() {
+                            _userHasInteracted = true;
                             if (isPickup) {
                               selectedPickupDateTime = tempDateTime;
                               pickupDateError = null;
@@ -1784,6 +1903,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                               dropDateError = null;
                             }
                           });
+                          _recomputeHasChanges();
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
@@ -1905,6 +2025,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Widget _buildModifyBookButton() {
+    final isEnabled = _hasChanges;
     return Row(
       children: [
         // Cancel Button
@@ -1937,26 +2058,29 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         const SizedBox(width: 12),
         // Confirm Booking Button
         Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              _handleModifyBooking();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4082F1),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(39),
-                side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+          child: Opacity(
+            opacity: isEnabled ? 1.0 : 0.4,
+            child: ElevatedButton(
+              onPressed: isEnabled ? _handleModifyBooking : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4082F1),
+                disabledBackgroundColor: const Color(0xFF4082F1),
+                disabledForegroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(39),
+                  side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+                ),
+                elevation: 0,
               ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Confirm Booking',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
+              child: const Text(
+                'Modify Booking',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
           ),
@@ -1966,8 +2090,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Future<void> _handleModifyBooking() async {
-    final CrpBookingHistoryController crpBookingHistoryController = Get.put(CrpBookingHistoryController());
-    final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
+    final CrpBookingHistoryController crpBookingHistoryController =
+        Get.put(CrpBookingHistoryController());
+    final bookingData =
+        crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
       CustomFailureSnackbar.show(context, 'Booking details not available');
       return;
@@ -1975,7 +2101,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     await fetchParameter();
     if (token == null || user == null) {
-      CustomFailureSnackbar.show(context, 'Session expired. Please login again');
+      CustomFailureSnackbar.show(
+          context, 'Session expired. Please login again');
       return;
     }
 
@@ -1987,12 +2114,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         crpSelectDropController.selectedPlace.value?.primaryText ??
             crpSelectDropController.searchController.text.trim();
 
-    final carTypeID =
-        crpInventoryListController.selectedModel.value?.makeId ??
-            bookingData.makeID;
+    final carTypeID = crpInventoryListController.selectedModel.value?.makeId ??
+        bookingData.makeID;
 
-    final selectedRunTypeID =
-        runTypeIdForInventory() ?? bookingData.runTypeID;
+    final selectedRunTypeID = runTypeIdForInventory() ?? bookingData.runTypeID;
 
     final cabRequiredOn =
         selectedPickupDateTime ?? _parseDateTime(bookingData.cabRequiredOn);
@@ -2010,13 +2135,13 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'CabRequiredOn': formattedDateTime,
       'carTypeID': carTypeID?.toString() ?? '',
       'PickUpAddress':
-      pickupAddress.isNotEmpty ? pickupAddress : bookingData.pickupAddress,
+          pickupAddress.isNotEmpty ? pickupAddress : bookingData.pickupAddress,
       'transNo': bookingData.transNo ?? '',
       'mobile': bookingData.mobile ?? '',
       'runTypeID': selectedRunTypeID?.toString() ?? '',
       'arrivalDetails': bookingData.arrivalDetails ?? '',
       'dropAddress':
-      dropAddress.isNotEmpty ? dropAddress : bookingData.dropAddress,
+          dropAddress.isNotEmpty ? dropAddress : bookingData.dropAddress,
       'specialInstructions': bookingData.specialInstructions ?? '',
       'uID': bookingData.uid?.toString() ?? '',
       'token': token!,
@@ -2036,10 +2161,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
     try {
       final response =
-      await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
+          await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
         'PostEditBooking',
         params,
-            (body) {
+        (body) {
           if (body is String) {
             try {
               return Map<String, dynamic>.from(jsonDecode(body));
@@ -2093,7 +2218,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   Future<void> _handleCancelBooking() async {
     // Get booking details
-    final bookingData = crpBookingDetailsController.crpBookingDetailResponse.value;
+    final bookingData =
+        crpBookingDetailsController.crpBookingDetailResponse.value;
     if (bookingData == null) {
       CustomFailureSnackbar.show(context, 'Booking details not available');
       return;
@@ -2102,7 +2228,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     // Ensure we have token and user
     await fetchParameter();
     if (token == null || user == null) {
-      CustomFailureSnackbar.show(context, 'Session expired. Please login again');
+      CustomFailureSnackbar.show(
+          context, 'Session expired. Please login again');
       return;
     }
 
@@ -2111,13 +2238,15 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     if (selectedCancelReason == 'others') {
       cancelReason = cancelReasonController.text.trim();
       if (cancelReason.isEmpty) {
-        CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation');
+        CustomFailureSnackbar.show(
+            context, 'Please enter a reason for cancellation');
         return;
       }
     } else if (selectedCancelReason != null) {
       cancelReason = selectedCancelReason!;
     } else {
-      CustomFailureSnackbar.show(context, 'Please select a reason for cancellation');
+      CustomFailureSnackbar.show(
+          context, 'Please select a reason for cancellation');
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -2147,7 +2276,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     );
 
     try {
-      final response = await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
+      final response =
+          await CprApiService().postRequestParamsNew<Map<String, dynamic>>(
         'PostCancelBooking',
         params,
         (body) {
@@ -2162,11 +2292,11 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               debugPrint('⚠️ Error parsing string response: $e');
             }
           }
-          
+
           if (body is Map) {
             return Map<String, dynamic>.from(body);
           }
-          
+
           return {"response": body};
         },
         context,
@@ -2184,18 +2314,20 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
       // Parse response to check bStatus
       final bStatus = response['bStatus'] as bool?;
-      final sMessage = response['sMessage'] as String? ?? 
-                      (bStatus == true ? 'Successfully Cancelled.' : 'Failed to cancel booking');
+      final sMessage = response['sMessage'] as String? ??
+          (bStatus == true
+              ? 'Successfully Cancelled.'
+              : 'Failed to cancel booking');
 
       if (context.mounted) {
         if (bStatus == true) {
           // Show success message
-          CustomSuccessSnackbar.show(context, sMessage, duration: const Duration(seconds: 2));
+          CustomSuccessSnackbar.show(context, sMessage,
+              duration: const Duration(seconds: 2));
 
-          
           // Clear cancel reason controller
           cancelReasonController.clear();
-          
+
           // Navigate back to booking screen and refresh data after success
           // Navigate to bottom nav with booking tab (index 1) selected
           // This ensures we're on the booking screen and data will be refreshed
@@ -2212,7 +2344,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           });
         } else {
           // Show error message
-          CustomFailureSnackbar.show(context, sMessage, duration: const Duration(seconds: 3));
+          CustomFailureSnackbar.show(context, sMessage,
+              duration: const Duration(seconds: 3));
         }
       }
     } catch (e) {
@@ -2226,7 +2359,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
       // Show error message
       if (context.mounted) {
-        CustomFailureSnackbar.show(context, 'Error: ${e.toString()}', duration: const Duration(seconds: 3));
+        CustomFailureSnackbar.show(context, 'Error: ${e.toString()}',
+            duration: const Duration(seconds: 3));
       }
 
       debugPrint('❌ Error canceling booking: $e');
@@ -2247,7 +2381,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4082F1).withOpacity(0.08) : Colors.grey.shade50,
+          color: isSelected
+              ? const Color(0xFF4082F1).withOpacity(0.08)
+              : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? const Color(0xFF4082F1) : Colors.grey.shade200,
@@ -2263,7 +2399,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF4082F1) : Colors.grey.shade400,
+                  color: isSelected
+                      ? const Color(0xFF4082F1)
+                      : Colors.grey.shade400,
                   width: isSelected ? 2 : 1.5,
                 ),
                 color: Colors.white,
@@ -2287,7 +2425,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                 title,
                 style: TextStyle(
                   fontSize: 15,
-                  color: isSelected ? const Color(0xFF1A1A1A) : Colors.grey.shade700,
+                  color: isSelected
+                      ? const Color(0xFF1A1A1A)
+                      : Colors.grey.shade700,
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                 ),
               ),
@@ -2301,8 +2441,9 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   void _showCancelBookingDialog() {
     // Use local variables for dialog state
     String? localSelectedReason;
-    final TextEditingController localCancelReasonController = TextEditingController();
-    
+    final TextEditingController localCancelReasonController =
+        TextEditingController();
+
     showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -2375,8 +2516,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey.shade600, size: 22),
-                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              icon: Icon(Icons.close,
+                                  color: Colors.grey.shade600, size: 22),
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
@@ -2390,7 +2533,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                             left: 24,
                             right: 24,
                             top: 20,
-                            bottom:20,
+                            bottom: 20,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2515,10 +2658,12 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: const Color(0xFF4082F1),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
+                                    side: const BorderSide(
+                                        color: Color(0xFF4082F1), width: 1.5),
                                   ),
                                   elevation: 0,
                                 ),
@@ -2538,18 +2683,26 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                 onPressed: () {
                                   // Validate cancel reason
                                   if (localSelectedReason == null) {
-                                    CustomFailureSnackbar.show(context, 'Please select a reason for cancellation', duration: const Duration(seconds: 2));
+                                    CustomFailureSnackbar.show(context,
+                                        'Please select a reason for cancellation',
+                                        duration: const Duration(seconds: 2));
                                     return;
                                   }
-                                  if (localSelectedReason == 'others' && localCancelReasonController.text.trim().isEmpty) {
-                                    CustomFailureSnackbar.show(context, 'Please enter a reason for cancellation', duration: const Duration(seconds: 2));
+                                  if (localSelectedReason == 'others' &&
+                                      localCancelReasonController.text
+                                          .trim()
+                                          .isEmpty) {
+                                    CustomFailureSnackbar.show(context,
+                                        'Please enter a reason for cancellation',
+                                        duration: const Duration(seconds: 2));
                                     return;
                                   }
                                   // Save the values before closing
                                   final savedReason = localSelectedReason;
-                                  final savedCustomText = localSelectedReason == 'others' 
-                                      ? localCancelReasonController.text 
-                                      : '';
+                                  final savedCustomText =
+                                      localSelectedReason == 'others'
+                                          ? localCancelReasonController.text
+                                          : '';
                                   // Close dialog first
                                   Navigator.of(dialogContext).pop();
                                   // Update parent state after dialog closes using microtask
@@ -2558,7 +2711,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                       setState(() {
                                         selectedCancelReason = savedReason;
                                         if (savedReason == 'others') {
-                                          cancelReasonController.text = savedCustomText;
+                                          cancelReasonController.text =
+                                              savedCustomText;
                                         } else {
                                           cancelReasonController.clear();
                                         }
@@ -2571,7 +2725,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF4082F1),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -2600,5 +2755,4 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       },
     );
   }
-
 }

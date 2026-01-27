@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
@@ -1245,10 +1246,10 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
         final dropoffDatetime = _formatDateTimeForAPI(bookingData?.dropDateTime);
         
         // Get other data
-        final genderID = bookingData?.gender?.genderID ?? 1;
-        final carTypeID = widget.selectedCar?.makeId ?? 1;
-        final providerID = bookingData?.carProvider?.providerID ?? 1;
-        final payMode = bookingData?.paymentMode?.id ?? 1;
+        final genderID = bookingData?.gender?.genderID;
+        final carTypeID = widget.selectedCar?.makeId;
+        final providerID = bookingData?.carProvider?.providerID;
+        final payMode = bookingData?.paymentMode?.id;
         final bookingType = bookingData?.bookingType == 'Corporate' ? '1' : '0';
         
         // Addresses (character-limited)
@@ -1299,13 +1300,13 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           'dropAddress': dropAddress,
           'specialInstructions': specialInstructions,
           'payMode': payMode.toString(),
-          'bookingPassedBy': "",
+          'bookingPassedBy': "MOBILENEW",
           'branchID': branchID,
           'remarks': remarks,
           'uID': uID,
-          'runTypeID': runTypeID?.toString() ?? '2',
+          'runTypeID': runTypeID?.toString(),
           // 'costCode': costCode,
-          'costCode': '1',
+          'costCode': costCode??'',
           'packageID': "",
           'transNo': transNo,
           'providerID': providerID.toString(),
@@ -1318,13 +1319,13 @@ class _BottomBookNowBarState extends State<_BottomBookNowBar> {
           'user': await StorageServices.instance.read('email'),
         };
 
-        debugPrint('📤 Making booking with params: $params');
+        debugPrint('Making booking with params: ${jsonEncode(params)}');
 
         // Call API
         final apiService = CprApiService();
         final response = await apiService.postMakeBooking(params, context);
 
-        debugPrint('✅ Booking response: $response');
+        debugPrint('Booking response: $response');
 
         if (mounted) {
           // Show snackbar

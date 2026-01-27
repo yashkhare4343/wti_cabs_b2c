@@ -1393,7 +1393,11 @@ class _BottomNavScreenState extends State<BottomNavScreen>
         return !canPop;
       },
       child: Scaffold(
-        body: _screens[_selectedIndex],
+        // Keep all tab screens mounted to preserve state (avoid re-fetch/reload)
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
+        ),
         bottomNavigationBar: Material(
           elevation: 10.0,
           shadowColor: Color(0x33BCBCBC),
