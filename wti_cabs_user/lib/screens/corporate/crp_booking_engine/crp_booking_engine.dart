@@ -39,12 +39,14 @@ class CprBookingEngine extends StatefulWidget {
   final String? selectedPickupType;
   final SuggestionPlacesResponse? selectedPickupPlace;
   final SuggestionPlacesResponse? selectedDropPlace;
+  final CrpBookingData? bookingData; // Booking data when coming back from inventory
 
   const CprBookingEngine({
     super.key,
     this.selectedPickupType,
     this.selectedPickupPlace,
     this.selectedDropPlace,
+    this.bookingData,
   });
 
   @override
@@ -107,13 +109,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // TODO: implement initState
     super.initState();
 
-    // PRIORITY: Prefill current location immediately when screen appears (like Uber)
-    // This happens first to ensure location is visible immediately
-    // Skip if selectedPickupType is passed (will be handled in _initializeData after clearing)
-    if (widget.selectedPickupType == null) {
+    // If booking data is provided (coming back from inventory), restore all fields first
+    if (widget.bookingData != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _prefillPickupFromCurrentLocation();
+        _restoreBookingData(widget.bookingData!);
       });
+    } else {
+      // PRIORITY: Prefill current location immediately when screen appears (like Uber)
+      // This happens first to ensure location is visible immediately
+      // Skip if selectedPickupType is passed (will be handled in _initializeData after clearing)
+      if (widget.selectedPickupType == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _prefillPickupFromCurrentLocation();
+        });
+      }
     }
 
     // Initialize async operations
@@ -176,11 +185,160 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     });
   }
 
+  /// Restore all booking data fields when coming back from inventory
+  Future<void> _restoreBookingData(CrpBookingData bookingData) async {
+    debugPrint('🔄 Restoring booking data from inventory...');
+    
+    // Restore pickup and drop locations
+    if (bookingData.pickupPlace != null) {
+      crpSelectPickupController.selectedPlace.value = bookingData.pickupPlace;
+      crpSelectPickupController.searchController.text =
+          bookingData.pickupPlace!.primaryText;
+    }
+    
+    if (bookingData.dropPlace != null) {
+      crpSelectDropController.selectedPlace.value = bookingData.dropPlace;
+      crpSelectDropController.searchController.text =
+          bookingData.dropPlace!.primaryText;
+    }
+    
+    // Restore date/time
+    if (bookingData.pickupDateTime != null) {
+      setState(() {
+        selectedPickupDateTime = bookingData.pickupDateTime;
+      });
+    }
+    
+    if (bookingData.dropDateTime != null) {
+      setState(() {
+        selectedDropDateTime = bookingData.dropDateTime;
+      });
+    }
+    
+    // Restore pickup type (run type)
+    if (bookingData.pickupType != null) {
+      setState(() {
+        selectedPickupType = bookingData.pickupType;
+      });
+    }
+    
+    // Restore booking type
+    if (bookingData.bookingType != null) {
+      setState(() {
+        selectedBookingFor = bookingData.bookingType;
+      });
+    }
+    
+    // Restore form fields
+    if (bookingData.referenceNumber != null) {
+      referenceNumberController.text = bookingData.referenceNumber!;
+    }
+    
+    if (bookingData.specialInstruction != null) {
+      specialInstructionController.text = bookingData.specialInstruction!;
+    }
+    
+    if (bookingData.costCode != null) {
+      costCodeController.text = bookingData.costCode!;
+    }
+    
+    if (bookingData.flightDetails != null) {
+      flightDetailsController.text = bookingData.flightDetails!;
+    }
+    
+    // Restore dropdowns - wait for lists to load
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Wait for lists to be available
+      int retryCount = 0;
+      while (retryCount < 50 && mounted) {
+        final gendersReady = controller.genderList.isNotEmpty;
+        final paymentModesReady = paymentModeController.modes.isNotEmpty;
+        final entitiesReady = (crpGetEntityListController.getAllEntityList.value?.getEntityList ?? []).isNotEmpty;
+        final carProvidersReady = carProviderController.carProviderList.isNotEmpty;
+        
+        if (gendersReady && paymentModesReady && entitiesReady && carProvidersReady) {
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+        retryCount++;
+      }
+      
+      if (!mounted) return;
+      
+      // Restore gender
+      if (bookingData.gender != null) {
+        for (final gender in controller.genderList) {
+          if (gender.genderID == bookingData.gender!.genderID) {
+            controller.selectGender(gender);
+            break;
+          }
+        }
+      }
+      
+      // Restore payment mode
+      if (bookingData.paymentMode != null) {
+        for (final mode in paymentModeController.modes) {
+          if (mode.id == bookingData.paymentMode!.id) {
+            paymentModeController.updateSelected(mode);
+            break;
+          }
+        }
+      }
+      
+      // Restore corporate entity
+      if (bookingData.entityId != null) {
+        final entities = crpGetEntityListController.getAllEntityList.value?.getEntityList ?? [];
+        for (final entity in entities) {
+          if (entity.entityId == bookingData.entityId) {
+            setState(() {
+              selectedCorporate = entity;
+            });
+            break;
+          }
+        }
+      }
+      
+      // Restore car provider
+      if (bookingData.carProvider != null) {
+        for (final provider in carProviderController.carProviderList) {
+          if (provider.providerID == bookingData.carProvider!.providerID) {
+            carProviderController.selectCarProvider(provider);
+            break;
+          }
+        }
+      }
+      
+      // Stop loading
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
+      
+      debugPrint('✅ Booking data restored successfully');
+    });
+  }
+
   /// Initialize all data sources - ensures proper order and waiting
   Future<void> _initializeData() async {
     // 1. Login info should already be loaded from main.dart, but ensure it's available
     // This is a safety check in case main.dart didn't load it yet
     // Force reload to ensure fresh data after app kill
+
+    // If booking data is provided, skip clearing/prefilling logic
+    if (widget.bookingData != null) {
+      // Stop loading since data is being restored
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
+      // Skip the rest of initialization that would clear/prefill data
+      _loadPreselectedRunType();
+      _loadCorporateEntities();
+      runTypesAndPaymentModes();
+      return;
+    }
 
     // 3. If selectedPickupType is passed from navigation, use it
     if (widget.selectedPickupType != null) {
@@ -245,21 +403,24 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     runTypesAndPaymentModes();
 
     // 8. Apply all other prefilled data once APIs & lists are ready
-    // Use a post-frame callback with a small delay to ensure everything is initialized
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Small delay to ensure storage-loaded lists are available
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        await _applyPrefilledDataFromLogin();
-      }
-
-      // Retry prefilling after a longer delay to catch late-loading data
-      Future.delayed(const Duration(milliseconds: 2000), () {
+    // Skip if booking data is provided (data is already restored)
+    if (widget.bookingData == null) {
+      // Use a post-frame callback with a small delay to ensure everything is initialized
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Small delay to ensure storage-loaded lists are available
+        await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
-          _applyPrefilledDataFromLogin();
+          await _applyPrefilledDataFromLogin();
         }
+
+        // Retry prefilling after a longer delay to catch late-loading data
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (mounted) {
+            _applyPrefilledDataFromLogin();
+          }
+        });
       });
-    });
+    }
   }
 
   void runTypesAndPaymentModes() async {

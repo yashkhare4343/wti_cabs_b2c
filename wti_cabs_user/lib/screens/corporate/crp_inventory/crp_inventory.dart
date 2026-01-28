@@ -35,6 +35,16 @@ class _CrpInventoryState extends State<CrpInventory> {
 
   String? guestId, token, user, corpId, branchId;
 
+  /// Navigate back to booking engine with booking data to preserve all form fields
+  void _navigateBackToBookingEngine() {
+    if (widget.bookingData != null) {
+      // Pass booking data back to preserve all form fields (RunTypeID, Pickup, Drop, DateTime, dropdowns, formfields)
+      context.push(AppRoutes.cprBookingEngine, extra: widget.bookingData);
+    } else {
+      context.push(AppRoutes.cprBookingEngine);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,7 +122,8 @@ class _CrpInventoryState extends State<CrpInventory> {
           canPop: true,
           onPopInvokedWithResult: (bool didPop, Object? result) {
             if (didPop) {
-              context.push(AppRoutes.cprBookingEngine);
+              // Pass booking data back to preserve all form fields
+              _navigateBackToBookingEngine();
             }
           },
           child: const CorporateShimmer(),
@@ -124,7 +135,8 @@ class _CrpInventoryState extends State<CrpInventory> {
         canPop: true,
         onPopInvokedWithResult: (bool didPop, Object? result) {
           if (didPop) {
-            context.push(AppRoutes.cprBookingEngine);
+            // Pass booking data back to preserve all form fields
+            _navigateBackToBookingEngine();
           }
         },
         child: Scaffold(
@@ -1152,7 +1164,12 @@ class _RouteCard extends StatelessWidget {
                     // Back button
                     InkWell(
                       onTap: () {
-                        context.push(AppRoutes.cprBookingEngine);
+                        // Pass booking data back to preserve all form fields
+                        if (bookingData != null) {
+                          context.push(AppRoutes.cprBookingEngine, extra: bookingData?.toJson());
+                        } else {
+                          context.push(AppRoutes.cprBookingEngine);
+                        }
                       },
                       child: SvgPicture.asset(
                         'assets/images/back.svg',

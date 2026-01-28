@@ -247,16 +247,25 @@ class AppPages {
     GoRoute(
       path: AppRoutes.cprBookingEngine,
       pageBuilder: (context, state) {
-        // Handle both String (legacy) and Map (with selected place) formats
+        // Handle both String (legacy) and Map (with selected place or booking data) formats
         final extra = state.extra;
         String? selectedPickupType;
         Map<String, dynamic>? selectedPickupPlaceJson;
         Map<String, dynamic>? selectedDropPlaceJson;
+        Map<String, dynamic>? bookingDataJson;
         
         if (extra is Map<String, dynamic>) {
-          selectedPickupType = extra['selectedPickupType'] as String?;
-          selectedPickupPlaceJson = extra['selectedPickupPlace'] as Map<String, dynamic>?;
-          selectedDropPlaceJson = extra['selectedDropPlace'] as Map<String, dynamic>?;
+          // Check if this is booking data (coming from inventory)
+          if (extra.containsKey('pickupPlace') || extra.containsKey('dropPlace') || 
+              extra.containsKey('pickupType') || extra.containsKey('runTypeId')) {
+            // This is booking data from inventory
+            bookingDataJson = extra;
+          } else {
+            // This is navigation with selected places
+            selectedPickupType = extra['selectedPickupType'] as String?;
+            selectedPickupPlaceJson = extra['selectedPickupPlace'] as Map<String, dynamic>?;
+            selectedDropPlaceJson = extra['selectedDropPlace'] as Map<String, dynamic>?;
+          }
         } else if (extra is String) {
           selectedPickupType = extra;
         }
@@ -281,10 +290,20 @@ class AppPages {
           }
         }
         
+        CrpBookingData? bookingData;
+        if (bookingDataJson != null) {
+          try {
+            bookingData = CrpBookingData.fromJson(bookingDataJson);
+          } catch (e) {
+            print('Error parsing bookingData: $e');
+          }
+        }
+        
         return CorporatePageTransitions.defaultTransition(CprBookingEngine(
           selectedPickupType: selectedPickupType,
           selectedPickupPlace: selectedPickupPlace,
           selectedDropPlace: selectedDropPlace,
+          bookingData: bookingData,
         ));
       },
     ),
