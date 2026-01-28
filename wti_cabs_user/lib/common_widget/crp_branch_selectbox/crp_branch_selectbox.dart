@@ -4,7 +4,14 @@ import '../../core/controller/corporate/crp_branch_list_controller/crp_branch_li
 
 class CorporateBranchDropdown extends StatefulWidget {
   final String corpId;
-  const CorporateBranchDropdown({super.key, required this.corpId});
+  final GlobalKey<FormFieldState<String>>? fieldKey;
+  final String? errorText;
+  const CorporateBranchDropdown({
+    super.key, 
+    required this.corpId,
+    this.fieldKey,
+    this.errorText,
+  });
 
   @override
   State<CorporateBranchDropdown> createState() =>
@@ -42,12 +49,17 @@ class _CorporateBranchDropdownState extends State<CorporateBranchDropdown> {
         child: AbsorbPointer(
           // Prevents text field interaction
           child: TextFormField(
+            key: widget.fieldKey,
             controller: TextEditingController(
               text: selected?.isEmpty ?? false ? '' : selected,
             ),
             readOnly: true,
-            validator: (value) =>
-                (value == null || value.isEmpty) ? "Please select a city" : null,
+            validator: (value) {
+              if (widget.errorText != null && widget.errorText!.isNotEmpty) {
+                return widget.errorText;
+              }
+              return (value == null || value.isEmpty) ? "Please select a city" : null;
+            },
             decoration: InputDecoration(
               labelText: "Choose City*",
               labelStyle: TextStyle(

@@ -261,9 +261,9 @@ class _CprLoginState extends State<CprLogin> {
                                     if (value == null || value.isEmpty) {
                                       return "Password is required";
                                     }
-                                    if (value.length < 6) {
-                                      return "Minimum 6 characters required";
-                                    }
+                                    // if (value.length < 6) {
+                                    //   return "Minimum 6 characters required";
+                                    // }
                                     return null;
                                   },
                                 ),

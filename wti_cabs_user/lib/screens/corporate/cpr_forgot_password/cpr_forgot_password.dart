@@ -894,9 +894,6 @@ class _CprForgotPasswordState extends State<CprForgotPassword> {
                           if (value == null || value.isEmpty) {
                             return "New password is required";
                           }
-                          if (value.length < 6) {
-                            return "Password must be at least 6 characters";
-                          }
                           return null;
                         },
                         decoration: InputDecoration(

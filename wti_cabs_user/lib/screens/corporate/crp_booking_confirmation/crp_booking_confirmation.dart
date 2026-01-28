@@ -272,12 +272,17 @@ class _BookingTopBar extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              CorporatePageTransitions.pushRoute(
-                context,
-                CrpInventory(
-                  bookingData: bookingData?.toJson(),
-                ),
-              ),
+              Platform.isIOS
+                  ? CupertinoPageRoute(
+                      builder: (context) => CrpInventory(
+                        bookingData: bookingData?.toJson(),
+                      ),
+                    )
+                  : MaterialPageRoute(
+                      builder: (context) => CrpInventory(
+                        bookingData: bookingData?.toJson(),
+                      ),
+                    ),
             );
           },
           child: Container(
@@ -1471,7 +1476,20 @@ class _RouteCardState extends State<RouteCard> {
                       // Back button
                       InkWell(
                         onTap: () {
-                          context.push(AppRoutes.cprBookingEngine);
+                          Navigator.push(
+                            context,
+                            Platform.isIOS
+                                ? CupertinoPageRoute(
+                                    builder: (context) => CrpInventory(
+                                      bookingData: widget.bookingData?.toJson(),
+                                    ),
+                                  )
+                                : MaterialPageRoute(
+                                    builder: (context) => CrpInventory(
+                                      bookingData: widget.bookingData?.toJson(),
+                                    ),
+                                  ),
+                          );
                         },
                         child: SvgPicture.asset(
                           'assets/images/back.svg',

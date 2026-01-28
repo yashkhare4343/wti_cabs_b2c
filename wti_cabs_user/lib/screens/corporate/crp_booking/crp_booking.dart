@@ -847,7 +847,7 @@ class _CrpBookingState extends State<CrpBooking> {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : Color(0xFF939393),
             fontFamily: 'Montserrat',

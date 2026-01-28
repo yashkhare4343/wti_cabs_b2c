@@ -1342,7 +1342,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                         ),
                         const SizedBox(width: 8),
                       ],
-                      if(bookingStatus == 'dispatched' || bookingStatus == '2')...[
+                      // Show Track Cab button only for dispatched status (not for completed)
+                      if((bookingStatus == 'dispatched' || bookingStatus == '2') && effectiveStatus != 'completed')...[
                         Expanded(
                           child: _buildActionButton(
                             'Track Cab',
@@ -1381,7 +1382,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                           ),
                         ),
                       ],
-                      // Show Download DutySlip + Download Invoice buttons only for completed status (Dispatched with Close status)
+                      // Show Download DutySlip + Download Invoice + Track Cab buttons in column for completed status
                       if (effectiveStatus == 'completed') ...[
                         const SizedBox(width: 8),
                         Expanded(
@@ -1396,6 +1397,45 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                               _buildDownloadPillButton(
                                 label: 'Download Invoice',
                                 onPressed: () => _downloadInvoice(_currentBooking),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: _buildActionButton(
+                                  'Track Cab',
+                                  () {
+                                    // Navigate to tracking screen with booking ID and details
+                                    final bookingId = _currentBooking.bookingId?.toString() ??
+                                        _currentBooking.bookingNo ??
+                                        '';
+                                    if (bookingId.isNotEmpty) {
+                                      // Get driver details from controller
+                                      final driverDetails = crpBookingDetailsController.driverDetailsResponse.value;
+                                      final bookingDetails = crpBookingDetailsController.crpBookingDetailResponse.value;
+                                      
+                                      // Get OTP values
+                                      final pickupOtpRaw = bookingDetails?.pickupOtp;
+                                      final dropOtpRaw = bookingDetails?.dropOtp;
+                                      final pickupOtpStr = pickupOtpRaw?.toString().trim() ?? "0";
+                                      final dropOtpStr = dropOtpRaw?.toString().trim() ?? "0";
+                                      
+                                      GoRouter.of(context).push(
+                                        AppRoutes.cprCabTracking,
+                                        extra: {
+                                          'bookingId': bookingId,
+                                          'carModel': _currentBooking.model ?? '',
+                                          'carNo': driverDetails?.carNo ?? '',
+                                          'driverName': driverDetails?.chauffeur ?? '',
+                                          'driverMobile': driverDetails?.mobile ?? '',
+                                          'bookingNo': _currentBooking.bookingNo ?? _currentBooking.bookingId?.toString() ?? '',
+                                          'cabRequiredOn': _currentBooking.cabRequiredOn ?? bookingDetails?.cabRequiredOn ?? '',
+                                          'pickupOtp': pickupOtpStr,
+                                          'dropOtp': dropOtpStr,
+                                        },
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -1749,7 +1789,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
       //   ],
       // ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 12.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(stages.length, (index) {
@@ -1763,8 +1803,8 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                   Column(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: stage.isError
                               ? const Color(0xFFE91E63)
@@ -1780,21 +1820,21 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                   Icon(
                                     Icons.directions_car,
                                     color: Colors.white,
-                                    size: 18,
+                                    size: 14,
                                   ),
                                 ],
                               )
                             : Icon(
                                 stage.icon,
                                 color: Colors.white,
-                                size: 20,
+                                size: 16,
                               ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         stage.label,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: stage.isError
                               ? const Color(0xFFE91E63)
@@ -1812,7 +1852,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                     Expanded(
                       child: Container(
                         height: 2,
-                        margin: const EdgeInsets.only(bottom: 28),
+                        margin: const EdgeInsets.only(bottom: 24),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: stage.isCompleted && !stage.isError

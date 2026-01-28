@@ -66,15 +66,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     // Check first launch
     final prefs = await SharedPreferences.getInstance();
     final isFirstTime = prefs.getBool("isFirstTime") ?? true;
+    
+    if (Platform.isIOS) {
+      print("📱 iOS: isFirstTime check = $isFirstTime");
+    }
 
     // Redirect to store ONLY when API explicitly says isCompatible == false.
     final isCompatible = versionCheckController.versionCheckResponse.value?.isCompatible;
     if (isCompatible != false) {
       if (isFirstTime) {
-        // Don't set isFirstTime to false here - let walkthrough handle it.
+        // Set isFirstTime to false immediately to prevent showing walkthrough again on subsequent app opens
+        // This must happen BEFORE navigation to ensure it's saved on iOS
+        final saved = await prefs.setBool("isFirstTime", false);
+        
+        if (Platform.isIOS) {
+          print("📱 iOS: Saved isFirstTime = false, success: $saved");
+          // On iOS, SharedPreferences may need a moment to persist to disk
+          // Reload the instance and verify the save
+          await Future.delayed(const Duration(milliseconds: 150));
+          final verifyPrefs = await SharedPreferences.getInstance();
+          final verified = verifyPrefs.getBool("isFirstTime");
+          print("📱 iOS: Verified isFirstTime after save = $verified");
+        }
+        
         // First-time users go to walkthrough, which will now route directly
         // into the personal module instead of showing the app module screen.
-        GoRouter.of(context).go(AppRoutes.walkthrough);
+        if (mounted) {
+          GoRouter.of(context).go(AppRoutes.walkthrough);
+        }
       } else {
         // Not first time - we no longer route to ShowAppModule.
         // Ensure legacy flag is marked as seen so we don't depend on it anymore.

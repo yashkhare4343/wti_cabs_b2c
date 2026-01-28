@@ -907,10 +907,28 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       return _buildSkeletonLoader();
     }
 
-    crpSelectPickupController.searchController.text =
-        crpSelectPickupController.selectedPlace.value?.primaryText ?? '';
-    crpSelectDropController.searchController.text =
-        crpSelectDropController.selectedPlace.value?.primaryText ?? '';
+    // Defer TextEditingController updates to avoid setState during build
+    // Only update if we have a selected place (don't clear user input when selectedPlace is null)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      final selectedPickupPlace = crpSelectPickupController.selectedPlace.value;
+      if (selectedPickupPlace != null) {
+        final pickupText = selectedPickupPlace.primaryText;
+        if (crpSelectPickupController.searchController.text != pickupText) {
+          crpSelectPickupController.searchController.text = pickupText;
+        }
+      }
+      
+      final selectedDropPlace = crpSelectDropController.selectedPlace.value;
+      if (selectedDropPlace != null) {
+        final dropText = selectedDropPlace.primaryText;
+        if (crpSelectDropController.searchController.text != dropText) {
+          crpSelectDropController.searchController.text = dropText;
+        }
+      }
+    });
+    
     return PopScope(
       canPop: true,
       child: Scaffold(
@@ -975,6 +993,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                   return const SizedBox.shrink();
                 }
 
+                // Explicitly access selectedModel to ensure Obx tracks it
+                final selectedModel = crpInventoryListController.selectedModel.value;
                 final hasError =
                     carModelError != null && carModelError!.isNotEmpty;
 
@@ -1016,22 +1036,25 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
                             /// Selected Value
                             Expanded(
-                              child: Text(
-                                _removeBracketText(
-                                      crpInventoryListController
-                                          .selectedModel.value?.carType,
-                                    ) ??
-                                    'Select Car Model',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: hasError
-                                      ? Colors.red.shade700
-                                      : const Color(0xFF333333),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+                              child: Obx(() {
+                                // Nested Obx to ensure selectedModel changes trigger rebuild
+                                final currentModel = crpInventoryListController.selectedModel.value;
+                                final carTypeText = _removeBracketText(currentModel?.carType);
+                                return Text(
+                                  carTypeText.isNotEmpty
+                                      ? carTypeText
+                                      : 'Select Car Model',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: hasError
+                                        ? Colors.red.shade700
+                                        : const Color(0xFF333333),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                );
+                              }),
                             ),
 
                             Icon(
@@ -1250,17 +1273,26 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               children: [
                 // Pickup location (filled text style)
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     setState(() {
                       pickupLocationError = null;
                       _userHasInteracted = true;
                     });
-                    GoRouter.of(context).push(
+                    await GoRouter.of(context).push(
                       AppRoutes.cprPickupSearch,
                       extra: {
                         'selectedPickupType': selectedPickupType,
                       },
                     );
+                    // Ensure UI updates after returning from search screen
+                    // Use post-frame callback to ensure reactive updates are processed
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      });
+                    }
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
@@ -1304,17 +1336,26 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
                 ),
                 // Drop location (placeholder style unless selected)
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     setState(() {
                       dropLocationError = null;
                       _userHasInteracted = true;
                     });
-                    GoRouter.of(context).push(
+                    await GoRouter.of(context).push(
                       AppRoutes.cprDropSearch,
                       extra: {
                         'fromCrpHomeScreen': false,
                       },
                     );
+                    // Ensure UI updates after returning from search screen
+                    // Use post-frame callback to ensure reactive updates are processed
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      });
+                    }
                   },
                   child: Container(
                     alignment: Alignment.centerLeft,
@@ -2281,7 +2322,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
 
   /// Removes bracket text from car type (e.g., "Hyundai Accent[Intermediate]" -> "Hyundai Accent")
   String _removeBracketText(String? carType) {
-    if (carType == null || carType.isEmpty) return carType ?? '';
+    if (carType == null || carType.isEmpty) return '';
     final bracketIndex = carType.indexOf('[');
     if (bracketIndex == -1) return carType;
     return carType.substring(0, bracketIndex).trim();
@@ -2364,58 +2405,34 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   }
 
   Widget _buildModifyBookButton() {
-    final isEnabled = _hasChanges;
-    return Row(
-      children: [
-        // Cancel Button
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {
-              _showCancelBookingDialog();
-            },
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF4082F1),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(39),
-                side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Cancel Booking',
-              style: TextStyle(
-                color: Color(0xFF4082F1),
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Confirm Booking Button
-        Expanded(
-          child: Opacity(
-            opacity: isEnabled ? 1.0 : 0.4,
-            child: ElevatedButton(
-              onPressed: isEnabled ? _handleModifyBooking : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4082F1),
-                disabledBackgroundColor: const Color(0xFF4082F1),
-                disabledForegroundColor: Colors.white,
+    return Obx(() {
+      // Check if a car model is selected
+      final hasCarModelSelected = crpInventoryListController.selectedModel.value != null;
+      // Button is enabled only if there are changes AND a car model is selected
+      final isEnabled = _hasChanges && hasCarModelSelected;
+      
+      return Row(
+        children: [
+          // Cancel Button
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {
+                _showCancelBookingDialog();
+              },
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF4082F1),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(39),
-                  side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+                  side: const BorderSide(color: Color(0xFF4082F1), width: 1.5),
                 ),
                 elevation: 0,
               ),
               child: const Text(
-                'Modify Booking',
+                'Cancel Booking',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFF4082F1),
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -2423,9 +2440,39 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
               ),
             ),
           ),
-        ),
-      ],
-    );
+          const SizedBox(width: 12),
+          // Confirm Booking Button
+          Expanded(
+            child: Opacity(
+              opacity: isEnabled ? 1.0 : 0.4,
+              child: ElevatedButton(
+                onPressed: isEnabled ? _handleModifyBooking : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4082F1),
+                  disabledBackgroundColor: const Color(0xFF4082F1),
+                  disabledForegroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(39),
+                    side: const BorderSide(color: Color(0xFFD9D9D9), width: 1),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Modify Booking',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
   }
 
   Future<void> _handleModifyBooking() async {

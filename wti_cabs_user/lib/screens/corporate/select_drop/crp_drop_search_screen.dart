@@ -26,32 +26,49 @@ class _CrpDropSearchScreenState extends State<CrpDropSearchScreen> {
   final CrpSelectPickupController pickupController =
       Get.put(CrpSelectPickupController());
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize search controller text from selectedPlace if available
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final selectedPlace = crpSelectDropController.selectedPlace.value;
+      if (selectedPlace != null && 
+          crpSelectDropController.searchController.text != selectedPlace.primaryText) {
+        crpSelectDropController.searchController.text = selectedPlace.primaryText;
+      }
+    });
+  }
+
   Future<void> _handlePlaceSelection(SuggestionPlacesResponse place) async {
     // Update the controller first
     await crpSelectDropController.selectPlace(place);
     
-    // Navigate based on where we came from
-    if (context.mounted) {
-      // Get the updated place from controller, or use the passed place as fallback
-      final selected = crpSelectDropController.selectedPlace.value ?? place;
-      final currentPickup = pickupController.selectedPlace.value;
-      
-      // Check if coming from home screen
-      if (widget.fromCrpHomeScreen == true) {
-        // Coming from home screen - navigate to booking engine with drop location
-        GoRouter.of(context).push(
-          AppRoutes.cprBookingEngine,
-          extra: {
-            'selectedDropPlace': selected.toJson(),
-            if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
-          },
-        );
-      } else {
-        // Coming from booking engine - pop back
-        // The booking engine will read from the controller via Obx()
-        GoRouter.of(context).pop();
+    // Wait for reactive update to propagate before navigating
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Navigate based on where we came from
+      if (context.mounted) {
+        // Get the updated place from controller, or use the passed place as fallback
+        final selected = crpSelectDropController.selectedPlace.value ?? place;
+        final currentPickup = pickupController.selectedPlace.value;
+        
+        // Check if coming from home screen
+        if (widget.fromCrpHomeScreen == true) {
+          // Coming from home screen - navigate to booking engine with drop location
+          GoRouter.of(context).push(
+            AppRoutes.cprBookingEngine,
+            extra: {
+              'selectedDropPlace': selected.toJson(),
+              if (currentPickup != null) 'selectedPickupPlace': currentPickup.toJson(),
+            },
+          );
+        } else {
+          // Coming from booking engine or modify booking - pop back
+          // The screen will read from the controller via Obx()
+          GoRouter.of(context).pop();
+        }
       }
-    }
+    });
   }
 
   @override

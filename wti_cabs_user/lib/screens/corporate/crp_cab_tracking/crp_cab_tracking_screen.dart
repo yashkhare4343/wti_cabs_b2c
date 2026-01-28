@@ -257,19 +257,19 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                         String arrivalText = '';
 
                         // Show ETA only from API (null-safe), else show NAN
-                        if (response != null) {
-                          final eta = response.eta;
-                          final etaMinutes = eta?.toDouble();
-                          if (etaMinutes != null &&
-                              etaMinutes.isFinite &&
-                              etaMinutes > 0 &&
-                              etaMinutes < 1000) {
-                            final etaText = (etaMinutes % 1 == 0)
-                                ? etaMinutes.toInt().toString()
-                                : etaMinutes.toStringAsFixed(1);
-                            arrivalText = '$etaText Mins';
-                          }
-                        }
+                        // if (response != null) {
+                        //   final eta = response.eta;
+                        //   final etaMinutes = eta?.toDouble();
+                        //   if (etaMinutes != null &&
+                        //       etaMinutes.isFinite &&
+                        //       etaMinutes > 0 &&
+                        //       etaMinutes < 1000) {
+                        //     final etaText = (etaMinutes % 1 == 0)
+                        //         ? etaMinutes.toInt().toString()
+                        //         : etaMinutes.toStringAsFixed(1);
+                        //     arrivalText = '$etaText Mins';
+                        //   }
+                        // }
 
                         return Container(
                           padding: const EdgeInsets.symmetric(
@@ -293,7 +293,7 @@ class _CrpCabTrackingScreenState extends State<CrpCabTrackingScreen> {
                                 ),
                               ),
                               Text(
-                                arrivalText,
+                                '${response?.eta?.round().toString() ?? ''} min',
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w600,

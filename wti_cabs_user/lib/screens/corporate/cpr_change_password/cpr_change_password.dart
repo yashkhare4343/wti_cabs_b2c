@@ -150,26 +150,6 @@ class _CprChangePasswordState extends State<CprChangePassword> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
-              // Password requirements section
-              const Text(
-                'To create a secure password:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildRequirementItem('Use at least 8 characters'),
-              const SizedBox(height: 8),
-              _buildRequirementItem(
-                'Use a mix of letters, numbers, and special characters (e.g.: #\$!%)',
-              ),
-              const SizedBox(height: 8),
-              _buildRequirementItem(
-                'Try combining words and symbols into a unique phrase',
-              ),
 
               const SizedBox(height: 32),
               // Current password field
@@ -195,17 +175,6 @@ class _CprChangePasswordState extends State<CprChangePassword> {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'New password is required';
-                  }
-                  if (value.length < 8) {
-                    return 'Password must be at least 8 characters';
-                  }
-                  // Check for mix of letters, numbers, and special characters
-                  final hasLetter = value.contains(RegExp(r'[a-zA-Z]'));
-                  final hasNumber = value.contains(RegExp(r'[0-9]'));
-                  final hasSpecialChar =
-                      value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-                  if (!hasLetter || !hasNumber || !hasSpecialChar) {
-                    return 'Password must include letters, numbers, and special characters';
                   }
                   return null;
                 },

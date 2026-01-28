@@ -16,6 +16,13 @@ class StorageServices {
     'guestName',
     'email',
   };
+  
+  // App-level keys that should never be cleared (like onboarding flags)
+  static const Set<String> _appLevelKeys = {
+    'isFirstTime',
+    'hasSeenAppModule',
+    'lastSelectedModule',
+  };
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -69,20 +76,30 @@ class StorageServices {
       if (preserveCorporate) {
         final all = await _secureStorage.readAll();
         for (final entry in all.entries) {
-          if (_corporateKeys.contains(entry.key)) continue;
+          if (_corporateKeys.contains(entry.key) || _appLevelKeys.contains(entry.key)) continue;
           await _secureStorage.delete(key: entry.key);
         }
       } else {
-        await _secureStorage.deleteAll();
+        // When clearing all, preserve app-level keys
+        final all = await _secureStorage.readAll();
+        for (final entry in all.entries) {
+          if (_appLevelKeys.contains(entry.key)) continue;
+          await _secureStorage.delete(key: entry.key);
+        }
       }
     } else if (Platform.isIOS) {
       if (_sharedPreferences == null) await init();
       if (!preserveCorporate) {
-        await _sharedPreferences?.clear();
+        // When clearing all, preserve app-level keys
+        final keys = _sharedPreferences?.getKeys() ?? {};
+        for (final key in keys) {
+          if (_appLevelKeys.contains(key)) continue;
+          await _sharedPreferences?.remove(key);
+        }
       } else {
         final keys = _sharedPreferences?.getKeys() ?? {};
         for (final key in keys) {
-          if (_corporateKeys.contains(key)) continue;
+          if (_corporateKeys.contains(key) || _appLevelKeys.contains(key)) continue;
           await _sharedPreferences?.remove(key);
         }
       }

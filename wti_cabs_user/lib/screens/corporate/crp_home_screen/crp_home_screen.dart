@@ -767,7 +767,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
       },
       child: Container(
         height: fixedHeight,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -787,7 +787,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
                 item.run ?? "",
                 style: const TextStyle(
                   fontFamily: 'Urbanist',
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700, // Bold
                   height: 1.2, // line-height: 120%
                   letterSpacing: 0,
@@ -800,8 +800,8 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
             ),
             const SizedBox(width: 8),
             SizedBox(
-              height: 60,
-              width: 60,
+              height: 50,
+              width: 50,
               child: Image.asset(
                 _getImageForService(item.runTypeID ?? 0),
                 fit: BoxFit.contain,

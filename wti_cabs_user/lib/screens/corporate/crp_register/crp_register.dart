@@ -44,6 +44,12 @@ class _CprRegisterState extends State<CprRegister> {
 
   final _formKey = GlobalKey<FormState>();
   final _emailFieldKey = GlobalKey<FormFieldState<String>>();
+  final _nameFieldKey = GlobalKey<FormFieldState<String>>();
+  final _phoneFieldKey = GlobalKey<FormFieldState<String>>();
+  final _passwordFieldKey = GlobalKey<FormFieldState<String>>();
+  final _confirmPasswordFieldKey = GlobalKey<FormFieldState<String>>();
+  final _empIdFieldKey = GlobalKey<FormFieldState<String>>();
+  final _cityFieldKey = GlobalKey<FormFieldState<String>>();
   final CrpGetEntityListController crpGetEntityListController =
       Get.put(CrpGetEntityListController());
 
@@ -66,6 +72,7 @@ class _CprRegisterState extends State<CprRegister> {
   String? _phoneFieldError;
   String? _entityFieldError;
   String? genderError;
+  String? _cityFieldError;
 
   final GenderController _genderController = Get.put(GenderController());
 
@@ -87,6 +94,7 @@ class _CprRegisterState extends State<CprRegister> {
     _phoneFieldError = null;
     _entityFieldError = null;
     genderError = null;
+    _cityFieldError = null;
 
     // Defer Rx updates & dropdown data fetch to after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -94,6 +102,21 @@ class _CprRegisterState extends State<CprRegister> {
       crpGetBranchListController.selectedBranchId.value = null;
       _genderController.selectGender(null);
       _genderController.fetchGender(context);
+    });
+
+    // Listen to branch selection changes and clear city error when a city is selected
+    ever(crpGetBranchListController.selectedBranchName, (String? branchName) {
+      if (branchName != null && branchName.isNotEmpty) {
+        setState(() {
+          _cityFieldError = null;
+        });
+        // Trigger validation to clear error display
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _cityFieldKey.currentState?.validate();
+          }
+        });
+      }
     });
 
     // Validate when user leaves the email field (on blur)
@@ -340,6 +363,17 @@ class _CprRegisterState extends State<CprRegister> {
     });
   }
 
+  /// 🔁 Helper: Validate a specific field on change
+  void _validateFieldOnChange(GlobalKey<FormFieldState<String>>? fieldKey) {
+    if (fieldKey != null && _autoValidate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          fieldKey.currentState?.validate();
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -452,18 +486,24 @@ class _CprRegisterState extends State<CprRegister> {
 
                       // ✅ Name
                       CprTextFormField(
+                        fieldKey: _nameFieldKey,
                         controller: nameController,
                         hintText: "Enter Name*",
                         labelText: "Name *",
                         validator: (value) => value == null || value.isEmpty
                             ? "Name is required"
                             : null,
+                        onChanged: (value) {
+                          // Validate on change once autoValidate is enabled
+                          _validateFieldOnChange(_nameFieldKey);
+                        },
                       ),
 
                       const SizedBox(height: 14),
 
                       // ✅ Phone
                       CprTextFormField(
+                        fieldKey: _phoneFieldKey,
                         controller: phoneNoController,
                         hintText: "Enter Phone Number*",
                         labelText: "Phone Number*",
@@ -479,6 +519,16 @@ class _CprRegisterState extends State<CprRegister> {
                             return "Minimum 10 digits required";
                           }
                           return null;
+                        },
+                        onChanged: (value) {
+                          // Clear API error when user starts typing
+                          if (_phoneFieldError != null && value.isNotEmpty) {
+                            setState(() {
+                              _phoneFieldError = null;
+                            });
+                          }
+                          // Validate on change once autoValidate is enabled
+                          _validateFieldOnChange(_phoneFieldKey);
                         },
                       ),
 
@@ -543,18 +593,30 @@ class _CprRegisterState extends State<CprRegister> {
                                 _emailError = null;
                                 _isEmailValid = false;
                               }
+                              if (_emailFieldError != null && value.isNotEmpty) {
+                                _emailFieldError = null;
+                              }
                               
-                              // Clear dropdowns when email is cleared
+                              // Reset corporate dropdown and selections whenever email changes
+                              // This ensures user must select corporate entity for the new email
+                              selectedEntity = null;
+                              _entityFieldError = null;
+                              crpGetBranchListController.selectedBranchName.value = null;
+                              crpGetBranchListController.selectedBranchId.value = null;
+                              
+                              // Clear entity list when email is cleared or changed
                               if (value.trim().isEmpty) {
-                                selectedEntity = null;
-                                crpGetBranchListController.selectedBranchName.value = null;
-                                crpGetBranchListController.selectedBranchId.value = null;
+                                crpGetEntityListController.getAllEntityList.value = null;
+                              } else {
+                                // Reset entity list when email changes (will be reloaded after validation)
                                 crpGetEntityListController.getAllEntityList.value = null;
                               }
                             });
 
                             // 🔥 Force revalidation to show/hide error text dynamically
-                            _revalidateFields();
+                            if (_autoValidate) {
+                              _revalidateFields();
+                            }
                           }),
 
 
@@ -653,6 +715,7 @@ class _CprRegisterState extends State<CprRegister> {
 
                       // ✅ Password
                       CprTextFormField(
+                        fieldKey: _passwordFieldKey,
                         controller: passwordController,
                         hintText: "Enter Password*",
                         labelText: "Password*",
@@ -663,12 +726,23 @@ class _CprRegisterState extends State<CprRegister> {
                           }
                           return null;
                         },
+                        onChanged: (value) {
+                          // Validate on change once autoValidate is enabled
+                          if (_autoValidate) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _passwordFieldKey.currentState?.validate();
+                              // Also validate confirm password when password changes
+                              _confirmPasswordFieldKey.currentState?.validate();
+                            });
+                          }
+                        },
                       ),
 
                       const SizedBox(height: 14),
 
                       // ✅ Confirm Password
                       CprTextFormField(
+                        fieldKey: _confirmPasswordFieldKey,
                         controller: confirmPasswordController,
                         hintText: "Enter Confirm Password*",
                         labelText: "Confirm Password*",
@@ -682,16 +756,25 @@ class _CprRegisterState extends State<CprRegister> {
                           }
                           return null;
                         },
+                        onChanged: (value) {
+                          // Validate on change once autoValidate is enabled
+                          _validateFieldOnChange(_confirmPasswordFieldKey);
+                        },
                       ),
 
                       const SizedBox(height: 14),
 
                       // ✅ Employee ID
                       CprTextFormField(
+                        fieldKey: _empIdFieldKey,
                         controller: empIdController,
                         hintText: "Enter Employee ID",
                         labelText: "Employee ID",
                         validator: (value) => null,
+                        onChanged: (value) {
+                          // Validate on change once autoValidate is enabled
+                          _validateFieldOnChange(_empIdFieldKey);
+                        },
                       ),
                       const SizedBox(height: 14),
 
@@ -700,6 +783,8 @@ class _CprRegisterState extends State<CprRegister> {
                               verifyCorporateController.cprVerifyResponse.value?.code ==
                               0
                           ? CorporateBranchDropdown(
+                              fieldKey: _cityFieldKey,
+                              errorText: _cityFieldError,
                               corpId:
                                   selectedEntity?.entityId.toString() ?? '')
                           : const SizedBox.shrink(),
@@ -717,6 +802,10 @@ class _CprRegisterState extends State<CprRegister> {
                               selectedValue: selectedEntity?.entityName,
                               onChanged: (value) {
                                 setState(() {
+                                  // Clear entity error when user selects an entity
+                                  if (_entityFieldError != null) {
+                                    _entityFieldError = null;
+                                  }
                                   selectedEntity = crpGetEntityListController
                                       .getAllEntityList.value?.getEntityList
                                       ?.firstWhere((e) => e.entityName == value);

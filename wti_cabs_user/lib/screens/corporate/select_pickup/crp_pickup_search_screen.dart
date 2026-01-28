@@ -25,33 +25,54 @@ class _CrpPickupSearchScreenState extends State<CrpPickupSearchScreen> {
       Get.put(CrpSelectPickupController());
   final CrpSelectDropController dropController =
       Get.put(CrpSelectDropController());
+  bool _hasInitialized = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize search controller text from selectedPlace if available
+    // Only initialize once and only if the field is empty to avoid overriding user input
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_hasInitialized && mounted) {
+        _hasInitialized = true;
+        final selectedPlace = crpSelectPickupController.selectedPlace.value;
+        final currentText = crpSelectPickupController.searchController.text;
+        // Only set text if field is empty and we have a selected place
+        if (currentText.isEmpty && selectedPlace != null) {
+          crpSelectPickupController.searchController.text = selectedPlace.primaryText;
+        }
+      }
+    });
+  }
 
   Future<void> _handlePlaceSelection(SuggestionPlacesResponse place) async {
     // Update the controller first
     await crpSelectPickupController.selectPlace(place);
     
-    // Navigate back to booking engine
-    // The booking engine will read from the controller via Obx()
-    if (context.mounted) {
-      if (GoRouter.of(context).canPop()) {
-        GoRouter.of(context).pop();
-      } else {
-        // Fallback: navigate to booking engine with data
-        final selected = crpSelectPickupController.selectedPlace.value;
-        final currentDrop = dropController.selectedPlace.value;
-        if (selected != null) {
-          GoRouter.of(context).go(
-            AppRoutes.cprBookingEngine,
-            extra: {
-              'selectedPickupType': widget.selectedPickupType,
-              'selectedPickupPlace': selected.toJson(),
-              if (currentDrop != null) 'selectedDropPlace': currentDrop.toJson(),
-            },
-          );
+    // Wait for reactive update to propagate before navigating
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Navigate back to booking engine
+      // The booking engine will read from the controller via Obx()
+      if (context.mounted) {
+        if (GoRouter.of(context).canPop()) {
+          GoRouter.of(context).pop();
+        } else {
+          // Fallback: navigate to booking engine with data
+          final selected = crpSelectPickupController.selectedPlace.value;
+          final currentDrop = dropController.selectedPlace.value;
+          if (selected != null) {
+            GoRouter.of(context).go(
+              AppRoutes.cprBookingEngine,
+              extra: {
+                'selectedPickupType': widget.selectedPickupType,
+                'selectedPickupPlace': selected.toJson(),
+                if (currentDrop != null) 'selectedDropPlace': currentDrop.toJson(),
+              },
+            );
+          }
         }
       }
-    }
+    });
   }
 
   @override
