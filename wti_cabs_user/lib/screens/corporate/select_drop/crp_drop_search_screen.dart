@@ -32,6 +32,12 @@ class _CrpDropSearchScreenState extends State<CrpDropSearchScreen> {
     // Initialize search controller text from selectedPlace if available
     // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // If coming from home screen, always start with an empty drop text
+      if (widget.fromCrpHomeScreen == true) {
+        crpSelectDropController.clearSelection();
+        return;
+      }
+
       final selectedPlace = crpSelectDropController.selectedPlace.value;
       if (selectedPlace != null && 
           crpSelectDropController.searchController.text != selectedPlace.primaryText) {

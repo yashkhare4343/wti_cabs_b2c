@@ -93,9 +93,14 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
   Future<void> _fetchBranchesAndShowBottomSheet() async {
     // Get corporate ID - use from verifyCorporateController or fallback to params
     final corpId = await StorageServices.instance.read('crpId');
+    // Prefer selected Entity ID; if null/zero then fall back to CorpID
+    final loginEntityId = loginInfoController.crpLoginInfo.value?.entityId;
+    final effectiveCorpId = (loginEntityId != null && loginEntityId != 0)
+        ? loginEntityId.toString()
+        : (corpId ?? '');
 
     // Fetch branches
-    await crpGetBranchListController.fetchBranches(corpId ?? '');
+    await crpGetBranchListController.fetchBranches(effectiveCorpId);
 
     // Try to restore branch from login response if not already selected
     await _restoreBranchFromLoginResponse();

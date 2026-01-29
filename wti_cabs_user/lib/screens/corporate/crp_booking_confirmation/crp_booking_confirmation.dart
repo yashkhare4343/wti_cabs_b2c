@@ -769,41 +769,41 @@ class _TravelerDetailsFormState extends State<_TravelerDetailsForm> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Title Chips (Read-only)
-                  Row(
-                    children: widget.titles.asMap().entries.map((entry) {
-                      final int i = entry.key;
-                      final String title = entry.value;
-                      final bool isSelected = widget.selectedTitle == title;
-                      return Padding(
-                        padding: EdgeInsets.only(right: i < widget.titles.length - 1 ? 12.0 : 0),
-                        child: isSelected
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF64A4F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              )
-                            : Text(
-                                title,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF192653),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
+                  // Row(
+                  //   children: widget.titles.asMap().entries.map((entry) {
+                  //     final int i = entry.key;
+                  //     final String title = entry.value;
+                  //     final bool isSelected = widget.selectedTitle == title;
+                  //     return Padding(
+                  //       padding: EdgeInsets.only(right: i < widget.titles.length - 1 ? 12.0 : 0),
+                  //       child: isSelected
+                  //           ? Container(
+                  //               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  //               decoration: BoxDecoration(
+                  //                 color: const Color(0xFF64A4F6),
+                  //                 borderRadius: BorderRadius.circular(12),
+                  //               ),
+                  //               child: Text(
+                  //                 title,
+                  //                 style: const TextStyle(
+                  //                   fontSize: 14,
+                  //                   color: Colors.white,
+                  //                   fontWeight: FontWeight.w600,
+                  //                 ),
+                  //               ),
+                  //             )
+                  //           : Text(
+                  //               title,
+                  //               style: const TextStyle(
+                  //                 fontSize: 14,
+                  //                 color: Color(0xFF192653),
+                  //                 fontWeight: FontWeight.w600,
+                  //               ),
+                  //             ),
+                  //     );
+                  //   }).toList(),
+                  // ),
+                  // const SizedBox(height: 20),
                   _customTextField(
                     label: 'Full Name',
                     hint: 'Enter full name',

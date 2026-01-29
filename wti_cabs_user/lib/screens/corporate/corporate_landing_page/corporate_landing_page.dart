@@ -179,7 +179,7 @@ class _CorporateLandingPageState extends State<CorporateLandingPage> {
                             ),
                             _PromoItem(
                               iconAsset: _icon2,
-                              title: 'Zero\nCancelation Fees',
+                              title: 'Zero\nCancellation Fees',
                             ),
                             _PromoItem(
                               iconAsset: _icon3,

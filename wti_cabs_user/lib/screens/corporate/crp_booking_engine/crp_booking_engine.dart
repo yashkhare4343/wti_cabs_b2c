@@ -128,6 +128,17 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     // Initialize async operations
     _initializeData();
 
+    // Safety timeout: Ensure loading stops after maximum 3 seconds to prevent infinite loader
+    // This ensures screen always shows even if location prefilling fails or hangs
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && _isLoadingPickupLocation) {
+        debugPrint('⚠️ Safety timeout: Stopping loading after 3 seconds');
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
+    });
+
     // Listen to entity list changes and retry prefilling
     ever(crpGetEntityListController.getAllEntityList, (_) {
       if (mounted && selectedCorporate == null) {
@@ -1126,20 +1137,20 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
 
       // Only fetch GPS in background if absolutely necessary (should rarely happen)
       // Don't await this - let it happen in background so UI doesn't wait
+      // Stop loading immediately so screen can show - GPS fetch will happen in background
       debugPrint('⚠️ No stored location found, will fetch GPS in background');
+      if (mounted) {
+        setState(() {
+          _isLoadingPickupLocation = false;
+        });
+      }
+      // Fetch GPS in background without blocking UI
       _setPickupFromCurrentGps().then((_) {
-        if (mounted) {
-          setState(() {
-            _isLoadingPickupLocation = false;
-          });
-        }
-      }).catchError((e) {
+        // GPS fetch completed successfully (or failed gracefully)
+        debugPrint('✅ GPS fetch completed in background');
+      }, onError: (e) {
         debugPrint('❌ GPS fetch failed: $e');
-        if (mounted) {
-          setState(() {
-            _isLoadingPickupLocation = false;
-          });
-        }
+        // Error already handled in _setPickupFromCurrentGps, no need to update loading state
       });
     } catch (e) {
       debugPrint('❌ Error in _prefillPickupFromCurrentLocation: $e');
@@ -1160,6 +1171,12 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       final loc = location.Location();
 
       if (!(await loc.serviceEnabled()) && !(await loc.requestService())) {
+        // Stop loading even if location service is disabled - screen should still open
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
         return;
       }
 
@@ -1167,12 +1184,24 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
       if (permission == location.PermissionStatus.denied) {
         permission = await loc.requestPermission();
         if (permission != location.PermissionStatus.granted) {
+          // Stop loading even if permission is denied - screen should still open
+          if (mounted) {
+            setState(() {
+              _isLoadingPickupLocation = false;
+            });
+          }
           return;
         }
       }
 
       final locData = await loc.getLocation();
       if (locData.latitude == null || locData.longitude == null) {
+        // Stop loading even if location data is null - screen should still open
+        if (mounted) {
+          setState(() {
+            _isLoadingPickupLocation = false;
+          });
+        }
         return;
       }
 
@@ -1370,6 +1399,8 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
           }
         });
       }
+      // If location is not available and loading is still true, it will be stopped by
+      // _prefillPickupFromCurrentLocation() or the safety timeout in initState()
     }
 
     return PopScope(

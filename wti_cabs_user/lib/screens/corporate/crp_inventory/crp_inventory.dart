@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -14,6 +15,8 @@ import 'package:wti_cabs_user/core/route_management/app_routes.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_inventory_list_controller/crp_inventory_list_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/crp_branch_list_controller/crp_branch_list_controller.dart';
+import 'package:wti_cabs_user/core/controller/corporate/cpr_profile_controller/cpr_profile_controller.dart';
 
 import '../../../common_widget/loader/shimmer/corporate_shimmer.dart';
 import '../../../core/model/corporate/crp_car_models/crp_car_models_response.dart';
@@ -71,23 +74,41 @@ class _CrpInventoryState extends State<CrpInventory> {
 
     // Get runTypeId from booking data if available, otherwise default to 1
     int runTypeId = 1;
+    CrpBookingData? bookingData;
     if (widget.bookingData != null) {
       try {
-        final parsedBookingData = CrpBookingData.fromJson(widget.bookingData!);
-        if (parsedBookingData.runTypeId != null &&
-            parsedBookingData.runTypeId! > 0) {
-          runTypeId = parsedBookingData.runTypeId!;
+        bookingData = CrpBookingData.fromJson(widget.bookingData!);
+        if (bookingData.runTypeId != null && bookingData.runTypeId! > 0) {
+          runTypeId = bookingData.runTypeId!;
         }
       } catch (e) {
         print('Error parsing booking data for runTypeId: $e');
       }
     }
 
+    // Get corporate and branch IDs in the same way as booking confirmation
+    final CprProfileController cprProfileController =
+        Get.put(CprProfileController());
+    final CrpBranchListController crpBranchListController =
+        Get.put(CrpBranchListController());
+
+    final corporateID = corpId ??
+        cprProfileController.crpProfileInfo.value?.corporateID.toString();
+    final branchID = crpBranchListController.selectedBranchId.value ??
+        cprProfileController.crpProfileInfo.value?.branchID.toString();
+
+    // Decide which corporate ID to send: entityId (from booking) or fallback corporateID from storage/profile
+    final bookingEntityId = bookingData?.entityId;
+    // final corporateIdForApi = bookingEntityId != null && bookingEntityId != 0
+    //     ? bookingEntityId.toString()
+    //     : corporateID;
+    final corporateIdForApi = corporateID;
+
     final Map<String, dynamic> params = {
       'token': token,
       'user': user ?? email,
-      'CorpID': corpId,
-      'BranchID': branchId,
+      'CorpID': corporateIdForApi,
+      'BranchID': branchID,
       'RunTypeID': runTypeId
     };
 
@@ -171,16 +192,28 @@ class _BookingBodyState extends State<_BookingBody> {
   final CrpInventoryListController _inventoryController =
       Get.put(CrpInventoryListController());
 
-  /// Creates pickup pin icon from asset image
+  /// Creates pickup pin icon
   Future<BitmapDescriptor> _createPickupPinIcon() async {
+    // On iOS: use default marker (avoids oversized custom icons issue)
+    if (Platform.isIOS) {
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+    }
+
+    // On Android: use custom asset icon
     return BitmapDescriptor.fromAssetImage(
       const ImageConfiguration(size: Size(90, 90)),
       'assets/images/pickup.png',
     );
   }
 
-  /// Creates drop pin icon from asset image
+  /// Creates drop pin icon
   Future<BitmapDescriptor> _createDropPinIcon() async {
+    // On iOS: use default marker (avoids oversized custom icons issue)
+    if (Platform.isIOS) {
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+    }
+
+    // On Android: use custom asset icon
     return BitmapDescriptor.fromAssetImage(
       const ImageConfiguration(size: Size(90, 90)),
       'assets/images/drop.png',

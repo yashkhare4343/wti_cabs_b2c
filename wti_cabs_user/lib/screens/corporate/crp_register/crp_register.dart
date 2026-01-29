@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_rx/src/rx_workers/rx_workers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/common_widget/crp_branch_selectbox/crp_branch_selectbox.dart';
 import 'package:wti_cabs_user/core/controller/corporate/crp_get_entity_all/crp_get_entity_list_controller.dart';
@@ -76,6 +77,9 @@ class _CprRegisterState extends State<CprRegister> {
 
   final GenderController _genderController = Get.put(GenderController());
 
+  // Store the worker to cancel it in dispose
+  Worker? _branchSelectionWorker;
+
   @override
   void initState() {
     super.initState();
@@ -105,17 +109,20 @@ class _CprRegisterState extends State<CprRegister> {
     });
 
     // Listen to branch selection changes and clear city error when a city is selected
-    ever(crpGetBranchListController.selectedBranchName, (String? branchName) {
+    _branchSelectionWorker = ever(crpGetBranchListController.selectedBranchName, (String? branchName) {
       if (branchName != null && branchName.isNotEmpty) {
-        setState(() {
-          _cityFieldError = null;
-        });
-        // Trigger validation to clear error display
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _cityFieldKey.currentState?.validate();
-          }
-        });
+        // Check if widget is still mounted before calling setState
+        if (mounted) {
+          setState(() {
+            _cityFieldError = null;
+          });
+          // Trigger validation to clear error display
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _cityFieldKey.currentState?.validate();
+            }
+          });
+        }
       }
     });
 
@@ -124,11 +131,14 @@ class _CprRegisterState extends State<CprRegister> {
       // Only validate on blur if not already validating and email is not empty
       if (!emailFocusNode.hasFocus &&
           emailController.text.trim().isNotEmpty &&
-          !_isValidating) {
+          !_isValidating &&
+          mounted) {
         await _validateEmail();
         // Trigger validation to show error immediately
         WidgetsBinding.instance.addPostFrameCallback((_) async{
-          _emailFieldKey.currentState?.validate();
+          if (mounted) {
+            _emailFieldKey.currentState?.validate();
+          }
         });
       }
     });
@@ -136,6 +146,9 @@ class _CprRegisterState extends State<CprRegister> {
 
   @override
   void dispose() {
+    // Cancel the branch selection worker to prevent setState after dispose
+    _branchSelectionWorker?.dispose();
+    
     emailFocusNode.removeListener(() {});
     emailFocusNode.dispose();
     emailController.dispose();
@@ -204,29 +217,125 @@ class _CprRegisterState extends State<CprRegister> {
     );
   }
 
-  void _validateAndSubmit(Map<String, dynamic> params) async {
+  void _validateAndSubmit() async {
+    if (!mounted) return;
+    
     setState(() => _autoValidate = true);
 
     // Reset field errors
     _emailFieldError = null;
     _phoneFieldError = null;
     _entityFieldError = null;
+    _cityFieldError = null;
+    genderError = null;
 
     // Validate form fields
     final isValid = _formKey.currentState?.validate() ?? false;
 
-    // Validate gender (mandatory)
-    bool extraValid = true;
-    if (_genderController.selectedGender.value == null) {
-      setState(() {
-        genderError = 'Please select a gender';
-      });
-      extraValid = false;
+    // Validate email API validation (must be verified via API)
+    bool emailApiValid = true;
+    final email = emailController.text.trim();
+    if (email.isNotEmpty) {
+      // Check if email format is valid first
+      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      if (emailRegex.hasMatch(email)) {
+        // If email format is valid, check if API validation has been done
+        if (!_isEmailValid) {
+          // Email format is valid but API validation hasn't passed
+          // Trigger API validation
+          await _validateEmail();
+          // Check again after validation
+          if (!_isEmailValid) {
+            if (mounted) {
+              setState(() {
+                _emailFieldError = _emailError ?? "Please verify your email address";
+              });
+            }
+            emailApiValid = false;
+            // Trigger validation to show error
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _emailFieldKey.currentState?.validate();
+              }
+            });
+          }
+        }
+      }
     }
 
-    if (!isValid || !extraValid) return;
+    // Validate gender (mandatory)
+    bool genderValid = true;
+    if (_genderController.selectedGender.value == null) {
+      if (mounted) {
+        setState(() {
+          genderError = 'Please select a gender';
+        });
+      }
+      genderValid = false;
+    }
 
+    // Validate city/branch selection (required if email is verified)
+    bool cityValid = true;
+    final isEmailVerified = email.isNotEmpty && 
+        verifyCorporateController.cprVerifyResponse.value?.code == 0;
+    if (isEmailVerified) {
+      final selectedBranch = crpGetBranchListController.selectedBranchName.value;
+      if (selectedBranch == null || selectedBranch.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _cityFieldError = 'Please select a city';
+          });
+        }
+        cityValid = false;
+        // Trigger validation to show error
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _cityFieldKey.currentState?.validate();
+          }
+        });
+      }
+    }
+
+    // Validate entity selection (required if email is not empty)
+    bool entityValid = true;
+    if (email.isNotEmpty) {
+      if (selectedEntity == null) {
+        if (mounted) {
+          setState(() {
+            _entityFieldError = 'Please select a corporate entity';
+          });
+        }
+        entityValid = false;
+      }
+    }
+
+    // If any validation fails, return early (DO NOT CREATE PARAMS)
+    if (!isValid || !emailApiValid || !genderValid || !cityValid || !entityValid) {
+      return;
+    }
+
+    // ✅ All validations passed - Now create params and proceed with API call
     print('✅ Form is valid, proceed to API call');
+
+    // Create params only after all validations pass
+    final Map<String, dynamic> params = {
+      "guestName": nameController.text.trim(),
+      "corporate_Name": verifyCorporateController.cprName.value,
+      "CorpID": int.parse(verifyCorporateController.cprID.value),
+      "mobile": phoneNoController.text.trim(),
+      "emailID": emailController.text.trim(),
+      "password": passwordController.text.trim(),
+      "employeeID": empIdController.text.trim(),
+      "branchID": crpGetBranchListController.selectedBranchId.value,
+      "location": crpGetBranchListController.selectedBranchName.value,
+      "IP": "local",
+      "android_gcm": "",
+      "ios_token": "",
+      "EntityID": selectedEntity?.entityId != null ? selectedEntity?.entityId : "",
+      "ManagerEmail": "",
+      "register_sourceID": "MOBILE",
+      "gender": _genderController.selectedGender.value?.genderID
+    };
 
     await crpRegisterController.verifyCrpRegister(params, context);
 
@@ -235,19 +344,25 @@ class _CprRegisterState extends State<CprRegister> {
       final msg = response.msg ?? '';
       if (msg.startsWith('-1')) {
         // Email error
-        setState(() {
-          _emailFieldError = msg.substring(3).trim();
-        });
+        if (mounted) {
+          setState(() {
+            _emailFieldError = msg.substring(3).trim();
+          });
+        }
       } else if (msg.startsWith('0')) {
         // Phone error
-        setState(() {
-          _phoneFieldError = msg.substring(2).trim();
-        });
+        if (mounted) {
+          setState(() {
+            _phoneFieldError = msg.substring(2).trim();
+          });
+        }
       } else if (msg.startsWith('-2')) {
         // Entity selection error
-        setState(() {
-          _entityFieldError = msg.substring(3).trim();
-        });
+        if (mounted) {
+          setState(() {
+            _entityFieldError = msg.substring(3).trim();
+          });
+        }
       } else {
         // Success - Extract message between commas (e.g., "2324, Register Successfully, true" -> "Register Successfully")
         FocusScope.of(context).unfocus();
@@ -277,30 +392,36 @@ class _CprRegisterState extends State<CprRegister> {
 
     // Basic client-side validation
     if (email.isEmpty) {
-      setState(() {
-        _emailError = "Email is required";
-        _isEmailValid = false;
-      });
+      if (mounted) {
+        setState(() {
+          _emailError = "Email is required";
+          _isEmailValid = false;
+        });
+      }
       _revalidateFields();
       _isValidating = false;
       return;
     }
 
     if (!emailRegex.hasMatch(email)) {
-      setState(() {
-        _emailError = "Enter a valid email address";
-        _isEmailValid = false;
-      });
+      if (mounted) {
+        setState(() {
+          _emailError = "Enter a valid email address";
+          _isEmailValid = false;
+        });
+      }
       _revalidateFields();
       _isValidating = false;
       return;
     }
 
     // Clear any previous error
-    setState(() {
-      _emailError = null;
-      _isEmailValid = false;
-    });
+    if (mounted) {
+      setState(() {
+        _emailError = null;
+        _isEmailValid = false;
+      });
+    }
     _revalidateFields();
 
     try {
@@ -308,10 +429,12 @@ class _CprRegisterState extends State<CprRegister> {
       final response = verifyCorporateController.cprVerifyResponse.value;
 
       if (response == null) {
-        setState(() {
-          _emailError = "Unable to verify email. Try again.";
-          _isEmailValid = false;
-        });
+        if (mounted) {
+          setState(() {
+            _emailError = "Unable to verify email. Try again.";
+            _isEmailValid = false;
+          });
+        }
         _revalidateFields();
         return;
       }
@@ -322,32 +445,40 @@ class _CprRegisterState extends State<CprRegister> {
       debugPrint("🔍 Corporate Verify -> Code: $code | Msg: $msg");
 
       if (code == 1) {
-        setState(() {
-          _emailError = msg.isNotEmpty ? msg : "Corporate not registered";
-          _isEmailValid = false;
-        });
+        if (mounted) {
+          setState(() {
+            _emailError = msg.isNotEmpty ? msg : "Corporate not registered";
+            _isEmailValid = false;
+          });
+        }
       } else if (code == 0) {
         // ✅ Valid
-        setState(() {
-          _emailError = null;
-          _isEmailValid = true;
-        });
+        if (mounted) {
+          setState(() {
+            _emailError = null;
+            _isEmailValid = true;
+          });
+        }
       } else {
         // Unexpected response
-        setState(() {
-          _emailError = msg.isNotEmpty ? msg : "Unexpected server response";
-          _isEmailValid = false;
-        });
+        if (mounted) {
+          setState(() {
+            _emailError = msg.isNotEmpty ? msg : "Unexpected server response";
+            _isEmailValid = false;
+          });
+        }
       }
       await crpGetEntityListController.fetchAllEntities(email, verifyCorporateController.cprID.value);
       await crpGetBranchListController.fetchBranches(verifyCorporateController.cprID.value);
       _revalidateFields();
     } catch (e) {
       debugPrint("❌ Corporate email validation error: $e");
-      setState(() {
-        _emailError = "Error validating email";
-        _isEmailValid = false;
-      });
+      if (mounted) {
+        setState(() {
+          _emailError = "Error validating email";
+          _isEmailValid = false;
+        });
+      }
       _revalidateFields();
     } finally {
       _isValidating = false;
@@ -791,30 +922,67 @@ class _CprRegisterState extends State<CprRegister> {
                       const SizedBox(height: 8),
                       // Entity List - Only show if email is not empty
                       emailController.text.trim().isNotEmpty
-                          ? CprSelectBox(
-                              labelText: "Choose Corporate",
-                              hintText: "",
-                              items: crpGetEntityListController
-                                      .getAllEntityList.value?.getEntityList
-                                      ?.map((val) => val.entityName ?? '')
-                                      .toList() ??
-                                  [],
-                              selectedValue: selectedEntity?.entityName,
-                              onChanged: (value) {
-                                setState(() {
-                                  // Clear entity error when user selects an entity
-                                  if (_entityFieldError != null) {
-                                    _entityFieldError = null;
-                                  }
-                                  selectedEntity = crpGetEntityListController
-                                      .getAllEntityList.value?.getEntityList
-                                      ?.firstWhere((e) => e.entityName == value);
-                                });
-                                print(
-                                    "Selected Entity ID: ${selectedEntity?.entityId}");
-                                print(
-                                    "Selected Entity Name: ${selectedEntity?.entityName}");
-                              },
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CprSelectBox(
+                                  labelText: "Choose Corporate*",
+                                  hintText: "",
+                                  items: crpGetEntityListController
+                                          .getAllEntityList.value?.getEntityList
+                                          ?.map((val) => val.entityName ?? '')
+                                          .toList() ??
+                                      [],
+                                  selectedValue: selectedEntity?.entityName,
+                                  validator: (value) {
+                                    if (_entityFieldError != null && _entityFieldError!.isNotEmpty) {
+                                      return _entityFieldError;
+                                    }
+                                    if (value == null || value.isEmpty) {
+                                      return "Please select a corporate entity";
+                                    }
+                                    return null;
+                                  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      // Clear entity error when user selects an entity
+                                      if (_entityFieldError != null) {
+                                        _entityFieldError = null;
+                                      }
+                                      selectedEntity = crpGetEntityListController
+                                          .getAllEntityList.value?.getEntityList
+                                          ?.firstWhere((e) => e.entityName == value);
+                                    });
+                                    print(
+                                        "Selected Entity ID: ${selectedEntity?.entityId}");
+                                    print(
+                                        "Selected Entity Name: ${selectedEntity?.entityName}");
+                                  },
+                                ),
+                                if (_entityFieldError != null && _entityFieldError!.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.error_outline,
+                                            size: 16, color: Colors.red.shade600),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            _entityFieldError!,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.red.shade600,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             )
                           : const SizedBox.shrink(),
 
@@ -825,26 +993,9 @@ class _CprRegisterState extends State<CprRegister> {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                               onPressed: crpRegisterController.isLoading.value?(){} : (){
-                                final Map<String, dynamic> params = {
-                                  "guestName": nameController.text.trim(),
-                                  "corporate_Name": verifyCorporateController.cprName.value,
-                                  "CorpID": int.parse(verifyCorporateController.cprID.value),
-                                  "mobile": phoneNoController.text.trim(),
-                                  "emailID": emailController.text.trim(),
-                                  "password": passwordController.text.trim(),
-                                  "employeeID": empIdController.text.trim(),
-                                  "branchID": crpGetBranchListController.selectedBranchId.value,
-                                  "location": crpGetBranchListController.selectedBranchName.value,
-                                  "IP": "local",
-                                  "android_gcm": "",
-                                  "ios_token": "",
-                                  "EntityID": selectedEntity?.entityId!=null? selectedEntity?.entityId : "",
-                                  "ManagerEmail": "",
-                                  "register_sourceID": "MOBILE",
-                                  "gender":_genderController.selectedGender.value?.genderID
-                                };
-                                _validateAndSubmit(params);
+                               onPressed: crpRegisterController.isLoading.value ? () {} : () {
+                                // Validate first, then create params and submit
+                                _validateAndSubmit();
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4082F1),
