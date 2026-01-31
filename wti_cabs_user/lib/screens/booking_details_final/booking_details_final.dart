@@ -1082,7 +1082,7 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                         // ),
                         TravelerDetailsForm(
                           formKey: cabBookingController.formKey,
-                          fromPaymentFailurePage: widget.fromPaymentFailure,
+                          fromPaymentFailurePage: false,
                         ),
                         // DiscountCouponsCard(),
                       ],
@@ -2246,11 +2246,15 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
     if (widget.fromPaymentFailurePage == true) {
       firstName = await StorageServices.instance.read('firstName') ?? '';
       contact = await StorageServices.instance.read('contact') ?? '';
+      contactCode =
+          await StorageServices.instance.read('contactCode') ?? '';
       email = await StorageServices.instance.read('emailId') ?? '';
     } else if (widget.fromPaymentFailurePage == null &&
         await StorageServices.instance.read('token') == null) {
       firstName = await StorageServices.instance.read('firstName') ?? '';
-      contact = await StorageServices.instance.read('contact') ?? '';
+      contact = '';
+      contactCode =
+          await StorageServices.instance.read('contactCode') ?? '';
       email = await StorageServices.instance.read('emailId') ?? '';
     } else {
       firstName =
@@ -3960,13 +3964,18 @@ class _BottomPaymentBarState extends State<BottomPaymentBar> {
                               final shouldSendDestination =
                                   currentTripCode != '3';
 
+                              final storedContact =
+                                  await StorageServices.instance.read('contact');
+                              final storedContactCode = await StorageServices
+                                  .instance
+                                  .read('contactCode');
                               final Map<String, dynamic> requestData = {
                                 "firstName": await StorageServices.instance
                                     .read('firstName'),
-                                "contactCode": await StorageServices.instance
-                                    .read('contactCode'),
-                                "contact": await StorageServices.instance
-                                    .read('contact'),
+                                "contactCode": storedContactCode ??
+                                    contactCode ??
+                                    '',
+                                "contact": (storedContact ?? contact) ?? '',
                                 "countryName": _country,
                                 "userType": "CUSTOMER",
                                 "gender": 'MALE',

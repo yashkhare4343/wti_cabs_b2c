@@ -1327,6 +1327,7 @@ class _CrpBookingDetailsState extends State<CrpBookingDetails> {
                                   AppRoutes.cprModifyBooking,
                                   extra: {
                                     'orderId': orderId,
+                                    'branchId': crpBookingDetailsController.crpBookingDetailResponse.value?.branchID.toString(),
                                     'carModelName': _currentBooking.model,
                                   },
                                 );

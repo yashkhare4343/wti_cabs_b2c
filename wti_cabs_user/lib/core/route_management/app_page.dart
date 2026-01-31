@@ -387,20 +387,24 @@ class AppPages {
       pageBuilder: (context, state) {
         final extra = state.extra;
         String orderId = '';
+        String branchId = '';
         String? carModelName;
         
         if (extra is String) {
           orderId = extra;
         } else if (extra is Map<String, dynamic>) {
           orderId = extra['orderId'] as String? ?? '';
+          branchId = extra['branchId'] as String ?? '';
           carModelName = extra['carModelName'] as String?;
         } else {
           orderId = state.uri.queryParameters['orderId'] ?? '';
+          branchId = state.uri.queryParameters['branchId'] ?? '';
           carModelName = state.uri.queryParameters['carModelName'];
         }
         
         return CorporatePageTransitions.defaultTransition(CprModifyBooking(
           orderId: orderId,
+          branchId: branchId,
           initialCarModelName: carModelName,
         ));
       },

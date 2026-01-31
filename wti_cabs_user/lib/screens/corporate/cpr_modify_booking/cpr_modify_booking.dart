@@ -42,10 +42,12 @@ class CprModifyBooking extends StatefulWidget {
   const CprModifyBooking({
     super.key,
     required this.orderId,
+    required this.branchId,
     this.initialCarModelName,
   });
 
   final String orderId;
+  final String branchId;
   final String? initialCarModelName;
 
   @override
@@ -211,7 +213,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
     final storedCorpId = await StorageServices.instance.read('crpId');
-    final storedBranchId = await StorageServices.instance.read('branchId');
+    // final storedBranchId = await StorageServices.instance.read('branchId');
 
     // 3. Now call payment modes safely
     final Map<String, dynamic> paymentParams = {
@@ -231,31 +233,28 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
           crpBookingDetailsController
               .crpBookingDetailResponse.value?.corporateID
               ?.toString();
-      final branchIdForInventory = storedBranchId ??
-          crpBookingDetailsController
-              .crpBookingDetailResponse.value?.branchID
-              ?.toString();
+      final branchIdForInventory = widget.branchId;
 
       final Map<String, dynamic> inventoryParams = {
         'token': token,
         'user': user ?? email,
         'CorpID': corpIdForInventory,
-        'BranchID': branchIdForInventory,
+        'BranchID': widget.branchId,
         'RunTypeID': resolvedRunTypeId,
       };
 
       // #region agent log
-      _agentLog(
-        hypothesisId: 'B',
-        location: 'cpr_modify_booking.dart:runTypesAndPaymentModes',
-        message: 'Initial inventory fetch params (corp/branch source)',
-        data: {
-          'corpIdForInventory': corpIdForInventory,
-          'branchIdForInventory': branchIdForInventory,
-          'storedCorpId': storedCorpId,
-          'storedBranchId': storedBranchId,
-        },
-      );
+      // _agentLog(
+      //   hypothesisId: 'B',
+      //   location: 'cpr_modify_booking.dart:runTypesAndPaymentModes',
+      //   message: 'Initial inventory fetch params (corp/branch source)',
+      //   data: {
+      //     'corpIdForInventory': corpIdForInventory,
+      //     'branchIdForInventory': branchIdForInventory,
+      //     'storedCorpId': storedCorpId,
+      //     'storedBranchId': storedBranchId,
+      //   },
+      // );
       // #endregion
 
       _lastFetchedInventoryRunTypeId = resolvedRunTypeId;
@@ -324,10 +323,10 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
   String? selectedPickupType;
   String? selectedBookingFor;
 
-  final params = {
-    'CorpID': StorageServices.instance.read('crpId'),
-    'BranchID': StorageServices.instance.read('branchId')
-  };
+  Map<String, dynamic> get params => {
+        'CorpID': StorageServices.instance.read('crpId'),
+        'BranchID': widget.branchId,
+      };
 
   DateTime? _parseDateTime(String? raw) {
     if (raw == null || raw.isEmpty) return null;
@@ -1759,22 +1758,16 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
     final prefs = await SharedPreferences.getInstance();
     String? email = prefs.getString('email');
     final storedCorpId = await StorageServices.instance.read('crpId');
-    final storedBranchId = await StorageServices.instance.read('branchId');
 
-    // Prefer stored corp/branch ids (authoritative)
+    // Prefer stored corp id (authoritative); branch id from widget (passed to screen)
     final corpId = storedCorpId ??
         crpBookingDetailsController
             .crpBookingDetailResponse.value?.corporateID
             ?.toString();
-    final branchId = storedBranchId ??
-        crpBookingDetailsController
-            .crpBookingDetailResponse.value?.branchID
-            ?.toString();
 
     if (corpId == null ||
         corpId.toString().isEmpty ||
-        branchId == null ||
-        branchId.toString().isEmpty) {
+        widget.branchId.isEmpty) {
       // #region agent log
       _agentLog(
         hypothesisId: 'B',
@@ -1782,9 +1775,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
         message: 'Skipped reload due to missing corp/branch',
         data: {
           'corpIdNull': corpId == null,
-          'branchIdNull': branchId == null,
+          'branchIdEmpty': widget.branchId.isEmpty,
           'storedCorpId': storedCorpId,
-          'storedBranchId': storedBranchId,
         },
       );
       // #endregion
@@ -1795,7 +1787,7 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       'token': token,
       'user': user ?? email,
       'CorpID': corpId,
-      'BranchID': branchId,
+      'BranchID': widget.branchId,
       'RunTypeID': resolvedRunTypeId,
     };
 
@@ -1806,9 +1798,8 @@ class _CprModifyBookingState extends State<CprModifyBooking> {
       message: 'Reload inventory params (corp/branch source)',
       data: {
         'corpIdForInventory': corpId,
-        'branchIdForInventory': branchId,
+        'branchIdForInventory': widget.branchId,
         'storedCorpId': storedCorpId,
-        'storedBranchId': storedBranchId,
       },
     );
     // #endregion

@@ -1,6 +1,6 @@
 plugins {
     id "com.android.application"
-    id 'com.google.gms.google-services'
+    id "com.google.gms.google-services"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }
@@ -14,26 +14,31 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.wti.cabbooking"
 
-    // ✅ Required by Play Console minimum API requirement
+    // ✅ Play Console requirement
     compileSdk = 35
 
-    // ✅ Required for 16KB page-size support (fixes Play Console warning)
+    // ✅ Required for 16KB page-size support
     ndkVersion = "28.0.12433566"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+
+        // ✅ REQUIRED for flutter_local_notifications
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 
     defaultConfig {
         applicationId = "com.wti.cabbooking"
+
+        // ✅ Desugaring requires >= 21
         minSdk = 23
 
-        // ✅ Required by Google Play (must be >= 35)
+        // ✅ Play Store requirement
         targetSdk = 35
 
         versionCode = flutter.versionCode
@@ -50,9 +55,9 @@ android {
 
         debug {
             storeFile file("${System.getenv('HOME')}/.android/debug.keystore")
-            storePassword 'android'
-            keyAlias 'AndroidDebugKey'
-            keyPassword 'android'
+            storePassword "android"
+            keyAlias "AndroidDebugKey"
+            keyPassword "android"
         }
     }
 
@@ -61,7 +66,9 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile(
+                    'proguard-android-optimize.txt'
+            ), 'proguard-rules.pro'
         }
 
         debug {
@@ -77,6 +84,10 @@ flutter {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:34.4.0')
+    // ✅ Firebase
+    implementation platform('com.google.firebase:firebase-bom:34.8.0')
     implementation 'com.google.firebase:firebase-analytics'
+
+    // ✅ REQUIRED for flutter_local_notifications (Java 8+ APIs)
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }

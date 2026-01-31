@@ -22,6 +22,51 @@ import '../../../core/services/storage_services.dart';
 import '../../../utility/constants/fonts/common_fonts.dart';
 import '../../home/home_screen.dart';
 
+/// Refetch run types using selected branch (or branch from login if none selected).
+/// Call this every time after branch selection is confirmed.
+Future<void> _refetchRunTypesForBranch(BuildContext context) async {
+  try {
+    final runTypeController = Get.find<CrpServicesController>();
+    final crpGetBranchListController = Get.find<CrpBranchListController>();
+    final loginInfoController = Get.find<LoginInfoController>();
+
+    var corpId = await StorageServices.instance.read('crpId');
+    var branchId = crpGetBranchListController.selectedBranchId.value ??
+        await StorageServices.instance.read('branchId');
+
+    final loginCorpId = loginInfoController.crpLoginInfo.value?.corpID;
+    final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
+
+    if (corpId == null || corpId.isEmpty || corpId == '0') {
+      if (loginCorpId != null && loginCorpId.isNotEmpty) {
+        corpId = loginCorpId;
+        await StorageServices.instance.save('crpId', loginCorpId);
+        debugPrint('✅ Stored corpId from login response: $loginCorpId');
+      }
+    }
+
+    if (branchId == null || branchId.isEmpty || branchId == '0') {
+      if (loginBranchId != null && loginBranchId.isNotEmpty) {
+        branchId = loginBranchId;
+        await StorageServices.instance.save('branchId', loginBranchId);
+        debugPrint('✅ Stored branchId from login response: $loginBranchId');
+      }
+    }
+
+    corpId = corpId ?? '0';
+    branchId = branchId ?? '0';
+
+    final params = {'CorpID': corpId, 'BranchID': branchId};
+    debugPrint('✅ Refetching run types for branch: $params');
+
+    if (context.mounted) {
+      await runTypeController.fetchRunTypes(params, context);
+    }
+  } catch (e) {
+    debugPrint('❌ Error refetching run types for branch: $e');
+  }
+}
+
 class CprHomeScreen extends StatefulWidget {
   const CprHomeScreen({super.key});
 
@@ -46,45 +91,11 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
   /// Load params from storage and fetch run types
   Future<void> _loadParamsAndFetchRunTypes() async {
     try {
-      // ✅ Ensure corporate/branch ids are available (fallback to last login)
-      var corpId = await StorageServices.instance.read('crpId');
-      var branchId = await StorageServices.instance.read('branchId');
-
-      // Fallback to login response if storage is empty (and persist it)
-      final loginCorpId = loginInfoController.crpLoginInfo.value?.corpID;
-      final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
-
-      if (corpId == null || corpId.isEmpty || corpId == '0') {
-        if (loginCorpId != null && loginCorpId.isNotEmpty) {
-          corpId = loginCorpId;
-          await StorageServices.instance.save('crpId', loginCorpId);
-          debugPrint('✅ Stored corpId from login response: $loginCorpId');
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          await _refetchRunTypesForBranch(context);
         }
-      }
-
-      if (branchId == null || branchId.isEmpty || branchId == '0') {
-        if (loginBranchId != null && loginBranchId.isNotEmpty) {
-          branchId = loginBranchId;
-          await StorageServices.instance.save('branchId', loginBranchId);
-          debugPrint('✅ Stored branchId from login response: $loginBranchId');
-        }
-      }
-
-      // Final fallbacks
-      corpId = corpId ?? '0';
-      branchId = branchId ?? '0';
-      
-      final params = {
-        'CorpID': corpId,
-        'BranchID': branchId,
-      };
-      
-      debugPrint('✅ Loaded params for run types: $params');
-      
-      // Fetch run types with actual values
-      if (mounted) {
-        await runTypeController.fetchRunTypes(params, context);
-      }
+      });
     } catch (e) {
       debugPrint('❌ Error loading params for run types: $e');
     }
@@ -149,6 +160,11 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
         final branchName = branch['BranchName'].toString();
         crpGetBranchListController.selectBranch(branchName);
         print('✅ Restored branch from login response: $branchName');
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (mounted) {
+            await _refetchRunTypesForBranch(context);
+          }
+        });
       }
     }
   }
@@ -180,6 +196,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
   }
 
   void _displayBranchBottomSheet(BuildContext context, List<String> items, String selected) {
+    final screenContext = context;
     showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -311,13 +328,14 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                           final hasSelectedBranch = crpGetBranchListController.selectedBranchName.value != null && 
                                                    crpGetBranchListController.selectedBranchName.value!.isNotEmpty;
                           return ElevatedButton(
-                            onPressed: hasSelectedBranch ? () {
+                            onPressed: hasSelectedBranch ? () async {
                               // Only allow closing if a branch is selected
                               if (hasSelectedBranch) {
                                 setState(() {
                                   crpGetBranchListController.count.value ++;
                                 });
                                 Navigator.pop(context);
+                                await _refetchRunTypesForBranch(screenContext);
                               }
                             } : null,
                             style: ElevatedButton.styleFrom(
@@ -542,6 +560,7 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
     }
   }
   void _displayBranchBottomSheet(BuildContext context, List<String> items, String selected) {
+    final screenContext = context;
     showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -673,13 +692,14 @@ class _CrpServiceTileState extends State<CrpServiceTile> {
                           final hasSelectedBranch = crpGetBranchListController.selectedBranchName.value != null &&
                               crpGetBranchListController.selectedBranchName.value!.isNotEmpty;
                           return ElevatedButton(
-                            onPressed: hasSelectedBranch ? () {
+                            onPressed: hasSelectedBranch ? () async {
                               // Only allow closing if a branch is selected
                               if (hasSelectedBranch) {
                                 setState(() {
                                   crpGetBranchListController.count.value ++;
                                 });
                                 Navigator.pop(context);
+                                await _refetchRunTypesForBranch(screenContext);
                               }
                             } : null,
                             style: ElevatedButton.styleFrom(
@@ -918,7 +938,7 @@ class _TopBannerState extends State<TopBanner> {
       return;
     }
 
-
+    final screenContext = context;
     if(crpGetBranchListController.count.value == 0) showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -1046,11 +1066,12 @@ class _TopBannerState extends State<TopBanner> {
                         height: 48,
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             setState(() {
                               crpGetBranchListController.count.value ++;
                             });
                             Navigator.pop(context);
+                            await _refetchRunTypesForBranch(screenContext);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4082F1), // #4082F1
