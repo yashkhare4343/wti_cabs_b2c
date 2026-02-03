@@ -1335,6 +1335,7 @@ class _OutStationState extends State<OutStation> {
           ? bookingRideController.localEndTime.value.toUtc().toIso8601String()
           : "",
       "tripCode": isRoundTrip ? "1" : "0",
+      "role":"CUSTOMER",
       "source": {
         "sourceTitle": sourceTitle,
         "sourcePlaceId":
@@ -2331,6 +2332,7 @@ Future<Map<String, dynamic>> _buildRequestData(BuildContext context) async {
     "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
     "returnDateAndTime": "",
     "tripCode": "2",
+    "role":"CUSTOMER",
     "source": {
       "sourceTitle": sourceTitle,
       "sourcePlaceId":
@@ -2746,9 +2748,14 @@ class _RentalState extends State<Rental> {
             ),
             const SizedBox(height: 16),
             Obx(() {
+              // final items = fetchPackageController.packageModel.value?.data
+              //         .map((value) =>
+              //             '${value.hours} hrs, ${value.kilometers} kms')
+              //         .toList() ??
+              //     [];
               final items = fetchPackageController.packageModel.value?.data
                       .map((value) =>
-                          '${value.hours} hrs, ${value.kilometers} kms')
+                          '${value.hours} hrs')
                       .toList() ??
                   [];
 
@@ -2879,16 +2886,31 @@ class _RentalState extends State<Rental> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          fetchPackageController
-                                  .selectedPackage.value.isNotEmpty
-                              ? fetchPackageController.selectedPackage.value
-                              : "Select Packages",
-                          style: const TextStyle(
-                              color: Colors.black, fontWeight: FontWeight.w600),
+                        Expanded(
+                          child: Text(
+                            fetchPackageController
+                                    .selectedPackage.value.isNotEmpty
+                                ? fetchPackageController.selectedPackage.value
+                                : "Select Packages",
+                            style: const TextStyle(
+                                color: Colors.black, fontWeight: FontWeight.w600),
+                          ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Colors.grey),
+                        Row(
+                          children: [
+                            Container(
+                             margin :  EdgeInsets.only(right: 16),
+                             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFC1DBFC),
+                                borderRadius: BorderRadius.circular(12)
+                              ),
+                              child: Text('Unlimited Kms', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF2241AB)),),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -3273,6 +3295,7 @@ Future<Map<String, dynamic>> _buildRentalRequestData(
     "pickupDateAndTime": bookingRideController.convertLocalToUtc(),
     "returnDateAndTime": "",
     "tripCode": "3",
+    "role":"CUSTOMER",
     "source": {
       "sourceTitle": sourceTitle,
       "sourcePlaceId":

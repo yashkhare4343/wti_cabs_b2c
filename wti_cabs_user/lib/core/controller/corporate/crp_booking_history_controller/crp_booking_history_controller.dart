@@ -11,6 +11,7 @@ class CrpBookingHistoryController extends GetxController {
   final LoginInfoController loginInfoController = Get.put(LoginInfoController());
 
   var isLoading = false.obs;
+  var isLoadingMore = false.obs;
   var bookings = <CrpBookingHistoryItem>[].obs;
 
   Future<void> fetchBookingHistory(
@@ -24,8 +25,13 @@ class CrpBookingHistoryController extends GetxController {
     int fiscalYear = 0,
     String criteria = "",
   }) async {
+    final isLoadMore = startRowIndex > 0;
     try {
-      isLoading.value = true;
+      if (isLoadMore) {
+        isLoadingMore.value = true;
+      } else {
+        isLoading.value = true;
+      }
 
       // Use provided branchId or default to '0', don't fallback to storage
       final resolvedBranchId = branchId ?? '0';
@@ -62,7 +68,7 @@ class CrpBookingHistoryController extends GetxController {
         'criteria': criteria.trim(),
         'fiscal': resolvedFiscal,
         'startRowIndex': startRowIndex,
-        'maximumRows': maximumRows,
+        'maximumRows': 40,
         if (token != null && token.isNotEmpty) 'token': token,
         if (userEmail != null && userEmail.isNotEmpty) 'user': userEmail,
       };
@@ -76,14 +82,24 @@ class CrpBookingHistoryController extends GetxController {
 
       // Handle bStatus == false or null/empty array
       if (result.bStatus == false || result.history == null || result.history!.isEmpty) {
-        bookings.clear();
+        if (!isLoadMore) {
+          bookings.clear();
+        }
       } else {
-        bookings.assignAll(result.history!);
+        if (isLoadMore) {
+          bookings.addAll(result.history!);
+        } else {
+          bookings.assignAll(result.history!);
+        }
       }
     } catch (e) {
       debugPrint('CRP Booking History Fetch Error: $e');
     } finally {
-      isLoading.value = false;
+      if (isLoadMore) {
+        isLoadingMore.value = false;
+      } else {
+        isLoading.value = false;
+      }
     }
   }
 }

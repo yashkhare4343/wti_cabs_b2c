@@ -29,13 +29,14 @@ Future<void> _refetchRunTypesForBranch(BuildContext context) async {
     final runTypeController = Get.find<CrpServicesController>();
     final crpGetBranchListController = Get.find<CrpBranchListController>();
     final loginInfoController = Get.find<LoginInfoController>();
+    final loginCorpId = loginInfoController.crpLoginInfo.value?.corpID;
+    final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
 
     var corpId = await StorageServices.instance.read('crpId');
     var branchId = crpGetBranchListController.selectedBranchId.value ??
         await StorageServices.instance.read('branchId');
 
-    final loginCorpId = loginInfoController.crpLoginInfo.value?.corpID;
-    final loginBranchId = loginInfoController.crpLoginInfo.value?.branchID;
+
 
     if (corpId == null || corpId.isEmpty || corpId == '0') {
       if (loginCorpId != null && loginCorpId.isNotEmpty) {
@@ -433,9 +434,16 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
               child: Obx(() {
                 final list = runTypeController.runTypes.value?.runTypes ?? [];
 
-                if (list.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
+                if(runTypeController.isLoading.value){
+                  return Center(child: CircularProgressIndicator(),);
                 }
+
+                // if (list.isEmpty) {
+                //   return NoticeWidget(
+                //     title: 'Select Branch',
+                //     message: 'Please make sure to select branch',
+                //   );
+                // }
 
                 const maxPerRow = 3;
                 const spacing = 12.0;
@@ -511,6 +519,64 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
     );
   }
 }
+
+class NoticeWidget extends StatelessWidget {
+  final String title;
+  final String message;
+  final Color backgroundColor;
+  final Color borderColor;
+  final IconData icon;
+
+  const NoticeWidget({
+    super.key,
+    required this.title,
+    required this.message,
+    this.backgroundColor = const Color(0xFFFFF8E1),
+    this.borderColor = const Color(0xFFFFC107),
+    this.icon = Icons.info_outline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: borderColor, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class CrpServiceTile extends StatefulWidget {
   final dynamic item;

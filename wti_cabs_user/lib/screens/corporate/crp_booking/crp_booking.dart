@@ -132,10 +132,17 @@ class CrpBooking extends StatefulWidget {
 }
 
 class _CrpBookingState extends State<CrpBooking> {
+  static const int _pageSize = 40; // maximumRows per fetch
+  static const double _scrollLoadThreshold = 200.0; // px from bottom to trigger load
+
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _filterSearchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final CrpBookingHistoryController _controller =
       Get.put(CrpBookingHistoryController());
+
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
   final LoginInfoController loginInfoController =
       Get.put(LoginInfoController());
   final CrpBranchListController _branchController =
@@ -228,6 +235,7 @@ class _CrpBookingState extends State<CrpBooking> {
   String _selectedCategory = 'Office Branches';
   String? _selectedCity = 'All'; // Default to 'All'
   int _selectedFiscalYear = 0; // 0 = All years
+  String? _selectedMonth = 'All'; // 'All' or month name e.g. 'January'
 
   // Month name to ID mapping
   final Map<String, int> _monthMap = {
@@ -296,10 +304,11 @@ class _CrpBookingState extends State<CrpBooking> {
     await StorageServices.instance.save('branchId', branchId);
 
     // Fetch booking history with filters (status = -1 to get ALL, then filter on frontend)
-    final criteria = _filterSearchController.text.trim();
+    final criteria = _filterSearchController.text.trim(); // Booking no / search
+    final monthId = _getMonthIdFromName(_selectedMonth) ?? 0;
     await _fetchBookings(
       branchId: branchId,
-      monthId: 0,
+      monthId: monthId,
       providerId: 0,
       fiscalYear: _selectedFiscalYear,
       criteria: criteria,
@@ -307,12 +316,15 @@ class _CrpBookingState extends State<CrpBooking> {
   }
 
   /// Fetch bookings from API and store in _allBookings, then filter based on selected tab
+  /// When startRowIndex > 0, appends to existing data (load more).
   Future<void> _fetchBookings({
     String? branchId,
     int? monthId,
     int providerId = 0,
     int fiscalYear = 0,
     String criteria = '',
+    int startRowIndex = 0,
+    int maximumRows = _pageSize,
   }) async {
     // Fetch with status = -1 (ALL) to get all bookings
     await _controller.fetchBookingHistory(
@@ -323,19 +335,63 @@ class _CrpBookingState extends State<CrpBooking> {
       fiscalYear: fiscalYear,
       criteria: criteria,
       status: BookingStatus.all, // Fetch all statuses (-1)
+      startRowIndex: startRowIndex,
+      maximumRows: maximumRows,
     );
 
-    // Update _allBookings with fetched data
-    _allBookings.assignAll(_controller.bookings);
+    if (startRowIndex == 0) {
+      _allBookings.assignAll(_controller.bookings);
+      _hasMore = _controller.bookings.length >= maximumRows;
+    } else {
+      final beforeLen = _allBookings.length;
+      _allBookings.assignAll(_controller.bookings);
+      final newCount = _allBookings.length - beforeLen;
+      _hasMore = newCount >= maximumRows;
+    }
     _rebuildAndSortTabLists();
     
     // Mark that data has been loaded
     _hasLoadedData = true;
   }
 
+  /// Load more bookings when user scrolls near bottom
+  Future<void> _onScrollLoadMore() async {
+    if (!_hasMore || _isLoadingMore || _controller.isLoadingMore.value) return;
+
+    if (mounted) setState(() => _isLoadingMore = true);
+
+    final branchId = _getBranchIdFromName(_selectedCity) ?? '0';
+    final criteria = _filterSearchController.text.trim();
+    final monthId = _getMonthIdFromName(_selectedMonth) ?? 0;
+
+    await _fetchBookings(
+      branchId: branchId,
+      monthId: monthId,
+      providerId: 0,
+      fiscalYear: _selectedFiscalYear,
+      criteria: criteria,
+      startRowIndex: _allBookings.length,
+      maximumRows: _pageSize,
+    );
+
+    if (mounted) {
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  // void _onScroll() {
+  //   final pos = _scrollController.position;
+  //   if (!pos.hasContentDimensions || !pos.hasPixels) return;
+  //   final threshold = pos.maxScrollExtent - _scrollLoadThreshold;
+  //   if (pos.pixels >= threshold) {
+  //     _onScrollLoadMore();
+  //   }
+  // }
+
   @override
   void initState() {
     super.initState();
+    // _scrollController.addListener(_onScroll);
     // Load saved filter selections
     _loadSavedFilters();
     // Show shimmer for 0.5 seconds
@@ -366,6 +422,10 @@ class _CrpBookingState extends State<CrpBooking> {
     final savedFiscal =
         await StorageServices.instance.read('filter_selected_fiscal_year');
     _selectedFiscalYear = int.tryParse(savedFiscal?.toString() ?? '') ?? 0;
+
+    final savedMonth =
+        await StorageServices.instance.read('filter_selected_month');
+    _selectedMonth = savedMonth ?? 'All';
   }
 
   Future<void> _saveFilters() async {
@@ -375,15 +435,20 @@ class _CrpBookingState extends State<CrpBooking> {
     }
     await StorageServices.instance
         .save('filter_selected_fiscal_year', _selectedFiscalYear.toString());
+    if (_selectedMonth != null) {
+      await StorageServices.instance
+          .save('filter_selected_month', _selectedMonth!);
+    }
   }
 
   Future<void> _loadAndFetchBookings() async {
     final branchId = _getBranchIdFromName(_selectedCity) ?? '0';
     final criteria = _filterSearchController.text.trim();
+    final monthId = _getMonthIdFromName(_selectedMonth) ?? 0;
 
     await _fetchBookings(
       branchId: branchId,
-      monthId: 0,
+      monthId: monthId,
       providerId: 0,
       fiscalYear: _selectedFiscalYear,
       criteria: criteria,
@@ -676,6 +741,8 @@ class _CrpBookingState extends State<CrpBooking> {
 
   @override
   void dispose() {
+    // _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     _filterSearchController.dispose();
     super.dispose();
@@ -758,10 +825,26 @@ class _CrpBookingState extends State<CrpBooking> {
                             ),
                           )
                         : ListView.builder(
+                            controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: EdgeInsets.zero,
-                            itemCount: filteredBookings.length,
+                            itemCount: filteredBookings.length +
+                                ((_hasMore && (_isLoadingMore || _controller.isLoadingMore.value))
+                                    ? 1
+                                    : 0),
                             itemBuilder: (context, index) {
+                              if (index >= filteredBookings.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                );
+                              }
                               final booking = filteredBookings[index];
                               return Padding(
                                 padding:
@@ -903,6 +986,7 @@ class _CrpBookingState extends State<CrpBooking> {
         selectedCategory: _selectedCategory,
         selectedCity: _selectedCity,
         selectedFiscalYear: _selectedFiscalYear,
+        selectedMonth: _selectedMonth ?? 'All',
         searchController: _filterSearchController,
         onCategoryChanged: (category) {
           setState(() {
@@ -919,6 +1003,11 @@ class _CrpBookingState extends State<CrpBooking> {
             _selectedFiscalYear = year;
           });
         },
+        onMonthChanged: (month) {
+          setState(() {
+            _selectedMonth = month;
+          });
+        },
         onApply: () {
           Navigator.pop(context);
           _applyFilters();
@@ -927,14 +1016,16 @@ class _CrpBookingState extends State<CrpBooking> {
           setState(() {
             _selectedCity = 'All';
             _selectedFiscalYear = 0;
+            _selectedMonth = 'All';
           });
           // Reset tab to Confirmed (default)
           _selectedTab.value = BookingTab.confirmed;
           // Clear saved filters
           await StorageServices.instance.delete('filter_selected_city');
           await StorageServices.instance.delete('filter_selected_fiscal_year');
+          await StorageServices.instance.delete('filter_selected_month');
 
-          // Clear search criteria text as well
+          // Clear booking no search as well
           _filterSearchController.clear();
 
           Navigator.pop(context);
@@ -1605,10 +1696,12 @@ class _FilterBottomSheet extends StatefulWidget {
   final String selectedCategory;
   final String? selectedCity;
   final int selectedFiscalYear;
+  final String selectedMonth;
   final TextEditingController searchController;
   final Function(String) onCategoryChanged;
   final Function(String) onCityChanged;
   final Function(int) onFiscalYearChanged;
+  final Function(String) onMonthChanged;
   final VoidCallback onApply;
   final VoidCallback onClear;
 
@@ -1616,10 +1709,12 @@ class _FilterBottomSheet extends StatefulWidget {
     required this.selectedCategory,
     required this.selectedCity,
     required this.selectedFiscalYear,
+    required this.selectedMonth,
     required this.searchController,
     required this.onCategoryChanged,
     required this.onCityChanged,
     required this.onFiscalYearChanged,
+    required this.onMonthChanged,
     required this.onApply,
     required this.onClear,
   });
@@ -1632,10 +1727,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late String _currentCategory;
   late String? _currentCity;
   late int _currentFiscalYear;
+  late String _currentMonth;
   final CrpBranchListController _branchController =
       Get.find<CrpBranchListController>();
   final CrpFiscalYearController _fiscalYearController =
       Get.find<CrpFiscalYearController>();
+
+  static const List<String> _monthNames = [
+    'All', 'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
 
   @override
   void initState() {
@@ -1644,6 +1745,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     // Set default selected city from widget, defaulting to 'All'
     _currentCity = widget.selectedCity ?? 'All';
     _currentFiscalYear = widget.selectedFiscalYear;
+    _currentMonth = widget.selectedMonth;
     _fetchBranches();
     if (_fiscalYearController.years.isEmpty) {
       // Safe to call again; controller caches results in-memory.
@@ -1668,7 +1770,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     return Container(
-      height: screenHeight * 0.55,
+      height: screenHeight * 0.7,
       decoration: const BoxDecoration(
         color: Color(0xFFF3F3F3),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -1707,6 +1809,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Booking No
+                    const Text(
+                      'Booking No',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildBookingNoField(),
+                    const SizedBox(height: 20),
+
                     // Fiscal Year
                     const Text(
                       'Fiscal Year',
@@ -1721,7 +1837,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     _buildFiscalYearOptions(),
                     const SizedBox(height: 20),
 
-                    // Office Branches Label
+                    // Month
+                    const Text(
+                      'Month',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildMonthDropdown(),
+                    const SizedBox(height: 20),
+
+                    // Office Branches
                     const Text(
                       'Office Branches',
                       style: TextStyle(
@@ -1731,9 +1861,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         fontFamily: 'Montserrat',
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // Grid of Branch Buttons
-                    _buildFilterOptions(),
+                    const SizedBox(height: 8),
+                    _buildBranchDropdown(),
                   ],
                 ),
               ),
@@ -1759,6 +1888,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       onPressed: () {
                         widget.onCityChanged(_currentCity ?? 'All');
                         widget.onFiscalYearChanged(_currentFiscalYear);
+                        widget.onMonthChanged(_currentMonth);
                         widget.onApply();
                       },
                       style: TextButton.styleFrom(
@@ -1796,8 +1926,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         setState(() {
                           _currentCity = 'All';
                           _currentFiscalYear = 0;
+                          _currentMonth = 'All';
+                          widget.searchController.clear();
                         });
                         widget.onFiscalYearChanged(0);
+                        widget.onMonthChanged('All');
                         widget.onClear();
                       },
                       style: TextButton.styleFrom(
@@ -1853,20 +1986,96 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _buildFilterOptions() {
+  Widget _buildBookingNoField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: TextField(
+        controller: widget.searchController,
+        decoration: const InputDecoration(
+          hintText: 'Enter Booking No',
+          hintStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Color(0xFFB2B2B2),
+            fontFamily: 'Montserrat',
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: Color(0xFF000000),
+          fontFamily: 'Montserrat',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _currentMonth,
+          isExpanded: true,
+          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF484848)),
+          items: _monthNames.map((month) {
+            return DropdownMenuItem<String>(
+              value: month,
+              child: Text(
+                month,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF484848),
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (String? value) {
+            if (value != null) {
+              setState(() => _currentMonth = value);
+              widget.onMonthChanged(value);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBranchDropdown() {
     return Obx(() {
       if (_branchController.isLoading.value) {
         return const Center(
-          child: CircularProgressIndicator(),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(),
+          ),
         );
       }
 
-      // Create a list with 'All' at the beginning, followed by branch names
       final List<String> branchList = ['All', ..._branchController.branchNames];
 
       if (branchList.isEmpty) {
-        return const Center(
-          child: Text(
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
+          ),
+          child: const Text(
             'No branches available',
             style: TextStyle(
               fontSize: 14,
@@ -1877,20 +2086,41 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         );
       }
 
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 2.5,
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
-        itemCount: branchList.length,
-        itemBuilder: (context, index) {
-          final branchName = branchList[index];
-          return _buildBranchButton(branchName, branchName);
-        },
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _currentCity ?? 'All',
+            isExpanded: true,
+            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF484848)),
+            items: branchList.map((branch) {
+              return DropdownMenuItem<String>(
+                value: branch,
+                child: Text(
+                  branch,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF484848),
+                    fontFamily: 'Montserrat',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: (String? value) {
+              if (value != null) {
+                setState(() => _currentCity = value);
+                widget.onCityChanged(value);
+              }
+            },
+          ),
+        ),
       );
     });
   }
@@ -1937,39 +2167,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : const Color(0xFF484848),
             fontFamily: 'Montserrat',
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBranchButton(String label, String value) {
-    final isSelected = _currentCity == value;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentCity = value;
-        });
-        widget.onCityChanged(value);
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF4082F1)
-              : const Color(0xFFE8E8E8), // Light grey background
-          borderRadius: BorderRadius.circular(36),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isSelected
-                  ? Colors.white
-                  : const Color(0xFF484848), // Dark grey text for unselected
-              fontFamily: 'Montserrat',
-            ),
           ),
         ),
       ),

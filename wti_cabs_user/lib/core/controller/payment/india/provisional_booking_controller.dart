@@ -104,8 +104,8 @@ class IndiaPaymentController extends GetxController {
         "userID": userId,
         "couponID": couponId,
         "totalAmount": cabBookingController.totalFare,
-        "sourceLocation": sourceLocation,
-        "destinationLocation": destinationLocation,
+        "sourceLocation": searchCabInventoryController.indiaData.value?.result?.tripType?.source?.city,
+        "destinationLocation": searchCabInventoryController.indiaData.value?.result?.tripType?.destination?.city,
         "serviceType": "",
         "bankName": "",
         "userType": "CUSTOMER",
@@ -121,6 +121,8 @@ class IndiaPaymentController extends GetxController {
         endpoint: 'couponCodes/couponFinalValidation',
         data: payload,
       );
+
+      debugPrint('yash coupon final validation payload: $payload');
 
       final body = res['body'];
       if (body is Map<String, dynamic>) {

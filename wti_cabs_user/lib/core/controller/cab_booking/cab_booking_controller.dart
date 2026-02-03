@@ -22,6 +22,10 @@ class CabBookingController extends GetxController {
   Rx<IndiaFareDetailsResponse?> indiaFareDetails = Rx<IndiaFareDetailsResponse?>(null);
   RxBool isLoading = false.obs;
   RxInt selectedOption = 0.obs;
+  final RxString contact = ''.obs;
+
+  // ✅ ADD THIS
+  final RxString contactCode = ''.obs;
 
   /// Selected coupon (for passing to booking/payment requests)
   RxnString selectedCouponId = RxnString();
@@ -268,11 +272,21 @@ class CabBookingController extends GetxController {
     selectedExtrasIds.clear();
   }
 
-  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  GlobalKey<FormState>? formKey;
   var isFormValid = false.obs;
 
+  /// Register the form key from TravelerDetailsForm
+  void registerFormKey(GlobalKey<FormState> key) {
+    formKey = key;
+  }
+
+  /// Unregister the form key when form is disposed
+  void unregisterFormKey() {
+    formKey = null;
+  }
+
   void validateForm() {
-    final isValid = formKey.currentState?.validate() ?? false;
+    final isValid = formKey?.currentState?.validate() ?? false;
     isFormValid.value = isValid;
   }
 
@@ -932,7 +946,8 @@ class CabBookingController extends GetxController {
         'fleet_id': newCarTypesData?['fleet_id'] ?? newInventoryData?['fleet_id'] ?? existingInventoryData?['sku_id'],
         'sku_id': newCarTypesData?['sku_id'] ?? newInventoryData?['sku_id'] ?? existingInventoryData?['sku_id'],
         'source': _safeCastMap(newCarTypesData?['source']) ?? _safeCastMap(newInventoryData?['source']) ?? _safeCastMap(existingInventoryData?['source']),
-        'fare_details': transformedFareDetails, // Use new API fare details
+        'fare_details': transformedFareDetails,
+        'role':'CUSTOMER'// Use new API fare details
       };
       
       inventoryData['car_types'] = carTypesData;

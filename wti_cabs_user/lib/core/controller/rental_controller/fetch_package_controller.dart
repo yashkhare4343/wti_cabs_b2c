@@ -28,7 +28,8 @@ class FetchPackageController extends GetxController {
 
         // ✅ preselect the smallest package (after sorting)
         selectedPackage.value =
-        '${result.data[0].hours} hrs, ${result.data[0].kilometers} kms';
+        // '${result.data[0].hours} hrs, ${result.data[0].kilometers} kms';
+        '${result.data[0].hours} hrs';
         selectedHours.value = result.data[0].hours ?? 0;
         selectedKms.value = result.data[0].kilometers ?? 0;
       }

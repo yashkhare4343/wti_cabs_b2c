@@ -276,7 +276,7 @@ class _CrpProfileState extends State<CrpProfile> {
 
     /// Warm navigation (cold start handled by redirect)
     if (ctx != null) {
-      GoRouter.of(ctx).push(AppRoutes.cprLandingPage);
+      GoRouter.of(ctx).push(AppRoutes.bottomNav);
     }
   }
 
@@ -287,8 +287,8 @@ class _CrpProfileState extends State<CrpProfile> {
 
     if (navigatorKey.currentContext != null) {
       try {
-        GoRouter.of(navigatorKey.currentContext!).go(AppRoutes.cprLandingPage);
-        debugPrint('✅ Navigated to ${AppRoutes.cprLandingPage}');
+        _navigateToBottomNav(retryCount: retryCount + 1);
+
       } catch (e) {
         debugPrint('❌ Navigation error: $e');
         // Retry if context is available but navigation failed

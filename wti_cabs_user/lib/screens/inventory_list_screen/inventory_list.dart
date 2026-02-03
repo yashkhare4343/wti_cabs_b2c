@@ -810,6 +810,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
             "city": tripTypeDetails?.destination?.city
           },
           "tripCode": tripCode,
+          "role":"CUSTOMER",
           "trip_type_details": {
             "basic_trip_type":
             tripTypeDetails?.tripTypeDetails?.basicTripType ?? '',

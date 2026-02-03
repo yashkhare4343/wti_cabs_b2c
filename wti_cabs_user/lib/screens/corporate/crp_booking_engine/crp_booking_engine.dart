@@ -906,17 +906,16 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
         debugPrint('⚠️ Payment modes list is empty and no selection available');
       }
 
-      // Car Provider – use first element from the list (as per requirement)
-      if (carProviderController.carProviderList.isNotEmpty &&
+      // Car Provider – use first from allowed list (from login CarProviders)
+      final allowedCarProviders = _getAllowedCarProviders();
+      if (allowedCarProviders.isNotEmpty &&
           carProviderController.selectedCarProvider.value == null) {
-        // Use first element from the list
-        carProviderController
-            .selectCarProvider(carProviderController.carProviderList.first);
+        carProviderController.selectCarProvider(allowedCarProviders.first);
         debugPrint(
-            '✅ Prefilled Car Provider: ${carProviderController.carProviderList.first.providerName}');
+            '✅ Prefilled Car Provider: ${allowedCarProviders.first.providerName}');
       } else {
         debugPrint(
-            '⚠️ Car Provider already selected or list empty. Selected: ${carProviderController.selectedCarProvider.value?.providerName}, List empty: ${carProviderController.carProviderList.isEmpty}');
+            '⚠️ Car Provider already selected or list empty. Selected: ${carProviderController.selectedCarProvider.value?.providerName}, Allowed count: ${allowedCarProviders.length}');
       }
 
       // Pickup DateTime is already set above (before checking loginInfo)
@@ -2898,8 +2897,33 @@ class _CprBookingEngineState extends State<CprBookingEngine> {
     );
   }
 
+  /// Parse allowed car provider IDs from login response (e.g. "1" or "1,2").
+  /// When CarProviders is null, empty or "0", returns empty set → full list from GetCarProviders API is shown.
+  Set<int> _getAllowedCarProviderIds() {
+    final carProvidersStr = loginInfoController.crpLoginInfo.value?.carProviders;
+    if (carProvidersStr == null || carProvidersStr.isEmpty || carProvidersStr == '0') {
+      return {}; // null/empty/"0" = no restriction → show full list from GetCarProviders API
+    }
+    final ids = <int>{};
+    for (final part in carProvidersStr.split(',')) {
+      final id = int.tryParse(part.trim());
+      if (id != null && id > 0) ids.add(id);
+    }
+    return ids;
+  }
+
+  /// Car providers for this corporate user: filtered by login CarProviders when set; otherwise full list from GetCarProviders API.
+  List<CarProviderModel> _getAllowedCarProviders() {
+    final allList = carProviderController.carProviderList;
+    final allowedIds = _getAllowedCarProviderIds();
+    if (allowedIds.isEmpty) return List<CarProviderModel>.from(allList); // null/empty CarProviders → show full API list
+    return allList
+        .where((p) => p.providerID != null && allowedIds.contains(p.providerID!))
+        .toList();
+  }
+
   void _showCarProviderBottomSheet() {
-    final list = carProviderController.carProviderList;
+    final list = _getAllowedCarProviders();
     showModalBottomSheet<CarProviderModel>(
       context: context,
       shape: const RoundedRectangleBorder(

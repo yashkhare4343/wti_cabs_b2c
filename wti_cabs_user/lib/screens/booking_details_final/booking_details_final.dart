@@ -1081,7 +1081,6 @@ class _BookingDetailsFinalState extends State<BookingDetailsFinal> {
                         //   height: 16,
                         // ),
                         TravelerDetailsForm(
-                          formKey: cabBookingController.formKey,
                           fromPaymentFailurePage: false,
                         ),
                         // DiscountCouponsCard(),
@@ -2182,13 +2181,11 @@ class ExtraItem {
 }
 
 class TravelerDetailsForm extends StatefulWidget {
-  final GlobalKey<FormState> formKey;
   final bool? fromPaymentFailurePage;
 
   const TravelerDetailsForm(
       {super.key,
-      required this.formKey,
-      this.fromPaymentFailurePage}); // ✅ Accept form key from parent
+      this.fromPaymentFailurePage});
   @override
   _TravelerDetailsFormState createState() => _TravelerDetailsFormState();
 }
@@ -2223,11 +2220,23 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   bool isGstSelected = false;
   String? tripCode;
 
+  /// Form key created internally to avoid GlobalKey conflicts
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   void initState() {
     super.initState();
+    // Register the form key with the controller
+    cabBookingController.registerFormKey(_formKey);
     loadInitialData();
     getCurrentTripCode();
+  }
+
+  @override
+  void dispose() {
+    // Unregister the form key when this widget is disposed
+    cabBookingController.unregisterFormKey();
+    super.dispose();
   }
 
   void getCurrentTripCode() async {
@@ -2237,70 +2246,68 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
   }
 
   Future<void> loadInitialData() async {
-    _country = await StorageServices.instance.read('country');
     token = await StorageServices.instance.read('token');
 
     await profileController.fetchData();
-    debugPrint('📦 3rd page country: $_country');
 
-    if (widget.fromPaymentFailurePage == true) {
-      firstName = await StorageServices.instance.read('firstName') ?? '';
-      contact = await StorageServices.instance.read('contact') ?? '';
-      contactCode =
-          await StorageServices.instance.read('contactCode') ?? '';
-      email = await StorageServices.instance.read('emailId') ?? '';
-    } else if (widget.fromPaymentFailurePage == null &&
-        await StorageServices.instance.read('token') == null) {
-      firstName = await StorageServices.instance.read('firstName') ?? '';
-      contact = '';
-      contactCode =
-          await StorageServices.instance.read('contactCode') ?? '';
-      email = await StorageServices.instance.read('emailId') ?? '';
-    } else {
+    /// ===============================
+    /// 🔐 LOGGED IN USER
+    /// ===============================
+    if (token != null && token!.isNotEmpty) {
       firstName =
           profileController.profileResponse.value?.result?.firstName ?? '';
       contact =
-          profileController.profileResponse.value?.result?.contact.toString() ??
-              '';
+          profileController.profileResponse.value?.result?.contact?.toString();
       contactCode =
-          profileController.profileResponse.value?.result?.contactCode ?? '';
-      email = profileController.profileResponse.value?.result?.emailID ?? '';
+          profileController.profileResponse.value?.result?.contactCode;
+      email =
+          profileController.profileResponse.value?.result?.emailID ?? '';
     }
 
-    //fromPaymentFailurePagefromPaymentFailurePage logic yahi se karna hai.
+    /// ===============================
+    /// 🚫 GUEST USER
+    /// ===============================
+    else {
+      firstName = await StorageServices.instance.read('firstName') ?? '';
+      email = await StorageServices.instance.read('emailId') ?? '';
+
+      contact = null;
+      contactCode = null;
+
+      contactController.clear();
+      cabBookingController.contact.value = '';
+      cabBookingController.contactCode.value = '';
+
+      number = PhoneNumber(isoCode: 'IN');
+    }
 
     firstNameController.text = firstName ?? '';
     emailController.text = email ?? '';
     contactController.text = contact ?? '';
+
+    if (contact != null && contactCode != null) {
+      number = PhoneNumber(
+        isoCode: 'IN',
+      );
+
+      // ADD THIS BLOCK (CRITICAL FIX)
+      await StorageServices.instance.save('contact', contact??'');
+      await StorageServices.instance.save('contactCode', contactCode??'');
+    }
+
     sourceController.text = bookingRideController.prefilled.value;
     destinationController.text =
-        tripCode == '3' ? '' : bookingRideController.prefilledDrop.value;
-
-    debugPrint('First Name: $firstName');
-    debugPrint('Contact: $contact');
-    debugPrint('Contact Code: $contactCode');
-    debugPrint('Email: $email');
-    debugPrint(
-        'yash current trip code for fight no is : ${searchCabInventoryController.indiaData.value?.result?.tripType?.currentTripCode}');
+    tripCode == '3' ? '' : bookingRideController.prefilledDrop.value;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        // ensure controllers are in sync with UI
-      });
-      final cabBookingController = Get.find<CabBookingController>();
-      Future.delayed(Duration(milliseconds: 100), () {
-        // small delay to let TextEditingControllers update in the tree
-        cabBookingController.validateForm();
-      });
+      cabBookingController.validateForm();
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return Form(
-      // ✅ Wrap form
-      key: widget.formKey,
-      autovalidateMode: AutovalidateMode.disabled, // ✅ show on change
+      key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
 
       child: Card(
         color: Colors.white,
@@ -2479,10 +2486,9 @@ class _TravelerDetailsFormState extends State<TravelerDetailsForm> {
                                     '';
                                 contactCode =
                                     value.dialCode?.replaceAll('+', '');
-                                await StorageServices.instance
-                                    .save('contactCode', contactCode ?? '');
-                                await StorageServices.instance
-                                    .save('contact', contact ?? '');
+                                  await StorageServices.instance.save('contactCode', contactCode ?? '');
+                                  await StorageServices.instance.save('contact', contact ?? '');
+
                               },
                             ),
                           ),
