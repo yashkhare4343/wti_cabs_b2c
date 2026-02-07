@@ -762,18 +762,19 @@ class Location {
     this.types,
   });
 
-  factory Location.fromJson(Map<String, dynamic> json) => Location(
-    address: json['address'] as String?,
-    latitude: json['latitude'] as num?,
-    longitude: json['longitude'] as num?,
-    state: json['state'] as String?,
-    country: json['country'] as String?,
-    city: json['city'] as String?,
-    placeId: json['place_id'] as String?,
-    types: (json['types'] as List<dynamic>?)
-        ?.map((e) => e as String)
-        .toList(),
-  );
+  factory Location.fromJson(Map<String, dynamic> json) {
+    return Location(
+      address: json['address'] as String?,
+      latitude: json['latitude'] as num?,
+      longitude: json['longitude'] as num?,
+      state: json['state'] as String?,
+      country: json['country'] as String?,
+      city: json['city'] as String?,
+      placeId: json['place_id'] as String?,
+      types:
+          (json['types'] as List<dynamic>?)?.map((e) => e as String).toList(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     "address": address,

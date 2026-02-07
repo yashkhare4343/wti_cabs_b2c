@@ -384,7 +384,7 @@ class _MyAccountState extends State<MyAccount> {
                                                           GoRouter.of(context)
                                                               .pop();
                                                           GoRouter.of(context)
-                                                              .go(AppRoutes
+                                                              .push(AppRoutes
                                                                   .profile);
                                                         }
                                                       } catch (e) {

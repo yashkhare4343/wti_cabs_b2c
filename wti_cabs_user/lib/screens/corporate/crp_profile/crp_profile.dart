@@ -18,6 +18,7 @@ import '../../../core/controller/corporate/crp_payment_mode_controller/crp_payme
 import '../../../core/controller/corporate/crp_services_controller/crp_sevices_controller.dart';
 import '../../../core/services/storage_services.dart';
 import '../../../main.dart';
+import '../../bottom_nav/bottom_nav.dart';
 import '../corporate_bottom_nav/corporate_bottom_nav.dart';
 
 class CrpProfile extends StatefulWidget {
@@ -268,16 +269,75 @@ class _CrpProfileState extends State<CrpProfile> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('force_logout', true);
 
-    /// Optional loader
+    /// Full-screen horizontal progress UI used when switching back to personal
     final ctx = navigatorKey.currentContext;
     if (ctx != null) {
-      showLogOutSkeletonLoader(ctx);
-    }
+      showDialog(
+        context: ctx,
+        barrierDismissible: false,
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Go To Personal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF192653),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 220,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Colors.grey.shade300,
+                      color: AppColors.mainButtonBg,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
 
-    /// Warm navigation (cold start handled by redirect)
-    if (ctx != null) {
-      GoRouter.of(ctx).push(AppRoutes.bottomNav);
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+
+      Navigator.of(ctx).pop();
+      Navigator.of(ctx).push(
+        _buildSmoothPageRoute(const BottomNavScreen()),
+      );
     }
+  }
+
+  /// Creates a subtle, smooth transition back to the retail module
+  PageRouteBuilder _buildSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   /// Navigate to bottom nav with retry mechanism

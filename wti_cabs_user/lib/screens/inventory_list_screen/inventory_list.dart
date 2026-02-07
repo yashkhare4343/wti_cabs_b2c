@@ -481,8 +481,9 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     } catch (e) {
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 300));
-        // If inventory fetch fails, route back to BookingRide without popping.
-        _pushToBookingRide();
+        // If inventory fetch fails, route back to BookingRide without popping, preserve last selected tab.
+        final lastTab = bookingRideController.tabNames[bookingRideController.selectedIndex.value];
+        _pushToBookingRide(null, lastTab);
       }
     }
   }
@@ -493,8 +494,11 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
 
   final CurrencyController currencyController = Get.find<CurrencyController>();
 
-  void _pushToBookingRide([String? route]) {
-    final target = route ?? AppRoutes.bookingRide;
+  void _pushToBookingRide([String? route, String? tab]) {
+    final baseRoute = route ?? AppRoutes.bookingRide;
+    final target = (tab != null && tab.isNotEmpty)
+        ? '$baseRoute?tab=$tab'
+        : baseRoute;
 
     // Prefer pushing via the app's root navigator key, to avoid nested navigator
     // contexts where `GoRouter.of(context)` may not target the root stack.
@@ -519,14 +523,13 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           if (didPop) return; // Already popped, nothing to do
           if (Platform.isIOS && _allowIosInteractivePop) return;
 
-          bookingRideController.selectedIndex.value = 0;
           bookingRideController.isInventoryPage.value = false;
-          
+          final lastTab = bookingRideController.tabNames[bookingRideController.selectedIndex.value];
           // Navigate back - use microtask for immediate execution
           Future.microtask(() {
             if (!mounted) return;
-            // InventoryList >>> back to >>> BookingRide (always push)
-            _pushToBookingRide();
+            // InventoryList >>> back to >>> BookingRide (always push), preserve last selected tab
+            _pushToBookingRide(null, lastTab);
           });
         },
         child: Scaffold(
@@ -551,9 +554,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
           if (didPop) return; // Already popped, nothing to do
           if (Platform.isIOS && _allowIosInteractivePop) return;
 
-          bookingRideController.selectedIndex.value = 0;
           bookingRideController.isInventoryPage.value = false;
-          
+          final lastTab = bookingRideController.tabNames[bookingRideController.selectedIndex.value];
           // Navigate back - use microtask for immediate execution
           Future.microtask(() {
             if (!mounted) return;
@@ -584,8 +586,8 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                   '';
             }
 
-            // InventoryList >>> back to >>> BookingRide (always push)
-            _pushToBookingRide();
+            // InventoryList >>> back to >>> BookingRide (always push), preserve last selected tab
+            _pushToBookingRide(null, lastTab);
           });
         },
         child: Scaffold(
@@ -605,14 +607,13 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
         if (didPop) return; // Already popped, nothing to do
         if (Platform.isIOS && _allowIosInteractivePop) return;
 
-        bookingRideController.selectedIndex.value = 0;
         bookingRideController.isInventoryPage.value = false;
-        
+        final lastTab = bookingRideController.tabNames[bookingRideController.selectedIndex.value];
         // Navigate back - use microtask for immediate execution
         Future.microtask(() {
           if (!mounted) return;
-          // InventoryList >>> back to >>> BookingRide (always push)
-          _pushToBookingRide();
+          // InventoryList >>> back to >>> BookingRide (always push), preserve last selected tab
+          _pushToBookingRide(null, lastTab);
         });
       },
       child: Scaffold(

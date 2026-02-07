@@ -445,7 +445,7 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                 //   );
                 // }
 
-                const maxPerRow = 3;
+                const maxPerRow = 2;
                 const spacing = 12.0;
                 const double tileHeight = 80;
                 const horizontalPadding = 40.0;
@@ -488,10 +488,10 @@ class _CprHomeScreenState extends State<CprHomeScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: rowData.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: count,
+                      crossAxisCount: 2,
                       crossAxisSpacing: spacing,
                       mainAxisSpacing: spacing,
-                      childAspectRatio: calcAspect(count),
+                      mainAxisExtent: 80,
                     ),
                     itemBuilder: (context, index) => CrpServiceTile(
                       item: rowData[index],

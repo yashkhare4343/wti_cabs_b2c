@@ -18,6 +18,7 @@ import '../../core/services/storage_services.dart';
 import '../../utility/constants/colors/app_colors.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../trip_history_controller/trip_history_controller.dart';
+import '../../main.dart';
 
 /// Initialize controllers
 final bookingRideController = Get.put(BookingRideController());
@@ -30,8 +31,13 @@ final getPlaceNameController = Get.put(GetPlaceNameController()); // Add control
 
 class MapPickerScreen extends StatefulWidget {
   final Function(double lat, double lng, String address) onLocationSelected;
+  final bool isCorporate;
 
-  const MapPickerScreen({required this.onLocationSelected, super.key});
+  const MapPickerScreen({
+    required this.onLocationSelected,
+    this.isCorporate = false,
+    super.key,
+  });
 
   @override
   State<MapPickerScreen> createState() => _MapPickerScreenState();
@@ -260,21 +266,18 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   );
                   bookingRideController.prefilled.value = selectedAddress;
                   print('booking ride controller prefilled address : ${bookingRideController.prefilled.value}');
-                  final tabName = Get.find<BookingRideController>().currentTabName;
-                  if (context.mounted){
-                    if(bookingRideController.selectedIndex.value == 3){
-                    bookingRideController.selectedIndex.value = 3;
-                    GoRouter.of(context).go(
-                      '${AppRoutes.bookingRide}?tab=rental',
-                    );
+                  if (context.mounted) {
+                    final rootContext = navigatorKey.currentContext;
+                    if (rootContext != null) {
+                      if (widget.isCorporate) {
+                        // Corporate: always go to corporate booking engine
+                        GoRouter.of(rootContext).push(AppRoutes.cprBookingEngine);
+                      } else {
+                        // Normal: always go to standard booking ride screen
+                        GoRouter.of(rootContext).push(AppRoutes.bookingRide);
+                      }
+                    }
                   }
-                  else{
-
-                    GoRouter.of(context).go(
-                      '${AppRoutes.bookingRide}?tab=$tabName',
-                    );
-                  }}
-
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

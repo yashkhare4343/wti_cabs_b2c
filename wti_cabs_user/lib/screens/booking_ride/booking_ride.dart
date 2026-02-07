@@ -728,7 +728,9 @@ class _OutStationState extends State<OutStation> {
                       pickupController: pickupController,
                       dropController: dropController,
                     ),
-                    child: Image.asset('assets/images/interchange.png',
+                    // child: Image.asset('assets/images/interchange.png',
+                    //     width: 30, height: 30),
+                    child: SizedBox(
                         width: 30, height: 30),
                   ),
                   const SizedBox(height: 10),
@@ -1870,7 +1872,9 @@ class _RidesState extends State<Rides> {
                       },
                       child: Transform.translate(
                         offset: const Offset(0, 0),
-                        child: Image.asset('assets/images/interchange.png',
+                        // child: Image.asset('assets/images/interchange.png',
+                        //     width: 30, height: 30),
+                        child: SizedBox(
                             width: 30, height: 30),
                       ),
                     ),

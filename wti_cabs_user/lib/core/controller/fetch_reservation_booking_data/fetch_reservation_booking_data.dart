@@ -30,8 +30,11 @@ class FetchReservationBookingData extends GetxController {
       chaufferReservationResponse.value = result;
       await StorageServices.instance.save('bookingId', chaufferReservationResponse.value?.result?.first.id??'');
 
-    } catch (e) {
+    } catch (e, s) {
       print("Failed to fetch packages: $e");
+      print ('📍Failed to fetch packages STACK: $s');
+
+
     } finally {
       isLoading.value = false;
     }

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -499,21 +502,24 @@ class _ProfileState extends State<Profile> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    profileController.fetchData().then((_) {
+    // Defer reactive updates until after the first frame to avoid
+    // "setState()/markNeedsBuild called during build" when Obx listens
+    // to the same observables being updated here.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await profileController.fetchData();
       final result = profileController.profileResponse.value?.result;
       profileController.checkLoginStatus();
+      if (!mounted) return;
       if (result != null) {
         setState(() {
           firstNameController.text = result.firstName ?? '';
           emailController.text = result.emailID ?? '';
           countryController.text = result.countryName ?? '';
           phoneNoController.text = result.contact?.toString() ?? '';
-          contactCode = result.contactCode??'';
-          cityController.text = result.city??'';
-          stateController.text = result.stateName??'';
-
+          contactCode = result.contactCode ?? '';
+          cityController.text = result.city ?? '';
+          stateController.text = result.stateName ?? '';
         });
       }
     });
@@ -532,7 +538,15 @@ class _ProfileState extends State<Profile> {
         if (widget.fromSelfDrive == true) {
           GoRouter.of(context).push(AppRoutes.selfDriveBottomSheet);
         } else {
-          GoRouter.of(context).push(AppRoutes.bottomNav);
+          Navigator.of(context).push(
+            Platform.isIOS
+                ? CupertinoPageRoute(
+              builder: (_) =>  BottomNavScreen(initialIndex: 3,),
+            )
+                : MaterialPageRoute(
+              builder: (_) =>  BottomNavScreen(initialIndex: 3,),
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -629,7 +643,8 @@ class _ProfileState extends State<Profile> {
         ),
         body: SingleChildScrollView(
           child: Obx(() {
-            if (profileController.isLoading == true) {
+            // Show loader while profile data is being fetched
+            if (profileController.isLoading.value == true) {
               return PopupLoader(message: 'Loading...');
             }
             return Stack(

@@ -192,7 +192,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     if (Platform.isIOS) {
       final res = await showCupertinoDialog<bool>(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Cancel booking?'),
           content: Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -202,12 +202,12 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           ),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Keep booking'),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Cancel booking'),
             ),
           ],
@@ -219,16 +219,16 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     final res = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Cancel booking?'),
         content: Text('Reason: $reason\n\nThis action can’t be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Keep booking'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Cancel booking'),
           ),
@@ -238,7 +238,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
     return res ?? false;
   }
 
-  void _showCancelBottomSheet(BuildContext context) {
+  void _showCancelBottomSheet(BuildContext rootContext) {
     final reasons = [
       "Change of plans",
       "Driver issue",
@@ -248,12 +248,12 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
 
     showModalBottomSheet(
       backgroundColor: Colors.white,
-      context: context,
+      context: rootContext,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) {
+      builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final booking = widget.booking;
@@ -304,18 +304,20 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
                           final reason = selectedReason;
                           if (reason == null) return;
 
-                          Navigator.pop(context); // close bottom sheet
+                          // Close the bottom sheet using its own context
+                          Navigator.pop(sheetContext);
 
+                          // Show confirmation dialog using the parent screen context
                           final shouldCancel =
                               await _showCancelConfirmationDialog(
-                            context: context,
+                            context: rootContext,
                             reason: reason,
                           );
                           if (!shouldCancel) return;
 
-                          if (!context.mounted) return;
+                          if (!rootContext.mounted) return;
                           await _cancelBooking(
-                            context: context,
+                            context: rootContext,
                             booking: booking,
                             reason: reason,
                           );
