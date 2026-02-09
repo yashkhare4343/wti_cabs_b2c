@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - b2b-21jan
   workflow_dispatch:
 
 jobs:
@@ -18,42 +19,47 @@ jobs:
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout
-      - name: Checkout repository
+      # 1️⃣ Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Java
-      - name: Set up Java
+      # 2️⃣ Setup Java (required for Android)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3️⃣ Flutter
-      - name: Set up Flutter
+      # 3️⃣ Setup Flutter (pinned version to match Dart SDK ^3.6.1)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: stable
+          flutter-version: 3.13.12 # matches Dart 3.6.x
+          channel: stable
           cache: true
 
-      # 4️⃣ Flutter pub get
+      # 4️⃣ Disable Flutter telemetry (optional)
+      - name: Disable Flutter telemetry
+        run: flutter config --no-analytics
+
+      # 5️⃣ Install Flutter dependencies
       - name: Flutter pub get
         run: |
           cd wti_cabs_user
           flutter pub get
 
-      # 5️⃣ Flutter tests (optional)
+      # 6️⃣ Run Flutter tests (optional)
       - name: Flutter tests
         run: |
           cd wti_cabs_user
           flutter test || true
 
-      # 6️⃣ Decode keystore
+      # 7️⃣ Decode Android keystore
       - name: Decode Android keystore
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/upload-keystore.jks
 
-      # 7️⃣ Create key.properties
+      # 8️⃣ Create key.properties
       - name: Create key.properties
         run: |
           cat <<EOF > wti_cabs_user/android/key.properties
@@ -63,7 +69,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # 8️⃣ Ruby + Fastlane
+      # 9️⃣ Setup Ruby & install Fastlane
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -72,13 +78,13 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane -NV
 
-      # 9️⃣ Run Fastlane (Android)
+      # 🔟 Run Fastlane Android release
       - name: Fastlane Android release
         run: |
           cd wti_cabs_user/android
           fastlane release
 
-      # 🔟 Upload APK/AAB (artifact v4)
+      # 1️⃣1️⃣ Upload APK/AAB artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
