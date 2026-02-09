@@ -1,31 +1,39 @@
-name: Android Release CI
+name: Flutter CI/CD
 
 on:
   push:
-    branches:
-      - main
-      - b2b-21jan
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: stable
+          flutter-version: '3.19.0'
+          channel: stable
 
-      - run: flutter pub get
-      - run: flutter test
+      - name: Install dependencies
+        run: flutter pub get
 
-      - name: Decode Android keystore
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.jks
+      - name: Analyze code
+        run: flutter analyze
 
-      - name: Run Fastlane
-        run: |
-          cd android
-          bundle install
-          bundle exec fastlane release
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
