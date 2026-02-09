@@ -38,28 +38,24 @@ jobs:
           channel: stable
           cache: true
 
-      # 4️⃣ Disable Flutter telemetry (optional)
-      - name: Disable Flutter telemetry
-        run: flutter config --no-analytics
-
-      # 5️⃣ Install Flutter dependencies
+      # 4️⃣ Install Flutter dependencies
       - name: Flutter pub get
         run: |
           cd wti_cabs_user
           flutter pub get
 
-      # 6️⃣ Run Flutter tests (optional)
+      # 5️⃣ Run Flutter tests (optional)
       - name: Flutter tests
         run: |
           cd wti_cabs_user
           flutter test || true
 
-      # 7️⃣ Decode Android keystore
+      # 6️⃣ Decode Android keystore
       - name: Decode Android keystore
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/upload-keystore.jks
 
-      # 8️⃣ Create key.properties
+      # 7️⃣ Create key.properties
       - name: Create key.properties
         run: |
           cat <<EOF > wti_cabs_user/android/key.properties
@@ -69,7 +65,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # 9️⃣ Setup Ruby & install Fastlane
+      # 8️⃣ Setup Ruby & install Fastlane
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -78,13 +74,13 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane -NV
 
-      # 🔟 Run Fastlane Android release
+      # 9️⃣ Run Fastlane Android release
       - name: Fastlane Android release
         run: |
           cd wti_cabs_user/android
           fastlane release
 
-      # 1️⃣1️⃣ Upload APK/AAB artifacts
+      # 🔟 Upload APK/AAB artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
