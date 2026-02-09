@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - b2b-21jan
   workflow_dispatch:
 
 jobs:
@@ -19,38 +18,37 @@ jobs:
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout
+      # 1️⃣ Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Java (required for Android)
-      - name: Setup Java
+      # 2️⃣ Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3️⃣ Setup Flutter (pinned version to match Dart SDK ^3.6.1)
-      - name: Setup Flutter
+      # 3️⃣ Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.13.12 # matches Dart 3.6.x
-          channel: stable
+          flutter-version: stable
           cache: true
 
-      # 4️⃣ Install Flutter dependencies
+      # 4️⃣ Flutter pub get
       - name: Flutter pub get
         run: |
           cd wti_cabs_user
           flutter pub get
 
-      # 5️⃣ Run Flutter tests (optional)
+      # 5️⃣ Flutter tests (optional)
       - name: Flutter tests
         run: |
           cd wti_cabs_user
           flutter test || true
 
-      # 6️⃣ Decode Android keystore
+      # 6️⃣ Decode keystore
       - name: Decode Android keystore
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/upload-keystore.jks
@@ -65,7 +63,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # 8️⃣ Setup Ruby & install Fastlane
+      # 8️⃣ Ruby + Fastlane
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -74,13 +72,13 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane -NV
 
-      # 9️⃣ Run Fastlane Android release
+      # 9️⃣ Run Fastlane (Android)
       - name: Fastlane Android release
         run: |
           cd wti_cabs_user/android
           fastlane release
 
-      # 🔟 Upload APK/AAB artifacts
+      # 🔟 Upload APK/AAB (artifact v4)
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
