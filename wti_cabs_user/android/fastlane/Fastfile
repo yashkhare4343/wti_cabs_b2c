@@ -1,0 +1,12 @@
+platform :android do
+  lane :release do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+
+    upload_to_play_store(
+      track: "internal"
+    )
+  end
+end

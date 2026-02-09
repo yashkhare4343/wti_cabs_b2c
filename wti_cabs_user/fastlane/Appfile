@@ -1,0 +1,8 @@
+# Shared Fastlane app configuration (optional)
+#
+# Uncomment and set these to your existing IDs if you want Fastlane
+# to have explicit identifiers. This does NOT change any IDs.
+#
+# app_identifier "com.wti.user.wti_cabs_user"  # iOS bundle ID (existing)
+# package_name   "com.wti.user.wti_cabs_user"  # Android applicationId (existing)
+

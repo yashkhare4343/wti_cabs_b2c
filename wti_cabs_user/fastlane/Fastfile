@@ -1,0 +1,71 @@
+default_platform(:ios)
+
+platform :android do
+  desc "Build and upload Android release to Play Store (internal track)"
+  lane :release do
+    require 'base64'
+
+    keystore_path = "android/app/upload-keystore.jks"
+
+    # Write keystore from GitHub Secret (base64)
+    File.open(keystore_path, "wb") do |f|
+      f.write(Base64.decode64(ENV["ANDROID_KEYSTORE_BASE64"]))
+    end
+
+    # Generate key.properties for existing Gradle signing config
+    File.open("android/key.properties", "w") do |f|
+      f.puts "storePassword=#{ENV['ANDROID_KEYSTORE_PASSWORD']}"
+      f.puts "keyPassword=#{ENV['ANDROID_KEY_ALIAS_PASSWORD']}"
+      f.puts "keyAlias=#{ENV['ANDROID_KEY_ALIAS']}"
+      f.puts "storeFile=#{keystore_path}"
+    end
+
+    # Build AAB using version from pubspec.yaml (Flutter sets versionCode/build-number)
+    sh "flutter build appbundle --release"
+
+    # Upload to Play Store (internal track by default)
+    upload_to_play_store(
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      track: "internal",
+      json_key_data: ENV["GOOGLE_PLAY_JSON_KEY"],
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
+
+platform :ios do
+  desc "Build and upload iOS release to TestFlight"
+  lane :release do
+    # App Store Connect API key (no Apple ID login)
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+      in_house: false
+    )
+
+    # Use existing certificates/profiles from match repo
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: true # do NOT revoke or create anything
+    )
+
+    # Build iOS app (Flutter default workspace/scheme)
+    build_ios_app(
+      workspace: "ios/Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store"
+    )
+
+    # Upload build to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      distribute_external: false
+    )
+  end
+end
+
