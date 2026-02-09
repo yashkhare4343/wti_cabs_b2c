@@ -2786,6 +2786,7 @@ class CouponOffersCard extends StatefulWidget {
 class _CouponOffersCardState extends State<CouponOffersCard> {
   bool _fetchRequested = false;
   final HiddenCouponController hiddenCouponController = Get.put(HiddenCouponController());
+  final CurrencyController currencyController = Get.put(CurrencyController());
   late final TextEditingController couponTextEditingController;
 
   void _maybeFetchCoupons() {
@@ -2913,6 +2914,7 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
       );
     }
   }
+
 
   Widget _couponRow({
     required CouponData coupon,
@@ -3164,11 +3166,17 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                 }
 
                 return TextFormField(
+                  // readOnly: (hiddenCouponController.hiddenCouponResponse.value != null &&
+                  //     hiddenCouponController.hiddenCouponResponse.value?.success ==
+                  //         true && couponTextEditingController.text.isNotEmpty)? true : false,
                   controller: couponTextEditingController,
-                  onChanged: (value) {
+                  onChanged: (value) async{
                     // Clear previous coupon status when user clears the field.
                     if (value.isEmpty) {
                       hiddenCouponController.hiddenCouponResponse.value = null;
+                      cabBookingController.selectedCouponCode.value = null;
+                      hiddenCouponController.hiddenCouponResponse.value = null;
+                      await _applyOrToggleCoupon(CouponData());
                     }
                   },
                   style: const TextStyle(
@@ -3197,8 +3205,9 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                           ? () async {
                               cabBookingController.selectedCouponCode.value = null;
                               cabBookingController.clearSelectedCoupon();
-                              await _applyOrToggleCoupon(CouponData());
                               couponTextEditingController.clear();
+                                  hiddenCouponController.hiddenCouponResponse.value = null;
+                              await _applyOrToggleCoupon(CouponData());
                       }
                           : () async {
                               // Reset previous state before verifying new coupon.
@@ -3226,7 +3235,7 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                         child: Center(
                           widthFactor: 1,
                           child: Text(
-                            cabBookingController.selectedCouponCode.value != null
+                            (cabBookingController.selectedCouponCode.value != null)
                                 ? 'Remove'
                                 : 'Apply',
                             style: TextStyle(
@@ -3257,18 +3266,38 @@ class _CouponOffersCardState extends State<CouponOffersCard> {
                     color: Color(0xFF7B7B7B),
                   ),
                 )
-              else if (couponTextEditingController.text.isNotEmpty &&
-                  hiddenCouponController.hiddenCouponResponse.value != null &&
-                  hiddenCouponController.hiddenCouponResponse.value?.success ==
-                      true)
-                const Text(
-                  'Coupon Applied Successfully',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2E7D32), // deep green
-                  ),
-                )
+              else if (cabBookingController
+                      .indiaFareDetails
+                      .value
+                      ?.fareDetails
+                      ?.chargeMapping
+                      ?.firstWhereOrNull((e) => e.label == 'Discount')
+                      ?.amount !=
+                  null)
+                Obx(() {
+                  final discount = cabBookingController
+                          .indiaFareDetails
+                          .value
+                          ?.fareDetails
+                          ?.chargeMapping
+                          ?.firstWhereOrNull((e) => e.label == 'Discount')
+                          ?.amount
+                          ?.abs() ??
+                      0;
+                  final rate =
+                      (currencyController.convertedRate.value == 0.0 ? 1.0 : currencyController.convertedRate.value);
+                  final convertedDiscount = (discount.toDouble() * rate);
+
+                  return Text(
+                    'Nice! You saved ${currencyController.selectedCurrency.value.symbol}${convertedDiscount.toStringAsFixed(2)} with this coupon',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E7D32), // deep green
+                    ),
+                  );
+                })
+
               else if (couponTextEditingController.text.isNotEmpty &&
                   hiddenCouponController.hiddenCouponResponse.value != null &&
                   hiddenCouponController.hiddenCouponResponse.value?.success ==
