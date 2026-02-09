@@ -1,0 +1,31 @@
+name: Android Release CI
+
+on:
+  push:
+    branches:
+      - main
+      - b2b-21jan
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - run: flutter pub get
+      - run: flutter test
+
+      - name: Decode Android keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.jks
+
+      - name: Run Fastlane
+        run: |
+          cd android
+          bundle install
+          bundle exec fastlane release
