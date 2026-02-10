@@ -19,7 +19,7 @@ jobs:
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -30,7 +30,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # 3️⃣ Install Flutter manually
+      # 3️⃣ Install Flutter 3.27.2
       - name: Install Flutter 3.27.2
         run: git clone https://github.com/flutter/flutter.git -b 3.27.2 --depth 1 $HOME/flutter
 
@@ -38,14 +38,14 @@ jobs:
       - name: Add Flutter to PATH
         run: echo "$HOME/flutter/bin" >> $GITHUB_PATH
 
-      # 5️⃣ Verify Flutter
+      # 5️⃣ Verify Flutter installation
       - name: Verify Flutter
         run: |
           flutter --version
           flutter doctor
 
       # 6️⃣ Disable Flutter analytics
-      - name: Disable Flutter telemetry
+      - name: Disable Flutter analytics
         run: flutter config --no-analytics
 
       # 7️⃣ Install Flutter dependencies
@@ -54,7 +54,7 @@ jobs:
           cd wti_cabs_user
           flutter pub get
 
-      # 8️⃣ Run Flutter tests
+      # 8️⃣ Run Flutter tests (won’t stop workflow if tests fail)
       - name: Flutter tests
         run: |
           cd wti_cabs_user
@@ -67,18 +67,18 @@ jobs:
           ls -l wti_cabs_user/android/upload-keystore.jks
           file wti_cabs_user/android/upload-keystore.jks
 
-      # 🔟 Create key.properties for Fastlane signing
+      # 🔟 Create key.properties with quotes for special characters
       - name: Create key.properties
         run: |
           cat <<EOF > wti_cabs_user/android/key.properties
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyPassword=$ANDROID_KEY_ALIAS_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
+          storePassword="$ANDROID_KEYSTORE_PASSWORD"
+          keyPassword="$ANDROID_KEY_ALIAS_PASSWORD"
+          keyAlias="$ANDROID_KEY_ALIAS"
           storeFile=upload-keystore.jks
           EOF
           cat wti_cabs_user/android/key.properties
 
-      # 1️⃣1️⃣ Setup Ruby
+      # 1️⃣1️⃣ Setup Ruby & Fastlane
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
