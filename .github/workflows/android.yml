@@ -19,26 +19,26 @@ jobs:
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Java (required for Android)
+      # 2️⃣ Setup Java for Android build
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3️⃣ Setup Flutter (pinned to match Dart 3.6.x)
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.13.12-stable # <-- important "-stable" suffix
-          channel: stable
-          cache: true
+      # 3️⃣ Install Flutter manually (to match Dart 3.6.1)
+      - name: Install Flutter 3.27.2
+        run: |
+          git clone https://github.com/flutter/flutter.git -b 3.27.2 --depth 1 $HOME/flutter
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          flutter --version
+          flutter doctor
 
-      # 4️⃣ Disable Flutter telemetry (optional)
+      # 4️⃣ Disable Flutter analytics (optional)
       - name: Disable Flutter telemetry
         run: flutter config --no-analytics
 
@@ -69,7 +69,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # 9️⃣ Setup Ruby & install Fastlane
+      # 9️⃣ Setup Ruby & Fastlane
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
