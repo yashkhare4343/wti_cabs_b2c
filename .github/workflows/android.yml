@@ -28,19 +28,13 @@ jobs:
         with:
           flutter-version: "3.27.2"
 
-      # 3️⃣ Install dependencies
+      # 3️⃣ Install Flutter dependencies
       - name: Flutter Pub Get
         run: |
           cd wti_cabs_user
           flutter pub get
 
-      # 4️⃣ Optional: Run Flutter tests (Firebase requires mocks)
-      #- name: Run Flutter Tests
-      #  run: |
-      #    cd wti_cabs_user
-      #    flutter test
-
-      # 5️⃣ Set up Android SDK
+      # 4️⃣ Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -48,7 +42,7 @@ jobs:
           build-tools: "33.0.2"
           ndk: "23.1.7779620"
 
-      # 6️⃣ Decode Keystore from base64 (skip if committed)
+      # 5️⃣ Decode Android Keystore from Base64
       - name: Decode Android Keystore
         run: |
           mkdir -p wti_cabs_user/android/app
@@ -58,28 +52,19 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      # 7️⃣ Run Fastlane release
+      # 6️⃣ Install Fastlane globally and run release
       - name: Fastlane Android Release
         working-directory: wti_cabs_user/android
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential zlib1g-dev libffi-dev
+          sudo apt-get install -y ruby-full build-essential zlib1g-dev libffi-dev
 
-          # Install Bundler locally for the user
-          gem install --user-install bundler
+          # Install Fastlane globally
+          sudo gem install fastlane -NV
+          fastlane --version
 
-          # Add user gem bin to PATH
-          export PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
-
-          # Verify bundle is available
-          which bundle
-          bundle --version
-
-          # Install gems from Gemfile
-          bundle install --jobs 4 --retry 3
-
-          # Run Fastlane release lane
-          bundle exec fastlane android release
+          # Run the Android release lane
+          fastlane android release
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
