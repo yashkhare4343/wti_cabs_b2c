@@ -1,11 +1,10 @@
-name: Android Release CI
+name: Android Release
 
 on:
   push:
     branches:
       - main
       - b2b-21jan
-  workflow_dispatch:
 
 jobs:
   android-release:
@@ -15,91 +14,45 @@ jobs:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Java 17
-      - name: Setup Java 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3️⃣ Install Flutter 3.27.2
-      - name: Install Flutter 3.27.2
-        run: git clone https://github.com/flutter/flutter.git -b 3.27.2 --depth 1 $HOME/flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.2"
+          channel: "stable"
 
-      # 4️⃣ Add Flutter to PATH
-      - name: Add Flutter to PATH
-        run: echo "$HOME/flutter/bin" >> $GITHUB_PATH
-
-      # 5️⃣ Verify Flutter
-      - name: Verify Flutter installation
-        run: |
-          flutter --version
-          flutter doctor
-
-      # 6️⃣ Disable Flutter analytics
-      - name: Disable Flutter analytics
-        run: flutter config --no-analytics
-
-      # 7️⃣ Install Flutter dependencies
       - name: Flutter pub get
-        run: |
-          cd wti_cabs_user
-          flutter pub get
+        run: flutter pub get
+        working-directory: wti_cabs_user
 
-      # 8️⃣ Run Flutter tests (won’t fail workflow)
       - name: Flutter tests
-        run: |
-          cd wti_cabs_user
-          flutter test || true
+        run: flutter test
+        working-directory: wti_cabs_user
 
-      # Decode Android keystore safely
       - name: Decode Android keystore
         run: |
           mkdir -p wti_cabs_user/android/app
-          # Remove newlines just in case, then decode
-          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\n' | base64 -d > wti_cabs_user/android/app/my-release-key-new.jks
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > wti_cabs_user/android/app/my-release-key-new.jks
           ls -l wti_cabs_user/android/app/my-release-key-new.jks
-          file wti_cabs_user/android/app/my-release-key-new.jks
 
-      # 🔟 Create key.properties safely
-      - name: Create key.properties
-        run: |
-          cat <<EOF > wti_cabs_user/android/key.properties
-          storePassword="$ANDROID_KEYSTORE_PASSWORD"
-          keyPassword="$ANDROID_KEY_ALIAS_PASSWORD"
-          keyAlias="my-key-alias"
-          storeFile="my-release-key-new.jks"
-          EOF
-          cat wti_cabs_user/android/key.properties
-
-      # 1️⃣1️⃣ Setup Ruby & Fastlane
-      - name: Setup Ruby
+      - name: Install Ruby & Fastlane
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
+      - run: gem install fastlane -NV
 
-      - name: Install Fastlane
-        run: gem install fastlane -NV
-
-      # 1️⃣2️⃣ Run Fastlane Android release
       - name: Fastlane Android release
-        run: |
-          cd wti_cabs_user/android
-          fastlane release
-
-      # 1️⃣3️⃣ Upload build artifacts
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build
-          path: |
-            wti_cabs_user/build/app/outputs/flutter-apk/*.apk
-            wti_cabs_user/build/app/outputs/bundle/release/*.aab
+        run: fastlane android release
+        working-directory: wti_cabs_user
