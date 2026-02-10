@@ -19,12 +19,12 @@ jobs:
       GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # 2️⃣ Setup Java
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -63,6 +63,7 @@ jobs:
       # 9️⃣ Decode Android keystore safely
       - name: Decode Android keystore
         run: |
+          mkdir -p wti_cabs_user/android
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > wti_cabs_user/android/upload-keystore.jks
           ls -l wti_cabs_user/android/upload-keystore.jks
           file wti_cabs_user/android/upload-keystore.jks
