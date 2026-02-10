@@ -3,59 +3,60 @@ name: Android Release CI
 on:
   push:
     branches:
-      - main
+      - main # Change to your release branch
       - b2b-21jan
-  workflow_dispatch:
 
 jobs:
-  android-release:
+  build:
+    name: Build & Release Android
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 1️⃣ Checkout repo
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Install Flutter
+      # 2️⃣ Set up Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.27.2"
-          channel: stable
 
-      - name: Flutter pub get
-        run: flutter pub get
-        working-directory: wti_cabs_user
-
-      - name: Skip Flutter tests (Firebase dependent)
-        run: echo "Skipping tests due to Firebase dependencies"
-
-      - name: Decode Android keystore
+      # 3️⃣ Install dependencies
+      - name: Flutter Pub Get
         run: |
-          mkdir -p wti_cabs_user/android/app
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > wti_cabs_user/android/app/my-release-key-new.jks
-          ls -l wti_cabs_user/android/app/my-release-key-new.jks
+          cd wti_cabs_user
+          flutter pub get
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+      # 4️⃣ Skip Flutter tests (Firebase will fail on CI)
+      #- name: Run Flutter Tests
+      #  run: |
+      #    cd wti_cabs_user
+      #    flutter test
+
+      # 5️⃣ Set up Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
         with:
-          ruby-version: "3.2"
+          api-level: 33
+          build-tools: "33.0.2"
+          ndk: "23.1.7779620"
 
-      - name: Install Fastlane
-        run: gem install fastlane -NV
-
-      - name: Fastlane Android release
+      # 6️⃣ Decode keystore (already in repo)
+      - name: Verify Keystore
         run: |
           cd wti_cabs_user/android
-          fastlane release
+          ls -l app/my-release-key-new.jks
+          file app/my-release-key-new.jks
+
+      # 7️⃣ Run Fastlane release
+      - name: Fastlane Android Release
+        run: |
+          cd wti_cabs_user/android
+          bundle install
+          bundle exec fastlane android release
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
