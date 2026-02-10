@@ -54,17 +54,32 @@ jobs:
 
       # 6️⃣ Install Fastlane globally and run release
       - name: Fastlane Android Release
-        working-directory: wti_cabs_user/android
         run: |
+          cd wti_cabs_user/android
+
+          # Install required packages
           sudo apt-get update
-          sudo apt-get install -y ruby-full build-essential zlib1g-dev libffi-dev
+          sudo apt-get install -y build-essential zlib1g-dev libffi-dev
 
-          # Install Fastlane globally
-          sudo gem install fastlane -NV
-          fastlane --version
+          # Install Bundler locally
+          gem install --user-install bundler
 
-          # Run the Android release lane
-          fastlane android release
+          # Add local gem path to PATH
+          export PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
+
+          # Verify bundle is available
+          which bundle
+          bundle --version
+
+          # Install gems from Gemfile
+          bundle install --jobs 4 --retry 3
+
+          # Verify gradlew exists
+          ls -l gradlew
+          ./gradlew --version
+
+          # Run Fastlane release lane
+          bundle exec fastlane android release
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
