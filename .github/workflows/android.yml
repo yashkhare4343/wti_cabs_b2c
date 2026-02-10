@@ -57,28 +57,39 @@ jobs:
         run: |
           cd wti_cabs_user/android
 
-          # Install required packages
+          # System deps for native gems
           sudo apt-get update
-          sudo apt-get install -y build-essential zlib1g-dev libffi-dev
+          sudo apt-get install -y \
+            build-essential \
+            libssl-dev \
+            libreadline-dev \
+            zlib1g-dev \
+            libffi-dev
 
-          # Install Bundler locally
-          gem install --user-install bundler
+          # Fix RubyGems + Bundler mismatch
+          gem update --system --no-document
 
-          # Add local gem path to PATH
-          export PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
+          # Local gem install path (VERY IMPORTANT)
+          export GEM_HOME="$HOME/.local/share/gem"
+          export PATH="$GEM_HOME/bin:$PATH"
 
-          # Verify bundle is available
-          which bundle
-          bundle --version
+          # Install bundler & rake explicitly
+          gem install bundler rake --no-document
 
-          # Install gems from Gemfile
+          # Sanity checks
+          ruby -v
+          gem -v
+          bundle -v
+          rake -V
+
+          # Install project gems
           bundle install --jobs 4 --retry 3
 
-          # Verify gradlew exists
-          ls -l gradlew
+          # Verify gradle wrapper
+          chmod +x gradlew
           ./gradlew --version
 
-          # Run Fastlane release lane
+          # Run Fastlane
           bundle exec fastlane android release
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
