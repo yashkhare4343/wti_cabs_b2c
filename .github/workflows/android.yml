@@ -60,13 +60,14 @@ jobs:
           cd wti_cabs_user
           flutter test || true
 
-      # 9️⃣ Decode Android keystore
+      # Decode Android keystore safely
       - name: Decode Android keystore
         run: |
-          mkdir -p wti_cabs_user/android
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > wti_cabs_user/android/my-release-key-new.jks
-          ls -l wti_cabs_user/android/my-release-key-new.jks
-          file wti_cabs_user/android/my-release-key-new.jks
+          mkdir -p wti_cabs_user/android/app
+          # Remove newlines just in case, then decode
+          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\n' | base64 -d > wti_cabs_user/android/app/my-release-key-new.jks
+          ls -l wti_cabs_user/android/app/my-release-key-new.jks
+          file wti_cabs_user/android/app/my-release-key-new.jks
 
       # 🔟 Create key.properties safely
       - name: Create key.properties
