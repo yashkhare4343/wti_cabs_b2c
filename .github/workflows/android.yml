@@ -58,11 +58,17 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      # 7️⃣ Run Fastlane release
+        # 7️⃣ Run Fastlane release
       - name: Fastlane Android Release
         working-directory: wti_cabs_user/android
         run: |
+          # Install Ruby Bundler
+          sudo gem install bundler
+
+          # Install gems from Gemfile
           bundle install
+
+          # Run Fastlane release lane
           bundle exec fastlane android release
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
