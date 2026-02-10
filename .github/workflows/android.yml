@@ -42,7 +42,7 @@ jobs:
           build-tools: "33.0.2"
           ndk: "23.1.7779620"
 
-      # 6️⃣ Decode keystore (already in repo)
+      # 6️⃣ Decode Keystore (skip base64 if already committed)
       - name: Verify Keystore
         run: |
           cd wti_cabs_user/android
