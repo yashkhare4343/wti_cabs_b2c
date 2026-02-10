@@ -3,13 +3,19 @@ name: Android Release CI
 on:
   push:
     branches:
-      - main # Change to your release branch
+      - main
       - b2b-21jan
 
 jobs:
   build:
     name: Build & Release Android
     runs-on: ubuntu-latest
+
+    env:
+      FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.27.2-x64
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
 
     steps:
       # 1️⃣ Checkout repo
@@ -28,7 +34,7 @@ jobs:
           cd wti_cabs_user
           flutter pub get
 
-      # 4️⃣ Skip Flutter tests (Firebase will fail on CI)
+      # 4️⃣ Optional: Run Flutter tests (Firebase requires mocks)
       #- name: Run Flutter Tests
       #  run: |
       #    cd wti_cabs_user
@@ -42,17 +48,20 @@ jobs:
           build-tools: "33.0.2"
           ndk: "23.1.7779620"
 
-      # 6️⃣ Decode Keystore (skip base64 if already committed)
-      - name: Verify Keystore
+      # 6️⃣ Decode Keystore from base64 (skip if committed)
+      - name: Decode Android Keystore
         run: |
-          cd wti_cabs_user/android
-          ls -l app/my-release-key-new.jks
-          file app/my-release-key-new.jks
+          mkdir -p wti_cabs_user/android/app
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/app/my-release-key-new.jks
+          ls -l wti_cabs_user/android/app/my-release-key-new.jks
+          file wti_cabs_user/android/app/my-release-key-new.jks
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       # 7️⃣ Run Fastlane release
       - name: Fastlane Android Release
+        working-directory: wti_cabs_user/android
         run: |
-          cd wti_cabs_user/android
           bundle install
           bundle exec fastlane android release
         env:
