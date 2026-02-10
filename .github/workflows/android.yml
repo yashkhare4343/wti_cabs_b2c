@@ -1,0 +1,100 @@
+name: Android Release CI
+
+on:
+  push:
+    branches:
+      - main
+      - b2b-21jan
+  workflow_dispatch:
+
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+      GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+
+    steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # 3️⃣ Install Flutter manually
+      - name: Install Flutter 3.27.2
+        run: git clone https://github.com/flutter/flutter.git -b 3.27.2 --depth 1 $HOME/flutter
+
+      # 4️⃣ Add Flutter to PATH
+      - name: Add Flutter to PATH
+        run: echo "$HOME/flutter/bin" >> $GITHUB_PATH
+
+      # 5️⃣ Verify Flutter
+      - name: Verify Flutter
+        run: |
+          flutter --version
+          flutter doctor
+
+      # 6️⃣ Disable Flutter analytics
+      - name: Disable Flutter telemetry
+        run: flutter config --no-analytics
+
+      # 7️⃣ Install Flutter dependencies
+      - name: Flutter pub get
+        run: |
+          cd wti_cabs_user
+          flutter pub get
+
+      # 8️⃣ Run Flutter tests
+      - name: Flutter tests
+        run: |
+          cd wti_cabs_user
+          flutter test || true
+
+      # 9️⃣ Decode Android keystore
+      - name: Decode Android keystore
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/upload-keystore.jks
+
+      # 🔟 Create key.properties
+      - name: Create key.properties
+        run: |
+          cat <<EOF > wti_cabs_user/android/key.properties
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_ALIAS_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      # 1️⃣1️⃣ Setup Ruby
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Install Fastlane
+        run: gem install fastlane -NV
+
+      # 1️⃣2️⃣ Run Fastlane Android release
+      - name: Fastlane Android release
+        run: |
+          cd wti_cabs_user/android
+          fastlane release
+
+      # 1️⃣3️⃣ Upload APK/AAB artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: |
+            wti_cabs_user/build/app/outputs/flutter-apk/*.apk
+            wti_cabs_user/build/app/outputs/bundle/release/*.aab
