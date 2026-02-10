@@ -60,12 +60,14 @@ jobs:
           cd wti_cabs_user
           flutter test || true
 
-      # 9️⃣ Decode Android keystore
+      # 9️⃣ Decode Android keystore safely
       - name: Decode Android keystore
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > wti_cabs_user/android/upload-keystore.jks
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > wti_cabs_user/android/upload-keystore.jks
+          ls -l wti_cabs_user/android/upload-keystore.jks
+          file wti_cabs_user/android/upload-keystore.jks
 
-      # 🔟 Create key.properties
+      # 🔟 Create key.properties for Fastlane signing
       - name: Create key.properties
         run: |
           cat <<EOF > wti_cabs_user/android/key.properties
@@ -74,6 +76,7 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
+          cat wti_cabs_user/android/key.properties
 
       # 1️⃣1️⃣ Setup Ruby
       - name: Setup Ruby
