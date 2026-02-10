@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_drop/choose_drop_controller.dart';
 import 'package:wti_cabs_user/core/controller/source_controller/source_controller.dart';
+import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import '../../common_widget/buttons/quick_action_button.dart';
 import '../../common_widget/textformfield/google_places_text_field.dart';
@@ -15,6 +16,7 @@ import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../../utility/constants/fonts/common_fonts.dart';
 import '../map_picker/map_picker.dart';
+import '../../main.dart';
 
 class SelectPickup extends StatefulWidget {
   final bool? fromInventoryScreen;
@@ -82,10 +84,9 @@ class _SelectPickupState extends State<SelectPickup> {
                 controller: pickupController,
                 onPlaceSelected: (newSuggestion) {
                   pickupController.text = newSuggestion.primaryText;
-                  bookingRideController.prefilled.value = newSuggestion.primaryText;
-                  FocusScope.of(context).unfocus();
-                  // GoRouter.of(context).pop();
-                  GoRouter.of(context).push(AppRoutes.bottomNav);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _handlePlaceSelection(context, newSuggestion);
+                  });
                 },
               ),
             ),
@@ -198,20 +199,33 @@ class _SelectPickupState extends State<SelectPickup> {
     bookingRideController.prefilled.value = place.primaryText;
     placeSearchController.placeId.value = place.placeId;
 
-    // Navigation
+    // Decide navigation based on whether we're editing from InventoryList.
+    final bool isInventoryFlow =
+        bookingRideController.isInventoryPage.value == true ||
+        widget.fromInventoryScreen == true;
 
-    if(widget.fromInventoryScreen == false) {
+    FocusScope.of(context).unfocus();
+
+    if (isInventoryFlow) {
+      // Close SelectPickup and return to InventoryList, showing the TopBookingDialogWrapper popup.
+      final rootContext = navigatorKey.currentContext;
+      Navigator.of(context).pop();
+
+      if (rootContext != null) {
+        showDialog(
+          context: rootContext,
+          barrierDismissible: true,
+          builder: (dialogContext) => const TopBookingDialogWrapper(),
+        );
+      }
+    } else {
+      // Default behaviour: go back to BookingRide with the appropriate tab.
       final tabName = bookingRideController.currentTabName;
       final route = tabName == 'rental'
           ? '${AppRoutes.bookingRide}?tab=rental'
           : '${AppRoutes.bookingRide}?tab=$tabName';
       GoRouter.of(context).go(route);
     }
-    else{
-      GoRouter.of(context).pop();
-      // GoRouter.of(context).push(AppRoutes.bookingRide);
-    }
-    FocusScope.of(context).unfocus();
 
     // Background tasks
     placeSearchController.getLatLngDetails(place.placeId, context);

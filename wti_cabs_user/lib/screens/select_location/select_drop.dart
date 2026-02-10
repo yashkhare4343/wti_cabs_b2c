@@ -8,6 +8,7 @@ import 'package:wti_cabs_user/core/controller/booking_ride_controller.dart';
 import 'package:wti_cabs_user/core/controller/choose_pickup/choose_pickup_controller.dart';
 import 'package:wti_cabs_user/core/model/booking_engine/suggestions_places_response.dart';
 import 'package:wti_cabs_user/core/route_management/app_routes.dart';
+import 'package:wti_cabs_user/screens/inventory_list_screen/inventory_list.dart';
 import 'package:wti_cabs_user/utility/constants/colors/app_colors.dart';
 import 'package:wti_cabs_user/utility/constants/fonts/common_fonts.dart';
 import '../../common_widget/textformfield/drop_google_place_text_field.dart';
@@ -17,6 +18,7 @@ import '../../core/services/storage_services.dart';
 import '../../core/services/trip_history_services.dart';
 import '../booking_ride/booking_ride.dart';
 import '../trip_history_controller/trip_history_controller.dart';
+import '../../main.dart';
 
 class SelectDrop extends StatefulWidget {
   final bool? fromInventoryScreen;
@@ -218,16 +220,34 @@ class _SelectDropState extends State<SelectDrop> {
     print('fromInventoryPage = ${widget.fromInventoryScreen}');
     FocusScope.of(context).unfocus();
 
-    // Always navigate to BookingRide after place selection
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Ensure airport tab is selected when returning to BookingRide from SelectDrop
-      // bookingRideController.setTabByName('airport');
-      final lastTab = bookingRideController.tabNames[bookingRideController.selectedIndex.value];
-      final route = lastTab == 'rental'
-          ? '${AppRoutes.bookingRide}?tab=rental'
-          : '${AppRoutes.bookingRide}?tab=$lastTab';
-      GoRouter.of(context).push(route);
-    });
+    // Decide navigation based on whether we're editing from InventoryList.
+    final bool isInventoryFlow =
+        bookingRideController.isInventoryPage.value == true ||
+        widget.fromInventoryScreen == true;
+
+    if (isInventoryFlow) {
+      // Close SelectDrop and return to InventoryList, showing the TopBookingDialogWrapper popup.
+      final rootContext = navigatorKey.currentContext;
+      Navigator.of(context).pop();
+
+      if (rootContext != null) {
+        showDialog(
+          context: rootContext,
+          barrierDismissible: true,
+          builder: (dialogContext) => const TopBookingDialogWrapper(),
+        );
+      }
+    } else {
+      // Default behaviour: navigate back to BookingRide after place selection.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final lastTab =
+            bookingRideController.tabNames[bookingRideController.selectedIndex.value];
+        final route = lastTab == 'rental'
+            ? '${AppRoutes.bookingRide}?tab=rental'
+            : '${AppRoutes.bookingRide}?tab=$lastTab';
+        GoRouter.of(context).push(route);
+      });
+    }
 
     // Background tasks
     Future.microtask(() {
