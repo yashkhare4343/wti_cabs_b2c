@@ -33,13 +33,19 @@ import '../../core/controller/cab_booking/cab_booking_controller.dart';
 import '../../core/controller/choose_drop/choose_drop_controller.dart';
 import '../../core/controller/currency_controller/currency_controller.dart';
 import '../../core/controller/inventory_dialog_controller/inventory_dialog_controller.dart';
+import '../../core/controller/popup_location/popup_drop_search_controller.dart';
+import '../../core/controller/popup_location/popup_pickup_search_controller.dart';
+import '../../core/model/booking_engine/get_lat_lng_response.dart';
 import '../../core/controller/rental_controller/fetch_package_controller.dart';
+import '../../core/model/booking_engine/suggestions_places_response.dart';
 import '../../core/model/inventory/india_response.dart';
 import '../../core/services/storage_services.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../bottom_nav/bottom_nav.dart';
 import '../popup/popup_booking_ride.dart';
+import '../select_location/popup_select_drop.dart';
+import '../select_location/popup_select_pickup.dart';
 
 class InventoryList extends StatefulWidget {
   final Map<String, dynamic> requestData;
@@ -643,8 +649,9 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                             [];
                     final isEmptyList = (isIndia && indiaCarTypes.isEmpty) ||
                         (!isIndia && globalList.isEmpty);
+                    final isPopupOpen = bookingRideController.isPopupOpen.value;
 
-                    if (isEmptyList) {
+                    if (isEmptyList && !isPopupOpen) {
                       return const Center(
                         child: Text(
                           "No cabs available on this route",
@@ -1921,11 +1928,14 @@ class _BookingTopBarState extends State<BookingTopBar> {
               GestureDetector(
                   onTap: () {
                     bookingRideController.isInventoryPage.value = true;
+                    bookingRideController.isPopupOpen.value = true;
                     showDialog(
                       context: context,
                       barrierDismissible: true,
                       builder: (context) => TopBookingDialogWrapper(),
-                    );
+                    ).whenComplete(() {
+                      bookingRideController.isPopupOpen.value = false;
+                    });
                   },
                   child: Container(
                     padding:
@@ -2013,131 +2023,620 @@ class TopBookingDialogWrapper extends StatefulWidget {
 
 class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   final SearchCabInventoryController searchCabInventoryController = Get.find();
-  final FetchPackageController fetchPackageController = Get.find();
-  String? _country;
+  final BookingRideController bookingRideController = Get.find();
+  final PlaceSearchController placeSearchController = Get.find();
+  final DropPlaceSearchController dropPlaceSearchController = Get.find();
+  final String _popupPickupTag = 'popup_pickup_dialog_controller';
+  final String _popupDropTag = 'popup_drop_dialog_controller';
+  late final PopupPickupSearchController popupPickupSearchController;
+  late final PopupDropSearchController popupDropSearchController;
+  Worker? _tripCodeWorker;
+  int _selectedTabIndex = 0;
+  String _selectedOutstationTrip = 'oneWay';
+  DateTime? _pickupDateTime;
+  DateTime? _dropDateTime;
+  String _editedPickup = '';
+  String _editedDrop = '';
+  String _editedPickupPlaceId = '';
+  String _editedDropPlaceId = '';
+  GetLatLngResponse? _editedPickupLatLng;
+  GetLatLngResponse? _editedDropLatLng;
 
-  @override
-  void initState() {
-    super.initState();
-    // Defer loadTripCode to ensure it runs after the build phase
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('Calling loadTripCode at ${DateTime.now()}');
-      searchCabInventoryController.loadTripCode();
-    });
-    // Monitor tripCode changes for debugging
-    ever(searchCabInventoryController.tripCode, (value) {
-      debugPrint('tripCode changed to $value at ${DateTime.now()}');
+  int _tripCodeToTabIndex(String tripCode) {
+    if (tripCode == '2') return 1;
+    if (tripCode == '3') return 2;
+    return 0;
+  }
+
+  String _tripCodeToOutstationTrip(String tripCode) {
+    return tripCode == '1' ? 'roundTrip' : 'oneWay';
+  }
+
+  String _resolvedTripCodeForSelection() {
+    if (_selectedTabIndex == 1) return '2';
+    if (_selectedTabIndex == 2) return '3';
+    return _selectedOutstationTrip == 'roundTrip' ? '1' : '0';
+  }
+
+  String _formatDateTime(DateTime value) {
+    return DateFormat('dd MMM, yyyy hh:mm a').format(value);
+  }
+
+  Future<DateTime?> _showCupertinoDateTimePicker({
+    required DateTime initialDateTime,
+  }) async {
+    DateTime tempPicked = initialDateTime;
+
+    return showCupertinoModalPopup<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFE5E5EA)),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () => Navigator.of(context).pop(tempPicked),
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.dateAndTime,
+                  initialDateTime: initialDateTime,
+                  minimumDate: DateTime.now().subtract(const Duration(days: 365)),
+                  maximumDate: DateTime.now().add(const Duration(days: 3650)),
+                  use24hFormat: false,
+                  onDateTimeChanged: (DateTime newDateTime) {
+                    tempPicked = newDateTime;
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickDateTime({required bool isPickup}) async {
+    final currentValue = isPickup
+        ? (_pickupDateTime ?? bookingRideController.localStartTime.value)
+        : (_dropDateTime ?? bookingRideController.localEndTime.value);
+    final selected = await _showCupertinoDateTimePicker(
+      initialDateTime: currentValue,
+    );
+    if (selected == null || !mounted) return;
+
+    setState(() {
+      if (isPickup) {
+        _pickupDateTime = selected;
+        if (_dropDateTime != null && _dropDateTime!.isBefore(selected)) {
+          _dropDateTime = selected.add(const Duration(hours: 1));
+        }
+      } else {
+        _dropDateTime = selected;
+      }
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isIndia = _country?.toLowerCase() == 'india';
-    final indiaData = searchCabInventoryController.indiaData.value;
-    final globalData = searchCabInventoryController.globalData.value;
-
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.white, // Status bar color set to white
-      statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
-    ));
-    debugPrint('Building TopBookingDialogWrapper at ${DateTime.now()}');
-    return Column(
-      children: [
-        Dialog(
-          backgroundColor: Colors.white,
-          insetPadding: const EdgeInsets.all(0),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+  Widget _buildTripTab({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: const EdgeInsets.all(3),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.mainButtonBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: SizedBox(
-            width: double.infinity,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Obx(() {
-                debugPrint('Obx rebuild triggered at ${DateTime.now()}');
-                // Capture the current tripCode value to avoid direct reactive access
-                final tripCode = searchCabInventoryController.newCurrent.value;
-                return Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            bookingRideController.selectedIndex.value = 0;
-                            // Get.delete<PlaceSearchController>(force: true);
-                            // Get.delete<DropPlaceSearchController>(force: true);
-                            // Get.delete<SourceLocationController>(force: true);
-                            // Get.delete<DestinationLocationController>(force: true);
-                            // Get.delete<SearchCabInventoryController>(force: true);
-                            // Get.delete<BookingRideController>(force: true);
-                            // Get.put(BookingRideController());
-                            // Get.put(PlaceSearchController());
-                            // Get.put(DropPlaceSearchController());
-                            // Get.put(SourceLocationController());
-                            // Get.put(DestinationLocationController());
-                            // Get.put(SearchCabInventoryController());
-                            // if (isIndia && indiaData == null) {
-                            //   bookingRideController.prefilled.value = indiaData?.result?.tripType?.source?.address??'';
-                            //   bookingRideController.prefilledDrop.value = indiaData?.result?.tripType?.destination?.address??'';
-                            // }
-                            // else if (!isIndia && globalData == null){
-                            //   bookingRideController.prefilled.value = globalData?.result.first.iterator.current.tripDetails?.source.title??'';
-                            //   bookingRideController.prefilledDrop.value = globalData?.result.first.iterator.current.tripDetails?.destination.title??'';
-                            // }
-                            // bookingRideController.resetDate();
-                            final tabName =
-                                bookingRideController.currentTabName;
-                            final route = tabName == 'rental'
-                                ? '${AppRoutes.bookingRide}?tab=airport'
-                                : '${AppRoutes.bookingRide}?tab=airport';
-                            // GoRouter.of(context).push(
-                            //     route,
-                            //     extra: (context) => Platform.isIOS
-                            //         ? CupertinoPage(child: const BottomNavScreen())
-                            //         : MaterialPage(child: const BottomNavScreen()));
-                            GoRouter.of(context).pop();
-                          },
-                        ),
-                        SizedBox(
-                            width: MediaQuery.of(context).size.width * 0.13),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            if (tripCode == '0')
-                              Text('OutStation One Way',
-                                  style: CommonFonts.greyText3Bold),
-                            if (tripCode == '1')
-                              Text('OutStation Round Way',
-                                  style: CommonFonts.greyText3Bold),
-                            if (tripCode == '2')
-                              Text('Airport', style: CommonFonts.greyText3Bold),
-                            if (tripCode == '3')
-                              Text('Rental', style: CommonFonts.greyText3Bold),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (tripCode == '0')
-                      OutStation(
-                        selectedTrip: 'oneWay',
-                      ),
-                    if (tripCode == '1')
-                      OutStation(
-                        selectedTrip: 'roundTrip',
-                      ),
-                    if (tripCode == '2') Rides(),
-                    if (tripCode == '3') Rental(),
-                    const SizedBox(height: 8),
-                  ],
-                );
-              }),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : AppColors.greyText5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutstationTripSelector() {
+    Widget buildOption(String title, String value) {
+      final isSelected = _selectedOutstationTrip == value;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedOutstationTrip = value;
+            });
+            searchCabInventoryController.newCurrent.value =
+                _resolvedTripCodeForSelection();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.mainButtonBg.withOpacity(0.12) : null,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off_outlined,
+                  size: 16,
+                  color: isSelected ? AppColors.mainButtonBg : AppColors.greyText5,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color:
+                        isSelected ? AppColors.mainButtonBg : AppColors.greyText5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FC),
+        border: Border.all(color: const Color(0xFFE1E5EE)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          buildOption('One Way', 'oneWay'),
+          const SizedBox(width: 8),
+          buildOption('Round Trip', 'roundTrip'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.greyText5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          readOnly: true,
+          initialValue: value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            isDense: true,
+            prefixIcon: Icon(icon, size: 18, color: AppColors.mainButtonBg),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE1E5EE)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE1E5EE)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.mainButtonBg),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _handleLocationTap({required bool isPickup}) async {
+    if (isPickup) {
+      final result = await Navigator.push<SuggestionPlacesResponse>(
+        context,
+        Platform.isIOS
+            ? CupertinoPageRoute(
+                builder: (context) => PopupSelectPickup(
+                  controllerTag: _popupPickupTag,
+                  initialText: _editedPickup,
+                ),
+              )
+            : MaterialPageRoute(
+                builder: (context) => PopupSelectPickup(
+                  controllerTag: _popupPickupTag,
+                  initialText: _editedPickup,
+                ),
+              ),
+      );
+      if (result == null || !mounted) return;
+
+      setState(() {
+        _editedPickup = result.primaryText;
+        _editedPickupPlaceId = result.placeId;
+        _editedPickupLatLng = popupPickupSearchController.getPlacesLatLng.value;
+      });
+      return;
+    }
+
+    final result = await Navigator.push<SuggestionPlacesResponse>(
+      context,
+      Platform.isIOS
+          ? CupertinoPageRoute(
+              builder: (context) => PopupSelectDrop(
+                controllerTag: _popupDropTag,
+                initialText: _editedDrop,
+              ),
+            )
+          : MaterialPageRoute(
+              builder: (context) => PopupSelectDrop(
+                controllerTag: _popupDropTag,
+                initialText: _editedDrop,
+              ),
+            ),
+    );
+    if (result == null || !mounted) return;
+
+    if (_editedPickupPlaceId.isNotEmpty && _editedPickupPlaceId == result.placeId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pickup and drop cannot be same.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _editedDrop = result.primaryText;
+      _editedDropPlaceId = result.placeId;
+      _editedDropLatLng = popupDropSearchController.dropLatLng.value;
+    });
+  }
+
+  Widget _buildEditableDateField({
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.greyText5,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: onTap,
+              child: const Text(
+                'Edit',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.mainButtonBg,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: Icon(icon, size: 18, color: AppColors.mainButtonBg),
+              filled: true,
+              fillColor: const Color(0xFFF8F9FC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE1E5EE)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE1E5EE)),
+              ),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    popupPickupSearchController = Get.put(
+      PopupPickupSearchController(),
+      tag: _popupPickupTag,
+    );
+    popupDropSearchController = Get.put(
+      PopupDropSearchController(),
+      tag: _popupDropTag,
+    );
+    final initialTripCode =
+        searchCabInventoryController.newCurrent.value.toString();
+    _selectedTabIndex = _tripCodeToTabIndex(
+      initialTripCode,
+    );
+    _selectedOutstationTrip = _tripCodeToOutstationTrip(initialTripCode);
+    _pickupDateTime = bookingRideController.localStartTime.value;
+    _dropDateTime = bookingRideController.localEndTime.value;
+    _editedPickup = bookingRideController.prefilled.value;
+    _editedDrop = bookingRideController.prefilledDrop.value;
+    _editedPickupPlaceId = placeSearchController.placeId.value;
+    _editedDropPlaceId = dropPlaceSearchController.dropPlaceId.value;
+    _editedPickupLatLng = placeSearchController.getPlacesLatLng.value;
+    _editedDropLatLng = dropPlaceSearchController.dropLatLng.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      searchCabInventoryController.loadTripCode();
+    });
+
+    _tripCodeWorker = ever(searchCabInventoryController.newCurrent, (value) {
+      final tripCode = value.toString();
+      final nextTab = _tripCodeToTabIndex(tripCode);
+      final nextOutstation = _tripCodeToOutstationTrip(tripCode);
+      if (mounted &&
+          (nextTab != _selectedTabIndex ||
+              nextOutstation != _selectedOutstationTrip)) {
+        setState(() {
+          _selectedTabIndex = nextTab;
+          _selectedOutstationTrip = nextOutstation;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tripCodeWorker?.dispose();
+    if (Get.isRegistered<PopupPickupSearchController>(tag: _popupPickupTag)) {
+      Get.delete<PopupPickupSearchController>(tag: _popupPickupTag);
+    }
+    if (Get.isRegistered<PopupDropSearchController>(tag: _popupDropTag)) {
+      Get.delete<PopupDropSearchController>(tag: _popupDropTag);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.white,
+      statusBarIconBrightness: Brightness.dark,
+    ));
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Builder(builder: (_) {
+          final pickup = _editedPickup.trim();
+          final drop = _editedDrop.trim();
+          final pickupDateTime =
+              _pickupDateTime ?? bookingRideController.localStartTime.value;
+          final dropDateTime =
+              _dropDateTime ?? bookingRideController.localEndTime.value;
+          final pickupDate = _formatDateTime(pickupDateTime);
+          final dropDate = _formatDateTime(dropDateTime);
+
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Edit Trip Details',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        bookingRideController.isPopupOpen.value = false;
+                        GoRouter.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F4F8),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTripTab(
+                        title: 'Outstation',
+                        isSelected: _selectedTabIndex == 0,
+                        onTap: () {
+                          setState(() {
+                            _selectedTabIndex = 0;
+                          });
+                          searchCabInventoryController.newCurrent.value =
+                              _resolvedTripCodeForSelection();
+                        },
+                      ),
+                      _buildTripTab(
+                        title: 'Airport',
+                        isSelected: _selectedTabIndex == 1,
+                        onTap: () {
+                          setState(() {
+                            _selectedTabIndex = 1;
+                          });
+                          searchCabInventoryController.newCurrent.value =
+                              _resolvedTripCodeForSelection();
+                        },
+                      ),
+                      _buildTripTab(
+                        title: 'Rental',
+                        isSelected: _selectedTabIndex == 2,
+                        onTap: () {
+                          setState(() {
+                            _selectedTabIndex = 2;
+                          });
+                          searchCabInventoryController.newCurrent.value =
+                              _resolvedTripCodeForSelection();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                if (_selectedTabIndex == 0) ...[
+                  const SizedBox(height: 10),
+                  _buildOutstationTripSelector(),
+                ],
+                const SizedBox(height: 16),
+                _buildEditableDateField(
+                  label: 'Pickup',
+                  value: pickup.isEmpty ? 'Select pickup location' : pickup,
+                  icon: Icons.my_location,
+                  onTap: () => _handleLocationTap(isPickup: true),
+                ),
+                const SizedBox(height: 12),
+                _buildEditableDateField(
+                  label: 'Drop',
+                  value: drop.isEmpty ? 'Select drop location' : drop,
+                  icon: Icons.location_on_outlined,
+                  onTap: () => _handleLocationTap(isPickup: false),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildEditableDateField(
+                        label: 'Pickup DateTime',
+                        value: pickupDate,
+                        icon: Icons.calendar_today_outlined,
+                        onTap: () => _pickDateTime(isPickup: true),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildEditableDateField(
+                        label: 'Drop DateTime',
+                        value: dropDate,
+                        icon: Icons.calendar_month_outlined,
+                        onTap: () => _pickDateTime(isPickup: false),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: MainButton(
+                    text: 'Search Now',
+                    onPressed: () {
+                      final selectedPickup = _pickupDateTime ??
+                          bookingRideController.localStartTime.value;
+                      DateTime selectedDrop =
+                          _dropDateTime ?? bookingRideController.localEndTime.value;
+
+                      if (selectedDrop.isBefore(selectedPickup)) {
+                        selectedDrop = selectedPickup.add(const Duration(hours: 1));
+                      }
+
+                      if (_editedPickupPlaceId.isNotEmpty &&
+                          _editedPickupPlaceId == _editedDropPlaceId) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Pickup and drop cannot be same.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      bookingRideController.prefilled.value = _editedPickup;
+                      bookingRideController.prefilledDrop.value = _editedDrop;
+                      placeSearchController.placeId.value = _editedPickupPlaceId;
+                      dropPlaceSearchController.dropPlaceId.value =
+                          _editedDropPlaceId;
+                      placeSearchController.getPlacesLatLng.value =
+                          _editedPickupLatLng;
+                      dropPlaceSearchController.dropLatLng.value =
+                          _editedDropLatLng;
+                      bookingRideController.localStartTime.value = selectedPickup;
+                      bookingRideController.localEndTime.value = selectedDrop;
+                      bookingRideController.isPopupOpen.value = false;
+                      GoRouter.of(context).pop();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 }

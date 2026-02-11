@@ -94,6 +94,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     print('url is : $baseUrl/$endpoint');
@@ -126,6 +128,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Basic aGFyc2g6MTIz',
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     print('url is : $baseUrl/$endpoint');
@@ -164,6 +168,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Basic aGFyc2g6MTIz',
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     if (kDebugMode) {
@@ -205,6 +211,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Basic aGFyc2g6MTIz',
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
     final url = Uri.parse("$baseUrl/currency/convert?from=$from");
     final res = await http.get(url, headers: headers);
@@ -236,6 +244,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     // 🔍 Pretty print request body
@@ -290,6 +300,9 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
+
     };
 
     try {
@@ -340,6 +353,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     if (kDebugMode) {
@@ -412,6 +427,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': basicAuth,
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     try {
@@ -444,7 +461,8 @@ class ApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Authorization': 'Basic ${base64Encode(utf8.encode('harsh:123'))}',
-      'x-platform':'APP'
+      'x-platform-using': 'APP',
+      'x-platform-type': Platform.isIOS ? 'ios' : 'android',
     };
 
     final mergedHeaders = {
