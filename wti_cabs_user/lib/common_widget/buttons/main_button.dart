@@ -11,6 +11,7 @@ class MainButton extends StatelessWidget {
   final bool? isIcon;
   final IconData? icon;
   final bool isLoading;
+  final bool isDisabled;
 
   const MainButton({
     super.key,
@@ -20,12 +21,13 @@ class MainButton extends StatelessWidget {
     this.isIcon,
     this.icon,
     this.isLoading = false, // ✅ Optional, default false
+    this.isDisabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: isLoading ? null : onPressed, // ✅ Disable when loading
+      onPressed: (isLoading || isDisabled) ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(

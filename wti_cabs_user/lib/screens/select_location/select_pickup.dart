@@ -206,26 +206,14 @@ class _SelectPickupState extends State<SelectPickup> {
 
     FocusScope.of(context).unfocus();
 
-    if (isInventoryFlow) {
-      // Close SelectPickup and return to InventoryList, showing the TopBookingDialogWrapper popup.
-      final rootContext = navigatorKey.currentContext;
-      Navigator.of(context).pop();
-
-      if (rootContext != null) {
-        showDialog(
-          context: rootContext,
-          barrierDismissible: true,
-          builder: (dialogContext) => const TopBookingDialogWrapper(),
-        );
-      }
-    } else {
-      // Default behaviour: go back to BookingRide with the appropriate tab.
-      final tabName = bookingRideController.currentTabName;
-      final route = tabName == 'rental'
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final lastTab =
+      bookingRideController.tabNames[bookingRideController.selectedIndex.value];
+      final route = lastTab == 'rental'
           ? '${AppRoutes.bookingRide}?tab=rental'
-          : '${AppRoutes.bookingRide}?tab=$tabName';
-      GoRouter.of(context).go(route);
-    }
+          : '${AppRoutes.bookingRide}?tab=$lastTab';
+      GoRouter.of(context).push(route);
+    });
 
     // Background tasks
     placeSearchController.getLatLngDetails(place.placeId, context);

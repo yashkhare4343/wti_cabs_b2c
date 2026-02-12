@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -63,7 +64,7 @@ class VersionCheckController extends GetxController {
 
       return {
         "userId": null,
-        "fcmToken": fcmToken.value
+        "fcmToken": await FirebaseMessaging.instance.getToken()
       };
     }
     try {

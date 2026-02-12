@@ -225,29 +225,14 @@ class _SelectDropState extends State<SelectDrop> {
         bookingRideController.isInventoryPage.value == true ||
         widget.fromInventoryScreen == true;
 
-    if (isInventoryFlow) {
-      // Close SelectDrop and return to InventoryList, showing the TopBookingDialogWrapper popup.
-      final rootContext = navigatorKey.currentContext;
-      Navigator.of(context).pop();
-
-      if (rootContext != null) {
-        showDialog(
-          context: rootContext,
-          barrierDismissible: true,
-          builder: (dialogContext) => const TopBookingDialogWrapper(),
-        );
-      }
-    } else {
-      // Default behaviour: navigate back to BookingRide after place selection.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final lastTab =
-            bookingRideController.tabNames[bookingRideController.selectedIndex.value];
-        final route = lastTab == 'rental'
-            ? '${AppRoutes.bookingRide}?tab=rental'
-            : '${AppRoutes.bookingRide}?tab=$lastTab';
-        GoRouter.of(context).push(route);
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final lastTab =
+      bookingRideController.tabNames[bookingRideController.selectedIndex.value];
+      final route = lastTab == 'rental'
+          ? '${AppRoutes.bookingRide}?tab=rental'
+          : '${AppRoutes.bookingRide}?tab=$lastTab';
+      GoRouter.of(context).push(route);
+    });
 
     // Background tasks
     Future.microtask(() {

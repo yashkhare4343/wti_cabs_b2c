@@ -208,6 +208,16 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
     }
   }
 
+  String _formatHoursFromDateRange(String? startIso, String? endIso) {
+    final start = DateTime.tryParse((startIso ?? '').trim());
+    final end = DateTime.tryParse((endIso ?? '').trim());
+    if (start == null || end == null) {
+      return '0.00 hrs';
+    }
+    final hours = end.difference(start).inMinutes / 60;
+    return '${hours.toStringAsFixed(2)} hrs';
+  }
+
   Future<void> logCabViewItemList(IndiaResponse indiaResponse) async {
     final result = indiaResponse.result;
     if (result == null ||
@@ -641,6 +651,14 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                   child: Obx(() {
                     final isIndia =
                         searchCabInventoryController.indiaData.value != null;
+                    final activeTripCode = searchCabInventoryController
+                            .newCurrent.value
+                            .toString()
+                            .trim()
+                            .isNotEmpty
+                        ? searchCabInventoryController.newCurrent.value.toString()
+                        : searchCabInventoryController.tripCode.value.toString();
+                    final isRentalTrip = activeTripCode == '3';
                     final indiaCarTypes = searchCabInventoryController
                         .indiaData.value?.result?.inventory?.carTypes ??
                         [];
@@ -664,6 +682,7 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                     if ((placeSearchController.getPlacesLatLng.value?.country !=
                         dropPlaceSearchController
                             .dropLatLng.value?.country) &&
+                        !isRentalTrip &&
                         (indiaCarTypes.isNotEmpty &&
                             indiaCarTypes.first.tripType != 'LOCAL_RENTAL')) {
                       return const Center(
@@ -703,13 +722,25 @@ class _InventoryListState extends State<InventoryList> with WidgetsBindingObserv
                               _country?.toLowerCase() == 'india'
                                   ? TextSpan(
                                 text:
-                                '${(DateTime.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.endTime.toString() ?? '').difference(DateTime.parse(searchCabInventoryController.indiaData.value?.result?.tripType?.startTime.toString() ?? '')).inMinutes / 60).toStringAsFixed(2)} hrs',
+                                _formatHoursFromDateRange(
+                                  searchCabInventoryController
+                                      .indiaData.value?.result?.tripType?.startTime
+                                      ?.toString(),
+                                  searchCabInventoryController
+                                      .indiaData.value?.result?.tripType?.endTime
+                                      ?.toString(),
+                                ),
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold),
                               )
                                   : TextSpan(
                                 text:
-                                '${(DateTime.parse(searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.dropDateTime ?? '').difference(DateTime.parse(searchCabInventoryController.globalData.value?.result.first.first.tripDetails?.pickupDateTime ?? '')).inMinutes / 60).toStringAsFixed(2)} hrs',
+                                _formatHoursFromDateRange(
+                                  searchCabInventoryController.globalData.value
+                                      ?.result.first.first.tripDetails?.pickupDateTime,
+                                  searchCabInventoryController.globalData.value
+                                      ?.result.first.first.tripDetails?.dropDateTime,
+                                ),
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold),
                               ),
@@ -1935,10 +1966,34 @@ class _BookingTopBarState extends State<BookingTopBar> {
                   onTap: () {
                     bookingRideController.isInventoryPage.value = true;
                     bookingRideController.isPopupOpen.value = true;
-                    showDialog(
+                    showGeneralDialog(
                       context: context,
                       barrierDismissible: true,
-                      builder: (context) => TopBookingDialogWrapper(),
+                      barrierLabel: "TopBookingDialog",
+                      barrierColor: Colors.black54,
+                      transitionDuration: const Duration(milliseconds: 280),
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          SafeArea(
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: TopBookingDialogWrapper(),
+                            ),
+                          ),
+                      transitionBuilder: (context, animation,
+                          secondaryAnimation, child) {
+                        final curvedAnimation = CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                          reverseCurve: Curves.easeInCubic,
+                        );
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, -1),
+                            end: Offset.zero,
+                          ).animate(curvedAnimation),
+                          child: child,
+                        );
+                      },
                     ).whenComplete(() {
                       bookingRideController.isPopupOpen.value = false;
                     });
@@ -2033,6 +2088,10 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   final BookingRideController bookingRideController = Get.find();
   final PlaceSearchController placeSearchController = Get.find();
   final DropPlaceSearchController dropPlaceSearchController = Get.find();
+  final FetchPackageController fetchPackageController =
+      Get.isRegistered<FetchPackageController>()
+          ? Get.find<FetchPackageController>()
+          : Get.put(FetchPackageController());
   final String _popupPickupTag = 'popup_pickup_dialog_controller';
   final String _popupDropTag = 'popup_drop_dialog_controller';
   late final PopupPickupSearchController popupPickupSearchController;
@@ -2154,24 +2213,34 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final displayTitle = title == 'Rental' ? 'Rentals' : title;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.all(3),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.mainButtonBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? const Color(0xFF2C2C6F) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1F002CC0),
+                      offset: Offset(8, 4),
+                      blurRadius: 12,
+                    ),
+                  ]
+                : [],
           ),
           child: Text(
-            title,
+            displayTitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.greyText5,
+              color: isSelected ? Colors.white : AppColors.blue4,
             ),
           ),
         ),
@@ -2355,6 +2424,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     required DateTime selectedDrop,
     required String tripCode,
   }) {
+    final isRental = tripCode == '3';
     final baseData = bookingRideController.requestData.isNotEmpty
         ? Map<String, dynamic>.from(bookingRideController.requestData)
         : <String, dynamic>{};
@@ -2421,21 +2491,23 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     source['sourceType'] = sourceTypes;
     source['terms'] = sourceTerms;
 
-    destination['destinationTitle'] = _editedDrop;
-    destination['destinationPlaceId'] = _editedDropPlaceId;
-    destination['destinationCity'] =
-        _editedDropLatLng?.city ?? destination['destinationCity'] ?? '';
-    destination['destinationState'] =
-        _editedDropLatLng?.state ?? destination['destinationState'] ?? '';
-    destination['destinationCountry'] = destinationCountry;
-    destination['destinationLat'] = _editedDropLatLng?.latLong.lat.toString() ??
-        destination['destinationLat'] ??
-        '';
-    destination['destinationLng'] = _editedDropLatLng?.latLong.lng.toString() ??
-        destination['destinationLng'] ??
-        '';
-    destination['destinationType'] = destinationTypes;
-    destination['terms'] = destinationTerms;
+    if (!isRental) {
+      destination['destinationTitle'] = _editedDrop;
+      destination['destinationPlaceId'] = _editedDropPlaceId;
+      destination['destinationCity'] =
+          _editedDropLatLng?.city ?? destination['destinationCity'] ?? '';
+      destination['destinationState'] =
+          _editedDropLatLng?.state ?? destination['destinationState'] ?? '';
+      destination['destinationCountry'] = destinationCountry;
+      destination['destinationLat'] = _editedDropLatLng?.latLong.lat.toString() ??
+          destination['destinationLat'] ??
+          '';
+      destination['destinationLng'] = _editedDropLatLng?.latLong.lng.toString() ??
+          destination['destinationLng'] ??
+          '';
+      destination['destinationType'] = destinationTypes;
+      destination['terms'] = destinationTerms;
+    }
 
     baseData['applicationType'] = baseData['applicationType'] ?? 'APP';
     baseData['comingFrom'] = baseData['comingFrom'] ?? 'searchInventory api 2nd page -APP';
@@ -2448,7 +2520,13 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
         tripCode == '1' ? selectedDrop.toUtc().toIso8601String() : '';
     baseData['dropDateTime'] = selectedDrop.toUtc().toIso8601String();
     baseData['source'] = source;
-    baseData['destination'] = destination;
+    baseData['destination'] = isRental ? <String, dynamic>{} : destination;
+    if (isRental) {
+      baseData['packageSelected'] = {
+        "km": fetchPackageController.selectedKms.value,
+        "hours": fetchPackageController.selectedHours.value,
+      };
+    }
 
     return baseData;
   }
@@ -2458,12 +2536,16 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     final selectedPickup =
         _pickupDateTime ?? bookingRideController.localStartTime.value;
     DateTime selectedDrop = _dropDateTime ?? bookingRideController.localEndTime.value;
+    final tripCode = _resolvedTripCodeForSelection();
+    final isRental = tripCode == '3';
+    final currentDropPlaceId = isRental ? '' : _editedDropPlaceId;
 
     if (selectedDrop.isBefore(selectedPickup)) {
       selectedDrop = selectedPickup.add(const Duration(hours: 1));
     }
 
-    if (_editedPickupPlaceId.isNotEmpty && _editedPickupPlaceId == _editedDropPlaceId) {
+    if (_editedPickupPlaceId.isNotEmpty &&
+        _editedPickupPlaceId == currentDropPlaceId) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pickup and drop cannot be same.'),
@@ -2473,8 +2555,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
       return;
     }
 
-    if (_editedPickupPlaceId.isEmpty ||
-        (_selectedTabIndex != 2 && _editedDropPlaceId.isEmpty)) {
+    if (_editedPickupPlaceId.isEmpty || (!isRental && currentDropPlaceId.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select pickup and drop locations.'),
@@ -2484,7 +2565,9 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
       return;
     }
 
-    final tripCode = _resolvedTripCodeForSelection();
+    final effectiveDrop = isRental ? '' : _editedDrop;
+    final effectiveDropPlaceId = currentDropPlaceId;
+    final effectiveDropLatLng = isRental ? null : _editedDropLatLng;
 
     final updatedRequestData = _buildUpdatedRequestData(
       selectedPickup: selectedPickup,
@@ -2495,11 +2578,11 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     setState(() => _isSearching = true);
     try {
       bookingRideController.prefilled.value = _editedPickup;
-      bookingRideController.prefilledDrop.value = _editedDrop;
+      bookingRideController.prefilledDrop.value = effectiveDrop;
       placeSearchController.placeId.value = _editedPickupPlaceId;
-      dropPlaceSearchController.dropPlaceId.value = _editedDropPlaceId;
+      dropPlaceSearchController.dropPlaceId.value = effectiveDropPlaceId;
       placeSearchController.getPlacesLatLng.value = _editedPickupLatLng;
-      dropPlaceSearchController.dropLatLng.value = _editedDropLatLng;
+      dropPlaceSearchController.dropLatLng.value = effectiveDropLatLng;
       bookingRideController.localStartTime.value = selectedPickup;
       bookingRideController.localEndTime.value = selectedDrop;
       bookingRideController.requestData.value = updatedRequestData;
@@ -2512,16 +2595,18 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
         StorageServices.instance.save(
             'sourceTerms',
             jsonEncode((updatedRequestData['source'] as Map)['terms'] ?? [])),
-        StorageServices.instance.save('destinationTitle', _editedDrop),
+        StorageServices.instance.save('destinationTitle', effectiveDrop),
         StorageServices.instance.save(
-            'destinationPlaceId', _editedDropPlaceId),
+            'destinationPlaceId', effectiveDropPlaceId),
         StorageServices.instance.save(
             'destinationTypes',
-            jsonEncode((updatedRequestData['destination'] as Map)['destinationType'] ??
-                [])),
+            jsonEncode(
+                ((updatedRequestData['destination'] as Map?)?['destinationType']) ??
+                    [])),
         StorageServices.instance.save(
             'destinationTerms',
-            jsonEncode((updatedRequestData['destination'] as Map)['terms'] ?? [])),
+            jsonEncode(
+                ((updatedRequestData['destination'] as Map?)?['terms']) ?? [])),
       ]);
 
       await searchCabInventoryController.fetchBookingData(
@@ -2563,18 +2648,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                 color: AppColors.greyText5,
               ),
             ),
-            const Spacer(),
-            GestureDetector(
-              onTap: onTap,
-              child: const Text(
-                'Edit',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.mainButtonBg,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+
           ],
         ),
         const SizedBox(height: 6),
@@ -2606,6 +2680,54 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     );
   }
 
+  Widget _buildRentalPackageDropdown() {
+    return Obx(() {
+      final packageData = fetchPackageController.packageModel.value?.data ?? [];
+      final items = packageData.map((value) => '${value.hours} hrs').toList();
+      final selected = fetchPackageController.selectedPackage.value;
+      final selectedValue = items.contains(selected) ? selected : null;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Package',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.greyText5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          CustomDropdownField(
+            hintText: 'Select Package',
+            items: items,
+            value: selectedValue,
+            onChanged: (value) async {
+              if (value == null || value.isEmpty) return;
+              fetchPackageController.updateSelectedPackage(value);
+              final selectedPackage = packageData.firstWhereOrNull(
+                (pkg) => '${pkg.hours} hrs' == value,
+              );
+              fetchPackageController.selectedHours.value =
+                  selectedPackage?.hours ?? 0;
+              fetchPackageController.selectedKms.value =
+                  selectedPackage?.kilometers ?? 0;
+              await StorageServices.instance.save(
+                'selectedHours',
+                fetchPackageController.selectedHours.value.toString(),
+              );
+              await StorageServices.instance.save(
+                'selectedKms',
+                fetchPackageController.selectedKms.value.toString(),
+              );
+            },
+          ),
+        ],
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2631,6 +2753,9 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
     _editedDropPlaceId = dropPlaceSearchController.dropPlaceId.value;
     _editedPickupLatLng = placeSearchController.getPlacesLatLng.value;
     _editedDropLatLng = dropPlaceSearchController.dropLatLng.value;
+    if (fetchPackageController.packageModel.value?.data.isEmpty ?? true) {
+      fetchPackageController.fetchPackages();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       searchCabInventoryController.loadTripCode();
     });
@@ -2668,147 +2793,167 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
       statusBarColor: Colors.white,
       statusBarIconBrightness: Brightness.dark,
     ));
-    return Dialog(
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Builder(builder: (_) {
-          final pickup = _editedPickup.trim();
-          final drop = _editedDrop.trim();
-          final pickupDateTime =
-              _pickupDateTime ?? bookingRideController.localStartTime.value;
-          final dropDateTime =
-              _dropDateTime ?? bookingRideController.localEndTime.value;
-          final pickupDate = _formatDateTime(pickupDateTime);
-          final dropDate = _formatDateTime(dropDateTime);
-
-          return SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Edit Trip Details',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,              // Android
+        statusBarIconBrightness: Brightness.dark, // Android (dark icons)
+        statusBarBrightness: Brightness.light,    // iOS (dark icons)
+      ),
+      child: Dialog(
+        alignment: Alignment.topCenter,
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Builder(builder: (_) {
+            final pickup = _editedPickup.trim();
+            final drop = _editedDrop.trim();
+            final pickupDateTime =
+                _pickupDateTime ?? bookingRideController.localStartTime.value;
+            final dropDateTime =
+                _dropDateTime ?? bookingRideController.localEndTime.value;
+            final pickupDate = _formatDateTime(pickupDateTime);
+            final dropDate = _formatDateTime(dropDateTime);
+            final isModifyDisabled = _selectedTabIndex != 2 && drop.isEmpty;
+      
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Edit Trip Details',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        bookingRideController.isPopupOpen.value = false;
-                        GoRouter.of(context).pop();
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F4F8),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildTripTab(
-                        title: 'Outstation',
-                        isSelected: _selectedTabIndex == 0,
-                        onTap: () {
-                          setState(() {
-                            _selectedTabIndex = 0;
-                          });
-                          searchCabInventoryController.newCurrent.value =
-                              _resolvedTripCodeForSelection();
-                        },
-                      ),
-                      _buildTripTab(
-                        title: 'Airport',
-                        isSelected: _selectedTabIndex == 1,
-                        onTap: () {
-                          setState(() {
-                            _selectedTabIndex = 1;
-                          });
-                          searchCabInventoryController.newCurrent.value =
-                              _resolvedTripCodeForSelection();
-                        },
-                      ),
-                      _buildTripTab(
-                        title: 'Rental',
-                        isSelected: _selectedTabIndex == 2,
-                        onTap: () {
-                          setState(() {
-                            _selectedTabIndex = 2;
-                          });
-                          searchCabInventoryController.newCurrent.value =
-                              _resolvedTripCodeForSelection();
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          bookingRideController.isPopupOpen.value = false;
+                          GoRouter.of(context).pop();
                         },
                       ),
                     ],
                   ),
-                ),
-                if (_selectedTabIndex == 0) ...[
-                  const SizedBox(height: 10),
-                  _buildOutstationTripSelector(),
-                ],
-                const SizedBox(height: 16),
-                _buildEditableDateField(
-                  label: 'Pickup',
-                  value: pickup.isEmpty ? 'Select pickup location' : pickup,
-                  icon: Icons.my_location,
-                  onTap: () => _handleLocationTap(isPickup: true),
-                ),
-                const SizedBox(height: 12),
-                _buildEditableDateField(
-                  label: 'Drop',
-                  value: drop.isEmpty ? 'Select drop location' : drop,
-                  icon: Icons.location_on_outlined,
-                  onTap: () => _handleLocationTap(isPickup: false),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildEditableDateField(
-                        label: 'Pickup DateTime',
-                        value: pickupDate,
-                        icon: Icons.calendar_today_outlined,
-                        onTap: () => _pickDateTime(isPickup: true),
-                      ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F4F8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildEditableDateField(
-                        label: 'Drop DateTime',
-                        value: dropDate,
-                        icon: Icons.calendar_month_outlined,
-                        onTap: () => _pickDateTime(isPickup: false),
-                      ),
+                    child: Row(
+                      children: [
+                        _buildTripTab(
+                          title: 'Airport',
+                          isSelected: _selectedTabIndex == 1,
+                          onTap: () {
+                            setState(() {
+                              _selectedTabIndex = 1;
+                            });
+                            searchCabInventoryController.newCurrent.value =
+                                _resolvedTripCodeForSelection();
+                          },
+                        ),
+                        _buildTripTab(
+                          title: 'Outstation',
+                          isSelected: _selectedTabIndex == 0,
+                          onTap: () {
+                            setState(() {
+                              _selectedTabIndex = 0;
+                            });
+                            searchCabInventoryController.newCurrent.value =
+                                _resolvedTripCodeForSelection();
+                          },
+                        ),
+                        _buildTripTab(
+                          title: 'Rental',
+                          isSelected: _selectedTabIndex == 2,
+                          onTap: () {
+                            setState(() {
+                              _selectedTabIndex = 2;
+                              _editedDrop = '';
+                              _editedDropPlaceId = '';
+                              _editedDropLatLng = null;
+                              _editedDropSuggestion = null;
+                            });
+                            searchCabInventoryController.newCurrent.value =
+                                _resolvedTripCodeForSelection();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_selectedTabIndex == 0) ...[
+                    const SizedBox(height: 10),
+                    _buildOutstationTripSelector(),
+                  ],
+                  const SizedBox(height: 16),
+                  _buildEditableDateField(
+                    label: 'Pickup',
+                    value: pickup.isEmpty ? 'Select pickup location' : pickup,
+                    icon: Icons.my_location,
+                    onTap: () => _handleLocationTap(isPickup: true),
+                  ),
+                  if (_selectedTabIndex != 2) ...[
+                    const SizedBox(height: 12),
+                    _buildEditableDateField(
+                      label: 'Drop',
+                      value: drop.isEmpty ? 'Select drop location' : drop,
+                      icon: Icons.location_on_outlined,
+                      onTap: () => _handleLocationTap(isPickup: false),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: MainButton(
-                    text: 'Search Now',
-                    isLoading: _isSearching,
-                    onPressed: _submitPopupSearch,
+                  if (_selectedTabIndex == 2) ...[
+                    const SizedBox(height: 12),
+                    _buildRentalPackageDropdown(),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildEditableDateField(
+                          label: 'Pickup DateTime',
+                          value: pickupDate,
+                          icon: Icons.calendar_today_outlined,
+                          onTap: () => _pickDateTime(isPickup: true),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildEditableDateField(
+                          label: 'Drop DateTime',
+                          value: dropDate,
+                          icon: Icons.calendar_month_outlined,
+                          onTap: () => _pickDateTime(isPickup: false),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-          );
-        }),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: MainButton(
+                      text: 'Modify Search',
+                      isLoading: _isSearching,
+                      isDisabled: isModifyDisabled,
+                      onPressed: _submitPopupSearch,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
