@@ -1854,24 +1854,30 @@ class _BookingTopBarState extends State<BookingTopBar> {
 
   @override
   Widget build(BuildContext context) {
-    final pickupDateTime = bookingRideController.localStartTime.value;
-    final formattedPickup = formatDateTime(pickupDateTime);
-    DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
-    DateTime? backendEndUtc =
-        searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
+    return Obx(() {
+      final pickupDateTime = bookingRideController.localStartTime.value;
+      final formattedPickup = formatDateTime(pickupDateTime);
+      DateTime localEndUtc = bookingRideController.localEndTime.value.toUtc();
+      DateTime? backendEndUtc =
+          searchCabInventoryController.indiaData.value?.result?.tripType?.endTime;
+      final activeTripCode = searchCabInventoryController.newCurrent.value
+              .toString()
+              .trim()
+              .isNotEmpty
+          ? searchCabInventoryController.newCurrent.value.toString()
+          : searchCabInventoryController.tripCode.value.toString();
 
-// Compare in UTC, pick the greater one
-    DateTime finalDropUtc =
-    (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc))
-        ? backendEndUtc
-        : localEndUtc;
+      DateTime finalDropUtc =
+          (backendEndUtc != null && backendEndUtc.isAfter(localEndUtc))
+              ? backendEndUtc
+              : localEndUtc;
 
-// Convert chosen UTC time back to local with timezone handling
-    final formattedDrop = convertUtcToLocal(
-      finalDropUtc.toIso8601String(),
-      placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? '',
-    );
-    return Container(
+      final formattedDrop = convertUtcToLocal(
+        finalDropUtc.toIso8601String(),
+        placeSearchController.findCntryDateTimeResponse.value?.timeZone ?? '',
+      );
+
+      return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -1913,7 +1919,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
           children: [
             Expanded(
               child: Text(
-                tripCode == '3'
+                activeTripCode == '3'
                     ? bookingRideController.prefilled.value
                     : '${trimAfterTwoSpaces(bookingRideController.prefilled.value)} to ${trimAfterTwoSpaces(bookingRideController.prefilledDrop.value)}',
                 style: const TextStyle(
@@ -1924,7 +1930,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (!(tripCode?.isEmpty ?? true))
+            if (activeTripCode.isNotEmpty)
               GestureDetector(
                   onTap: () {
                     bookingRideController.isInventoryPage.value = true;
@@ -1967,7 +1973,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              (tripCode == '1')
+              (activeTripCode == '1')
                   ? '$formattedPickup - $formattedDrop'
                   : '$formattedPickup',
               style: const TextStyle(
@@ -1978,7 +1984,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
               overflow: TextOverflow.ellipsis,
             ),
 
-            if (tripCode == '3')
+            if (activeTripCode == '3')
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: SelectedPackageCard(controller: fetchPackageController),
@@ -1991,6 +1997,7 @@ class _BookingTopBarState extends State<BookingTopBar> {
         ),
       ),
     );
+    });
   }
 }
 
@@ -2035,12 +2042,15 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
   String _selectedOutstationTrip = 'oneWay';
   DateTime? _pickupDateTime;
   DateTime? _dropDateTime;
+  bool _isSearching = false;
   String _editedPickup = '';
   String _editedDrop = '';
   String _editedPickupPlaceId = '';
   String _editedDropPlaceId = '';
   GetLatLngResponse? _editedPickupLatLng;
   GetLatLngResponse? _editedDropLatLng;
+  SuggestionPlacesResponse? _editedPickupSuggestion;
+  SuggestionPlacesResponse? _editedDropSuggestion;
 
   int _tripCodeToTabIndex(String tripCode) {
     if (tripCode == '2') return 1;
@@ -2299,6 +2309,7 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
         _editedPickup = result.primaryText;
         _editedPickupPlaceId = result.placeId;
         _editedPickupLatLng = popupPickupSearchController.getPlacesLatLng.value;
+      _editedPickupSuggestion = result;
       });
       return;
     }
@@ -2335,7 +2346,202 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
       _editedDrop = result.primaryText;
       _editedDropPlaceId = result.placeId;
       _editedDropLatLng = popupDropSearchController.dropLatLng.value;
+      _editedDropSuggestion = result;
     });
+  }
+
+  Map<String, dynamic> _buildUpdatedRequestData({
+    required DateTime selectedPickup,
+    required DateTime selectedDrop,
+    required String tripCode,
+  }) {
+    final baseData = bookingRideController.requestData.isNotEmpty
+        ? Map<String, dynamic>.from(bookingRideController.requestData)
+        : <String, dynamic>{};
+
+    final source = Map<String, dynamic>.from(
+      (baseData['source'] as Map?)?.cast<String, dynamic>() ?? {},
+    );
+    final destination = Map<String, dynamic>.from(
+      (baseData['destination'] as Map?)?.cast<String, dynamic>() ?? {},
+    );
+
+    final pickupCountry =
+        _editedPickupLatLng?.country.isNotEmpty == true
+            ? _editedPickupLatLng!.country
+            : (_editedDropLatLng?.country ?? baseData['countryName'] ?? 'India');
+    final sourceCountry = _editedPickupLatLng?.country ?? pickupCountry;
+    final destinationCountry = _editedDropLatLng?.country ?? pickupCountry;
+
+    List<String> _toStringList(dynamic value) {
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      }
+      return <String>[];
+    }
+
+    List<Map<String, dynamic>> _toTermList(dynamic value) {
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+      return <Map<String, dynamic>>[];
+    }
+
+    final sourceTypes = _editedPickupSuggestion != null
+        ? List<String>.from(_editedPickupSuggestion!.types)
+        : _toStringList(source['sourceType']);
+    final sourceTerms = _editedPickupSuggestion != null
+        ? _editedPickupSuggestion!.terms
+            .map((t) => {'offset': t.offset, 'value': t.value})
+            .toList()
+        : _toTermList(source['terms']);
+
+    final destinationTypes = _editedDropSuggestion != null
+        ? List<String>.from(_editedDropSuggestion!.types)
+        : _toStringList(destination['destinationType']);
+    final destinationTerms = _editedDropSuggestion != null
+        ? _editedDropSuggestion!.terms
+            .map((t) => {'offset': t.offset, 'value': t.value})
+            .toList()
+        : _toTermList(destination['terms']);
+
+    source['sourceTitle'] = _editedPickup;
+    source['sourcePlaceId'] = _editedPickupPlaceId;
+    source['sourceCity'] = _editedPickupLatLng?.city ?? source['sourceCity'] ?? '';
+    source['sourceState'] =
+        _editedPickupLatLng?.state ?? source['sourceState'] ?? '';
+    source['sourceCountry'] = sourceCountry;
+    source['sourceLat'] =
+        _editedPickupLatLng?.latLong.lat.toString() ?? source['sourceLat'] ?? '';
+    source['sourceLng'] =
+        _editedPickupLatLng?.latLong.lng.toString() ?? source['sourceLng'] ?? '';
+    source['sourceType'] = sourceTypes;
+    source['terms'] = sourceTerms;
+
+    destination['destinationTitle'] = _editedDrop;
+    destination['destinationPlaceId'] = _editedDropPlaceId;
+    destination['destinationCity'] =
+        _editedDropLatLng?.city ?? destination['destinationCity'] ?? '';
+    destination['destinationState'] =
+        _editedDropLatLng?.state ?? destination['destinationState'] ?? '';
+    destination['destinationCountry'] = destinationCountry;
+    destination['destinationLat'] = _editedDropLatLng?.latLong.lat.toString() ??
+        destination['destinationLat'] ??
+        '';
+    destination['destinationLng'] = _editedDropLatLng?.latLong.lng.toString() ??
+        destination['destinationLng'] ??
+        '';
+    destination['destinationType'] = destinationTypes;
+    destination['terms'] = destinationTerms;
+
+    baseData['applicationType'] = baseData['applicationType'] ?? 'APP';
+    baseData['comingFrom'] = baseData['comingFrom'] ?? 'searchInventory api 2nd page -APP';
+    baseData['tripCode'] = tripCode;
+    baseData['countryName'] = pickupCountry;
+    baseData['country'] = pickupCountry;
+    baseData['pickupDateAndTime'] = selectedPickup.toUtc().toIso8601String();
+    baseData['pickUpDateTime'] = selectedPickup.toUtc().toIso8601String();
+    baseData['returnDateAndTime'] =
+        tripCode == '1' ? selectedDrop.toUtc().toIso8601String() : '';
+    baseData['dropDateTime'] = selectedDrop.toUtc().toIso8601String();
+    baseData['source'] = source;
+    baseData['destination'] = destination;
+
+    return baseData;
+  }
+
+  Future<void> _submitPopupSearch() async {
+    if (_isSearching) return;
+    final selectedPickup =
+        _pickupDateTime ?? bookingRideController.localStartTime.value;
+    DateTime selectedDrop = _dropDateTime ?? bookingRideController.localEndTime.value;
+
+    if (selectedDrop.isBefore(selectedPickup)) {
+      selectedDrop = selectedPickup.add(const Duration(hours: 1));
+    }
+
+    if (_editedPickupPlaceId.isNotEmpty && _editedPickupPlaceId == _editedDropPlaceId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pickup and drop cannot be same.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_editedPickupPlaceId.isEmpty ||
+        (_selectedTabIndex != 2 && _editedDropPlaceId.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select pickup and drop locations.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final tripCode = _resolvedTripCodeForSelection();
+
+    final updatedRequestData = _buildUpdatedRequestData(
+      selectedPickup: selectedPickup,
+      selectedDrop: selectedDrop,
+      tripCode: tripCode,
+    );
+
+    setState(() => _isSearching = true);
+    try {
+      bookingRideController.prefilled.value = _editedPickup;
+      bookingRideController.prefilledDrop.value = _editedDrop;
+      placeSearchController.placeId.value = _editedPickupPlaceId;
+      dropPlaceSearchController.dropPlaceId.value = _editedDropPlaceId;
+      placeSearchController.getPlacesLatLng.value = _editedPickupLatLng;
+      dropPlaceSearchController.dropLatLng.value = _editedDropLatLng;
+      bookingRideController.localStartTime.value = selectedPickup;
+      bookingRideController.localEndTime.value = selectedDrop;
+      bookingRideController.requestData.value = updatedRequestData;
+      await Future.wait([
+        StorageServices.instance.save('sourceTitle', _editedPickup),
+        StorageServices.instance.save('sourcePlaceId', _editedPickupPlaceId),
+        StorageServices.instance.save(
+            'sourceTypes',
+            jsonEncode((updatedRequestData['source'] as Map)['sourceType'] ?? [])),
+        StorageServices.instance.save(
+            'sourceTerms',
+            jsonEncode((updatedRequestData['source'] as Map)['terms'] ?? [])),
+        StorageServices.instance.save('destinationTitle', _editedDrop),
+        StorageServices.instance.save(
+            'destinationPlaceId', _editedDropPlaceId),
+        StorageServices.instance.save(
+            'destinationTypes',
+            jsonEncode((updatedRequestData['destination'] as Map)['destinationType'] ??
+                [])),
+        StorageServices.instance.save(
+            'destinationTerms',
+            jsonEncode((updatedRequestData['destination'] as Map)['terms'] ?? [])),
+      ]);
+
+      await searchCabInventoryController.fetchBookingData(
+        country: (updatedRequestData['countryName'] ??
+                updatedRequestData['country'] ??
+                '')
+            .toString(),
+        requestData: updatedRequestData,
+        context: context,
+        isSecondPage: true,
+      );
+
+      if (!mounted) return;
+      bookingRideController.isPopupOpen.value = false;
+      GoRouter.of(context).pop();
+    } finally {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
+    }
   }
 
   Widget _buildEditableDateField({
@@ -2594,41 +2800,8 @@ class _TopBookingDialogWrapperState extends State<TopBookingDialogWrapper> {
                   height: 44,
                   child: MainButton(
                     text: 'Search Now',
-                    onPressed: () {
-                      final selectedPickup = _pickupDateTime ??
-                          bookingRideController.localStartTime.value;
-                      DateTime selectedDrop =
-                          _dropDateTime ?? bookingRideController.localEndTime.value;
-
-                      if (selectedDrop.isBefore(selectedPickup)) {
-                        selectedDrop = selectedPickup.add(const Duration(hours: 1));
-                      }
-
-                      if (_editedPickupPlaceId.isNotEmpty &&
-                          _editedPickupPlaceId == _editedDropPlaceId) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Pickup and drop cannot be same.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      bookingRideController.prefilled.value = _editedPickup;
-                      bookingRideController.prefilledDrop.value = _editedDrop;
-                      placeSearchController.placeId.value = _editedPickupPlaceId;
-                      dropPlaceSearchController.dropPlaceId.value =
-                          _editedDropPlaceId;
-                      placeSearchController.getPlacesLatLng.value =
-                          _editedPickupLatLng;
-                      dropPlaceSearchController.dropLatLng.value =
-                          _editedDropLatLng;
-                      bookingRideController.localStartTime.value = selectedPickup;
-                      bookingRideController.localEndTime.value = selectedDrop;
-                      bookingRideController.isPopupOpen.value = false;
-                      GoRouter.of(context).pop();
-                    },
+                    isLoading: _isSearching,
+                    onPressed: _submitPopupSearch,
                   ),
                 ),
                 const SizedBox(height: 4),
